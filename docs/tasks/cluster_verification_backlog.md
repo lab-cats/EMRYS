@@ -493,6 +493,19 @@ of any submission. Preserve the rule against duplicate submission on uncertainty
 **Owners/dependencies:** Submission/control, inspection/presentation/logging;
 CV-03/15/16/18/25.
 
+**Implemented scheduler-observer prerequisite:** The existing dashboard now
+shares strict root-job/numeric-UID admission across discovery, accounting, and
+state observation. It requests accounting duplicates rather than silently
+choosing the latest reused ID, rejects ambiguous/missing/mismatched identity,
+checks selected stream paths on refresh, and reports unavailable proof as
+`UNKNOWN`. Exact batch-step identity controls usage display. This retires
+username-environment matching and duplicate first-row accounting parsing while
+preserving standalone loading and existing bounded discovery/stream handling.
+Job-ID/UID/path agreement is not request/cluster identity or recovery proof;
+integration with retained requests remains open. The standalone dashboard suite
+passes 66 local tests; after duplicate-query changes all 50 affected cases pass.
+Actual scheduler/site verification remains pending.
+
 **Selected first slice:** Ordinary Run/resume/report now retain a private,
 create-absent request context and raw scheduler responses after approval,
 including failures and interruption before Run creation. The context includes

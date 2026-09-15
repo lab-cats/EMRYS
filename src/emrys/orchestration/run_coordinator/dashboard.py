@@ -318,15 +318,6 @@ def sanitize_text(value):
     return CONTROL_RE.sub("", value)
 
 
-def slurm_user():
-    user = os.environ.get("USER") or os.environ.get("LOGNAME")
-    if not user:
-        raise DiscoveryError(
-            "USER/LOGNAME is unavailable; pass JOB_ID and LOG_DIR explicitly"
-        )
-    return user
-
-
 def parse_key_value_line(value):
     fields = {}
     try:
@@ -336,6 +327,8 @@ def parse_key_value_line(value):
     for token in tokens:
         if "=" in token:
             key, item = token.split("=", 1)
+            if key in fields:
+                return {}
             fields[key] = item
     return fields
 
@@ -344,10 +337,11 @@ def slurm_job_metadata(job_id):
     output = command_text(["scontrol", "show", "job", "-o", str(job_id)])
     if not output:
         return None
-    fields = parse_key_value_line(output.splitlines()[0])
-    if not fields:
-        return None
-    fields["JobId"] = fields.get("JobId", str(job_id))
+    rows = output.splitlines()
+    if len(rows) != 1:
+        raise DiscoveryError("Slurm did not return one exact root record")
+    fields = parse_key_value_line(rows[0])
+    validate_scheduler_identity(job_id, fields, owner_field="UserId")
     return fields
 
 
@@ -356,86 +350,56 @@ def slurm_accounting_metadata(job_id):
 
     Prefer scheduler-declared stream paths.  Older Slurm accounting deployments
     may reject ``StdOut``/``StdErr`` fields, so make one bounded basic-field
-    fallback query for identity/state proof.  Neither query searches storage.
+    fallback query for identity/state proof. Include duplicate IDs so accounting
+    cannot silently select the most recent submission. Neither query searches storage.
     """
-    rich_output = command_text(
-        [
-            "sacct",
-            "-X",
-            "-n",
-            "-P",
-            "-j",
-            str(job_id),
-            "--format=JobIDRaw,JobName,State,User,UID,StdOut,StdErr",
-        ]
-    )
-
-    def exact_records(output, include_streams):
-        records = []
-        minimum_fields = 7 if include_streams else 5
-        for line in output.splitlines():
-            fields = line.split("|")
-            if not fields:
-                continue
-            raw_job_id = fields[0].strip()
-            if raw_job_id != str(job_id) or not JOB_ID_RE.fullmatch(raw_job_id):
-                continue
-            if len(fields) < minimum_fields:
-                continue
-            record = {
-                "JobId": raw_job_id,
-                "JobName": fields[1].strip(),
-                "JobState": fields[2].strip(),
-                "User": fields[3].strip(),
-                "UID": fields[4].strip(),
-            }
-            if include_streams:
-                record.update(
-                    {
-                        "StdOut": fields[5].strip(),
-                        "StdErr": fields[6].strip(),
-                    }
-                )
-            records.append(record)
-        return records
-
-    rich_records = exact_records(rich_output, include_streams=True)
-    if len(rich_records) > 1:
-        raise DiscoveryError(
-            "Slurm accounting did not return one exact root record for job %s" % job_id
+    for streams in (("StdOut", "StdErr"), ()):
+        names = (
+            ("JobIDRaw", "JobName", "State", "User", "UID")
+            + streams
+            + ("ExitCode", "Elapsed", "AllocCPUS", "NodeList")
         )
-    if rich_records:
-        return rich_records[0]
-
-    basic_output = command_text(
-        [
-            "sacct",
-            "-X",
-            "-n",
-            "-P",
-            "-j",
-            str(job_id),
-            "--format=JobIDRaw,JobName,State,User,UID",
-        ]
-    )
-    if not basic_output:
-        raise DiscoveryError(
-            "Slurm accounting metadata is unavailable for job %s" % job_id
+        output = command_text(
+            [
+                "sacct",
+                "--duplicates",
+                "-X",
+                "-n",
+                "-P",
+                "-j",
+                str(job_id),
+                "--format=" + ",".join(names),
+            ]
         )
-    records = exact_records(basic_output, include_streams=False)
-    if len(records) != 1:
-        raise DiscoveryError(
-            "Slurm accounting did not return one exact root record for job %s" % job_id
-        )
-    return records[0]
+        if not output:
+            continue
+        rows = [line.split("|") for line in output.splitlines()]
+        roots = [row for row in rows if JOB_ID_RE.fullmatch(row[0].strip())]
+        if len(roots) != 1 or len(roots[0]) < 5 + len(streams):
+            raise DiscoveryError(
+                "Slurm accounting did not return one exact root record for job %s"
+                % job_id
+            )
+        metadata = dict(zip(names, (value.strip() for value in roots[0])))
+        metadata["JobId"] = metadata.pop("JobIDRaw")
+        metadata["JobState"] = metadata.pop("State")
+        validate_scheduler_identity(job_id, metadata)
+        return metadata
+    raise DiscoveryError("Slurm accounting metadata is unavailable for job %s" % job_id)
 
 
-def owner_matches(owner):
-    if not owner:
-        return False
-    user = os.environ.get("USER") or os.environ.get("LOGNAME") or ""
+def validate_scheduler_identity(job_id, metadata, owner_field="UID"):
+    """Prove a root ID and numeric owner, never a submission or recovery identity."""
+    if not JOB_ID_RE.fullmatch(str(job_id)) or metadata.get("JobId") != str(job_id):
+        raise DiscoveryError("Slurm returned metadata for a different or missing job")
     uid = str(os.getuid())
-    return owner in {user, uid} or owner.endswith("(%s)" % uid)
+    owner = metadata.get(owner_field, "")
+    if owner != uid and not (
+        owner_field == "UserId" and re.fullmatch(r"[^()\s]+\(" + uid + r"\)", owner)
+    ):
+        raise DiscoveryError("job %s is not owned by the current UID" % job_id)
+    if not normalized_job_state(metadata.get("JobState")):
+        raise DiscoveryError("Slurm did not report a job state")
 
 
 def expand_job_path(value, job_id):
@@ -454,10 +418,7 @@ def normalized_job_state(value):
 
 def validate_accounting_identity(job_id, metadata):
     """Prove that one accounting record is the current user's terminal job."""
-    if metadata.get("JobId") != str(job_id):
-        raise DiscoveryError("Slurm accounting returned a different job")
-    if not any(owner_matches(metadata.get(field)) for field in ("User", "UID")):
-        raise DiscoveryError("job %s is not owned by the current UID" % job_id)
+    validate_scheduler_identity(job_id, metadata)
     state_value = normalized_job_state(metadata.get("JobState"))
     if state_value not in TERMINAL_STATES:
         raise DiscoveryError(
@@ -565,7 +526,7 @@ def validate_log_selection(job_id, out_path, err_path, allow_missing=False):
 
 def scheduler_candidates():
     """Return bounded live and recent candidates with available path metadata."""
-    user = slurm_user()
+    user = str(os.getuid())
     live = command_text(
         [
             "squeue",
@@ -586,6 +547,7 @@ def scheduler_candidates():
     recent = command_text(
         [
             "sacct",
+            "--duplicates",
             "-X",
             "-n",
             "-P",
@@ -603,6 +565,7 @@ def scheduler_candidates():
         recent = command_text(
             [
                 "sacct",
+                "--duplicates",
                 "-X",
                 "-n",
                 "-P",
@@ -682,10 +645,7 @@ def scheduler_selection(
                 "pass LOG_DIR explicitly" % job_id
             )
         raise DiscoveryError("Slurm metadata is unavailable for job %s" % job_id)
-    if metadata.get("JobId") != str(job_id):
-        raise DiscoveryError("Slurm returned metadata for a different job")
-    if not owner_matches(metadata.get("UserId")):
-        raise DiscoveryError("job %s is not owned by the current UID" % job_id)
+    validate_scheduler_identity(job_id, metadata, owner_field="UserId")
     state = normalized_job_state(metadata.get("JobState"))
     allow_missing = state in {"PENDING", "CONFIGURING"}
     scheduler_out = metadata.get("StdOut")
@@ -1093,26 +1053,71 @@ def parse_workflow(stderr_text):
     }
 
 
-def query_slurm(job_id):
+def query_slurm(job_id, out_path=None, err_path=None):
+    """Observe one owned scheduler job; ID/path reuse cannot identify a request."""
+    unknown = {"terminal": False, "state": "UNKNOWN"}
+    if not JOB_ID_RE.fullmatch(str(job_id)):
+        return unknown
     row = command_text(
-        ["squeue", "-h", "-j", str(job_id), "-o", "%T|%M|%L|%C|%P|%N|%R"]
+        ["squeue", "-h", "-j", str(job_id), "-o", "%i|%U|%T|%M|%L|%C|%P|%N|%R"]
     )
-    result = {"terminal": False, "state": "UNKNOWN"}
-    if row:
-        parts = row.split("|", 6)
-        if len(parts) == 7:
-            state, elapsed, left, cpus, partition, node, reason = parts
-            result.update(
-                {
-                    "state": state,
-                    "elapsed": elapsed,
-                    "left": left,
-                    "cpus": cpus,
-                    "partition": partition,
-                    "node": node,
-                    "reason": reason,
-                }
+    try:
+        if row:
+            rows = row.splitlines()
+            parts = [value.strip() for value in rows[0].split("|", 8)]
+            if len(rows) != 1 or len(parts) != 9:
+                return unknown
+            metadata = dict(
+                zip(
+                    (
+                        "JobId",
+                        "UID",
+                        "JobState",
+                        "Elapsed",
+                        "left",
+                        "AllocCPUS",
+                        "partition",
+                        "NodeList",
+                        "reason",
+                    ),
+                    parts,
+                )
             )
+            validate_scheduler_identity(job_id, metadata)
+        else:
+            metadata = slurm_accounting_metadata(job_id)
+            validate_accounting_identity(job_id, metadata)
+        if out_path or err_path:
+            streams = slurm_job_metadata(job_id) if row else metadata
+            if streams is None:
+                return unknown
+            validate_scheduler_identity(
+                job_id, streams, owner_field="UserId" if row else "UID"
+            )
+            for key, expected in (("StdOut", out_path), ("StdErr", err_path)):
+                declared = streams.get(key, "")
+                if (
+                    not expected
+                    or not declared
+                    or expand_job_path(declared, job_id) != expected
+                ):
+                    return unknown
+    except DiscoveryError:
+        return unknown
+    state = normalized_job_state(metadata.get("JobState"))
+    result = {"terminal": state in TERMINAL_STATES, "state": state}
+    for key, field in (
+        ("elapsed", "Elapsed"),
+        ("left", "left"),
+        ("cpus", "AllocCPUS"),
+        ("partition", "partition"),
+        ("node", "NodeList"),
+        ("reason", "reason"),
+        ("exit_code", "ExitCode"),
+    ):
+        if metadata.get(field):
+            result[key] = metadata[field]
+    if row:
         usage = command_text(
             [
                 "sstat",
@@ -1124,8 +1129,9 @@ def query_slurm(job_id):
             ]
         )
         if usage:
-            fields = usage.splitlines()[0].split("|")
-            if len(fields) >= 5:
+            rows = usage.splitlines()
+            fields = rows[0].split("|")
+            if len(rows) == 1 and len(fields) >= 5 and fields[0] == "%s.batch" % job_id:
                 result.update(
                     {
                         "ave_cpu": fields[1],
@@ -1134,33 +1140,6 @@ def query_slurm(job_id):
                         "disk_write": fields[4],
                     }
                 )
-        return result
-
-    accounting = command_text(
-        [
-            "sacct",
-            "-X",
-            "-n",
-            "-P",
-            "-j",
-            str(job_id),
-            "--format=State,ExitCode,Elapsed,AllocCPUS,NodeList",
-        ]
-    )
-    if accounting:
-        fields = accounting.splitlines()[0].split("|")
-        if len(fields) >= 5:
-            state = fields[0].split()[0].rstrip("+")
-            result.update(
-                {
-                    "state": state,
-                    "exit_code": fields[1],
-                    "elapsed": fields[2],
-                    "cpus": fields[3],
-                    "node": fields[4],
-                    "terminal": state in TERMINAL_STATES,
-                }
-            )
     return result
 
 
@@ -2545,7 +2524,7 @@ def dashboard(screen, args):
                 work_scroll = 0
                 active_signature = new_signature
             if refresh_slurm:
-                slurm = query_slurm(args.job_id)
+                slurm = query_slurm(args.job_id, args.out, args.err)
             last_sync = now
             force = False
         render(
@@ -2635,7 +2614,7 @@ def main(argv=None):
         err_cache.sync()
         snapshot(
             args.job_id,
-            query_slurm(args.job_id),
+            query_slurm(args.job_id, args.out, args.err),
             parse_identity(out_cache.text()),
             parse_workflow(err_cache.text()),
         )
