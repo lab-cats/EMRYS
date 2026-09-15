@@ -86,6 +86,15 @@ first two phases and writes nothing; creation retains all three checks in their
 existing order. Progress adds no percentage estimate, persistent state, or
 authority to remove a partial or published Project after interruption.
 
+Named initialization's no-write preview shows the admitted built-in Analysis,
+explicit sample/mate and biological assignments, input/region identities, and
+normalized scientific choices. Its quoted replay command selects the same Python
+interpreter and exact Projects parent and supplies every collected answer.
+The later creation re-admits current inputs; the preview is not a frozen-input
+promise. Existing `--execute` behavior remains unchanged. Unsupported Project
+schema diagnostics retain their original detail and identify guided current
+setup; no legacy field translation or YAML-only import is performed.
+
 Doctor labels a plan with package-manager actions as repair and verification;
 a plan without those actions is verification. Plan, confirmation, progress,
 and terminal messages use that distinction. Package action labels are carried

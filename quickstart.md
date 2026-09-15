@@ -348,13 +348,18 @@ emrys init my-study --site viking \
   --sample-manifest "$EMRYS_MANIFEST_ROOT/samples.tsv" \
   --partition-manifest "$EMRYS_MANIFEST_ROOT/partitions.tsv" \
   --reference-fasta "$EMRYS_REFERENCE_FASTA" \
-  --reference-gtf "$EMRYS_REFERENCE_GTF" --execute
+  --reference-gtf "$EMRYS_REFERENCE_GTF"
 ```
 
 The input paths are already supplied, so the terminal asks the following
 scientific questions. Type each agreed value and press Enter. Where a value
 appears in brackets, Enter accepts it. This command validates the answers and
-creates the Project; you do not need to repeat the questionnaire.
+prints a review without creating the Project. Review the explicit sample/mate
+assignments, biological pairing groups, strandedness, reference and region
+identities, scientific settings, and selected site. Then copy the printed
+creation command. It carries every answer into the same Python environment;
+you do not need to repeat the questionnaire. It also rechecks the inputs,
+because a preview does not freeze external files.
 
 Preparation reads and hashes the complete declared inputs and checks reference
 and region compatibility. Large inputs can take several minutes. The terminal

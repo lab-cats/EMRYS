@@ -331,7 +331,14 @@ def _admit_project_data(
     )
     profile_record = _load_profile(profile)
     project_dir = resolved_project.parent
-    orchestration_contracts.validate_record("project", definition)
+    try:
+        orchestration_contracts.validate_record("project", definition)
+    except orchestration_contracts.ContractValidationError as exc:
+        raise orchestration_contracts.ContractValidationError(
+            f"{exc}\nProject setup accepts emrys.project.v1. Preserve the original "
+            "bundle and use `emrys init NAME` for guided setup, or correct a current "
+            "Project using configs/README.md. Legacy fields are not translated."
+        ) from exc
     sample_manifest = definition["dataset"]["samples"]
     reference_definition = definition["reference"]
     analysis_specs = tuple(sorted(definition["analyses"].items()))

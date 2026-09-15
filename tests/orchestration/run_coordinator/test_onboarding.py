@@ -8,7 +8,9 @@ import io
 import json
 import os
 import re
+import shlex
 import stat
+import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -174,6 +176,156 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     assert onboarding.validate_project(output / "project.yaml").sample_count == 4
     assert _tree_bytes(tmp_path / "source") == input_files
     assert arguments.sample_manifest.read_bytes() == manifest_bytes
+
+
+@pytest.mark.parametrize("site", (None, "viking"))
+def test_guided_project_preview_replays_exact_answers_without_new_prompts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    site: str | None,
+) -> None:
+    class Terminal(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    study = tmp_path / "lab's study inputs"
+    study.mkdir()
+    projects = tmp_path / "scientist's Projects; retained"
+    projects.mkdir()
+    output = projects / "reviewed-study"
+    arguments = _project_arguments(study, output, execute=False)
+    arguments.site = site
+    arguments.target_change = None
+    arguments.mean_dp_threshold = None
+    table, _, samples = step08.validate_sample_manifest(arguments.sample_manifest)
+    for sample in samples:
+        sample["replicate"] = f"matched-{sample['replicate']}"
+    original = Path(samples[0]["r1_fastq"])
+    renamed = original.with_name("instrument batch alpha.fastq")
+    original.rename(renamed)
+    samples[0]["r1_fastq"] = str(renamed)
+    if site is not None:
+        arguments.background_condition = "background"
+        background = {
+            **samples[0],
+            "sample_id": "background_library",
+            "condition": "background",
+            "replicate": "background-1",
+            "strandedness": "unknown",
+        }
+        for mate in ("r1_fastq", "r2_fastq"):
+            path = study / f"background_{mate}.fastq"
+            path.write_bytes(Path(background[mate]).read_bytes())
+            background[mate] = str(path)
+        samples.append(background)
+        regions = study / "scientist's target regions.bed"
+        regions.write_text("chrSynthetic\t0\t12\n", encoding="utf-8")
+        arguments.partition_manifest.write_bytes(
+            tsv_bytes(
+                step08.PARTITION_MANIFEST_HEADER,
+                [
+                    {
+                        "partition_id": "p1",
+                        "selector_type": "regions_file",
+                        "selector_value": str(regions),
+                    }
+                ],
+            )
+        )
+    arguments.sample_manifest.write_bytes(tsv_bytes(table.header, samples))
+    command = ["init", arguments.project_name]
+    for name, value in vars(arguments).items():
+        if name not in {"project_name", "execute"} and value is not None:
+            command.extend((f"--{name.replace('_', '-')}", str(value)))
+    before = _tree_bytes(tmp_path)
+    monkeypatch.chdir(projects)
+    monkeypatch.setattr(onboarding.sys, "stdin", Terminal("c>t\n71.5\n"))
+    monkeypatch.setattr(onboarding.sys, "stderr", Terminal())
+
+    assert cli.main(command) == 0
+
+    preview = capsys.readouterr().out
+    assert _tree_bytes(tmp_path) == before
+    assert not output.exists()
+    assert "target change: C>T" in preview
+    assert "mean dp threshold: 71.5" in preview
+    assert (
+        f"background condition: {arguments.background_condition or 'none'}" in preview
+    )
+    assert f"Site: {site or 'none (direct placement)'}" in preview
+    for sample in samples:
+        assert (
+            f"{sample['sample_id']}: condition={sample['condition']}; "
+            f"pairing group={sample['replicate']}; strandedness={sample['strandedness']}"
+        ) in preview
+        for mate in ("r1_fastq", "r2_fastq"):
+            assert repr(sample[mate]) in preview
+    for path in (
+        arguments.sample_manifest,
+        arguments.partition_manifest,
+        arguments.reference_fasta,
+        arguments.reference_gtf,
+    ):
+        assert repr(str(path)) in preview
+        assert hashlib.sha256(path.read_bytes()).hexdigest() in preview
+    if site is not None:
+        assert "format=bed; compression=plain" in preview
+        assert hashlib.sha256(regions.read_bytes()).hexdigest() in preview
+    replay = next(line for line in preview.splitlines() if line.startswith("cd "))
+    tokens = shlex.split(replay)
+    assert tokens[:4] == ["cd", str(projects), "&&", sys.executable]
+    assert tokens[-1] == "--execute"
+
+    created = subprocess.run(
+        replay,
+        shell=True,
+        executable="/bin/sh",
+        cwd=tmp_path,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert created.returncode == 0, created.stderr
+    assert "Project ready:" in created.stdout
+    expected = yaml.safe_load(
+        (study / "source/project.yaml").read_text(encoding="utf-8")
+    )
+    expected["dataset"]["samples"] = str(arguments.sample_manifest)
+    expected["reference"].update(
+        fasta=str(arguments.reference_fasta), gtf=str(arguments.reference_gtf)
+    )
+    analysis = expected["analyses"].pop("primary")
+    analysis.update(
+        partitions=str(arguments.partition_manifest),
+        target_change="C>T",
+        mean_dp_threshold=71.5,
+        background_condition=arguments.background_condition,
+    )
+    expected["analyses"][arguments.analysis_name] = analysis
+    assert (
+        yaml.safe_load((output / "project.yaml").read_text(encoding="utf-8"))
+        == expected
+    )
+    assert (output / "runtime/profiles/default.yaml").read_bytes() == (
+        execution_profile.project_default_profile_bytes(site)
+    )
+    assert _tree_bytes(study) == {
+        name.removeprefix(f"{study.name}/"): data
+        for name, data in before.items()
+        if name.startswith(f"{study.name}/")
+    }
+    validated = onboarding.validate_project(output / "project.yaml")
+    actual_samples = validated.project.select_analysis().workflow_inputs["samples"][
+        "rows"
+    ]
+    for expected_sample, actual in zip(samples, actual_samples, strict=True):
+        for name in ("sample_id", "condition", "replicate", "strandedness"):
+            assert actual[name] == expected_sample[name]
+        for mate in ("r1_fastq", "r2_fastq"):
+            assert actual[mate]["path"] == expected_sample[mate]
 
 
 @pytest.mark.parametrize("error", (onboarding.OnboardingError, KeyboardInterrupt))
