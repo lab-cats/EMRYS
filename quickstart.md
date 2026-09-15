@@ -356,6 +356,13 @@ scientific questions. Type each agreed value and press Enter. Where a value
 appears in brackets, Enter accepts it. This command validates the answers and
 creates the Project; you do not need to repeat the questionnaire.
 
+Preparation reads and hashes the complete declared inputs and checks reference
+and region compatibility. Large inputs can take several minutes. The terminal
+shows the current phase and elapsed time, then rechecks the published Project
+before printing `Project ready:`. Elapsed time is not a completion estimate.
+If interrupted, retain any published or partial Project directory and the
+diagnostic; do not delete it to retry the same name.
+
 | Prompt | What to enter |
 | --- | --- |
 | `sjdb overhang` | The STAR splice-junction overhang selected for the study's read length. Obtain this from the analyst who chose the alignment settings. |

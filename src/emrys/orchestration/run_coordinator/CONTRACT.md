@@ -79,6 +79,13 @@ head-node evidence. A prior storage receipt alone does not qualify a changed
 runtime. Each automatic repair has one maintenance log; its compute checks
 retain scheduler streams without opening another application attempt.
 
+Named Project initialization displays input hashing, compatibility checking,
+and post-publication verification through the existing elapsed-time presenter.
+It explains the complete input reads before they begin. Preview runs only the
+first two phases and writes nothing; creation retains all three checks in their
+existing order. Progress adds no percentage estimate, persistent state, or
+authority to remove a partial or published Project after interruption.
+
 Doctor labels a plan with package-manager actions as repair and verification;
 a plan without those actions is verification. Plan, confirmation, progress,
 and terminal messages use that distinction. Package action labels are carried

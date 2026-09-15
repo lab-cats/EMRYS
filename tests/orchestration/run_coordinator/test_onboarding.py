@@ -7,6 +7,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import stat
 import sys
 from pathlib import Path
@@ -130,9 +131,24 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     assert cli.main(command) == 0
     assert not output.exists()
     assert list(projects.iterdir()) == []
-    assert "Dry-run complete" in capsys.readouterr().out
+    preview = capsys.readouterr()
+    assert "Dry-run complete" in preview.out
+    explanation = "Project preparation reads and hashes all declared inputs"
+    phases = (
+        "Reading and hashing Project inputs",
+        "Checking reference and partition compatibility",
+    )
+    assert preview.err.index(explanation) < preview.err.index(phases[0])
+    assert preview.err.index(phases[0]) < preview.err.index(phases[1])
+    for phase in phases:
+        assert re.search(rf"{phase}: complete \(\d+m \d{{2}}s\)", preview.err)
+    assert "Verifying the published Project" not in preview.err
 
     assert cli.main([*command, "--execute"]) == 0
+    created = capsys.readouterr()
+    assert "Project ready:" in created.out
+    for phase in (*phases, "Verifying the published Project"):
+        assert re.search(rf"{phase}: complete \(\d+m \d{{2}}s\)", created.err)
     assert set(_tree_bytes(output)) == {
         "project.yaml",
         "runtime/profiles/default.yaml",
@@ -158,6 +174,55 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     assert onboarding.validate_project(output / "project.yaml").sample_count == 4
     assert _tree_bytes(tmp_path / "source") == input_files
     assert arguments.sample_manifest.read_bytes() == manifest_bytes
+
+
+@pytest.mark.parametrize("error", (onboarding.OnboardingError, KeyboardInterrupt))
+@pytest.mark.parametrize(
+    ("boundary", "phase", "published"),
+    (
+        ("_admit_project_data", "Reading and hashing Project inputs", False),
+        (
+            "validate_project_admission",
+            "Checking reference and partition compatibility",
+            False,
+        ),
+        ("validate_project", "Verifying the published Project", True),
+    ),
+)
+def test_init_progress_preserves_failed_or_interrupted_validation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    error: type[BaseException],
+    boundary: str,
+    phase: str,
+    published: bool,
+) -> None:
+    output = tmp_path / "my-study"
+    monkeypatch.chdir(tmp_path)
+    arguments = _project_arguments(tmp_path, output, execute=True)
+    before = _tree_bytes(tmp_path)
+
+    def fail(*_args: object) -> None:
+        raise error("injected validation failure")
+
+    monkeypatch.setattr(onboarding, boundary, fail)
+    if error is KeyboardInterrupt:
+        with pytest.raises(KeyboardInterrupt):
+            onboarding.init_project_from_args(arguments)
+    else:
+        assert onboarding.init_project_from_args(arguments) == 2
+
+    after = _tree_bytes(tmp_path)
+    assert all(after[path] == data for path, data in before.items())
+    assert (output / "project.yaml").is_file() is published
+    if not published:
+        assert after == before
+        assert not output.exists()
+    captured = capsys.readouterr()
+    assert f"{phase}: interrupted or failed" in captured.err
+    assert f"{phase}: complete" not in captured.err
+    assert "Project ready:" not in captured.out
 
 
 def test_init_project_refuses_predecessor_without_changing_it(
