@@ -66,6 +66,10 @@ Explicit Run inspection/watch discovers all admitted application-log association
 within the selected root, alongside Task streams. `--log-root` selects a
 historical custom root; no latest-file heuristic or scheduler inference is used.
 Default roster and implicit Run selection retain their no-scan behavior.
+Launch a new Run for a declared Analysis with
+`emrys run --project PROJECT --analysis NAME`. Existing admission and Control
+own Analysis, processing/source-Run and profile choices. Watch does not infer
+those choices from its historical Run.
 
 The old CSU-oriented `dashboard.py` preview remains until a replacement is
 implemented and validated under `DASHBOARD-RETIRE-01`. `emrys inspect` stays the

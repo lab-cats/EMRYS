@@ -12,6 +12,39 @@ Use the main matrix's status meanings. Recording a card accepts the finding
 for tracking; it does not authorize a new command, recovery rule, installation,
 cluster action, evidence promotion, or product-growth exception.
 
+## Verified scope and remaining evidence
+
+The combined standard suite passed at
+`cea7b60f1dd4164c8f8e61266f73bccbb2024caa`
+([CI 34943965738](https://github.com/lab-cats/EMRYS/actions/runs/34943965738)):
+14 jobs succeeded, including all Python 3.14 shards and coverage policy, Python
+3.11 compatibility, public/PTY regressions, and the managed golden path. Four
+configured lanes were skipped. This supersedes earlier slice-local statements
+that their application tests require CI, through the report/stop watch handoffs.
+Later Run-log discovery, invocation counters and offline correction retain
+their separate exact-head checks; a passing ancestor does not verify them.
+
+The covered journey includes donor science/reporting and borrower runtime
+selection/verification, actual Snakemake startup, real-backend/native-fixture
+cancellation, and public inspection around real report producers. Scientific
+owner doubles, simulated scheduler metadata and actual local child processes
+retain their stated limits. Standard CI is neither the separately selected
+real-Slurm lane nor an institutional walkthrough.
+
+| Remaining acceptance | Current owner and required evidence |
+| --- | --- |
+| Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27: exercise the maintained RUNBOOK on one exact installed revision; retain selected profile/runtime and report identities. Visual review is separate. |
+| Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
+| Historical unexplained failures | CV-12/E01, CV-21/E06 and CV-10/E09: recover original diagnostics or a discriminating reproduction; newer successful checks cannot identify those causes. |
+| Postentry Task retry | CV-10: qualify the production writer boundary, then implement one complete history/abort/retry contract across all consumers. Existing blocked receipts remain ineligible. |
+| Doctor performance | CV-05/26 and the optimization campaign: obtain invocation counters, comparable setup/retry observations and isolated queue attribution; preserve fresh admission checks until an equivalent replacement has measured benefit. |
+| Optional interface and retirement | CV-23 keeps cleanup Deferred; CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns standalone discovery/accounting parity and complete caller/name retirement. |
+
+All card acceptance below remains authoritative. No institutional execution,
+active-installation update, destructive cleanup, report visual review or
+actual-data completion was performed by this development stack. E12 still has
+no supplied terminal scientific/reporting evidence.
+
 ## Priority index
 
 | ID | Priority | Status | Outcome |
@@ -85,8 +118,8 @@ timestamps. Existing Doctor admission checks the fixed native/R content roster;
 this does not claim a complete transitive environment hash. Explicit artifact
 paths retain both Projects' diagnostics and qualification evidence without
 uploading managed tools or caches. The original donor science/report oracle and
-clean-checkout check remain intact. Local workflow-contract and syntax checks
-pass; the actual Ubuntu journey requires hosted CI.
+clean-checkout check remain intact. The actual Ubuntu journey passed the
+combined standard CI recorded above.
 
 **Coverage boundary:** Owner fixtures cover missing memory declarations, site
 rejection responses, qualification faults and reporting transaction boundaries.
@@ -94,9 +127,10 @@ Real isolated processes cover Snakemake startup/login lookup and native signal
 handling. These are not the corresponding institutional combinations. Existing
 public failed-resume fixtures use scientific owner doubles; the separately
 selected real-Slurm journey covers a pre-Task failed attempt and resume. Active
-native cancellation through Snakemake, restricted Slurm export combined with
-missing UID lookup, absent/rejected site memory policy, and live inspection
-during execution/reporting still need complete hosted or institutional journeys.
+native cancellation through Snakemake and combined restricted export/UID lookup
+now have the bounded fixtures below. Actual Slurm/site cancellation,
+absent/rejected site memory policy and cross-node inspection still require
+the corresponding institutional journeys.
 CV-01 remains Open.
 
 **Real-backend cancellation boundary:** The existing public materialization
@@ -111,8 +145,8 @@ blocked receipt. Scientific effects and readiness remain explicit test doubles.
 Resume preview must refuse without writes. Execution-mode refusal may retain
 its normal failed application log, while the Run and all earlier evidence stay
 unchanged. The existing successful between-Task failure/resume case remains a
-separate defense. Static and standalone native-gate checks pass; full integration
-requires CI. This does not establish actual scientific-tool or Slurm/site
+separate defense. Full integration passed the combined standard CI above.
+This does not establish actual scientific-tool or Slurm/site
 cancellation, or make a postentry Task retryable.
 
 The existing public failed-Run/resume journey also checks real report producer
@@ -188,8 +222,10 @@ existing transport and Control owners; tests and documentation are separate.
 tiny subprocess fixtures and injected scheduler responses, including nonzero
 waited jobs, malformed responses, transcript failures, escaped diagnostics,
 and exactly one submission. Public Control regressions run in CI. These are
-simulations, not scheduler or institutional proof. Queue reasons and confirmed
-cancellation remain open, so CV-03 remains Open.
+simulations, not scheduler or institutional proof. CV-20 now supplies strictly
+bound queue/accounting observations and CV-18 supplies the exact-request stop
+path. Their actual queued/cancelled site acceptance remains open, so CV-03
+remains Open.
 
 **Implemented head-finalization slice:** After an accepted qualification job,
 head storage errors retain that job ID and the escaped storage/OS cause with
@@ -378,9 +414,9 @@ not the entire environment, shared libraries or transitive dependencies.
 **Verification:** Thirty-one focused seal/selector tests pass locally, as does
 the source dependency gate. Public two-Project preview/publication, failure and
 stale-repair fixtures plus planned Run/resume and direct lifecycle admission
-await CI. These use synthetic runtime/failed-Run fixtures, not scientific
-execution. CV-08 remains Open for hosted/institutional acceptance, compute-node
-accessibility and the complete managed journey.
+passed the combined standard CI. The hosted donor-science/borrower-verification
+journey is covered under CV-01. CV-08 remains Open for institutional two-Project
+acceptance and compute-node accessibility; no borrower scientific Run is claimed.
 
 ### CV-09 Qualification scope and placement
 
@@ -451,9 +487,10 @@ covered by the passing combined standard CI at PR #198. The nested slice adds
 real local process fixtures for repeated signals, the spawn/registration gap,
 closed pipes, handler restoration, and lifecycle-to-Task-to-native cancellation.
 They retain an actual live native PID after forced outer termination and check
-the preserved lock/no-receipt boundary; their execution awaits hosted CI.
+the preserved lock/no-receipt boundary; their execution passed standard CI.
 Ruff, formatting and whitespace checks pass. These source-derived protections
-do not establish E09's cause or real Snakemake/Slurm cancellation behavior.
+do not establish E09's cause or actual Slurm cancellation behavior. CV-01 adds
+the separately bounded real-Snakemake/native-fixture observation.
 Lost wrappers, escaped descendants and explicit safe reconciliation remain
 open. No task or Run becomes recoverable solely because an outer group stopped.
 
@@ -527,9 +564,9 @@ resume still selects its retained policy before any future reservation check.
 **Verification:** Resource/profile tests pass locally (54 cases), including
 early refusal, correcting overrides, symbolic retention, immutable predecessor
 policy, and an allocation-dependent memory boundary. Broader contract tests
-require installed Analysis entry-point metadata unavailable locally. Explicit
-reservation comparison and institutional heterogeneous-node acceptance remain
-separate, so CV-11 remains Open.
+require installed Analysis entry-point metadata unavailable locally. The
+reservation-fit slice below supplies explicit comparison; institutional
+heterogeneous-node acceptance remains open, so CV-11 remains Open.
 
 **Implemented reservation-fit slice:** The final effective execution profile
 checks CPU and explicit memory requests before submission, Doctor repair
@@ -635,7 +672,7 @@ probing an unbound PID. Task fixtures follow the same admitted start through
 local-live, remote-unverified and terminal-incomplete observations; all display
 levels acquire one snapshot per render and preserve files and recovery refusal.
 Existing complete, changed-verified and missing/malformed-start cases cover the
-other labels. Static checks pass; the new task cases await hosted CI. CV-15
+other labels. The task cases passed the combined standard CI. CV-15
 remains Open for institutional cross-node observations and any remaining
 state distinctions established by those observations.
 
@@ -655,7 +692,7 @@ CV-15/20/21/25. Action execution is the separate CV-24 proposal.
 **Implemented evidence projection:** CV-15 supplies Task evidence counts;
 CV-25 adds admitted terminal outcomes and exact retained logs to the same
 inspection snapshot. CV-20 supplies exact selected-request scheduler state.
-These are shared CLI observations for a future integrated view; the existing
+These are shared CLI observations for the integrated watch view; the existing
 dashboard remains in place until its complete replacement acceptance is met.
 
 **Selected watch slice:** `inspect --watch` holds one exact Project/request/Run
@@ -671,8 +708,9 @@ Observation dates and historical Attempt identity remain explicit.
 The existing input owner supplies bounded suffix reads with stable no-follow
 identity checks. Replaced/truncated streams do not inherit previous bytes or
 digest authority. No command execution, automatic resubmission or recovery
-action is added. The first view does not cover full active-native-log discovery,
-legacy standalone/offline parity or institutional terminal/NFS behavior.
+action is added by the ordinary view. CV-24 supplies opt-in handoffs; CV-25 adds
+admitted Task paths and Run-selected application discovery. Legacy standalone
+discovery/accounting parity and institutional terminal/NFS behavior remain open.
 Those gaps and complete replacement validation remain under this card and
 `DASHBOARD-RETIRE-01`; no old dashboard surface or evidence is retired.
 
@@ -765,8 +803,9 @@ action's display label alongside its exact command/environment. Preview and
 execution share those labels; duplicate plan construction is consolidated.
 The quickstart explains repeated checks and retained package-manager reuse
 evidence. No public command, check ID, log mode/event ID, receipt, dependency,
-or recovery rule changes. CV-05's queue-time attribution and CV-13's setup-state
-classification remain open; missing storage evidence is not assumed harmless.
+or recovery rule changes. CV-13 supplies setup-state classification; its operator
+acceptance and CV-05's queue-time attribution remain open. Missing storage
+evidence is not assumed harmless.
 
 **Verification:** Focused regressions cover verification-only and package-action
 plans, confirmation/refusal, progress, failures, and preserved no-write preview.
@@ -793,7 +832,8 @@ checks selected stream paths on refresh, and reports unavailable proof as
 username-environment matching and duplicate first-row accounting parsing while
 preserving standalone loading and existing bounded discovery/stream handling.
 Job-ID/UID/path agreement is not request/cluster identity or recovery proof;
-integration with retained requests remains open. The standalone dashboard suite
+the current inspection path below integrates retained requests. Legacy
+dashboard parity remains under `DASHBOARD-RETIRE-01`. The standalone dashboard suite
 passes 66 local tests; after duplicate-query changes all 50 affected cases pass.
 Actual scheduler/site verification remains pending.
 
@@ -857,7 +897,7 @@ Public selected-request cases
 cover one-request query cost, default no-query behavior, unavailable/legacy
 observations, exact selection, escaped reason text and no writes; these new
 application cases passed standard CI after the fixture correction. CV-20 remains
-Open for integrated monitoring and institutional scheduler acceptance.
+Open for institutional scheduler and integrated-monitoring acceptance.
 Neither retained context nor a terminal
 scheduler record grants scientific completion, cancellation or recovery authority.
 
@@ -928,9 +968,11 @@ neither presence nor a start grants verified reporting admission. Whole-Project
 namespace, file bytes and modification times remain unchanged by inspection.
 The original final verified-report and byte-preserving resume assertions remain.
 This reuses scientific owner doubles and real reporting owners without another
-scientific journey. Static checks and independent review pass; full integration
-requires CI. It covers producer publication boundaries, not arbitrary mid-write
-timing, institutional filesystem visibility or the cause of E06.
+scientific journey. Full integration passed the combined standard CI after
+the test reader adopted the controlled Python argv owner. It covers producer
+publication boundaries, not arbitrary mid-write timing, institutional filesystem
+visibility or the cause of E06. The later Run-log discovery slice adds separate
+association assertions to this same journey and requires its own CI result.
 
 ### CV-22 Complete submission preview
 
@@ -1031,9 +1073,20 @@ unnecessary allocation. Public owner fixtures cover exact selections, fresh
 profile/request refusal, declined direct/Slurm resume, and report/stop no-write
 previews. Terminal cases preserve teardown before one callback under stalled
 reads and restoration failure. Pure presentation tests and static checks pass;
-application/PTY execution requires CI. New-analysis selection and complete
-dashboard replacement remain separate work. This slice does not establish
+application/PTY execution passed the combined standard CI above. Complete
+dashboard replacement remains separate work. This slice does not establish
 institutional monitoring/action acceptance or retire the old dashboard.
+
+**New-analysis interface disposition:** Keep launch in
+`emrys run --project PROJECT --analysis NAME`. Project admission selects an
+existing declared Analysis and requires its name when several are defined.
+Control owns full/processing
+scope, source-Run reuse, profile selection, plan review and confirmation.
+A shortcut using the monitored historical Run or Project defaults would not
+represent a new Analysis choice. The selected watch interface is therefore
+the three scoped handoffs above. A future chooser remains with the same Control
+owner and must specify all selections before implementation; it is not required
+to replace supported explicit CLI selection or to operate the current watch.
 
 ### CV-25 Log discovery and readable output
 
@@ -1067,8 +1120,9 @@ success without scientific verification, retry history, absent terminal records,
 malformed scope/start references, wrong-Attempt starts, and changed/truncated
 logs. Public normal/verbose/debug rendering uses one snapshot, escapes diagnostic
 text, preserves evidence and retains Results/recovery refusal. Static checks
-pass; application fixtures require hosted CI. Startup/application/reporting
-stream association and the integrated dashboard remain open.
+pass; application fixtures passed the combined standard CI. CV-20 supplies
+request-bound startup/application/reporting association; the Run-selected slice
+below adds historical discovery to static inspection and watch.
 
 **Started-Task stream slice:** The admitted start already binds the exact frozen
 Task dispatch. One pure Task-owned root builder replaces repeated construction
