@@ -24,13 +24,16 @@ def _request_record(
     *,
     stdout: bytes = b"700123\n",
     stderr: bytes = b"",
+    version: str = "v1",
+    **context_overrides: object,
 ) -> tuple[Path, Path, dict[str, object]]:
     project = tmp_path / "project.yaml"
     project.touch(exist_ok=True)
     root = tmp_path / "logs" / ("submission-" + token * 32)
     root.mkdir(parents=True)
+    name = "emrys-local-pilot" + ("-" + token * 32 if version != "v1" else "")
     context = {
-        "schema_version": "emrys.submission-request.v1",
+        "schema_version": f"emrys.submission-request.{version}",
         "created_at": "2026-09-15T12:00:00+00:00",
         "submitter_uid": os.getuid(),
         "command": "run",
@@ -50,9 +53,12 @@ def _request_record(
             "--project",
             str(project),
         ],
-        "scheduler_stdout_pattern": str(tmp_path / "logs" / "emrys-local-pilot-%j.out"),
-        "scheduler_stderr_pattern": str(tmp_path / "logs" / "emrys-local-pilot-%j.err"),
+        "scheduler_stdout_pattern": str(root.parent / f"{name}-%j.out"),
+        "scheduler_stderr_pattern": str(root.parent / f"{name}-%j.err"),
     }
+    if version == "v3":
+        context["scheduler_job_name"] = name
+    context.update(context_overrides)
     (root / "request.json").write_bytes(
         slurm_submission.orchestration_contracts.canonical_json_bytes(context)
     )
@@ -69,17 +75,10 @@ def _stop_fixture(
     version_status: int = 0,
     stop_status: int = 0,
 ) -> SimpleNamespace:
-    project, root, context = _request_record(tmp_path, stdout=b"700123;alpha\n")
+    project, root, context = _request_record(
+        tmp_path, stdout=b"700123;alpha\n", version="v3"
+    )
     name = "emrys-local-pilot-" + "a" * 32
-    context.update(
-        schema_version="emrys.submission-request.v3",
-        scheduler_job_name=name,
-        scheduler_stdout_pattern=str(tmp_path / "logs" / f"{name}-%j.out"),
-        scheduler_stderr_pattern=str(tmp_path / "logs" / f"{name}-%j.err"),
-    )
-    (root / "request.json").write_bytes(
-        slurm_submission.orchestration_contracts.canonical_json_bytes(context)
-    )
     client = tmp_path / "scancel"
     marker = tmp_path / "mutations"
     stdout, stderr = (
@@ -900,19 +899,7 @@ def test_request_specific_streams_roundtrip_through_producer_and_reader(
 def test_v3_request_name_is_closed_and_bound_to_its_request_token(
     tmp_path: Path, defect: str
 ) -> None:
-    project, root, context = _request_record(tmp_path)
-    plan = slurm_submission.plan_submission(
-        _profile(tmp_path),
-        emrys_argv=("emrys", "run"),
-        log_dir=project.parent / "logs",
-        request_token="a" * 32,
-    )
-    context.update(
-        schema_version="emrys.submission-request.v3",
-        scheduler_job_name=plan.job_name,
-        scheduler_stdout_pattern=str(plan.stdout_pattern),
-        scheduler_stderr_pattern=str(plan.stderr_pattern),
-    )
+    project, root, context = _request_record(tmp_path, version="v3")
     if defect == "missing":
         del context["scheduler_job_name"]
     elif defect == "extra":
@@ -921,10 +908,10 @@ def test_v3_request_name_is_closed_and_bound_to_its_request_token(
         context["schema_version"] = f"emrys.submission-request.{defect}"
     else:
         context["scheduler_job_name"] = {
-            "wrong-token": plan.job_name.replace("a" * 32, "b" * 32),
+            "wrong-token": "emrys-local-pilot-" + "b" * 32,
             "legacy-name": "emrys-local-pilot",
             "empty": "",
-            "wrong-type": [plan.job_name],
+            "wrong-type": ["emrys-local-pilot-" + "a" * 32],
         }[defect]
     with pytest.raises(slurm_submission.SlurmSubmissionError):
         slurm_submission.validate_request_context(context, project, root)
@@ -966,12 +953,7 @@ def test_request_observation_requires_complete_unique_identity(
 def test_request_specific_streams_refuse_unbound_paths(
     tmp_path: Path, defect: str
 ) -> None:
-    project, root, context = _request_record(tmp_path)
-    context["schema_version"] = "emrys.submission-request.v2"
-    for stream, suffix in (("stdout", "out"), ("stderr", "err")):
-        context[f"scheduler_{stream}_pattern"] = str(
-            project.parent / "logs" / f"emrys-local-pilot-{'a' * 32}-%j.{suffix}"
-        )
+    project, root, context = _request_record(tmp_path, version="v2")
     selected = root
     if defect == "missing-root":
         selected = None
@@ -1502,21 +1484,11 @@ def test_request_resources_share_exact_root_and_usage_has_local_identity_bracket
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, version, cluster, state
 ) -> None:
     project, root, context = _request_record(
-        tmp_path, stdout=b"700123\n" if cluster is None else b"700123;alpha\n"
+        tmp_path,
+        stdout=b"700123\n" if cluster is None else b"700123;alpha\n",
+        version=version,
     )
-    context["schema_version"] = "emrys.submission-request." + version
     name = "emrys-local-pilot-" + "a" * 32
-    context.update(
-        scheduler_stdout_pattern=str(root.parent / (name + "-%j.out")),
-        scheduler_stderr_pattern=str(root.parent / (name + "-%j.err")),
-    )
-    if version == "v3":
-        context["scheduler_job_name"] = name
-    (root / "request.json").write_bytes(
-        slurm_submission.orchestration_contracts.canonical_json_bytes(
-            slurm_submission.validate_request_context(context, project, root)
-        )
-    )
     (request,) = slurm_submission.submission_requests(project)
     calls = []
 
