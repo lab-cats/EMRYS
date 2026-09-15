@@ -1201,6 +1201,30 @@ emission rather than phase chronology. Unattributed time is not measured hash
 or seal cost. These single hosted observations do not measure hashed bytes,
 CPU, physical I/O or RSS, explain E11, or establish an optimization comparison.
 
+**Selected invocation-counter slice:** The existing managed golden path wraps
+its donor setup and borrower verification Doctor calls with one CI-only driver.
+Each invocation runs once through the controlled public module and preserves
+arguments, environment, streams, exceptions and exit status. Existing scientific,
+reporting, reuse and namespace assertions stay in place. The driver restores
+the two shared read owners after recording completed bytes/calls, failed calls
+and elapsed read time; it introduces no additional input reads or hashes.
+
+Separate donor/borrower JSON artifacts retain the actual CI checkout SHA,
+invocation wall time, self/child CPU, resource snapshots and Linux process I/O
+counters. Self RSS and the largest waited child's RSS are separate high-water
+values, never summed or subtracted. Logical owner bytes exclude other Python,
+semantic/gzip, Pixi and child/native reads; failed partial bytes remain unknown.
+`rchar` includes pipes and cached reads; `read_bytes` is block-backed accounting,
+not measured physical-device or NFS traffic. These invocation totals do not
+attribute individual probe CPU, memory or I/O. Unsupported counters are unknown.
+
+The instrumented public-module scope includes imports and observer overhead,
+not identical console-bootstrap timing. It supplies no cold-cache, institutional
+queue or before/after optimization evidence. Twenty eligible local harness and
+workflow tests pass; the controlled public-parser test and actual donor/borrower
+measurements require hosted CI. No product files, commands, dependencies,
+runtime identity rules or product schemas change. CV-26 remains Open.
+
 ## P3 outcome
 
 ### CV-27 Terminal-only report access
