@@ -913,6 +913,22 @@ implementation. Record the selected interface and coverage before retirement
 under `DASHBOARD-RETIRE-01`.
 **Owners/dependencies:** Existing CLI/control and dashboard; CV-16 first.
 
+**Selected first action:** After the watch implementation passed its standard
+CI checks, interactive Run-selected `--watch --actions` adds `p` to review the
+ordinary resume plan. It captures the exact Project/Run, closes the view and
+restores the terminal, then calls the existing resume handler once with its
+ordinary preview/confirmation defaults. An already active read may finish but
+cannot supply action authority or trigger another refresh. There is no shell
+executor, action worker, stored plan or automatic return to monitoring.
+
+Request-selected and noninteractive action modes are refused. Fresh Control
+and lifecycle checks retain selection, predecessor and recovery authority.
+For Slurm, the existing preview freezes the submission/profile request and
+scientific admission runs on compute; a concurrent resume can still consume an
+unnecessary allocation. Stop, report, new-analysis selection and complete
+dashboard replacement remain separate work. This slice does not establish
+institutional monitoring/action acceptance or retire the old dashboard.
+
 ### CV-25 Log discovery and readable output
 
 **Finding:** Locating the relevant logs required remembering job IDs or using

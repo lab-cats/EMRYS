@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import fcntl
 import importlib.util
 import os
 import pty
 import select
+import struct
 import subprocess
 import sys
 import termios
@@ -535,26 +537,88 @@ def test_nonterminal_watch_is_one_plain_snapshot_with_no_worker(
     assert "No exact submission selected" in output
 
 
+@pytest.mark.parametrize(
+    "defect", ("stdin", "stdout", "stderr", "dumb", "submission", "no-run")
+)
+def test_action_watch_refuses_unsupported_modes_before_observation(
+    tmp_path, monkeypatch, defect
+):
+    for name in ("stdin", "stdout", "stderr"):
+        monkeypatch.setattr(getattr(sys, name), "isatty", lambda: True)
+    monkeypatch.setenv("TERM", "xterm")
+    if defect in {"stdin", "stdout", "stderr"}:
+        monkeypatch.setattr(getattr(sys, defect), "isatty", lambda: False)
+    elif defect == "dumb":
+        monkeypatch.setenv("TERM", "dumb")
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Unsupported action mode must not observe or invoke resume")
+
+    monkeypatch.setattr(view, "RefreshWorker", forbidden)
+    monkeypatch.setattr(view, "refresh_snapshot", forbidden)
+    with pytest.raises(view.PresentationError, match="interactive Run-only watch"):
+        view.watch(
+            tmp_path / "project.yaml",
+            request=_request(tmp_path) if defect == "submission" else None,
+            run_root=None if defect == "no-run" else tmp_path / "run",
+            inspect_run=forbidden,
+            next_action=forbidden,
+            review_resume=forbidden,
+        )
+
+
 @pytest.mark.skipif(
     importlib.util.find_spec("rich") is None,
     reason="Interactive rendering requires the existing Rich dependency",
 )
+@pytest.mark.parametrize(
+    "mode", ("readonly", "quit-enabled", "resume", "restore-failure")
+)
 def test_interactive_quit_restores_terminal_without_waiting_for_stalled_worker(
     tmp_path,
+    mode,
 ):
     marker = tmp_path / "entered"
     code = """
-import sys, threading
+import sys, termios, threading
 from pathlib import Path
-from emrys.orchestration.run_coordinator._inspection_presentation import watch
+from emrys.orchestration.run_coordinator import _inspection_presentation as view
 root = Path(sys.argv[1])
+mode = sys.argv[2]
+original_terminal = termios.tcgetattr(0)
+workers = []
+original_worker = view.RefreshWorker
+def worker(*args, **kwargs):
+    current = original_worker(*args, **kwargs)
+    workers.append(current)
+    return current
+view.RefreshWorker = worker
 def blocked(path):
+    workers[0].request(verify=True, stream_index=0)
     (root / 'entered').touch()
     threading.Event().wait(60)
-watch(root / 'project.yaml', run_root=root / 'run', inspect_run=blocked, next_action=lambda _: '')
-print('WATCH EXITED')
+def review():
+    assert threading.current_thread() is threading.main_thread()
+    assert termios.tcgetattr(0) == original_terminal
+    assert len(workers) == 1 and workers[0].closed
+    assert workers[0].pending is None and workers[0].thread.is_alive()
+    print('RESUME REVIEW CALLED')
+    return 7
+if mode == 'restore-failure':
+    original_restore = termios.tcsetattr
+    def fail_restore(fd, when, attrs):
+        if when == termios.TCSADRAIN:
+            raise OSError('terminal restoration failed')
+        return original_restore(fd, when, attrs)
+    termios.tcsetattr = fail_restore
+result = view.watch(root / 'project.yaml', run_root=root / 'run', inspect_run=blocked,
+                    next_action=lambda _: '',
+                    review_resume=None if mode == 'readonly' else review)
+print('WATCH EXITED', result)
+raise SystemExit(result)
 """
     master, slave = pty.openpty()
+    fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 160, 0, 0))
     original_terminal = termios.tcgetattr(master)
     environment = dict(
         os.environ,
@@ -563,7 +627,7 @@ print('WATCH EXITED')
         PYTHONPATH=str(Path(__file__).resolve().parents[3] / "src"),
     )
     process = subprocess.Popen(
-        [sys.executable, "-B", "-c", code, str(tmp_path)],
+        [sys.executable, "-B", "-c", code, str(tmp_path), mode],
         stdin=slave,
         stdout=slave,
         stderr=slave,
@@ -573,30 +637,46 @@ print('WATCH EXITED')
     output = b""
     try:
         deadline = time.monotonic() + 5
+        caption = (
+            b"q quit" if mode == "readonly" else b"p leave view and review resume plan"
+        )
         while (
-            (not marker.exists() or b"q quit" not in output)
+            (not marker.exists() or caption not in output)
             and process.poll() is None
             and time.monotonic() < deadline
         ):
             if select.select([master], [], [], 0.05)[0]:
                 output += os.read(master, 65536)
         assert marker.exists(), output
-        os.write(master, b"q")
+        assert caption in output, output
+        assert (b"review resume plan" in output) is (mode != "readonly")
+        os.write(
+            master,
+            b"pq" if mode == "readonly" else b"q" if mode == "quit-enabled" else b"pp",
+        )
         while process.poll() is None and time.monotonic() < deadline:
             if select.select([master], [], [], 0.05)[0]:
                 try:
                     output += os.read(master, 65536)
                 except OSError:
                     break
-        assert process.wait(timeout=1) == 0, output
+        expected = 7 if mode == "resume" else 1 if mode == "restore-failure" else 0
+        assert process.wait(timeout=1) == expected, output
         while select.select([master], [], [], 0)[0]:
             try:
                 output += os.read(master, 65536)
             except OSError:
                 break
-        assert b"WATCH EXITED" in output
         assert b"\x1b[?1049l" in output
-        assert termios.tcgetattr(master) == original_terminal
+        assert output.count(b"RESUME REVIEW CALLED") == (mode == "resume")
+        if mode == "restore-failure":
+            assert b"terminal restoration failed" in output
+            assert b"WATCH EXITED" not in output
+        else:
+            assert b"WATCH EXITED" in output
+            assert termios.tcgetattr(master) == original_terminal
+        if mode == "resume":
+            assert output.index(b"\x1b[?1049l") < output.index(b"RESUME REVIEW CALLED")
     finally:
         if process.poll() is None:
             process.kill()
