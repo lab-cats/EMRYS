@@ -58,7 +58,8 @@ def add_site_argument(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--site",
         choices=("viking",),
-        help="Use Viking's built-in Slurm placement for this Project.",
+        default=os.environ.get("EMRYS_SITE") or None,
+        help="Use Viking's built-in Slurm placement.",
     )
 
 

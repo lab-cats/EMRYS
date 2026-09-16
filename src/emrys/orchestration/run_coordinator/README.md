@@ -18,7 +18,10 @@ The [configuration guide](../../../../configs/README.md) explains manifests and
 Analysis fields. The [runtime procedure](../../../../docs/operations/RUNBOOK.md#institution-provided-runtime)
 explains discovery and managed/site setup. The [reuse procedure](../../../../docs/operations/RUNBOOK.md#reusable-processing)
 explains how a new downstream Run uses a compatible processing Run without
-changing it. Synthetic dataset choices belong in the [quickstart](../../../../quickstart.md).
+changing it. Synthetic dataset choices belong in the
+[quickstart](../../../../quickstart.md). `emrys setup` owns the closed
+repository-root `.env` for Projects home, site and optional application-log
+defaults; command-line and process values remain higher precedence.
 The ordinary named initializer guides FASTQ pairing, biological assignments and
 regions, then owns the resulting manifests inside the Project. The separate
 manifest drafting command remains an advanced structural helper.
@@ -45,11 +48,12 @@ native tools and R libraries; Python installation stays with the environment's
 package manager. A shared generation is never repaired in place: Doctor creates
 a verified replacement, and dependent Projects explicitly move their current
 selection while retained Attempts keep the old one. Existing site runtimes and
-operator execution profiles remain outside managed repair. On a Slurm Project, normal repair stays on the head node
-and submits the required runtime/storage checks. `--compute` is the explicit
-advanced allocation route. Both Project-creation commands accept `--site viking`
-and use the same built-in placement; Run, resume and standalone report execution
-follow the selected Project profile.
+operator execution profiles remain outside managed repair. On a Slurm Project,
+normal repair stays on the head node and submits the required runtime/storage
+checks. `--compute` is the explicit advanced allocation route. Both
+Project-creation commands accept `--site viking` and use the same built-in
+placement; saved `EMRYS_SITE` supplies that choice when the flag is omitted.
+Run, resume and standalone report execution follow the selected Project profile.
 [Workflow composition](../../workflow/README.md) explains the graph;
 [the profile contract](CONTRACT.md#profiles-and-immutable-planning) defines resource selection.
 

@@ -11,7 +11,7 @@ import stat
 import sys
 import hashlib
 import uuid
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, replace
 from functools import partial
 from pathlib import Path
@@ -97,6 +97,9 @@ DESCRIPTION = (
     "runtime. This command reads declared inputs, checks reference compatibility, "
     "and writes nothing."
 )
+SETUP_DESCRIPTION = "Save Projects home, site, and optional log defaults in .env."
+_ENV_VERSION_KEY, _ENV_VERSION = "EMRYS_ENV_VERSION", "1"
+_ENV_KEYS = (_ENV_VERSION_KEY, "EMRYS_PROJECTS_ROOT", "EMRYS_SITE", "EMRYS_LOG_ROOT")
 PROFILE_RELATIVE_PATH = Path("workflow/contracts/local_cmh_v2.json")
 PROJECT_DIRECTORIES = ("logs", "runs")
 RUNTIME_PROFILE_RELATIVE_PATH = Path("runtime/runtime.tsv")
@@ -139,6 +142,116 @@ def source_root() -> Path:
     """Return the executing installed package root."""
 
     return Path(__file__).resolve().parents[2]
+
+
+def load_saved_cli_environment(
+    start: Path, environment: MutableMapping[str, str] | None = None
+) -> Path | None:
+    environ = os.environ if environment is None else environment
+    origin = Path(os.path.abspath(start))
+    for root in (origin, *origin.parents):
+        path = root / ".env"
+        if not os.path.lexists(path):
+            continue
+        try:
+            if not stat.S_ISREG(path.lstat().st_mode):
+                raise OnboardingError(f"unsafe saved CLI settings: {path}")
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeError) as exc:
+            raise OnboardingError(f"cannot read {path}: {exc}") from exc
+        if not any(line.startswith(f"{_ENV_VERSION_KEY}=") for line in lines):
+            continue
+        values: dict[str, str] = {}
+        for number, line in enumerate(lines, 1):
+            key, separator, value = line.partition("=")
+            valid = separator and key in _ENV_KEYS and key not in values
+            if not valid or not value.isprintable():
+                raise OnboardingError(f"invalid saved CLI setting at {path}:{number}")
+            values[key] = value
+        if values.get(_ENV_VERSION_KEY) != _ENV_VERSION:
+            raise OnboardingError(f"unsupported saved CLI settings version: {path}")
+        if not {"EMRYS_PROJECTS_ROOT", "EMRYS_SITE"} <= values.keys():
+            raise OnboardingError(f"saved CLI settings are incomplete: {path}")
+        if values["EMRYS_SITE"] != "viking":
+            raise OnboardingError(f"unsupported saved site: {values['EMRYS_SITE']!r}")
+        for key in ("EMRYS_PROJECTS_ROOT", "EMRYS_LOG_ROOT"):
+            if key in values and not Path(values[key]).is_absolute():
+                raise OnboardingError(f"{key} must be an absolute path in {path}")
+        for key, value in values.items():
+            if key != _ENV_VERSION_KEY:
+                environ.setdefault(key, value)
+        return path
+    return None
+
+
+def _repository_root(start: Path) -> Path:
+    origin = Path(os.path.abspath(start))
+    for root in (origin, *origin.parents):
+        if (
+            os.path.lexists(root / ".git")
+            and (root / "pyproject.toml").is_file()
+            and (root / "src/emrys").is_dir()
+            and root.resolve(strict=True) == root
+        ):
+            return root
+    raise OnboardingError("run emrys setup inside an EMRYS repository checkout")
+
+
+def configure_setup_parser(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--projects-root", type=Path, help="Saved Projects home.")
+    add_site_argument(parser)
+    parser.add_argument("--log-root", type=Path, help="Optional saved log root.")
+    parser.add_argument("--execute", action="store_true", help="Create .env.")
+    parser.set_defaults(_command_parser=parser)
+
+
+def setup_from_args(arguments: argparse.Namespace) -> int:
+    try:
+        root = _repository_root(Path.cwd())
+        destination = root / ".env"
+        if os.path.lexists(destination):
+            raise OnboardingError(f"existing settings were preserved: {destination}")
+        interactive = _interactive_terminal()
+        projects_default = os.environ.get("EMRYS_PROJECTS_ROOT") or f"{root}/Projects"
+        projects_value = arguments.projects_root or Path(projects_default)
+        if arguments.projects_root is None and interactive:
+            projects_value = Path(_prompt("Projects home", projects_default))
+        projects = _admit_existing_path(
+            projects_value,
+            "Projects home",
+            directory=True,
+            writable=True,
+            canonical=True,
+        )
+        site = arguments.site or (
+            _prompt("site", "viking") if interactive else "viking"
+        )
+        if site != "viking":
+            raise OnboardingError(f"unsupported site: {site!r}")
+        log_value = arguments.log_root or os.environ.get("EMRYS_LOG_ROOT")
+        if log_value is None and interactive:
+            log_value = _prompt("log root (optional)") or None
+        log_root = None if log_value is None else _absolute(log_value)
+        values = {
+            _ENV_VERSION_KEY: _ENV_VERSION,
+            "EMRYS_PROJECTS_ROOT": str(projects),
+            "EMRYS_SITE": site,
+            **({"EMRYS_LOG_ROOT": str(log_root)} if log_root is not None else {}),
+        }
+        data = "".join(f"{key}={value}\n" for key, value in values.items()).encode()
+        print("Saved CLI defaults:")
+        print(f"  File: {destination}\n  Projects home: {projects}\n  Site: {site}")
+        print(f"  Log root: {log_root or 'Project-local default'}")
+        print("  Precedence: command line, process environment, .env, built-in default")
+        if not arguments.execute:
+            print("Dry-run complete; rerun with --execute to create .env.")
+            return 0
+        publish_exclusive(destination, data, OnboardingError)
+        print(f"CLI defaults ready: {destination}")
+        return 0
+    except (OSError, OnboardingError) as exc:
+        console_print(f"ERROR: {exc}", style="red", file=sys.stderr)
+        return 2
 
 
 def _absolute(value: str | Path) -> Path:
@@ -192,7 +305,8 @@ _PLACEMENT_FIELDS = (
 def configure_profile_create_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("name", help="Absent Project profile name, without .yaml.")
     add_project_argument(parser)
-    placement = parser.add_mutually_exclusive_group(required=True)
+    require_placement = not bool(os.environ.get("EMRYS_SITE"))
+    placement = parser.add_mutually_exclusive_group(required=require_placement)
     add_site_argument(placement)
     placement.add_argument("--placement", choices=("direct", "slurm"))
     for field in _PLACEMENT_FIELDS:
@@ -245,8 +359,9 @@ def profile_create_from_args(arguments: argparse.Namespace) -> int:
             )
         if os.path.lexists(destination):
             raise OnboardingError(f"Existing profile was preserved: {destination}")
+        site = arguments.site if arguments.placement is None else None
         document = orchestration_contracts.load_yaml_object_bytes(
-            project_default_profile_bytes(arguments.site)
+            project_default_profile_bytes(site)
         )
         if arguments.placement == "slurm":
             document["placement"] = {
@@ -1896,6 +2011,7 @@ __all__ = (
     "RuntimeDiscoveryError",
     "add_project_argument",
     "configure_profile_create_parser",
+    "configure_setup_parser",
     "configure_runtime_discovery_parser",
     "configure_manifest_init_parser",
     "configure_project_init_parser",
@@ -1905,12 +2021,14 @@ __all__ = (
     "reuse_runtime_profile",
     "init_manifests_from_args",
     "init_project_from_args",
+    "load_saved_cli_environment",
     "project_runtime_directory",
     "profile_create_from_args",
     "project_definition_path",
     "publish_create_absent_tree",
     "publish_runtime_profile",
     "runtime_profile_path",
+    "setup_from_args",
     "validate_from_args",
     "validate_project",
     "validate_project_admission",

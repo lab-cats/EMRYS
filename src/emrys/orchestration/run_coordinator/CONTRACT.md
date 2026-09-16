@@ -61,12 +61,25 @@ selection state and never authorizes a newest-Run inference. Numeric selectors
 and exact scheduler names use diagnostic scheduler selection without admitting
 a Project or Run from scheduler text.
 
+`emrys setup` is dry-run-first and create-absent. With `--execute`, it publishes
+one mode-`0600` repository-root `.env` containing only its format version,
+`EMRYS_PROJECTS_ROOT`, `EMRYS_SITE`, and optional `EMRYS_LOG_ROOT`. EMRYS loads
+the nearest ancestor `.env` carrying that marker, rejects unknown, duplicate,
+incomplete, non-printable, relative-path, or unsupported values, and ignores an
+unmarked `.env`. Resolution is command line, existing process environment,
+saved `.env`, then the built-in default; loading never replaces a process value.
+The saved site defaults existing `--site` inputs, Projects home retains its
+bounded discovery role, and log root retains the application-log owner's
+existing scope. Selected Project, profile, runtime, and scientific values are
+not global defaults.
+
 ## No-write and publication boundaries
 
 `emrys init PROJECT_NAME` is dry-run-first and publishes only with `--execute`
 into an absent child of the current canonical writable/searchable directory.
-Both Project initialization routes accept `--site viking`; the existing default
-profile then contains the built-in Viking placement rather than direct placement.
+Both Project initialization routes accept `--site viking`; saved `EMRYS_SITE`
+supplies the same value when the flag is omitted. The resulting default profile
+then contains the built-in Viking placement rather than direct placement.
 Named initialization creates Project-owned `samples.tsv` and `partitions.tsv`;
 FASTQs, references and region files remain at their declared locations. Guided
 setup discovers recognized FASTQ pairs and asks for all biological assignments
