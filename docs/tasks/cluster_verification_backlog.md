@@ -380,6 +380,32 @@ placement, exact scientific values, and preserved source bytes after schema
 refusal. Static checks pass locally; application/subprocess cases run in CI.
 Institutional novice walkthrough remains pending.
 
+**Original-input manifest follow-up:** The operator's fresh-user walkthrough
+exposed vendor FASTQ mates named `_1`/`_2` and 25 explicit whole-chromosome
+`region` partitions that the drafting helper could not accept. The approved
+bounded correction adds those mate suffixes alongside `_R1`/`_R2` and exposes
+the existing selector through repeatable `--region PARTITION_ID SELECTOR`.
+Existing `--regions-file` use and mixed selections remain explicit; IDs are
+unique across the complete partition manifest. No study defaults are inferred.
+
+The touched vertical is the existing onboarding CLI, its sample/partition TSV
+contracts, Project normalization and reference checks, direct tests, and setup
+guides. The audit found duplicated sample-path state and a separate rendering
+projection in the helper; one draft row per sample replaces both. Existing
+file admission, canonical mate identity, inode-reuse checks, compression and
+complete-mate checks, required biological assignments, TSV validators, sorted
+output and create-absent publication are preserved. The schema and downstream
+scientific checks already support both selectors; no new validator, wrapper,
+dependency, product file, or persisted state is needed. Scope ends at manifest
+authoring and its admission into a Project. Scheduler/dashboard behavior and
+scientific execution remain separate.
+
+Regression fixtures use the public CLI for six vendor-style libraries and 25
+chromosomes, existing naming forms, ambiguous mates, mixed selector forms,
+duplicate IDs, no-write preview, destination preservation, and downstream
+reference admission. Runtime execution of these fixtures and institutional
+acceptance remain pending; local test dependencies were unavailable.
+
 ### CV-07 Site and workload profile selection
 
 **Finding:** Built-in site selection still required a hand-edited profile for

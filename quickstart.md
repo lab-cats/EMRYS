@@ -318,9 +318,10 @@ Have the study's scientist or analyst confirm these before starting:
   with their source and release recorded. EMRYS creates or checks `.fai` and
   `.dict` index files beside the FASTA, so that directory must be writable.
   Arrange a study copy if the shared reference belongs to another team.
-- **Regions and analysis settings:** an existing file of nonoverlapping regions,
-  STAR index parameters appropriate to the reads and reference, the control and
-  treatment labels, the nucleotide change to test, and the study's thresholds.
+- **Regions and analysis settings:** explicit chromosome/region selectors or an
+  existing file of nonoverlapping regions, STAR index parameters appropriate to
+  the reads and reference, the control and treatment labels, the nucleotide
+  change to test, and the study's thresholds.
   The example values offered during setup are suggestions, not validated
   settings for every study.
 
@@ -329,7 +330,8 @@ library preparation information; `unknown` records that you do not know, and
 does not turn a stranded library into an unstranded one. It is distinct from
 the later mechanical `FWD_like` and `REV_like` alignment labels.
 
-The regions file must use the same chromosome or contig names as the FASTA.
+Region selectors and regions files must use the same chromosome or contig names
+as the FASTA.
 For a `.bed` file, columns are separated by tabs and coordinates are zero-based
 with the end excluded: `chr1`, `0`, `100` selects the first 100 bases of `chr1`.
 A plain three-column region table instead uses one-based coordinates with both
@@ -345,19 +347,22 @@ dataset will fit the same allocation.
 ### Create the input lists
 
 The helper below writes two **manifests**: `samples.tsv` lists libraries and
-their assignments; `partitions.tsv` identifies the regions file. These are
+their assignments; `partitions.tsv` declares the selected regions. These are
 ordinary text tables with tab-separated columns.
 
-Replace the paths and example library names with your own. This route expects
-each library's filenames to end in `_R1.fastq.gz` and `_R2.fastq.gz`; `.fastq`,
-`.fq`, and `.fq.gz` also work. R1 and R2 must use the same compression. Each
-`--sample` line gives, in order, the sample ID, condition, pairing group and
-strandedness. Add both FASTQ paths and a matching assignment for every further
-library. Replace `unknown` when the library's strandedness is known.
+Replace the paths and example library names with your own. This route accepts
+mate suffixes `_R1`/`_R2` or `_1`/`_2`, followed by `.fastq` or `.fq` and optional
+`.gz`. The shared prefix is the sample ID: `control_1_1.fq.gz` and
+`control_1_2.fq.gz` belong to `control_1`. R1 and R2 must use the same compression.
+Supplying two files for the same sample and mate is rejected, including across
+the two naming conventions. Each `--sample` line gives, in order, the sample ID,
+condition, pairing group and strandedness. Add both FASTQ paths and a matching
+assignment for every further library. Replace `unknown` when the library's
+strandedness is known.
 
 Choose a new manifest directory beneath an existing writable parent; do not
-create that final directory yourself. The input FASTQs and regions file must
-already exist.
+create that final directory yourself. The input FASTQs and any selected regions
+files must already exist.
 
 ```bash
 EMRYS_READS=/absolute/path/to/reads
@@ -374,6 +379,16 @@ emrys init manifests --output-dir "$EMRYS_MANIFEST_ROOT" \
   --sample treatment_2 treatment pair_2 unknown \
   --regions-file study "$EMRYS_REGIONS" --execute
 ```
+
+For whole chromosomes or explicit intervals, replace the `--regions-file`
+option with repeated `--region PARTITION_ID SELECTOR` options. For example,
+`--region 1 1 --region 2 2 --region X X` selects those three complete contigs;
+`--region target 1:1-100` selects an interval using one-based inclusive
+coordinates. Declare every intended contig or interval explicitly; these
+examples are not an automatic whole-genome selection. No regions file is
+needed for this route. Both options can be combined, with unique partition IDs
+across all selections. Project creation checks names and coordinates against
+the reference FASTA before admitting the study.
 
 Review the resulting `samples.tsv` and `partitions.tsv` with your study
 assignments before continuing. A successful file check cannot establish that

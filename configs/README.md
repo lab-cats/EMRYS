@@ -144,6 +144,13 @@ declares them so. Retain provider checksums: file binding does not prove provena
 | `selector_type` | `region` for a bcftools `-r` expression or `regions_file` for an admitted `-R` file. |
 | `selector_value` | A FASTA/FAI contig or interval, or a literal regions-file path. |
 
+The [quickstart's manifest helper](../quickstart.md#create-the-input-lists)
+accepts repeated `--region PARTITION_ID SELECTOR` and
+`--regions-file PARTITION_ID PATH` options. They can be combined; partition IDs
+must be unique across both forms. A selector such as `1` selects that entire
+contig without a regions file. Reference compatibility is checked during
+Project creation.
+
 Partitions must not overlap. Begin with a small declared region when verifying
 an unfamiliar runtime. Zero candidates and a header-only VCF may be valid when
 the declared transaction reconciles.

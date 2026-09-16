@@ -65,9 +65,13 @@ def _executable(path: Path, content: str = "#!/bin/sh\nexit 0\n") -> Path:
     return path
 
 
-def _fastqs(root: Path, *sample_ids: str) -> list[Path]:
+def _fastqs(
+    root: Path, *sample_ids: str, mate_marker: str = "R", suffix: str = ".fastq.gz"
+) -> list[Path]:
     paths = [
-        root / f"{sample}_R{mate}.fastq.gz" for sample in sample_ids for mate in (1, 2)
+        root / f"{sample}_{mate_marker}{mate}{suffix}"
+        for sample in sample_ids
+        for mate in (1, 2)
     ]
     for path in paths:
         path.write_bytes(b"not inspected by structural drafting\n")
@@ -443,10 +447,18 @@ def test_init_project_rejects_eof_instead_of_accepting_a_suggestion(
         onboarding._collect_project_answers(arguments)
 
 
+@pytest.mark.parametrize(
+    ("mate_marker", "suffix"),
+    (("R", ".fastq.gz"), ("", ".fq.gz"), ("R", ".fq"), ("", ".fastq")),
+)
 def test_manifest_init_is_deterministic_validated_and_dry_run_first(
     tmp_path: Path,
+    mate_marker: str,
+    suffix: str,
 ) -> None:
-    fastqs = _fastqs(tmp_path, "sample_b", "sample_a")
+    fastqs = _fastqs(
+        tmp_path, "sample_b", "sample_a", mate_marker=mate_marker, suffix=suffix
+    )
     regions = tmp_path / "targets.bed"
     regions.write_text("chr1\t0\t1\n", encoding="utf-8")
     output = tmp_path / "drafts"
@@ -482,6 +494,11 @@ def test_manifest_init_is_deterministic_validated_and_dry_run_first(
     partitions = step08.validate_partition_manifest(output / "partitions.tsv")
     assert sample_table.header == step08.SAMPLE_MANIFEST_REQUIRED
     assert sample_ids == ["sample_a", "sample_b"]
+    for row in sample_table.rows:
+        for mate in (1, 2):
+            assert row[f"r{mate}_fastq"] == str(
+                tmp_path / f"{row['sample_id']}_{mate_marker}{mate}{suffix}"
+            )
     assert [row["partition_id"] for row in partitions.rows] == ["targets"]
 
     sample_only = tmp_path / "sample-only"
@@ -508,11 +525,230 @@ def test_manifest_init_is_deterministic_validated_and_dry_run_first(
     assert set(_tree_bytes(sample_only)) == {"samples.tsv"}
 
 
+def test_manifest_init_creates_six_vendor_libraries_and_25_chromosomes(
+    tmp_path: Path,
+) -> None:
+    assignments = (
+        ("ABE_EV_2", "EV", "replicate_2"),
+        ("ABE_PUM1_2", "PUM1", "replicate_2"),
+        ("ABE_EV_3", "EV", "replicate_3"),
+        ("ABE_PUM1_3", "PUM1", "replicate_3"),
+        ("ABE_EV4", "EV", "replicate_4"),
+        ("ABE_PUM1_4", "PUM1", "replicate_4"),
+    )
+    fastqs = _fastqs(
+        tmp_path, *(row[0] for row in assignments), mate_marker="", suffix=".fq.gz"
+    )
+    chromosomes = [str(number) for number in range(1, 23)] + ["X", "Y", "MT"]
+    output = tmp_path / "drafts"
+    command = [
+        "init",
+        "manifests",
+        "--output-dir",
+        str(output),
+        "--fastq",
+        *(str(path) for path in reversed(fastqs)),
+    ]
+    for assignment in assignments:
+        command.extend(("--sample", *assignment, "reverse"))
+    for chromosome in reversed(chromosomes):
+        command.extend(("--region", chromosome, chromosome))
+    original = _tree_bytes(tmp_path)
+
+    assert cli.main(command) == 0
+    assert _tree_bytes(tmp_path) == original
+    assert cli.main([*command, "--execute"]) == 0
+    table, _, _ = step08.validate_sample_manifest(output / "samples.tsv")
+    assert table.rows == [
+        {
+            "sample_id": sample,
+            "r1_fastq": str(tmp_path / f"{sample}_1.fq.gz"),
+            "r2_fastq": str(tmp_path / f"{sample}_2.fq.gz"),
+            "strandedness": "reverse",
+            "condition": condition,
+            "replicate": replicate,
+        }
+        for sample, condition, replicate in sorted(assignments)
+    ]
+    partitions = step08.validate_partition_manifest(output / "partitions.tsv")
+    assert partitions.rows == [
+        dict(partition_id=value, selector_type="region", selector_value=value)
+        for value in sorted(chromosomes)
+    ]
+    published = _tree_bytes(tmp_path)
+    assert cli.main([*command, "--execute"]) == 2
+    assert _tree_bytes(tmp_path) == published
+
+
+@pytest.mark.parametrize(
+    ("names", "message"),
+    (
+        (("sample_R1.fq.gz", "sample_1.fq.gz", "sample_2.fq.gz"), "duplicate R1"),
+        (("sample_1.fq.gz", "sample_2.fq.gz", "sample_R2.fq.gz"), "duplicate R2"),
+        (("sample_1.fq.gz", "sample_2.fq"), "different compression"),
+        (("sample_1.fq.gz", "sample_3.fq.gz"), "FASTQ names must end"),
+    ),
+)
+def test_manifest_init_rejects_ambiguous_or_invalid_vendor_mates(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    names: tuple[str, ...],
+    message: str,
+) -> None:
+    fastqs = [tmp_path / name for name in names]
+    for path in fastqs:
+        path.write_bytes(b"structural drafting fixture\n")
+    output = tmp_path / "drafts"
+    before = _tree_bytes(tmp_path)
+    assert (
+        cli.main(
+            [
+                "init",
+                "manifests",
+                "--output-dir",
+                str(output),
+                "--fastq",
+                *(str(path) for path in fastqs),
+                "--sample",
+                "sample",
+                "control",
+                "pair_1",
+                "reverse",
+                "--execute",
+            ]
+        )
+        == 2
+    )
+    assert message in capsys.readouterr().err
+    assert _tree_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize(
+    ("first", "second", "duplicate"),
+    (
+        ("--region", "--region", True),
+        ("--regions-file", "--regions-file", True),
+        ("--regions-file", "--region", True),
+        ("--region", "--regions-file", False),
+    ),
+)
+def test_manifest_init_partition_forms_share_one_unique_id_namespace(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    first: str,
+    second: str,
+    duplicate: bool,
+) -> None:
+    fastqs = _fastqs(tmp_path, "sample", mate_marker="")
+    regions = tmp_path / "targets.bed"
+    regions.write_text("chr2\t0\t1\n", encoding="utf-8")
+    output = tmp_path / "drafts"
+    command = [
+        "init",
+        "manifests",
+        "--output-dir",
+        str(output),
+        "--fastq",
+        *(str(path) for path in fastqs),
+        "--sample",
+        "sample",
+        "control",
+        "pair_1",
+        "reverse",
+        "--execute",
+    ]
+    for option, name in ((first, "p1"), (second, "p1" if duplicate else "p2")):
+        value = str(regions) if option == "--regions-file" else "chr1"
+        command.extend((option, name, value))
+    before = _tree_bytes(tmp_path)
+    assert cli.main(command) == (2 if duplicate else 0)
+    if duplicate:
+        assert "duplicate" in capsys.readouterr().err
+        assert _tree_bytes(tmp_path) == before
+    else:
+        table = step08.validate_partition_manifest(output / "partitions.tsv")
+        assert table.rows == [
+            dict(partition_id="p1", selector_type="region", selector_value="chr1"),
+            dict(
+                partition_id="p2",
+                selector_type="regions_file",
+                selector_value=str(regions),
+            ),
+        ]
+
+
+@pytest.mark.parametrize(
+    ("region", "valid"),
+    (("chrSynthetic", True), ("missing", False), ("chrSynthetic:0-3", False)),
+)
+def test_manifest_init_output_passes_through_project_reference_admission(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    region: str,
+    valid: bool,
+) -> None:
+    project = tmp_path / "project"
+    arguments = _project_arguments(tmp_path, project, execute=True)
+    _, _, samples = step08.validate_sample_manifest(arguments.sample_manifest)
+    drafts = tmp_path / "drafts"
+    fastqs = []
+    for row in samples:
+        for mate in (1, 2):
+            original = Path(row[f"r{mate}_fastq"])
+            renamed = original.with_name(f"{row['sample_id']}_{mate}.fastq")
+            original.rename(renamed)
+            fastqs.append(str(renamed))
+    command = [
+        "init",
+        "manifests",
+        "--output-dir",
+        str(drafts),
+        "--fastq",
+        *fastqs,
+        "--region",
+        "primary",
+        region,
+        "--execute",
+    ]
+    for row in samples:
+        command.extend(
+            (
+                "--sample",
+                row["sample_id"],
+                row["condition"],
+                row["replicate"],
+                row["strandedness"],
+            )
+        )
+    assert cli.main(command) == 0
+    arguments.sample_manifest = drafts / "samples.tsv"
+    arguments.partition_manifest = drafts / "partitions.tsv"
+    before = _tree_bytes(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    command = ["init", arguments.project_name]
+    for name, value in vars(arguments).items():
+        if name not in {"project_name", "execute"} and value is not None:
+            command.extend((f"--{name.replace('_', '-')}", str(value)))
+
+    assert cli.main([*command, "--execute"]) == (0 if valid else 2)
+    if valid:
+        assert cli.main(["validate", "--project", str(project)]) == 0
+        admitted = onboarding.validate_project(project / "project.yaml")
+        assert admitted.sample_count == 4
+    else:
+        assert "partition region" in capsys.readouterr().err
+        assert not project.exists()
+        assert _tree_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize("mate_marker", ("R", ""))
 def test_manifest_init_lists_missing_biology_and_writes_nothing(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
+    mate_marker: str,
 ) -> None:
-    fastqs = _fastqs(tmp_path, "sample_b", "sample_a")
+    fastqs = _fastqs(tmp_path, "sample_b", "sample_a", mate_marker=mate_marker)
     output = tmp_path / "drafts"
 
     assert (
@@ -535,11 +771,13 @@ def test_manifest_init_lists_missing_biology_and_writes_nothing(
     assert "--sample sample_b CONDITION REPLICATE STRANDEDNESS" in error
 
 
+@pytest.mark.parametrize("mate_marker", ("R", ""))
 def test_manifest_init_rejects_unpaired_fastq_without_writing(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
+    mate_marker: str,
 ) -> None:
-    r1 = _fastqs(tmp_path, "sample_a")[0]
+    r1 = _fastqs(tmp_path, "sample_a", mate_marker=mate_marker)[0]
     output = tmp_path / "drafts"
     result = cli.main(
         [
@@ -631,10 +869,12 @@ def test_manifest_init_rejects_a_condition_that_requires_tsv_quoting(
     assert "condition must match" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("mate_marker", ("R", ""))
 def test_manifest_init_pairs_by_the_admitted_file_not_a_symlink_alias(
     tmp_path: Path,
+    mate_marker: str,
 ) -> None:
-    canonical = _fastqs(tmp_path, "actual")
+    canonical = _fastqs(tmp_path, "actual", mate_marker=mate_marker)
     aliases = [tmp_path / f"alias_R{mate}.fastq.gz" for mate in (1, 2)]
     aliases[0].symlink_to(canonical[1])
     aliases[1].symlink_to(canonical[0])
@@ -664,12 +904,14 @@ def test_manifest_init_pairs_by_the_admitted_file_not_a_symlink_alias(
     assert rows[0]["r2_fastq"] == str(canonical[1])
 
 
+@pytest.mark.parametrize("mate_marker", ("R", ""))
 def test_manifest_init_rejects_hard_linked_fastq_reuse(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
+    mate_marker: str,
 ) -> None:
-    r1 = tmp_path / "sample_a_R1.fastq.gz"
-    r2 = tmp_path / "sample_a_R2.fastq.gz"
+    r1 = tmp_path / f"sample_a_{mate_marker}1.fastq.gz"
+    r2 = tmp_path / f"sample_a_{mate_marker}2.fastq.gz"
     r1.write_bytes(b"same file\n")
     r2.hardlink_to(r1)
     output = tmp_path / "drafts"

@@ -97,8 +97,8 @@ PATH_TOOL_COMMANDS = {
     "gunzip": "gunzip",
 }
 FASTQ_PAIR_NAME = re.compile(
-    r"^(?P<sample>[A-Za-z0-9][A-Za-z0-9._-]*)_R(?P<mate>[12])"
-    r"(?P<suffix>\.(?:fastq|fq)(?:\.gz)?)$"
+    r"^(?P<sample>[A-Za-z0-9][A-Za-z0-9._-]*)_R?(?P<mate>[12])"
+    r"\.(?:fastq|fq)(?:\.gz)?$"
 )
 
 
@@ -817,17 +817,18 @@ def _draft_manifest_members(
     fastqs: Sequence[Path],
     samples: Sequence[Sequence[str]],
     regions_files: Sequence[Sequence[str]],
+    regions: Sequence[Sequence[str]],
 ) -> dict[str, tuple[bytes, int]]:
     """Render validated manifest drafts from explicit paths and biology."""
 
-    pairs: dict[str, dict[str, tuple[Path, bool]]] = {}
+    sample_rows: dict[str, dict[str, str]] = {}
     file_roles: dict[tuple[int, int], str] = {}
     for value in fastqs:
         admitted_path = _admit_supplied_file(value, "supplied FASTQ")
         match = FASTQ_PAIR_NAME.fullmatch(admitted_path.name)
         if match is None:
             raise OnboardingError(
-                "FASTQ names must end in <sample>_R1 or _R2 followed by "
+                "FASTQ names must end in <sample>_R1/_R2 or <sample>_1/_2 followed by "
                 f".fastq/.fq and optional .gz: {admitted_path}"
             )
         sample_id, mate = match["sample"], match["mate"]
@@ -837,66 +838,61 @@ def _draft_manifest_members(
         if previous := file_roles.get(identity):
             raise OnboardingError(f"one FASTQ file is reused as {previous} and {role}")
         file_roles[identity] = role
-        pair = pairs.setdefault(sample_id, {})
-        if mate in pair:
+        row = sample_rows.setdefault(sample_id, {"sample_id": sample_id})
+        column = f"r{mate}_fastq"
+        if column in row:
             raise OnboardingError(f"duplicate R{mate} FASTQ for sample {sample_id}")
-        pair[mate] = (admitted_path, match["suffix"].endswith(".gz"))
+        row[column] = str(admitted_path)
 
-    admitted: dict[str, tuple[Path, Path]] = {}
-    for sample_id, pair in pairs.items():
-        if set(pair) != {"1", "2"}:
+    for sample_id, row in sample_rows.items():
+        if not {"r1_fastq", "r2_fastq"} <= row.keys():
             raise OnboardingError(f"unpaired FASTQ sample: {sample_id}")
-        (r1, r1_gzip), (r2, r2_gzip) = pair["1"], pair["2"]
-        if r1_gzip != r2_gzip:
+        if row["r1_fastq"].endswith(".gz") != row["r2_fastq"].endswith(".gz"):
             raise OnboardingError(
                 f"R1 and R2 FASTQs use different compression for sample {sample_id}"
             )
-        admitted[sample_id] = (r1, r2)
 
     assignments = _indexed_values(samples, "--sample assignment")
-    unexpected = sorted(assignments.keys() - admitted.keys())
+    unexpected = sorted(assignments.keys() - sample_rows.keys())
     if unexpected:
         raise OnboardingError(
             "--sample assignments have no supplied FASTQ pair: " + ", ".join(unexpected)
         )
-    missing = sorted(admitted.keys() - assignments.keys())
+    missing = sorted(sample_rows.keys() - assignments.keys())
     if missing:
         flags = "\n".join(
             f"  --sample {key} CONDITION REPLICATE STRANDEDNESS" for key in missing
         )
         raise OnboardingError(f"biological assignments are required:\n{flags}")
-    for sample_id, assignment in assignments.items():
-        step08.validate_safe_id(f"sample {sample_id} condition", assignment[0])
-
-    sample_rows = [
-        {
-            "sample_id": sample_id,
-            "r1_fastq": str(admitted[sample_id][0]),
-            "r2_fastq": str(admitted[sample_id][1]),
-            "condition": assignments[sample_id][0],
-            "replicate": assignments[sample_id][1],
-            "strandedness": assignments[sample_id][2],
-        }
-        for sample_id in sorted(admitted)
-    ]
-    sample_bytes = tsv_bytes(step08.SAMPLE_MANIFEST_REQUIRED, sample_rows)
+    for sample_id, (condition, replicate, strandedness) in assignments.items():
+        step08.validate_safe_id(f"sample {sample_id} condition", condition)
+        sample_rows[sample_id].update(
+            condition=condition, replicate=replicate, strandedness=strandedness
+        )
+    sample_bytes = tsv_bytes(
+        step08.SAMPLE_MANIFEST_REQUIRED,
+        (sample_rows[key] for key in sorted(sample_rows)),
+    )
     step08.validate_sample_manifest_bytes(sample_bytes, "samples.tsv")
     members = {"samples.tsv": (sample_bytes, 0o644)}
-    if regions_files:
-        partitions = _indexed_values(regions_files, "--regions-file")
-        rows = [
-            {
-                "partition_id": partition_id,
-                "selector_type": "regions_file",
-                "selector_value": str(
-                    _admit_supplied_file(
-                        partitions[partition_id][0],
-                        f"partition {partition_id} regions file",
-                    )
-                ),
-            }
-            for partition_id in sorted(partitions)
-        ]
+    rows = []
+    for selector_type, selections in (("regions_file", regions_files), ("region", regions)):
+        for partition_id, (value,) in sorted(
+            _indexed_values(selections, f"--{selector_type.replace('_', '-')}").items()
+        ):
+            if selector_type == "regions_file":
+                value = str(
+                    _admit_supplied_file(value, f"partition {partition_id} regions file")
+                )
+            rows.append(
+                dict(
+                    partition_id=partition_id,
+                    selector_type=selector_type,
+                    selector_value=value,
+                )
+            )
+    if rows:
+        rows.sort(key=lambda row: row["partition_id"])
         partition_bytes = tsv_bytes(step08.PARTITION_MANIFEST_HEADER, rows)
         step08.validate_partition_manifest_bytes(partition_bytes, "partitions.tsv")
         members["partitions.tsv"] = (partition_bytes, 0o644)
@@ -916,7 +912,7 @@ def configure_manifest_init_parser(parser: argparse.ArgumentParser) -> None:
         action="extend",
         nargs="+",
         type=Path,
-        help="Existing FASTQs using the closed <sample>_R1/_R2 naming convention.",
+        help="Existing FASTQs named <sample>_R1/_R2 or <sample>_1/_2 (.fastq/.fq, optional .gz).",
     )
     parser.add_argument(
         "--sample",
@@ -926,14 +922,15 @@ def configure_manifest_init_parser(parser: argparse.ArgumentParser) -> None:
         metavar=("SAMPLE_ID", "CONDITION", "REPLICATE", "STRANDEDNESS"),
         help="Explicit biology for one inferred pair; repeat for every sample.",
     )
-    parser.add_argument(
-        "--regions-file",
-        action="append",
-        nargs=2,
-        default=[],
-        metavar=("PARTITION_ID", "PATH"),
-        help="Optional existing region file; repeat for additional partitions.",
-    )
+    for name, value in (("regions-file", "PATH"), ("region", "REGION")):
+        parser.add_argument(
+            f"--{name}",
+            action="append",
+            nargs=2,
+            default=[],
+            metavar=("PARTITION_ID", value),
+            help=f"Optional {name.replace('-', ' ')}; repeat for additional partitions.",
+        )
     parser.add_argument(
         "--execute", action="store_true", help="Publish; omission is a no-write plan."
     )
@@ -949,6 +946,7 @@ def init_manifests_from_args(arguments: argparse.Namespace) -> int:
             arguments.fastq,
             arguments.sample,
             arguments.regions_file,
+            arguments.region,
         )
         print(f"Output directory: {output}")
         print("Draft manifests: " + ", ".join(sorted(members)))
