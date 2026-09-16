@@ -71,7 +71,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-03](#cv-03-scheduler-and-execution-failure-messages) | P0 | Verification pending | Separate submission, queue, execution, and finalization failures. |
 | [CV-04](#cv-04-workflow-startup-readiness) | P0 | Verification pending | Readiness exercises minimal actual Snakemake startup. |
 | [CV-05](#cv-05-reuse-versus-repeated-repair-work) | P0 | Completed | Explain reused state, repeated checks, and new repair work. |
-| [CV-06](#cv-06-actual-data-onboarding) | P0 | Verification pending | Provide a novice actual-data setup path. |
+| [CV-06](#cv-06-actual-data-onboarding) | P0 | Open | Provide a novice actual-data setup path. |
 | [CV-07](#cv-07-site-and-workload-profile-selection) | P0 | Verification pending | Replace manual Viking resource-profile construction. |
 | [CV-08](#cv-08-compatible-runtime-reuse) | P0 | Verification pending | Reuse an existing compatible managed runtime across Projects. |
 | [CV-09](#cv-09-qualification-scope-and-placement) | P0 | Verification pending | Explain and enforce the qualified execution environment. |
@@ -81,7 +81,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-13](#cv-13-expected-setup-versus-blockers) | P1 | Verification pending | Distinguish expected initial setup needs from failures. |
 | [CV-14](#cv-14-project-directory-layout) | P1 | Verification pending | Supply the tracked Projects home inside the source checkout. |
 | [CV-15](#cv-15-cross-node-active-run-status) | P1 | Verification pending | Show remote active state without implying proven corruption. |
-| [CV-16](#cv-16-monitoring-dashboard) | P1 | Verification pending | Restore an integrated view of scheduler, progress, and logs. |
+| [CV-16](#cv-16-monitoring-dashboard) | P1 | Open | Restore an integrated view of scheduler, progress, and logs. |
 | [CV-17](#cv-17-project-creation-progress) | P1 | Verification pending | Explain lengthy input validation during Project creation. |
 | [CV-18](#cv-18-safe-emrys-stop) | P1 | Verification pending | Provide an operator stop action with safe recovery semantics. |
 | [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Verification pending | Name verification-only work accurately. |
@@ -113,27 +113,27 @@ discussion. Open questions are not filled with inferred implementation decisions
 
 | ID | Finding | Status |
 | --- | --- | --- |
-| [CV-U01](#cv-u01-cli-color-and-readability) | CLI color, readability and Inspect interpretation | Verification pending |
-| [CV-U02](#cv-u02-default-cli-verbosity) | Minimal default output, optional detail | Verification pending |
+| [CV-U01](#cv-u01-cli-color-and-readability) | CLI color, readability and Inspect interpretation | Open |
+| [CV-U02](#cv-u02-default-cli-verbosity) | Minimal default output, optional detail | Open |
 | [CV-U03](#cv-u03-init-and-validate-summaries) | Init and Validate summaries | Verification pending |
-| [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Verification pending |
+| [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Open |
 | [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Verification pending |
 | [CV-U06](#cv-u06-available-resources) | Restore historical workflow and stage resources | Verification pending |
 | [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Verification pending |
-| [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Verification pending |
-| [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Verification pending |
+| [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Open |
+| [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Open |
 | [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Completed |
-| [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Verification pending |
+| [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Open |
 | [CV-U12](#cv-u12-duplicate-submission-warning) | Warn before accidental duplicate submission | Verification pending |
 | [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Verification pending |
-| [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Verification pending |
+| [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Open |
 | [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Verification pending |
-| [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Verification pending |
-| [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Verification pending |
-| [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Verification pending |
+| [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Open |
+| [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Open |
+| [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Open |
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Open |
-| [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
-| [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Verification pending |
+| [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Open |
+| [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Open |
 | [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Verification pending |
 | [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Verification pending |
 | [CV-U24](#cv-u24-persistent-cli-defaults) | Save site and other repeated CLI values | Verification pending |
@@ -142,7 +142,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U27](#cv-u27-tested-smoke-to-real-resource-guidance) | Tested workload profile, Doctor checks and exact submission | Verification pending |
 | [CV-U28](#cv-u28-historical-stage-configuration-and-wall-time) | Restore benchmark-derived stage settings and wall-time performance | Verification pending |
 | [CV-U29](#cv-u29-early-inspect-and-dashboard-feedback) | Show useful information before monitoring fully populates | Verification pending |
-| [CV-U30](#cv-u30-dashboard-color-and-pane-layout) | Restore dashboard colors and readable pane layout | Verification pending |
+| [CV-U30](#cv-u30-dashboard-color-and-pane-layout) | Restore dashboard colors and readable pane layout | Open |
 | [CV-U31](#cv-u31-dashboard-automatic-run-selection) | Select the current Run without parameters; record lost functionality | Verification pending |
 | [CV-U32](#cv-u32-dashboard-independent-of-working-directory) | Open the dashboard from outside the Project directory | Verification pending |
 | [CV-U33](#cv-u33-dashboard-resource-usage) | Restore resource-usage display and preserve the wall-time objective | Verification pending |
@@ -167,6 +167,14 @@ presentation owner for headings and status emphasis. Plain, redirected, dumb
 terminal and `NO_COLOR` behavior remains readable. Inspect groups the Run summary
 and scientific milestones before blockers and the next supported action.
 
+**September 16 Viking acceptance failure:** The operator reported that `emrys
+init`, `emrys validate` and `emrys run` were still effectively monocolored.
+`runtime discover` also needs the shared color/readability treatment, and guided
+prompts need clearer semantic color. In Inspect, `Run complete` remained too hard
+to find. Dashboard log coloring is retained separately in CV-U14/CV-U30. These
+are terminal observations, not evidence that redirected, `NO_COLOR`, or dumb
+terminal behavior should become color-dependent. CV-U01 returns to **Open**.
+
 ### CV-U02 Default CLI verbosity
 
 **Operator report:** “Overall cli output is far too verbose by default, there
@@ -185,6 +193,17 @@ still retain their existing event detail fields.
 static Inspect now expose the same Boolean `--verbose` contract. Normal output
 hides identities, paths, commands, successful transaction tables and per-Task
 detail while retaining progress, failures, blockers and supported next actions.
+
+**September 16 refinement and acceptance failure:** Normal `emrys run` output
+was still too verbose. Its default must retain only Run identity/location, major
+phase or scheduler state, actionable warnings, final outcome, report/log location
+and a recovery/resume instruction when needed. Per-Task detail, environment
+diagnostics, executed commands, polling detail and low-level logs belong behind
+`--verbose`. Inspect needs the same split, with Run admission, Attempt outcome,
+Scientific Results, Reporting and next action prominent rather than one ambiguous
+completion label. `runtime discover` also needs a concise default and the same
+Boolean `--verbose` detail switch. Durable evidence and recovery detail remain
+retained even when hidden from normal output. CV-U02 returns to **Open**.
 
 ### CV-U03 Init and Validate summaries
 
@@ -226,6 +245,14 @@ Repair internals, package output paths, runtime narration, Slurm accounting and
 precise phase/invocation timing move behind `--verbose`; the shared named-phase
 spinner and elapsed timer remain visible during work.
 
+**September 16 Viking acceptance failure:** During Doctor repair, a live progress
+line and the next Slurm diagnostic were joined as
+`submission-to-return wait 0:00:00Slurm submission records...`. This makes the
+named phase unreadable and is tracked as the otherwise-unowned rendering defect
+CV-UX-01 below. The operator also reported that Doctor repair takes too long;
+CV-26 owns phase attribution and performance rather than treating shorter output
+as a speedup. CV-U04 returns to **Open**.
+
 ### CV-U05 Doctor first-run expectations
 
 **Operator question:** “Why did we lose the message about doctor taking 5-15 mins
@@ -245,6 +272,12 @@ measurement made while recording these findings.
 fixtures cover both normal suppression and expanded verbose presentation. The
 integrated standard CI recorded above passed; the five cards remain Verification
 pending for operator terminal review.
+
+**September 16 timing observation:** The operator reported that Doctor repair
+still takes too long and that setup plus execution should not consume a full hour.
+No exact phase timings or comparable cold/warm boundary were supplied in this
+finding batch. The 5–25-minute notice remains expectation-setting, not performance
+acceptance; CV-26 retains measured attribution and optimization ownership.
 
 ### CV-U06 Available resources
 
@@ -325,9 +358,24 @@ discovery and reuse, fewer repeated hashing/setup operations, manifests inside
 the Project, and tested site/workload settings. Preserve necessary integrity and
 readiness checks while minimizing repeated work, commands and decisions.
 
-These details are retained in CV-U22 and CV-U24–CV-U28. They are parts of one
-complete smoke-to-real journey, not optional expert prerequisites that can be
-omitted from the novice path.
+These details are retained in CV-U22 and CV-U24–CV-U28. They were delivered as
+parts of one complete smoke-to-real journey. The latest direction below
+supersedes only the requirement to run the synthetic exercise first; whichever
+path the operator chooses still retains its required readiness and integrity
+checks.
+
+**Latest operator direction:** The synthetic E2E is now optional so a user can
+reach their own study without first completing a second Project and Run. The
+ordinary fast path should create the real Project, prepare/verify its runtime,
+run, watch and inspect it. If the operator chooses the smoke exercise, its
+prepared tools should still flow into the real Project under CV-U22. Skipping the
+smoke exercise removes that preliminary site check; it does not remove Doctor,
+scientific-input admission, storage qualification, or actual-Run evidence.
+
+The Quickstart also still contains too many preconstructed multi-command blocks.
+Distinct `emrys` commands should be separate copyable blocks so each can explain
+its purpose, expected output, success condition and stop/recovery condition.
+Environment setup may stay grouped only where its commands must execute together.
 
 **Delivered implementation and documentation:** Quickstart now gives one
 paste-ready synthetic path followed by one guided six-library EV/PUM1 path. The
@@ -352,6 +400,12 @@ Viking installation and a novice smoke-to-EV/PUM1 walkthrough remain pending,
 so CV-U08 is **Verification pending**. The historical policy and retained study
 evidence support the selected values but are not a new whole-Run cluster
 execution or performance measurement.
+
+The September 16 walkthrough rejected the mandatory smoke-to-real structure,
+command grouping, region/reference language and preview-to-creation handoff.
+Those are negative novice-acceptance results, so CV-U08 is **Open** rather than
+Verification pending. The reported full-hour experience is not yet attributed
+to setup, queueing, smoke execution, runtime checks or real analysis.
 
 Local integration checks pass 631 tests across every test file changed by this
 tranche, with one Linux-only materialization test skipped on macOS. Six isolated
@@ -383,6 +437,12 @@ runtime or scheduler terminology. Bash-fence syntax and changed-document links
 pass locally, and the integrated repository documentation gate recorded above
 passed. CV-U09 is **Verification pending** for novice acceptance; that acceptance
 does not require a new cluster run.
+
+**September 16 direction:** Explanation alone is insufficient: the synthetic E2E
+must be presented as an optional environment/site exercise, with the time and
+confidence tradeoff stated plainly, rather than a mandatory prerequisite to the
+real-data path. CV-U09 returns to **Open** for that revised journey and novice
+acceptance.
 
 ### CV-U10 Unnecessary Quickstart command
 
@@ -432,6 +492,15 @@ links and anchors pass a focused local check, and the integrated repository
 documentation gate recorded above passed. CV-U11 is **Verification pending**
 for novice acceptance. CV-U20 separately owns whether every knowable Viking/PUM1
 value has been supplied.
+
+**September 16 acceptance failure:** The operator requested fewer preconstructed
+blocks and separate `emrys` commands with separate explanations. After the Step 7
+questionnaire, the preview did not emit `Project ready` and the guide did not make
+the next action sufficiently clear: the operator was expected to paste a very
+large generated creation command. The no-write preview must say explicitly that
+the Project does not yet exist, identify one unmistakable next action, and reserve
+`Project ready` for successful publication. CV-U11 returns to **Open**; CV-U18
+owns the guided product interaction.
 
 ### CV-U12 Duplicate submission warning
 
@@ -492,6 +561,25 @@ Scheduler-name selection still requires one exact current-user root allocation;
 duplicate names require the numeric ID. Viking terminal use remains pending, so
 the card is Verification pending.
 
+**September 16 Viking acceptance failure:** Plain `emrys watch` did not select
+the intended job or offer a selector; the operator had to find and enter the
+numeric scheduler job ID manually. The exact invocation directory, candidate
+roster and retained request state were not supplied, so the cause remains
+uncharacterized. The ordinary path must either select the sole admissible target
+or present the picker; silent failure followed by manual scheduler-ID discovery
+does not satisfy this card. CV-U13 returns to **Open** and shares the unresolved
+selection defect with CV-U31/CV-16.
+
+**Approved correction:** Source audit found that no-argument watch outside a
+Project delegated multiple scheduler candidates to the raw dashboard resolver,
+which silently tried the newest candidate first and never opened the existing
+picker. Watch now selects one bounded current-user scheduler candidate, offers
+all candidates in the existing interactive picker, and fails noninteractively
+with their IDs. The raw resolver now accepts only a sole discovered candidate
+and refuses ambiguity rather than inferring newest. The two affected test files
+pass locally (249 tests), and Ruff passes on all touched Python files. Live
+Viking selection remains required, so CV-U13 is **Verification pending**.
+
 ### CV-U14 Dashboard logs
 
 **Operator instruction:** “Logs in dashboard should also be friendlier and not
@@ -505,9 +593,16 @@ No specific palette, filtering rule or log-content deletion was requested.
 warning, error and completion log lines with distinct colors while preserving
 every byte of text and readable plain-terminal output. Dated scheduler, Run and
 stream headings are emphasized separately from unverified log interpretation.
-Focused rendering tests verify the styles and unchanged literal content; the
+Focused rendering tests verify the styles and unchanged literal content, and the
 integrated standard CI passed. Institutional terminal and operator acceptance
-remain pending, so CV-U14 is **Verification pending**.
+were still pending.
+
+**September 16 Viking observation:** Dashboard and other displayed logs remained
+monocolored even though the surrounding dashboard rendered color. Literal log
+text and retained bytes must remain unchanged, while severity and known workflow
+prefixes gain useful optional styling. Timestamped or otherwise prefixed lines
+must not silently evade the styling rules. Plain/redirected output and
+`NO_COLOR` remain readable. This confirms CV-U14 remains **Open**.
 
 ### CV-U15 Dashboard action language
 
@@ -543,8 +638,19 @@ exit. Arrow, `j`/`k`, Page Up/Down and Home/`g` keyboard navigation remains.
 Terminal fixtures cover mouse reports, keyboard navigation and restoration and
 passed the integrated standard CI. An external terminal multiplexer can still
 translate a wheel event into an ordinary arrow key before EMRYS receives it.
-Institutional terminal acceptance remains pending, so CV-U16 is
-**Verification pending**.
+Institutional terminal acceptance remained pending for that narrower outcome.
+
+**Expanded September 16 log-navigation request:** Selecting a log should begin at
+its bottom/most recent retained line. New text should auto-scroll while the user
+remains at the bottom; scrolling upward should pause following visibly, and a
+deliberate return to the bottom should resume it. Add Vim-like counted movement
+such as `99j`/`99k`, `/pattern` search with highlighted matches, and next/previous
+match navigation such as `n`/`p` (or an equivalently documented pair). Line
+numbers are also requested. Because the current view retains a bounded tail,
+absolute-file versus tail-relative numbering must be stated rather than guessed.
+These are desired interactions, not authority to weaken bounded reads, stream
+identity, sanitization, or changed-generation handling. These additional
+interactions remain Open.
 
 ### CV-U17 Completion communication
 
@@ -584,7 +690,20 @@ operator to final inspection; it does not infer completion or recovery.
 
 The completion and failed-terminal projections passed the integrated standard
 CI. Historical-cause reconstruction and institutional display acceptance remain
-pending, so CV-U17 is **Verification pending**.
+pending for that implementation.
+
+**September 16 Viking acceptance failure:** A supplied dashboard view reported
+`36/36 Snakemake jobs`, `0 jobs remaining`, Step FINAL `1/1 DONE`, and recent
+completion entries for Steps 09, 10 and FINAL, while the same screen showed
+overall `State: UNKNOWN`, Steps 09 and 10 as `1/? WAITING`, REPORT as `0/?
+PENDING`, and no Run/control identity. The operator reported that static Inspect
+and the logs claimed completion. The screenshot proves an internally
+contradictory diagnostic display; it does not independently promote scheduler
+or log text to scientific/reporting proof. When exact admitted Run evidence is
+available, watch must show its verified projection. With only raw diagnostic
+logs, it must distinguish “workflow log finished; Run completion unverified”
+from active waiting and must not call unavailable reporting `PENDING`. CV-U17
+returns to **Open**.
 
 ### CV-U18 Interactive input-list creation
 
@@ -615,6 +734,29 @@ drafting; ordinary Quickstart no longer exposes its long flag sequence.
 biological pairing, selector forms and create-absent refusal. The integrated
 standard CI recorded above passed. A novice Viking walkthrough remains required;
 this card is **Verification pending** until that evidence is supplied.
+
+**September 16 Viking findings:** The instruction “Leave the regions-file
+prompt empty. At the selector prompt, enter this complete space-separated list;
+the names must match the delivered reference” did not tell a novice what a
+regions file is, what the selectors select, or how to confirm the names. The
+guided sequence also asks for selectors before it collects the reference FASTA
+and GTF, so it cannot show or validate the available FASTA contig names at that
+point. Reorder the interaction so the admitted reference can inform the
+selector prompt, explain the mutually exclusive regions-file and selector
+choices in plain English, and never infer a scientific selection for the user.
+
+Prompts need semantic color as well as clearer wording. Defaults should appear
+dimmed/gray in the prompt with an explicit plain-text fallback such as `Press
+ENTER for VALUE`; pressing Enter must remain unambiguous without color. After
+the final question, the current no-write preview is not a created Project, yet
+the large generated replay command appears without a clear transition or
+`Project ready` message. The interface must state that preview is complete and
+the Project does not yet exist, then present one unmistakable next action.
+A candidate simplification is one interactive collect-review-confirm-publish
+transaction, keeping the long replay command for verbose or automation use;
+recording that candidate does not by itself approve the interface or weaken the
+create-absent and input-change checks. This negative Viking acceptance keeps
+CV-U18 **Open**.
 
 ### CV-U19 Long-term interactive CLI
 
@@ -683,6 +825,18 @@ Viking novice walkthrough remains pending; the integrated standard CI recorded
 above passed. No new cluster execution, performance benchmark, scientific review
 or biological validation is claimed. CV-U20 is **Verification pending**.
 
+**September 16 clarification and acceptance failure:** A reference FASTA and
+reference GTF are external scientific inputs for a real-data Project; EMRYS does
+not generate them. The synthetic Project supplies its own synthetic reference.
+EMRYS may derive the STAR index and BED12 data and create or check reference
+sidecars such as `.fai` and `.dict`, but those derived artifacts are not a
+substitute for the matching FASTA/GTF pair. If either source file is missing,
+the novice path must stop and say to obtain the correct matching reference and
+annotation rather than guess or continue. Quickstart currently names the paths
+but does not explain this ownership or missing-input action adequately. It must
+also tie selector names to the selected FASTA's actual contigs. CV-U20 returns
+to **Open** pending a novice walkthrough of that complete explanation.
+
 ### CV-U21 Technical parameter assistance
 
 **Operator instruction:** “There should be a tool for determining sjdb overhang,
@@ -712,8 +866,15 @@ derivation, gzip input and the bounded first-record behavior. All 115
 source-bound onboarding cases pass; the two isolated replay cases reproduce the
 same older-installed-package mismatch on the integration baseline. Ruff
 formatting/lint, documentation checks and diff checks pass. A fresh operator
-exercise with non-synthetic variable-length reads remains required; CV-U21 is
-**Verification pending**.
+exercise with non-synthetic variable-length reads remains required for that
+implemented assistance.
+
+**September 16 extension:** The same assistance principle applies to region
+selectors: after the user supplies the reference FASTA, show or validate the
+contig names that the selector prompt can accept. This is technical assistance,
+not authority to choose biologically appropriate regions, a reference release,
+or an annotation on the user's behalf. Prompt ordering must make the selected
+FASTA available before this assistance is offered. CV-U21 remains **Open**.
 
 ### CV-U22 Smoke-project tool reuse
 
@@ -758,6 +919,13 @@ requests a same-source shared replacement.
 verification-only Doctor cases passed the integrated standard CI. A fresh
 institutional smoke-to-study reuse journey remains pending, so CV-U22 is
 **Verification pending**.
+
+**Latest journey boundary:** The synthetic E2E is optional. When it is chosen,
+reuse its compatible prepared tools in the real Project as above. The direct
+real-data path must also work without a smoke Project and must not require an
+invented donor. Both paths retain explicit runtime discovery, compatibility and
+Project-readiness checks. This changes the Quickstart routing requirement, not
+the immutable-generation or explicit replacement safeguards.
 
 ### CV-U23 Repair restriction when sharing tools
 
@@ -880,6 +1048,12 @@ FASTQ hashes for preview and exactly one per FASTQ for creation, with a separate
 mutation-boundary refusal. Comparable large-input timing and a Viking exercise
 remain required; the implementation passed the integrated standard CI and the
 card is **Verification pending** until that evidence is supplied.
+
+**Interactive-flow consequence:** If onboarding becomes one
+collect-review-confirm-publish transaction under CV-U18, it must retain this
+same zero-full-hash preview and one-full-hash creation contract. Eliminating the
+large replay-command handoff must not add another FASTQ scan or bypass the
+publication-boundary identity check.
 
 ### CV-U26 Manifests inside the Project
 
@@ -1073,8 +1247,13 @@ the tested compact layout. Distinct title, panel-title, label, value, success,
 warning and failure styles restore visual structure, while the controls and
 dated-status information use the full-width footer area. Wide, compact, small,
 plain and colored rendering fixtures passed the integrated standard CI.
-Institutional terminal-size and operator acceptance remain pending, so CV-U30
-is **Verification pending**.
+Institutional terminal-size and operator acceptance remained pending.
+
+**September 16 repeat finding:** The dashboard and its logs were still reported
+as monocolored on Viking. Colored headings alone do not satisfy the requirement;
+status, severity, progress and log events need restrained semantic styling with
+a readable plain/`NO_COLOR` rendering. This is negative visual acceptance for
+CV-U30 and the log-specific CV-U14, not a new palette selection.
 
 ### CV-U31 Dashboard automatic Run selection
 
@@ -1109,6 +1288,22 @@ identified in this bounded source audit; Viking/operator comparison remains
 required. The integrated selector, regression-inventory and rendering cases
 passed standard CI, so completeness is not claimed and the card is Verification
 pending.
+
+**September 16 Viking acceptance failure:** Plain `emrys watch` did not select
+the intended job or offer a selector, and the operator had to enter the numeric
+Slurm job ID manually. The working directory, discovered candidate roster and
+exact request state were not supplied, so this record does not infer the cause.
+Ordinary no-argument watch must select the sole admissible current target or
+show a picker when several targets are admissible; raw scheduler-ID entry is a
+diagnostic fallback, not the novice route. CV-U31 returns to **Open**.
+
+**Approved paired correction:** The CV-U13 scheduler fallback correction also
+closes the identified no-Project selection gap for this card without creating a
+second monitoring owner: sole candidate selection and multi-candidate picking
+remain in `emrys watch`, while raw dashboard discovery rejects ambiguity. The
+Project Run/request one-or-picker behavior is unchanged. Local focused coverage
+passes (249 tests); Viking must still demonstrate the intended no-argument
+selection, so CV-U31 is **Verification pending**.
 
 ### CV-U32 Dashboard independent of working directory
 
@@ -1167,6 +1362,36 @@ tested compact layout. CV-U06/CV-U28 restore the selected historical wall-time
 policy separately. Resource-label, identity and layout fixtures passed the
 integrated standard CI. Institutional accounting/display acceptance and any new
 wall-time measurement remain pending, so CV-U33 is **Verification pending**.
+
+## Additional Viking UX findings — 2026-09-16
+
+This matrix holds findings from the same operator run only when no existing
+CV/CV-U card already owns the defect. Recording them preserves the observation
+and acceptance boundary; it does not authorize implementation, cluster work or
+an evidence promotion. Related findings remain on their existing cards above.
+
+| ID | Finding | Status |
+| --- | --- | --- |
+| [CV-UX-01](#cv-ux-01-doctor-live-progress-output-collision) | Doctor live progress collides with the next diagnostic line | Open |
+
+### CV-UX-01 Doctor live-progress output collision
+
+**Observed Viking output:** During `emrys doctor --repair`, the live phase line
+ended with `Slurm submission-to-return wait 0:00:00` and the next diagnostic
+began immediately on the same terminal row as `Slurm submission records:`,
+rendering `0:00:00Slurm submission...` with no separating space or newline. The
+captured run then printed retained submission stdout/stderr paths and Slurm job
+`621172`. This is a presentation defect; the screenshot does not establish that
+the retained records or job identity were wrong.
+
+**Acceptance:** Before ordinary stdout/stderr diagnostics are emitted, finish or
+clear the live spinner/progress row and serialize the next record through the
+same terminal-presentation boundary. The concise default should not emit verbose
+submission-record paths, but `--verbose` must still render every retained detail
+without collision, loss or reordering. Cover a real PTY with color, narrow-line
+wrapping and `NO_COLOR`/plain rendering. Keep the timer and phase label readable
+when the wait duration is zero. CV-U04 owns Doctor's broader presentation and
+CV-26 owns its duration; CV-UX-01 remains **Open** until Viking/PTY acceptance.
 
 ## P0 outcomes
 
@@ -1493,6 +1718,28 @@ reference admission. Runtime execution of these fixtures passed the current
 integrated standard CI. Institutional acceptance remains pending; the earlier
 local test environment lacked their dependencies.
 
+**September 16 novice-path acceptance failure:** The guided Viking run exposed
+four unresolved onboarding gaps. First, the regions-file/selector instruction
+does not explain the choice or connect selector names to the chosen reference.
+Second, although Quickstart asks for a reference FASTA and GTF, it does not say
+that a real-data operator must supply the matching external scientific inputs,
+that EMRYS does not generate them, or that setup must stop if either is absent;
+the synthetic Project is the separate case that supplies a synthetic reference.
+Third, the prompt asks for selectors before collecting the FASTA/GTF, preventing
+reference-informed contig assistance. Fourth, the final no-write preview emits
+a large replay command without clearly saying that no Project exists yet or
+making the required creation action unmistakable.
+
+Defaults must be visible in dim/gray prompt text with a literal `Press ENTER for
+VALUE` message that remains clear without color. Quickstart must use separate
+copyable blocks for separate `emrys` commands and explain each command's
+purpose, expected success signal and next action. The synthetic E2E is optional:
+the fast novice route is real Project creation, Doctor/runtime readiness, Run,
+Watch and Inspect. Choosing the smoke exercise still provides site confidence
+and a compatible runtime-reuse opportunity, but skipping it does not skip the
+real Project's readiness or evidence checks. These are negative institutional
+onboarding observations; CV-06 remains **Open**.
+
 ### CV-07 Site and workload profile selection
 
 **Finding:** Built-in site selection still required a hand-edited profile for
@@ -1591,6 +1838,20 @@ passed the combined standard CI. The hosted donor-science/borrower-verification
 journey is covered under CV-01, and the integrated standard CI recorded above
 passed. CV-08 is **Verification pending** for institutional two-Project acceptance
 and compute-node accessibility; no borrower scientific Run is claimed.
+
+**September 16 discovery UX and repeated-work finding:** `runtime discover`
+needs the same concise colored default and Boolean `--verbose` detail contract
+as the other operator commands. Source review found that preview and
+`--execute` are separate invocations that independently repeat discovery and
+readiness probes; the dry run does not retain a reusable admitted plan. The
+operator asked whether execution can reuse the work that preview just did.
+Remove duplicate work only through a same-invocation confirmation flow or an
+explicitly retained, content-bound plan with targeted freshness checks at the
+mutation boundary. Execution must not blindly trust a stale preview or weaken
+runtime-content, namespace, source-generation or borrower-publication checks.
+This records the performance/interaction requirement and safe boundary, not an
+approved persistence design. A direct real-data path must also work when no
+optional smoke donor exists.
 
 ### CV-09 Qualification scope and placement
 
@@ -2034,6 +2295,24 @@ The full standalone suite passes 182 local tests, including both public offline
 modes and unchanged online refresh queries. This preserves the supported legacy
 surface without establishing institutional acceptance or retiring the standalone
 entry point.
+
+**September 16 Viking acceptance failures:** Plain `emrys watch` failed to
+select the intended current target or offer a selector, forcing manual numeric
+job-ID entry. A supplied dashboard simultaneously showed `36/36` jobs and zero
+remaining plus FINAL `1/1 DONE`, yet reported overall `UNKNOWN`, Steps 09/10 as
+`1/? WAITING`, REPORT as `0/? PENDING`, and no admitted Run/control identity.
+The screenshot establishes a contradictory diagnostic display, not scientific
+completion. Watch must prefer admitted Run evidence and otherwise label a
+finished workflow log as unverified rather than active waiting.
+
+The log view was still reported as monocolored. It should open at the most
+recent admitted line and follow new text automatically; upward navigation must
+pause following visibly and returning to the bottom must resume it. Retain a
+bounded reader while adding clear absolute or tail-relative line numbering,
+counted `j`/`k` motion such as `99j`/`99k`, `/pattern` search with highlighting,
+and `n`/`p` next/previous matches. Missing/rotated/truncated-log and reconnect
+protections remain required. These operator observations return CV-16 to
+**Open** despite prior hosted parity checks.
 
 ### CV-17 Project creation progress
 
@@ -2758,6 +3037,18 @@ That combined run also validates the retained producer-workspace prerequisite.
 CV-26 remains Open for the complete comparable
 institutional operation/queue measurements and E11 attribution; this experiment
 and its adoption decision are finished.
+
+**September 16 performance report:** Doctor repair was still experienced as too
+long, and the overall setup/execution walkthrough was reported to approach a
+full hour. No phase-resolved Viking timings accompanied that observation, so it
+does not establish whether package work, runtime discovery, repeated probes,
+Slurm waiting, synthetic execution or the actual analysis dominated. Retain the
+report as negative operator acceptance and capture comparable end-to-end and
+per-phase Viking measurements before selecting optimizations. Making the
+synthetic E2E optional shortens the novice route but is not evidence that Doctor
+itself became faster. The repeated preview/execute work in `runtime discover`
+is owned by CV-08; any consolidation must preserve its mutation-boundary checks.
+CV-26 remains **Open**.
 
 ## P3 outcome
 
