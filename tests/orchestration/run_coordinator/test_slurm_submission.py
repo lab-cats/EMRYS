@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
+import signal
 import stat
 import subprocess
 import sys
@@ -1121,6 +1122,7 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(
         "--exclusive",
         "--nodelist=node-[01-02]",
         "--time=02:30:00",
+        "--signal=B:TERM@300",
         f"--job-name={stem}",
         f"--output={log_dir}/{stem}-%j.out",
         f"--error={log_dir}/{stem}-%j.err",
@@ -1986,6 +1988,53 @@ def test_batch_script_checks_identity_loads_modules_and_cleans_private_scratch(
     assert observed["request_token"] == request_token
     assert observed["scratch"].startswith(str(profile.placement.scratch_parent) + "/")
     assert observed["scratch_mode"] == 0o700
+    assert list(profile.placement.scratch_parent.iterdir()) == []
+
+
+def test_batch_walltime_warning_forwards_once_and_waits_for_owned_command(
+    tmp_path: Path,
+) -> None:
+    ready = tmp_path / "ready"
+    interrupted = tmp_path / "interrupted"
+    child_code = (
+        "import os,pathlib,signal,sys,time; "
+        "ready=pathlib.Path(sys.argv[1]); interrupted=pathlib.Path(sys.argv[2]); "
+        "signal.signal(signal.SIGTERM, lambda *_: "
+        "(interrupted.write_text('TERM\\n'), sys.exit(23))); "
+        "ready.write_text(str(os.getpid())); "
+        "time.sleep(60)"
+    )
+    profile = _profile(tmp_path)
+    plan = slurm_submission.plan_submission(
+        profile,
+        emrys_argv=(
+            sys.executable,
+            "-c",
+            child_code,
+            str(ready),
+            str(interrupted),
+        ),
+        log_dir=tmp_path / "logs",
+    )
+    process = subprocess.Popen(
+        ("/bin/bash",),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=_batch_environment(plan),
+    )
+    assert process.stdin is not None
+    process.stdin.write(plan.batch_script)
+    process.stdin.close()
+    deadline = time.monotonic() + 5
+    while not ready.exists() and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert ready.exists()
+    assert int(ready.read_text()) != process.pid
+    os.kill(process.pid, signal.SIGTERM)
+    assert process.wait(timeout=10) == 23
+    assert interrupted.read_text() == "TERM\n"
     assert list(profile.placement.scratch_parent.iterdir()) == []
 
 

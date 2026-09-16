@@ -250,3 +250,13 @@ time, and response, and resolve acceptance with the scheduler/operator before
 retrying. EMRYS does not automatically resubmit an uncertain request. Scheduler
 accounting is operational evidence; inspect the Run to determine its actual
 completion and supported recovery.
+
+**Job reached its wall-time limit.** Preserve the exact `sacct` row, scheduler
+streams, application log, Run directory, Attempt records, lock, partials, and
+native workspace. New submissions request a batch-only `TERM` warning five
+minutes before the limit and forward it to the EMRYS delegate, but the hard
+limit can still arrive before finalization closes. A dashboard `INTERRUPTED`,
+`INCOMPLETE`, or `NOT REACHED` label means only that the scheduler job stopped.
+Run `emrys inspect RUN` from the Project and follow its printed supported action.
+If inspection says `Do not resume` or `Recovery available: no`, retain the Run
+for integrity review; do not remove its lock or retry into that Run.

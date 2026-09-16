@@ -1218,19 +1218,23 @@ def active_sample_info(model, sample):
     return sorted(active_items, key=lambda item: item[1].get("started") or 0)[-1]
 
 
-def latest_sample_state(model, sample, now):
+def latest_sample_state(model, sample, now, terminal_state=None):
     _, info = active_sample_info(model, sample)
     if info:
-        elapsed = duration(now - info["started"]) if info.get("started") else "-"
-        return info["stage"], "RUNNING", elapsed
+        elapsed = (
+            "-"
+            if terminal_state or not info.get("started")
+            else duration(now - info["started"])
+        )
+        return info["stage"], "INTERRUPTED" if terminal_state else "RUNNING", elapsed
     sample_state = model["samples"].get(sample, {})
     history = sample_state.get("history", {})
     last = sample_state.get("last_stage")
     if "06" in history:
         return "06", "READY FOR COHORT", "-"
     if last:
-        return last, "WAITING", "-"
-    return "-", "PENDING", "-"
+        return last, "INCOMPLETE" if terminal_state else "WAITING", "-"
+    return "-", "NOT REACHED" if terminal_state else "PENDING", "-"
 
 
 def sample_sort_key(sample):
@@ -1238,6 +1242,14 @@ def sample_sort_key(sample):
     match = re.search(r"(\d+)$", sample)
     replicate = int(match.group(1)) if match else sys.maxsize
     return replicate, sample
+
+
+def sample_stage_marker(key, history, active_key, status):
+    if key in history:
+        return "x"
+    if key == active_key:
+        return "!" if status == "INTERRUPTED" else ">"
+    return "-" if status in {"INTERRUPTED", "INCOMPLETE", "NOT REACHED"} else "."
 
 
 def peer_runtime_comparison(model, sample, now):
@@ -1540,9 +1552,14 @@ def progress_values(model):
     return complete, total, None if total is None else total - complete
 
 
-def progress_line(model, width):
+def progress_line(model, width, terminal_state=None):
     complete, total, remaining = progress_values(model)
     if total is None:
+        if terminal_state:
+            return (
+                "%d Snakemake jobs observed complete | job ended; total unknown"
+                % complete
+            )
         return (
             "%d Snakemake jobs observed complete | total and remaining unknown"
             % complete
@@ -1550,18 +1567,19 @@ def progress_line(model, width):
     bar_width = max(10, min(28, width - 48))
     filled = int((complete / total) * bar_width + 0.5) if total else 0
     bar = "[" + "#" * filled + "-" * (bar_width - filled) + "]"
-    return "%s %d/%d Snakemake jobs | %d jobs remaining" % (
+    return "%s %d/%d Snakemake jobs | %d jobs %s" % (
         bar,
         complete,
         total,
         remaining,
+        "not completed" if terminal_state else "remaining",
     )
 
 
-def pipeline_lines(model, now, width, include_summary=True):
+def pipeline_lines(model, now, width, include_summary=True, terminal_state=None):
     lines = []
     if include_summary:
-        lines.extend([(progress_line(model, width), "cyan"), ""])
+        lines.extend([(progress_line(model, width, terminal_state), "cyan"), ""])
     lines.append("STEP    STAGE                       DONE     ELAPSED      STATE")
     active_counts = {}
     for info in model["active"].values():
@@ -1574,6 +1592,12 @@ def pipeline_lines(model, now, width, include_summary=True):
             state, style = "NOT SCHEDULED", "dim"
         elif expected is not None and done == expected and not running:
             state, style = "DONE", "green"
+        elif terminal_state and running:
+            state, style = "INTERRUPTED (%d)" % running, "red"
+        elif terminal_state and done:
+            state, style = "INCOMPLETE", "red"
+        elif terminal_state:
+            state, style = "NOT REACHED", "dim"
         elif running:
             state, style = "RUNNING (%d)" % running, "yellow_bold"
         elif done:
@@ -1581,7 +1605,7 @@ def pipeline_lines(model, now, width, include_summary=True):
         else:
             state, style = "PENDING", "dim"
         start = model["started"].get(key)
-        if start is None:
+        if start is None or terminal_state and state != "DONE":
             elapsed = "-"
         else:
             stop = model["finished"].get(key) if state == "DONE" else now
@@ -1629,7 +1653,14 @@ def workflow_phase(model):
     return 1, "PHASE UNKNOWN"
 
 
-def current_lines(model, identity, now, width, include_active=True):
+def current_lines(
+    model, identity, now, width, include_active=True, terminal_state=None
+):
+    if terminal_state:
+        return [
+            "Slurm ended this job in %s; log-derived active work is interrupted, not "
+            "running. Run final EMRYS inspection before recovery." % terminal_state,
+        ]
     grouped = {}
     for info in model["active"].values():
         if info["stage"] == "FINAL":
@@ -1705,10 +1736,10 @@ def current_lines(model, identity, now, width, include_active=True):
     return lines
 
 
-def sample_lines(model, now, width):
+def sample_lines(model, now, width, terminal_state=None):
     sample_width = 20
     pipeline_width = 13
-    status_width = 10
+    status_width = 11
     elapsed_width = 9
     job_width = 7
     fixed = sample_width + pipeline_width + status_width + elapsed_width + job_width + 6
@@ -1733,9 +1764,11 @@ def sample_lines(model, now, width):
         )
     ]
     for sample in sorted(model["sample_order"], key=sample_sort_key):
-        key, status, elapsed = latest_sample_state(model, sample, now)
+        key, status, elapsed = latest_sample_state(model, sample, now, terminal_state)
         style = (
-            "yellow_bold"
+            "red"
+            if status == "INTERRUPTED"
+            else "yellow_bold"
             if status == "RUNNING"
             else "green"
             if status == "READY FOR COHORT"
@@ -1749,11 +1782,7 @@ def sample_lines(model, now, width):
         complete = sum(1 for stage in SAMPLE_STAGE_KEYS if stage in history)
         active_job, _ = active_sample_info(model, sample)
         markers = "".join(
-            "x"
-            if stage in history
-            else ">"
-            if stage == key and status == "RUNNING"
-            else "."
+            sample_stage_marker(stage, history, key, status)
             for stage in SAMPLE_STAGE_KEYS
         )
         pipeline = "[%s] %d/7" % (markers, complete)
@@ -1795,14 +1824,18 @@ def sample_lines(model, now, width):
         for replicate, samples in pairs:
             members = []
             for sample in samples:
-                key, status, _ = latest_sample_state(model, sample, now)
+                key, status, _ = latest_sample_state(model, sample, now, terminal_state)
                 members.append("%s=%s %s" % (sample, key, status))
             ready = all(
                 "06" in model["samples"].get(sample, {}).get("history", {})
                 for sample in samples
             )
             label, style = (
-                ("READY", "green_bold") if ready else ("PROCESSING", "yellow_bold")
+                ("READY", "green_bold")
+                if ready
+                else ("INCOMPLETE", "red")
+                if terminal_state
+                else ("PROCESSING", "yellow_bold")
             )
             lines.append(
                 [
@@ -1842,12 +1875,16 @@ def sample_lane_window(model, width):
     return keys[start : start + capacity], keys[:start]
 
 
-def sample_lane_lines(model, now, width):
+def sample_lane_lines(model, now, width, terminal_state=None):
     keys, hidden = sample_lane_window(model, width)
     cell_width = 6
     lane_header = " ".join("%-*s" % (cell_width, key) for key in keys)
     lines = [
-        "Legend: [x] complete  [>] running  [.] pending",
+        (
+            "Legend: [x] complete  [!] interrupted  [-] not reached"
+            if terminal_state
+            else "Legend: [x] complete  [>] running  [.] pending"
+        ),
     ]
     if hidden:
         lines.append(
@@ -1858,16 +1895,14 @@ def sample_lane_lines(model, now, width):
         )
     lines.extend(["", "%-22s %s" % ("SAMPLE", lane_header)])
     for sample in sorted(model["sample_order"], key=sample_sort_key):
-        active_key, status, _ = latest_sample_state(model, sample, now)
+        active_key, status, _ = latest_sample_state(model, sample, now, terminal_state)
         history = model["samples"].get(sample, {}).get("history", {})
         segments = [("%-22s " % sample, "normal")]
         for index, key in enumerate(keys):
-            if status == "RUNNING" and active_key == key:
-                marker, marker_style = ">", "yellow_bold"
-            elif key in history:
-                marker, marker_style = "x", "green_bold"
-            else:
-                marker, marker_style = ".", "dim"
+            marker = sample_stage_marker(key, history, active_key, status)
+            marker_style = {"x": "green_bold", ">": "yellow_bold", "!": "red"}.get(
+                marker, "dim"
+            )
             opening = "%s[" % key
             closing = "]" + " " * (cell_width - len(opening) - 2)
             segments.extend(
@@ -1893,6 +1928,13 @@ def sample_lane_lines(model, now, width):
         readiness_style = (
             "green_bold" if total is not None and ready == total else "yellow_bold"
         )
+        if terminal_state and readiness_style != "green_bold":
+            readiness_style = "red"
+        handoff = (
+            "job ended before all samples were ready"
+            if terminal_state
+            else "aggregate analysis unlocks when all are ready"
+        )
         lines.extend(
             [
                 "",
@@ -1903,7 +1945,7 @@ def sample_lane_lines(model, now, width):
                         "%d/%s" % (ready, "?" if total is None else total),
                         readiness_style,
                     ),
-                    (" - aggregate analysis unlocks when all are ready", "dim"),
+                    (" - " + handoff, "dim"),
                 ],
             ]
         )
@@ -1918,9 +1960,9 @@ def sample_lane_lines(model, now, width):
             if expected and model["done"].get(key, 0) == expected:
                 marker, style = "x", "green_bold"
             elif active_counts.get(key, 0):
-                marker, style = ">", "yellow_bold"
+                marker, style = ("!", "red") if terminal_state else (">", "yellow_bold")
             else:
-                marker, style = ".", "dim"
+                marker, style = ("-", "dim") if terminal_state else (".", "dim")
             label = "RPT" if key == "REPORT" else key
             aggregate_segments.extend(
                 [
@@ -1991,6 +2033,11 @@ def short_identity(value, length=16):
     return value[:length] + "..."
 
 
+def terminal_failure_state(slurm):
+    state = slurm.get("state", "UNKNOWN")
+    return state if slurm.get("terminal") and state != "COMPLETED" else None
+
+
 def overview_lines(slurm, identity, model, width):
     state = slurm.get("state", "UNKNOWN")
     state_style = (
@@ -2006,7 +2053,7 @@ def overview_lines(slurm, identity, model, width):
     progress = (
         (identity["verified_status"], "green_bold")
         if identity.get("verified_status")
-        else (progress_line(model, width), "cyan")
+        else (progress_line(model, width, terminal_failure_state(slurm)), "cyan")
     )
     return [
         [
@@ -2202,8 +2249,8 @@ def provenance_activity_lines(slurm, identity, model, now, width):
 
 
 def activity_lines(model, slurm, identity, now):
-    terminal = slurm.get("terminal", False)
-    if terminal:
+    if slurm.get("terminal", False):
+        failed_state = terminal_failure_state(slurm)
         lines = [
             (
                 "Slurm: %s | exit %s | elapsed %s"
@@ -2215,9 +2262,15 @@ def activity_lines(model, slurm, identity, now):
                 "green" if slurm.get("state") == "COMPLETED" else "red",
             ),
             "Attempt receipt: %s" % identity.get("attempt_status", "not reported"),
-            progress_line(model, 100),
+            progress_line(model, 100, failed_state),
             "Run root: %s" % identity.get("run_root", "-"),
         ]
+        if failed_state:
+            lines.append(
+                "Next: run final EMRYS inspection; scheduler termination alone does "
+                "not establish recovery."
+            )
+            return "JOB ENDED", lines
         lines.append(
             "Next: run final EMRYS inspection for completion and verified result "
             "locations."
@@ -2315,6 +2368,7 @@ def render(
         return
 
     details = view == "details"
+    terminal_state = terminal_failure_state(slurm)
     render_header(screen, job_id, "details" if details else "overview", attrs)
 
     def panel(y, x, h, w, title, lines, *, scrollable=False):
@@ -2370,7 +2424,7 @@ def render(
             pipeline_h,
             left_w,
             "PIPELINE",
-            pipeline_lines(model, now, left_w - 4, include_summary=details),
+            pipeline_lines(model, now, left_w - 4, details, terminal_state),
         )
         if details:
             title, lines = activity_lines(model, slurm, identity, now)
@@ -2388,7 +2442,7 @@ def render(
             current_h,
             right_w,
             current_title,
-            current_lines(model, identity, now, right_w - 4, include_active=details),
+            current_lines(model, identity, now, right_w - 4, details, terminal_state),
             scrollable=True,
         )
         if details:
@@ -2398,7 +2452,7 @@ def render(
                 main_h - current_h,
                 right_w,
                 "SAMPLE DETAILS",
-                sample_lines(model, now, right_w - 4),
+                sample_lines(model, now, right_w - 4, terminal_state),
             )
         else:
             panel(
@@ -2407,7 +2461,7 @@ def render(
                 main_h - pipeline_h,
                 left_w,
                 "SAMPLE LANES",
-                sample_lane_lines(model, now, left_w - 4),
+                sample_lane_lines(model, now, left_w - 4, terminal_state),
             )
             title, lines = provenance_activity_lines(
                 slurm, identity, model, now, right_w - 4
@@ -2428,7 +2482,7 @@ def render(
             pipeline_h,
             width - 2,
             "PIPELINE",
-            pipeline_lines(model, now, width - 6, include_summary=details),
+            pipeline_lines(model, now, width - 6, details, terminal_state),
         )
         panel(
             main_y + pipeline_h,
@@ -2436,7 +2490,7 @@ def render(
             main_h - pipeline_h,
             width - 2,
             current_title,
-            current_lines(model, identity, now, width - 6, include_active=details),
+            current_lines(model, identity, now, width - 6, details, terminal_state),
             scrollable=True,
         )
     render_footer(
@@ -2448,19 +2502,21 @@ def render(
 def snapshot(job_id, slurm, identity, model):
     now = time.time()
     complete, total, remaining = progress_values(model)
+    terminal_state = terminal_failure_state(slurm)
     print("EMRYS LIVE DASHBOARD v4.9 snapshot | job %s" % job_id)
     print(
-        "State: %s | %s/%s Snakemake jobs | %s remaining"
+        "State: %s | %s/%s Snakemake jobs | %s %s"
         % (
             slurm.get("state", "UNKNOWN"),
             complete,
             "unknown" if total is None else total,
             "unknown" if remaining is None else remaining,
+            "not completed" if terminal_state else "remaining",
         )
     )
     print("Run: %s" % identity.get("run_id", "-"))
     print("Configuration: %s" % configuration_text(identity))
-    for line in pipeline_lines(model, now, 80):
+    for line in pipeline_lines(model, now, 80, terminal_state=terminal_state):
         print(line[0] if isinstance(line, tuple) else line)
 
 

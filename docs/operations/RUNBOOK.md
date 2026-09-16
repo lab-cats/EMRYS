@@ -706,6 +706,13 @@ module roster and uses the admitted runtime's absolute paths. It creates and
 removes its own temporary directory. Runtime repair is an explicit Doctor
 operation; scientific execution does not install packages.
 
+The submission requests a batch-shell `TERM` warning five minutes before the
+wall-time limit. The wrapper forwards that warning once to the exact EMRYS
+delegate and waits for its exit, giving the existing Task and Attempt owners a
+bounded chance to record an honest interruption. Slurm may deliver configured
+advance signals somewhat early, and the hard limit still ends the allocation;
+the warning is not a promise that finalization will finish.
+
 Advanced operators may run `emrys doctor --repair --compute` inside an actual
 allocation. Return to the head node to complete preparation with
 `emrys doctor --repair`. The separate compute and finalization commands remain
@@ -733,6 +740,13 @@ Replace the placeholders above. Control-C stops `tail`, not the allocation.
 completion. Keep the source commit, command, inputs, job ID, accounting,
 streams, outputs, validation records, and receipts tied to the same Attempt.
 See [Troubleshooting](TROUBLESHOOTING.md) before retry or cleanup.
+
+For `TIMEOUT`, `CANCELLED`, `FAILED`, or another terminal failure, the dashboard
+labels formerly active work `INTERRUPTED`, partially completed stages
+`INCOMPLETE`, and untouched stages `NOT REACHED`. Those labels only correct the
+stopped-job display. Run final `emrys inspect` and follow its supported action;
+do not resume, remove a lock, or infer recoverability from the dashboard or
+scheduler state alone.
 
 ## Reuse prepared managed tools
 
