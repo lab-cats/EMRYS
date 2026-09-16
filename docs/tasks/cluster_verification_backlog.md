@@ -101,14 +101,14 @@ discussion. Open questions are not filled with inferred implementation decisions
 
 | ID | Finding | Status |
 | --- | --- | --- |
-| [CV-U01](#cv-u01-cli-color-and-readability) | CLI color and readability | Open |
+| [CV-U01](#cv-u01-cli-color-and-readability) | CLI color, readability and Inspect interpretation | Open |
 | [CV-U02](#cv-u02-default-cli-verbosity) | Minimal default output, optional detail | Open |
 | [CV-U03](#cv-u03-init-and-validate-summaries) | Init and Validate summaries | Open |
 | [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Open |
-| [CV-U05](#cv-u05-doctor-first-run-expectations) | Missing 5–15-minute first-run notice | Open |
+| [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Open |
 | [CV-U06](#cv-u06-available-resources) | Workflow CPU ceiling still 4 | Open |
-| [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation | Open |
-| [CV-U08](#cv-u08-quickstart-scope-and-language) | Minimal, plain-English Viking Quickstart | Open |
+| [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Open |
+| [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Open |
 | [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Open |
 | [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Open |
 | [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Open |
@@ -124,6 +124,16 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Open |
 | [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Open |
 | [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Open |
+| [CV-U24](#cv-u24-persistent-cli-defaults) | Save site and other repeated CLI values | Open |
+| [CV-U25](#cv-u25-repeated-fastq-hashing-during-init) | One full FASTQ hashing pass across preview and creation | Open |
+| [CV-U26](#cv-u26-manifests-inside-the-project) | Keep manifests inside their Project directory | Open |
+| [CV-U27](#cv-u27-tested-smoke-to-real-resource-guidance) | Tested workload profile, Doctor checks and exact submission | Open |
+| [CV-U28](#cv-u28-historical-stage-configuration-and-wall-time) | Restore benchmark-derived stage settings and wall-time performance | Open |
+| [CV-U29](#cv-u29-early-inspect-and-dashboard-feedback) | Show useful information before monitoring fully populates | Open |
+| [CV-U30](#cv-u30-dashboard-color-and-pane-layout) | Restore dashboard colors and readable pane layout | Open |
+| [CV-U31](#cv-u31-dashboard-automatic-run-selection) | Select the current Run without parameters; record lost functionality | Open |
+| [CV-U32](#cv-u32-dashboard-independent-of-working-directory) | Open the dashboard from outside the Project directory | Open |
+| [CV-U33](#cv-u33-dashboard-resource-usage) | Restore resource-usage display and preserve the wall-time objective | Open |
 
 ### CV-U01 CLI color and readability
 
@@ -134,6 +144,11 @@ validate are not. Run also unreadable wall of monocolor text. Inspect too.”
 Validate, Run and Inspect. This is a repeated requirement, not a new preference
 limited to one command. Doctor's presentation is separately detailed in CV-U04;
 dashboard logs are included in CV-U14. No color palette was specified.
+
+**Additional operator report:** “Emrys inspect output is very challenging to
+interpret”. Readability includes understanding the displayed information, not
+only adding color or shortening the output. Delayed population is a separate
+finding in CV-U29; both issues affect Inspect's usefulness.
 
 ### CV-U02 Default CLI verbosity
 
@@ -181,11 +196,14 @@ the underlying checks or repairs.
 **Operator question:** “Why did we lose the message about doctor taking 5-15 mins
 on first run?”
 
-**Requested outcome:** Restore the first-run notice that Doctor may take
-**5–15 minutes**. This is useful expectation-setting in normal output, distinct
-from verbose diagnostics. The reason the notice disappeared was not established
-in this discussion; the duration is the user's requested guidance, not a new
-timing measurement made while recording these findings.
+**Latest operator instruction:** “Inform user that doctor setup can take
+5-25 mins”. This updates the originally requested 5–15-minute range.
+
+**Requested outcome:** Show the **5–25-minute** setup expectation in normal
+Doctor output. It is useful expectation-setting, distinct from verbose
+diagnostics. The reason the notice disappeared was not established in this
+discussion; the range is the user's latest requested guidance, not a new timing
+measurement made while recording these findings.
 
 ### CV-U06 Available resources
 
@@ -198,6 +216,12 @@ The retained discussion did not establish why that cap remained or which setting
 produced it. No substitute CPU count, tuning result or resource-selection design
 was agreed here; preserve the resource-use requirement without inventing a cause.
 
+**Further requirement:** The operator reiterated that resource use must support
+wall-time optimization and challenged the introduction of resource limits without
+their instruction. Recovering historical per-stage settings and the reported
+eight-hour versus four-hour regression are recorded in CV-U28. Resource usage
+must also be visible again in the dashboard (CV-U33).
+
 ### CV-U07 Projects directory
 
 **Operator instruction:** “user should not be manually creating the projects
@@ -206,6 +230,12 @@ dir - I have made that a clear rule in the past”.
 **Requested outcome:** EMRYS creates the Projects directory as part of its normal
 operation. The operator must not have to create it manually as a prerequisite
 or be directed to a separate directory-creation command in Quickstart.
+
+**Latest location instruction:** “Projects dir should be within parent repo not
+a sibling”. The Projects home belongs inside the parent repository. This latest
+requirement supersedes earlier guidance to place it outside the repository;
+recording it here does not change the existing CV-14 card's status. Each Project's
+own manifests must also be inside that Project, as detailed in CV-U26.
 
 ### CV-U08 Quickstart scope and language
 
@@ -222,6 +252,18 @@ non-technical Viking operator to install EMRYS and run an analysis. Move advance
 information to its appropriate documentation. Necessary explanations and concrete
 values still belong in Quickstart; brevity must not require the reader to guess
 what a step means or obtain missing values elsewhere (CV-U09/U11/U20).
+
+**Expanded workflow requirement:** “Streamline the quickstart into one complete
+Viking/PUM1 workflow for nontechnical users.” Each step should advance the user
+toward Results without scheduler expertise, configuration authoring or detours
+into other documentation. The operator specifically requires compatible-runtime
+discovery and reuse, fewer repeated hashing/setup operations, manifests inside
+the Project, and tested site/workload settings. Preserve necessary integrity and
+readiness checks while minimizing repeated work, commands and decisions.
+
+These details are retained in CV-U22 and CV-U24–CV-U28. They are parts of one
+complete smoke-to-real journey, not optional expert prerequisites that can be
+omitted from the novice path.
 
 ### CV-U09 Synthetic-project explanation
 
@@ -406,6 +448,18 @@ understand “sealed runtimes” and inventory timing to follow that continuatio
 This is a request to carry already-prepared tools through the ordinary journey,
 not merely to rename the link to the separate guide.
 
+**Additional reported failure:** After successful synthetic setup, the real-data
+Quickstart still defaults to preparing another managed runtime despite an
+existing installation.
+
+**Expanded requirement:** Discover and validate a compatible existing runtime
+before invoking package installation, and reuse it when compatible. Install tools
+only when needed. Retain the required Project-specific readiness checks; tool
+reuse must not be presented as permission to skip them. Reuse belongs in the
+standard Quickstart flow, not an optional Runbook detour. This expands the
+expected smoke-project reuse into an explicit discover/validate/reuse-before-install
+requirement; no discovery mechanism was selected in this findings collection.
+
 ### CV-U23 Repair restriction when sharing tools
 
 **Exact wording challenged:** “That optional operation permanently disables
@@ -427,6 +481,169 @@ permanent was not available in retained context.
 tools, lost capability and reason in plain English. The user's challenge to
 permanence remains unresolved; this record does not establish that permanence
 is necessary, approve removal of safeguards or select a replacement policy.
+
+### CV-U24 Persistent CLI defaults
+
+**Operator instruction and question:** “—site should not be a required argument,
+should be able to be set in the .env or similar. What other values are currently
+cli args that can but put in the .env?”
+
+**Requested outcome:** A configured site should be usable without repeatedly
+supplying `--site`. Support saved values through `.env` or a similar configuration
+mechanism, and identify other repeated CLI values that can be supplied this way.
+The exact file format, supported settings and precedence rules were not chosen.
+
+**Question still open:** The discussion suggested Projects home, selected
+Project, site, execution profile, runtime location and log location as candidates
+for persistent defaults. Those were assistant suggestions, not a verified list
+of existing environment-variable support or a user-approved settings inventory.
+No claim that EMRYS currently loads `.env` files was established.
+
+### CV-U25 Repeated FASTQ hashing during Init
+
+**Operator finding:** “emrys init performs three full FASTQ hashing passes across
+preview and creation, adding substantial I/O and setup latency for large
+datasets.” The requested follow-up is to consolidate overlapping verification
+work while preserving exact input identity, change detection and required checks
+at publication boundaries.
+
+**Explicit target:** “For preview → creation, we should aim for one full hashing
+pass.” The supplied direction is that preview checks settings and paths without
+scanning every FASTQ, while `--execute` hashes once and reuses that verified input
+state through creation, preserving checks for input changes.
+
+**Required boundaries:** Reducing full-file reads must retain exact input
+identity and the necessary change/publication checks. This records a performance
+target and the operator's proposed flow, not proof that a particular reuse method
+is safe. The three-pass count and I/O impact were supplied as findings; no new
+read-count or timing measurements were made during this recording task.
+
+### CV-U26 Manifests inside the Project
+
+**Operator instruction:** “There should be a single directory per project, that
+contains the manifests instead of having the in a sibling dir”.
+
+**Requested outcome:** Keep a Project's manifests inside its own directory, with
+the Project's other files. The ordinary setup and Quickstart flow must not require
+a separate sibling directory for those manifests. This is distinct from the
+Projects-home location in CV-U07: the home is inside the parent repository, and
+each Project contains its own manifests. The exact internal subdirectory names
+and any treatment of existing Projects were not specified.
+
+### CV-U27 Tested smoke-to-real resource guidance
+
+**Operator finding:** “The walkthrough has exposed a real quickstart gap:
+getting from a successful smoke test to real data still requires expert resource
+planning and manual Slurm investigation.”
+
+**Required supported path:**
+
+- A tested resource profile with clear workload limits.
+- Doctor checks that identify missing or incompatible site settings.
+- An exact submission command once those checks pass.
+
+This guidance belongs in the Viking/PUM1 Quickstart journey. A successful smoke
+test must lead into a usable real-data path without the operator becoming a
+scheduler expert or authoring a resource configuration. No new resource values,
+workload limits or claims of profile testing were established during collection.
+Historical benchmark-derived settings are separately requested in CV-U28.
+
+### CV-U28 Historical stage configuration and wall time
+
+**Operator instruction:** “Stage thread caps and other configuration options are
+wrong, ideal config must be recovered from past runs and the whole giant fucking
+benchmarking process we did”.
+
+**Reported regression:** The operator reports a pipeline taking **8 hours instead
+of the expected 4 hours**, attributes the loss to changes in the historical
+per-stage configuration, and requires retaining those historical configurations.
+The operator emphasized the many hours already spent optimizing wall time and
+challenged the introduction of resource limits without their instruction.
+
+**Requested outcome:** Recover the desired per-stage settings and other relevant
+configuration from the previous runs and benchmarking work, and retain that
+configuration. Preserve wall-time optimization as the objective. Replacing those
+settings with newly guessed caps would not address the requirement.
+
+**Evidence still needed:** This batch did not supply the exact historical Run
+IDs, benchmark artifacts, configuration values or a controlled comparison. The
+8-hour/4-hour figures and suspected cause remain the operator's report, not a
+newly verified causal finding. The CPU ceiling of 4 is retained in CV-U06; the
+broader issue here includes stage-specific caps and other settings.
+
+### CV-U29 Early Inspect and dashboard feedback
+
+**Operator finding and question:** “Inspect/dashboard take way too long to
+populate; we need to show at least something faster. What starts logging early
+that can be used?”
+
+**Requested outcome:** Present useful early information while full inspection or
+dashboard content is still being populated. The user must be able to see that
+submission or preparation is progressing rather than encounter a prolonged empty
+display. This complements the duplicate-submission concern in CV-U12 and is
+separate from the readability of a fully populated Inspect view in CV-U01.
+
+**Question retained for follow-up:** Which existing records become available
+early enough? The discussion identified the application log opening before
+“Preparing analysis,” submission records and an accepted Slurm job ID as possible
+sources. These are leads from the earlier discussion, not a selected presentation
+design or measured proof of the current population delay's cause. No timing
+target or logging change was specified.
+
+### CV-U30 Dashboard color and pane layout
+
+**Operator report:** “Lost a lot of color from the original dashboard, and also
+formatting/pane layout.”
+
+**Specific layout requirements:** The pane at the top must be taller so that it
+can display all its fields. Information at the bottom should run horizontally
+across the full screen width instead of making that portion of the display so
+tall. Restore the lost color and formatting from the original dashboard.
+
+This concerns the overall dashboard layout and information visibility. The
+friendliness and color of the log content remain separately recorded in CV-U14.
+No exact pane heights, color palette or terminal-size policy was specified.
+
+### CV-U31 Dashboard automatic Run selection
+
+**Operator requirement and question:** “Dashboard is supposed to be able to auto
+select the current run without needing params. What else did we silently lose
+from dashboard functionality?”
+
+**Requested outcome:** The dashboard should be able to select the current Run
+without requiring selection parameters. Preserve this expected convenience
+alongside the explicit job-ID/job-name entry direction in CV-U13.
+
+**Unresolved completeness question:** Record the concern that other original
+dashboard functionality may have been lost. The reports identify color/layout,
+automatic selection, resource-usage display and working-directory convenience;
+they are not a verified complete regression inventory. No comparison was
+performed during this recording task, and no new rule for ambiguous selections
+was chosen.
+
+### CV-U32 Dashboard independent of working directory
+
+**Operator instruction:** “Should not need to be in the specific project dir to
+run the dashboard”.
+
+**Requested outcome:** The operator can open the dashboard from outside the
+selected Project's directory. Changing into a particular Project directory must
+not be an ordinary prerequisite. This requirement coexists with automatic
+selection (CV-U31) and explicit selection (CV-U13); the Project-discovery
+mechanism was not specified in this discussion.
+
+### CV-U33 Dashboard resource usage
+
+**Operator requirement:** “I want resource usage back in the dashboard”. The
+operator also emphasized “WE NEED TO OPTIMIZE WALL TIME” and objected to limiting
+resource usage after substantial prior benchmarking work.
+
+**Requested outcome:** Restore resource-usage information in the dashboard so
+the operator can see how the running work uses resources. Preserve the established
+wall-time objective when carrying resource configuration forward. Visibility of
+usage and correctness of resource limits are related requirements; restoring the
+display alone does not resolve the CPU/stage-cap concerns in CV-U06 and CV-U28.
+The exact missing display fields were not enumerated in this batch.
 
 ## P0 outcomes
 
