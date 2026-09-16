@@ -978,21 +978,20 @@ def submit(
     record_path: Path,
     wait: bool = False,
     on_submitted: Callable[[str, str | None], None] | None = None,
+    show_details: bool = True,
 ) -> str:
     """Retain transcripts for one submission, optionally waiting for the job."""
 
-    job_id = None
-    operation = "prepare submission records"
+    job_id, operation = None, "prepare submission records"
     try:
-        error_record = record_path.with_suffix(".stderr")
-
         with _recorded_streams(record_path) as (output, errors, verify):
             operation = "synchronize submission directory"
             verify(True)
-            print(
-                f"Slurm submission records: {record_path}, {error_record}",
-                file=sys.stderr,
-            )
+            if show_details:
+                print(
+                    f"Slurm submission records: {record_path}, {record_path.with_suffix('.stderr')}",
+                    file=sys.stderr,
+                )
             operation = "invoke sbatch"
             verify()
             with subprocess.Popen(
@@ -1036,11 +1035,11 @@ def submit(
                         output.flush()
                         os.fsync(output.fileno())
                     if job_id:
-                        print(
-                            f"Slurm job {job_id}; logs: {str(submission.stdout_pattern).replace('%j', job_id)}, {str(submission.stderr_pattern).replace('%j', job_id)}",
-                            file=sys.stderr,
-                            flush=True,
-                        )
+                        if show_details:
+                            print(
+                                f"Slurm job {job_id}; logs: {str(submission.stdout_pattern).replace('%j', job_id)}, {str(submission.stderr_pattern).replace('%j', job_id)}",
+                                file=sys.stderr,
+                            )
                         if on_submitted is not None:
                             on_submitted(job_id, cluster)
                     operation = "wait for sbatch"

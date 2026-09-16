@@ -1365,6 +1365,7 @@ def test_submission_io_failure_preserves_cause_and_does_not_retry(
 def test_recorded_submission_retains_raw_responses_without_waiting_for_the_job(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
     outcome: str,
     stdout: bytes,
     returncode: int,
@@ -1416,7 +1417,13 @@ def test_recorded_submission_retains_raw_responses_without_waiting_for_the_job(
         monkeypatch.setattr(slurm_submission.subprocess.Popen, "wait", interrupt_wait)
     monkeypatch.setattr(slurm_submission.subprocess, "Popen", checked_popen)
     if outcome == "accepted":
-        assert slurm_submission.submit(submission, record_path=transcript) == "614999"
+        assert (
+            slurm_submission.submit(
+                submission, record_path=transcript, show_details=False
+            )
+            == "614999"
+        )
+        assert "Slurm submission records:" not in capsys.readouterr().err
     else:
         error = (
             KeyboardInterrupt

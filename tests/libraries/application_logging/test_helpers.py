@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+import errno
+import fcntl
 import io
+import os
+import pty
+import re
+import struct
 import subprocess
 import sys
+import termios
 from pathlib import Path
 from textwrap import dedent
 from types import SimpleNamespace
@@ -69,6 +76,64 @@ def test_phase_progress_reports_actual_completion_and_failure_without_percent(
         ("Installing native tools", 0.125, "complete"),
         ("Restoring R packages", 2.5, "interrupted or failed"),
     ]
+
+
+@pytest.mark.parametrize("no_color", (False, True))
+def test_phase_progress_serializes_diagnostics_on_a_narrow_pty(
+    no_color: bool,
+) -> None:
+    master, slave = pty.openpty()
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 48, 0, 0))
+    environment = {**os.environ, "TERM": "xterm-256color"}
+    if no_color:
+        environment["NO_COLOR"] = "1"
+    else:
+        environment.pop("NO_COLOR", None)
+    program = dedent("""\
+        import sys
+        import time
+        sys.path.insert(0, sys.argv[1])
+        from emrys.libraries.application_logging.helpers import phase_progress
+        with phase_progress("Slurm submission-to-return wait"):
+            time.sleep(0.02)
+            print("Slurm submission records: /tmp/slurm-submit.stdout, /tmp/slurm-submit.stderr", file=sys.stderr, flush=True)
+        """)
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            program,
+            str(Path(helpers.__file__).resolve().parents[3]),
+        ],
+        stdout=slave,
+        stderr=slave,
+        env=environment,
+    )
+    os.close(slave)
+    chunks = []
+    while True:
+        try:
+            data = os.read(master, 4096)
+        except OSError as exc:
+            if exc.errno == errno.EIO:
+                break
+            raise
+        if not data:
+            break
+        chunks.append(data)
+    os.close(master)
+    assert process.wait(timeout=10) == 0
+    rendered = b"".join(chunks).decode("utf-8", "replace")
+    plain = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", rendered).replace("\r", "\n")
+    assert "Slurm submission-to-return wait" in plain
+    assert ("0m 00s" if no_color else "0:00:00") in plain
+    assert any(
+        line.startswith("Slurm submission records:") for line in plain.splitlines()
+    )
+    assert plain.index("Slurm submission records:") < plain.index(
+        "Slurm submission-to-return wait: complete"
+    )
+    assert ("\x1b[" not in rendered) is no_color
 
 
 @pytest.mark.parametrize("failed_clock_read", (None, 1, 2))

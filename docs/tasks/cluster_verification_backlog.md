@@ -1408,7 +1408,7 @@ an evidence promotion. Related findings remain on their existing cards above.
 
 | ID | Finding | Status |
 | --- | --- | --- |
-| [CV-UX-01](#cv-ux-01-doctor-live-progress-output-collision) | Doctor live progress collides with the next diagnostic line | Open |
+| [CV-UX-01](#cv-ux-01-doctor-live-progress-output-collision) | Doctor live progress collides with the next diagnostic line | Verification pending |
 
 ### CV-UX-01 Doctor live-progress output collision
 
@@ -1428,6 +1428,16 @@ without collision, loss or reordering. Cover a real PTY with color, narrow-line
 wrapping and `NO_COLOR`/plain rendering. Keep the timer and phase label readable
 when the wait duration is zero. CV-U04 owns Doctor's broader presentation and
 CV-26 owns its duration; CV-UX-01 remains **Open** until Viking/PTY acceptance.
+
+**Implemented slice:** The shared live-progress owner now redirects ordinary
+stdout/stderr through Rich's active display boundary, which clears and redraws
+the row around diagnostics. Doctor passes its normal/verbose policy into the
+submission transport: normal output hides transcript and scheduler-log paths,
+while `--verbose` retains them. Real narrow-PTY checks cover color and
+`NO_COLOR`, diagnostic ordering, a line boundary before `Slurm submission
+records:`, and readable zero-duration timing. Focused progress, submission and
+Slurm Doctor suites passed 418 tests locally. CV-UX-01 is **Verification pending** for
+standard CI and Viking terminal acceptance.
 
 ## P0 outcomes
 

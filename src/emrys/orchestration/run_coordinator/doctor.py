@@ -1559,6 +1559,7 @@ def _qualify_slurm(
                 record_path=attempt.path.parent / "slurm-submit.stdout",
                 wait=True,
                 on_submitted=announce,
+                show_details=controls.verbose,
             )
     except slurm_submission.SlurmSubmissionError:
         with suppress(Exception):
@@ -1676,8 +1677,6 @@ def _execute_repair(
     emit("repair_started", f"Project {plan.operation} started.", **started)
     claim: tuple[Path, os.stat_result, bytes] | None = None
     try:
-        if controls.verbose:
-            _stderr(f"Runtime work: {plan.runtime_work}")
         if plan.runtime is not None:
             runtime_root = onboarding.project_runtime_directory(plan.project)
             if runtime_root != plan.runtime.profile.parent:

@@ -2414,6 +2414,47 @@ def test_failed_maintenance_claim_acquisition_retains_partial_before_repair(
     assert not _runtime(plan).managed_root.exists()
 
 
+def test_default_slurm_qualification_hides_submission_record_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "project/project.yaml"
+    source.parent.mkdir()
+    fasta = source.parent / "reference.fa"
+    fasta.write_bytes(b">chr1\nA\n")
+    plan = SimpleNamespace(
+        project=SimpleNamespace(source_path=source),
+        analysis_name="primary",
+        execution=SimpleNamespace(source_path=tmp_path / "profile.yaml"),
+        compute=False,
+    )
+    result = SimpleNamespace(
+        analysis=SimpleNamespace(
+            workflow_inputs={"reference": {"fasta": {"path": str(fasta)}}}
+        )
+    )
+    submission = SimpleNamespace(
+        stdout_pattern=tmp_path / "job-%j.out",
+        stderr_pattern=tmp_path / "job-%j.err",
+        job_name="emrys-fixture",
+    )
+    monkeypatch.setattr(doctor, "_qualification_binding", lambda _result: "binding")
+    monkeypatch.setattr(
+        doctor.slurm_submission, "plan_submission", lambda *_args, **_kwargs: submission
+    )
+
+    def reject(_submission: object, **kwargs: object) -> str:
+        assert kwargs["show_details"] is False
+        raise doctor.slurm_submission.SlurmSubmissionError("fixture rejection")
+
+    monkeypatch.setattr(doctor.slurm_submission, "submit", reject)
+    controls = LogControls(False, tmp_path / "logs", "default")
+    attempt = SimpleNamespace(path=tmp_path / "logs/doctor.jsonl")
+    with pytest.raises(
+        doctor.slurm_submission.SlurmSubmissionError, match="fixture rejection"
+    ):
+        doctor._qualify_slurm(plan, result, attempt, controls)
+
+
 @pytest.mark.parametrize(
     ("failure", "selection", "timing_outcome"),
     (
@@ -2642,6 +2683,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     def submit(submission: object, **kwargs: Any) -> str:
         nonlocal elapsed
         assert kwargs["wait"] is True
+        assert kwargs["show_details"] is True
         assert kwargs["record_path"].name == "slurm-submit.stdout"
         state["jobs"] += 1
         elapsed += 5.0

@@ -66,8 +66,8 @@ def phase_progress(
             console=console,
             transient=True,
             disable=not live,
-            redirect_stdout=False,
-            redirect_stderr=False,
+            redirect_stdout=True,
+            redirect_stderr=True,
         )
         if not live:
             console.print(f"{message}...")

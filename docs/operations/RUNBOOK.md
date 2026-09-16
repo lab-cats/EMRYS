@@ -843,7 +843,9 @@ not create a log. Compute observations stay distinct from head observations.
 `Slurm submission-to-return wait` includes waiting, launch, compute and return
 overhead. It cannot by itself tell you how long the job spent queued. After a
 waited submission, Doctor makes one bounded accounting lookup using the recorded
-job identity and exact maintenance stream paths. Its normal summary separates
+job identity and exact maintenance stream paths. Normal output hides submission
+transcript and scheduler-log paths; `--verbose` adds them without sharing a row
+with the live timer. The accounting summary separates
 submitted-to-start wait, eligible queue wait and allocation wall time; time
 before eligibility is not eligible queue wait. Allocation wall time includes
 launch/verification overhead and does not measure scientific compute time.

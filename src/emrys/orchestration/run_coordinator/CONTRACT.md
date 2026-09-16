@@ -179,6 +179,12 @@ event. A failed timing write cannot disrupt package-output handling. The final
 invocation total is console-only after that log
 closes. Read-only diagnosis and delegated compute create no second log.
 Slurm submission-to-return wait is not an isolated queue-time measurement.
+Live progress owns stdout/stderr redirection while active, so an ordinary
+diagnostic temporarily clears the progress row, renders on its own line, and
+then redraws the timer. Doctor suppresses submission transcript and job-log
+paths in normal output; `--verbose` retains both through that same boundary.
+Color, narrow wrapping, `NO_COLOR`, and redirected output preserve the phase
+label, zero-duration timer, diagnostic order, and a terminating line boundary.
 After that timer ends, an ordinary return or submission error may trigger one
 bounded, optional `sacct` query through the existing scheduler observer. The
 recorded submission callback carries job ID and optional cluster to the collector;
