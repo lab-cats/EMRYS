@@ -124,7 +124,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Verification pending |
 | [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Completed |
 | [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Verification pending |
-| [CV-U12](#cv-u12-duplicate-submission-warning) | Warn before accidental duplicate submission | Open |
+| [CV-U12](#cv-u12-duplicate-submission-warning) | Warn before accidental duplicate submission | Verification pending |
 | [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Verification pending |
 | [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Verification pending |
 | [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Verification pending |
@@ -449,11 +449,20 @@ another submission. Continuing should be an intentional decision made with that
 understanding. The exact enforcement, acknowledgement or override mechanism
 was not decided; no new flag or automatic cancellation behavior is implied.
 
-**Current partial state:** Quickstart says to submit once and warns that an
-absent Run is not a reason to submit again. The integrated watch command selects
-and displays a retained pre-Run submission. `emrys run` does not yet identify an
-earlier pending/running submission of the same work and present the requested
-warning before another submission, so CV-U12 remains Open.
+**Implemented safeguard:** Quickstart still says to submit once and the integrated
+watch command still selects a retained pre-Run submission. Before `sbatch`,
+`emrys run` now compares the requested scientific work and execution-profile
+binding with retained requests. A matching active request, or one whose terminal
+state cannot be confirmed, produces a prominent duplicate-risk warning that
+explains display delay and stops submission. Continuing requires the explicit
+`--allow-duplicate-submission` override and repeats the warning; terminal and
+unrelated requests do not trigger it. No request is canceled or retried.
+
+Focused local coverage exercises active and unknown scheduler observations,
+the explicit override, distinct retained request publication and the existing
+no-write confirmation path. Institutional terminal review remains required for
+the requested red presentation and real delayed scheduler/Run population, so
+CV-U12 is **Verification pending**.
 
 ### CV-U13 Watching progress
 
