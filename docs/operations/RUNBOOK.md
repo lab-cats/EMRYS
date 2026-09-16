@@ -484,7 +484,7 @@ For a ready Project with one Analysis and one Run:
 ```bash
 emrys validate
 emrys doctor
-emrys run --verbose
+emrys run
 emrys inspect
 ```
 
@@ -494,14 +494,22 @@ execution profile for the intended host; see the
 and [configuration guide](../../configs/README.md).
 
 A direct Run asks `Execute this plan? [y/N]`: `y` executes and Enter declines.
-Preview without writing with `emrys run --verbose </dev/null`;
+Its normal plan shows the Run name and location, pending/reusable work, and
+reporting disposition. A Slurm submission normally adds only placement and the
+allocation request. Add `--verbose` for profile limits, identities, commands,
+Task detail, and the evidence-boundary explanation. Preview without writing
+with `emrys run </dev/null`;
 automation executes with `emrys run --execute`. Full Runs generate reports
 unless `--no-report` is supplied. Use the [Slurm route](#slurm-setup-and-submission)
 for cluster submission.
 
-`emrys inspect` reads the sole Run or offers a terminal picker. To select one
+`emrys inspect` reads the sole Run or offers a terminal picker. Its normal view
+keeps Run admission, Attempt outcome, Scientific Results, Reporting admission,
+blockers, any available recovery, the next action, and verified report paths.
+Verified completion is emphasized directly beneath the Run name. To select one
 explicitly, use its two-word name, full ID, or unique ID prefix; EMRYS never
 assumes latest. `--verbose` adds Run/Attempt identities and admitted
+milestones, timing, application-log associations, reporting transactions, and
 terminal Task records with their original Attempt, recorded outcome, and exact
 stdout/stderr paths. Failed retries remain visible in Attempt-chain order per
 Task. Recorded success alone does not establish verified scientific completion.
@@ -510,7 +518,7 @@ diagnosis. `--verbose` also adds authority hashes, receipts and task commands.
 Planning, execution, Doctor, and static inspection all use `--verbose`.
 For failed or interrupted Runs, follow [resume and recovery](TROUBLESHOOTING.md#run-and-reporting-state).
 
-The **Scientific task observations** count only admitted evidence. `Started;
+Verbose **Scientific task observations** count only admitted evidence. `Started;
 completion unverified` records a start, not proof that its worker still runs.
 `No admitted start` may reflect absent or invalid records. Read printed blockers
 before choosing an action; neither count overrides the four completion lines
@@ -761,7 +769,9 @@ explicitly selects a newer generation from the same source Project.
 emrys runtime discover --project /absolute/borrower/project.yaml --from-project /absolute/donor/project.yaml
 ```
 
-Review the observed tools and printed seal path. This previews without writing.
+This previews without writing. Add `--verbose` to review every observed tool
+check and the selected source seal; the normal view shows readiness and the
+no-write/admission outcome.
 The next command installs nothing and creates the new Project's inventory only
 after the source generation and fresh checks succeed:
 

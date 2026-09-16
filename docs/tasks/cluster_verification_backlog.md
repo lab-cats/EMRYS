@@ -114,7 +114,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | ID | Finding | Status |
 | --- | --- | --- |
 | [CV-U01](#cv-u01-cli-color-and-readability) | CLI color, readability and Inspect interpretation | Open |
-| [CV-U02](#cv-u02-default-cli-verbosity) | Minimal default output, optional detail | Open |
+| [CV-U02](#cv-u02-default-cli-verbosity) | Minimal default output, optional detail | Verification pending |
 | [CV-U03](#cv-u03-init-and-validate-summaries) | Init and Validate summaries | Verification pending |
 | [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Open |
 | [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Verification pending |
@@ -204,6 +204,20 @@ Scientific Results, Reporting and next action prominent rather than one ambiguou
 completion label. `runtime discover` also needs a concise default and the same
 Boolean `--verbose` detail switch. Durable evidence and recovery detail remain
 retained even when hidden from normal output. CV-U02 returns to **Open**.
+
+**Implemented refinement:** Run planning now defaults to the Run name/location,
+pending/reusable work and reporting disposition; Slurm adds only placement and
+the allocation request. Inspect defaults to its four authority outcomes,
+verified completion when applicable, blockers, applicable recovery, next action
+and verified report paths. Runtime discovery defaults to colored readiness and
+its no-write/admission outcome. The existing Boolean `--verbose` restores
+profile limits, immutable identities, commands, milestones, timing, log
+associations, runtime checks and per-Task/evidence detail. Focused current-source
+CLI suites passed 430 tests with one skip; two scientific execution fixtures
+were deselected because their controlled `-I` children loaded a different
+editable EMRYS installation, a test-environment source-binding mismatch rather
+than presentation evidence. CV-U02 is **Verification pending** for standard CI
+and Viking terminal acceptance.
 
 ### CV-U03 Init and Validate summaries
 

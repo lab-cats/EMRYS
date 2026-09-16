@@ -2013,6 +2013,7 @@ def reuse_runtime_profile(
 
 def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
     add_project_argument(parser)
+    add_verbose_argument(parser)
     parser.add_argument(
         "--from-project",
         metavar="SOURCE",
@@ -2031,20 +2032,11 @@ def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
     parser.set_defaults(_command_parser=parser)
 
 
-def _print_runtime_inventory(inspection: RuntimeInspection) -> None:
-    print("EMRYS runtime inventory")
-    print(f"  emrys: PASS ({__version__})")
-    for observation in inspection.observations:
-        print(
-            f"  {observation.check.check_id}: {observation.status.upper()} "
-            f"({observation.observed})"
-        )
-
-
 def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
     """Discover, probe, and optionally admit the active Project runtime."""
 
     try:
+        verbose = getattr(arguments, "verbose", False)
         donor = getattr(arguments, "from_project", None)
         replace_existing = getattr(arguments, "replace", False)
         if replace_existing and donor is None:
@@ -2062,22 +2054,30 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
             )
             selected = shared_runtime_selection(inspection.profile_bytes)
             assert selected is not None
-            print(f"Source seal: {selected.seal_path}")
-            print(
-                "Shared tools remain content-bound; Doctor creates a new generation "
-                "instead of changing tools used by other Projects."
-            )
-        _print_runtime_inventory(inspection)
-        print(f"Inventory: {inspection.profile_path}")
+            if verbose:
+                print(f"Source seal: {selected.seal_path}")
+        status = "READY" if inspection.required_ready else "NOT READY"
+        console_print(
+            f"Runtime discovery: {status}",
+            style=f"bold {'green' if inspection.required_ready else 'red'}",
+            file=sys.stdout,
+        )
+        if verbose:
+            print("Runtime checks:")
+            print(f"  emrys: PASS ({__version__})")
+            for observation in inspection.observations:
+                print(
+                    f"  {observation.check.check_id}: {observation.status.upper()} "
+                    f"({observation.observed})"
+                )
         if not inspection.required_ready:
-            print("NOT READY: required runtime checks did not pass.")
             return 1
         if not arguments.execute:
-            print("Dry-run complete; no files were written.")
+            print("Dry-run complete; no files were written. Use --execute to admit it.")
             return 0
         if donor is None:
             publish_runtime_profile(inspection)
-        print("Runtime inventory admitted.")
+        print(f"Runtime inventory admitted: {inspection.profile_path}")
         return 0
     except RuntimeDiscoveryError as exc:
         print(f"NOT READY: {exc}", file=sys.stderr)

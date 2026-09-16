@@ -234,6 +234,10 @@ publishes its initial `runtime/shared.json`, releases the exact claim, freshly
 checks the dependent selection and exclusively publishes its inventory. Failure
 preserves surviving claims and seals; dependent publication failure cannot undo
 a source seal. Verification-only operations remain available.
+Runtime discovery normally reports only `READY`/`NOT READY` and its no-write or
+admitted outcome. `--verbose` adds every observed check and a shared source
+seal when applicable. Optional color emphasizes readiness but never changes
+plain, redirected, dumb-terminal, or `NO_COLOR` text.
 
 Doctor repairs an owned shared runtime by creating a fresh
 `runtime/generations/<generation>/managed` tree and seal. It never modifies the
@@ -278,6 +282,10 @@ For direct placement, `run` and `resume` construct and display one frozen plan,
 then ask once before executing that same object. Refusal, EOF, interruption, or
 noninteractive omission of `--execute` writes nothing, submits nothing, and
 opens no application log. `--execute` is the explicit automation path.
+Normal plan output is limited to Run identity/location, pending/reusable work,
+and reporting disposition. Slurm planning adds placement and its allocation
+request. `--verbose` restores profile limits, immutable identities, commands,
+per-Task detail, and the evidence-boundary explanation.
 
 For Slurm placement, the terminal instead confirms one frozen submission plan
 before its single `sbatch` call. Submission owns no Run attempt or application
@@ -996,7 +1004,11 @@ existing record and exact log-content checks; a postentry observation must also
 match the already admitted start reference and its originating Attempt. Failed
 preentry records keep the existing later-start ordering guard. Missing, changed
 or malformed records/logs are excluded, with their existing blockers preserved.
-Normal output stays at the Run summary. `--verbose` shows recorded attempts,
+Normal output stays at the Run admission, Attempt outcome, Scientific Results,
+Reporting admission, blockers, applicable recovery, next action, and verified
+report locations. Verified completion is a distinct emphasized line directly
+under the Run identity. `--verbose` adds milestones, timing, log associations,
+reporting transactions, authority records, and recorded attempts,
 recorded outcome, original Attempt, record path and content-bound stdout/stderr
 paths, with escaped diagnostics. A recorded `succeeded` outcome alone cannot
 admit verified scientific completion, Results or recovery. The projection adds
@@ -1012,8 +1024,7 @@ regeneration cannot invalidate science and creates neither a Run nor an
 Attempt. Result locations are shown only from a fully revalidated report
 receipt; incomplete, failed, blocked, or dry-run state prints none.
 
-Verbose inspection shows each reporting transaction's admitted evidence; normal
-inspection also shows it when the overall reporting state is incomplete:
+Verbose inspection shows each reporting transaction's admitted evidence:
 `No admitted start`, `Started; completion unverified`, or `Verified complete`.
 The table appears once when shown. A start records transaction entry, not a
 currently live reporter; reporting begins after the scientific

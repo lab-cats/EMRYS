@@ -2353,12 +2353,36 @@ def test_runtime_discovery_cli_is_dry_run_then_create_absent(
         "discover_runtime_profile",
         lambda **_kwargs: inspection,
     )
-    arguments = argparse.Namespace(project=project, execute=False)
+    arguments = argparse.Namespace(project=project, execute=False, verbose=False)
 
     assert onboarding.discover_runtime_from_args(arguments) == 0
-    assert "Dry-run complete" in capsys.readouterr().out
+    preview = capsys.readouterr().out
+    assert "Runtime discovery: READY" in preview
+    assert "Dry-run complete" in preview
+    assert "Runtime checks:" not in preview
+    assert all(item.check.check_id not in preview for item in inspection.observations)
     assert not inspection.profile_path.exists()
 
+    arguments.verbose = True
+    assert onboarding.discover_runtime_from_args(arguments) == 0
+    detailed = capsys.readouterr().out
+    assert "Runtime checks:" in detailed
+    assert all(item.check.check_id in detailed for item in inspection.observations)
+
+    class Terminal(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    with monkeypatch.context() as terminal_context:
+        terminal = Terminal()
+        terminal_context.delenv("NO_COLOR", raising=False)
+        terminal_context.setenv("TERM", "xterm-256color")
+        terminal_context.setattr(onboarding.sys, "stdout", terminal)
+        arguments.verbose = False
+        assert onboarding.discover_runtime_from_args(arguments) == 0
+        assert "\x1b[" in terminal.getvalue()
+
+    arguments.verbose = False
     arguments.execute = True
     assert onboarding.discover_runtime_from_args(arguments) == 0
     assert inspection.profile_path.read_bytes() == inspection.profile_bytes

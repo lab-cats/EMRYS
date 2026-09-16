@@ -26,6 +26,7 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
+from emrys import __main__ as cli
 import emrys.libraries.installed_package_identity as installed_package_identity
 from emrys import analyses as analysis_modules
 from emrys.contracts.orchestration import api as orchestration_contracts
@@ -2193,10 +2194,10 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert "Execution Plan ID:" not in normal
     assert "Run root:" not in normal
     assert "Scientific task observations:" not in normal
-    assert normal.count("Reporting transactions:") == 1
+    assert "Reporting transactions:" not in normal
     assert "Reporting admission: incomplete" in normal
-    assert "run_summary: No admitted start" in normal
-    assert "html_report: No admitted start" in normal
+    assert "run_summary: No admitted start" not in normal
+    assert "html_report: No admitted start" not in normal
 
     arguments.verbose = True
     assert control.inspect_from_args(arguments) == 0
@@ -2240,15 +2241,19 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
         arguments.verbose = detail == "verbose"
         assert control.inspect_from_args(arguments) == 0
         started_output = capsys.readouterr().out
-        assert started_output.count("Reporting transactions:") == 1
         assert "Reporting admission: blocked" in started_output
-        assert "run_summary: Started; completion unverified" in started_output
-        assert "html_report: No admitted start" in started_output
+        assert ("Reporting transactions:" in started_output) is (detail == "verbose")
+        assert ("run_summary: Started; completion unverified" in started_output) is (
+            detail == "verbose"
+        )
+        assert ("html_report: No admitted start" in started_output) is (
+            detail == "verbose"
+        )
         assert (
             "REPORTING BLOCKER: run_summary reporting start has no verified completion"
             in started_output
         )
-        assert "Recovery available: no" in started_output
+        assert ("Recovery available: no" in started_output) is (detail == "verbose")
         assert "Do not resume." in started_output
         assert "reporter is running" not in started_output
     assert {
@@ -3082,15 +3087,16 @@ def test_public_run_dry_run_is_no_write(
         assert not (workspace / "logs").exists()
 
     normal = projections["normal"]
-    assert "Project: 'project'" in normal
-    assert "Analysis: 'primary'" in normal
     assert "Run: " in normal
-    assert "Scientific boundary: complete analysis" in normal
+    assert f"Location: {workspace}/runs/" in normal
     assert "Work: 35 pending, 0 reusable" in normal
     assert "Reporting: automatic after scientific work" in normal
-    assert "Evidence boundary:" in normal
     for hidden in (
         "Operation:",
+        "Project:",
+        "Analysis:",
+        "Scientific boundary:",
+        "Evidence boundary:",
         "Analysis ID:",
         "Execution Plan ID:",
         "Run ID:",
@@ -3105,9 +3111,13 @@ def test_public_run_dry_run_is_no_write(
 
     verbose = projections["verbose"]
     assert set(normal.splitlines()) <= set(verbose.splitlines())
+    assert "Project: 'project'" in verbose
+    assert "Analysis: 'primary'" in verbose
+    assert "Scientific boundary: complete analysis" in verbose
+    assert "Evidence boundary:" in verbose
     assert "Analysis revision: analysis-" in verbose
     assert "Execution Plan ID: plan-" in verbose
-    assert "Run root:" in verbose
+    assert "Location:" in verbose
     assert "Resources: 1 cores, 1024 MiB" in verbose
     assert "Step thread allocations:" in verbose
     assert "Stage concurrency:" in verbose
@@ -3137,7 +3147,7 @@ def test_processing_run_dry_run_is_no_write_and_truthfully_scoped(
     assert case.executed == []
 
     rendered = capsys.readouterr().err
-    assert "Scientific boundary: sample processing (through Step 06)" in rendered
+    assert "Scientific boundary:" not in rendered
     assert "Work: 31 pending, 0 reusable" in rendered
     assert "Reporting: not applicable to this partial scientific Run" in rendered
     assert "Dry-run complete; no workspace state was written." in rendered
@@ -4357,7 +4367,7 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
             selected_profile,
             resource_policy=first.resources.policy,
         )
-        assert f"Workflow CPU ceiling: {workflow_cores};" in captured.err
+        assert f"Workflow CPU ceiling: {workflow_cores};" not in captured.err
         assert inherited_profile.binding_sha256 != selected_profile.binding_sha256
         assert any(
             f"{control.slurm_submission.PROFILE_SHA256_ENV}="
@@ -4454,18 +4464,15 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
         "Allocation request: 12 CPUs, 01:00:00; memory: site default (unknown)"
         in normal
     )
-    assert (
-        "Node request: 1; requested host(s): scheduler-selected; exact host unknown"
-        in normal
-    )
-    assert "Exclusive allocation: not requested; site policy applies" in normal
-    assert (
-        "Workflow CPU ceiling: 4; memory ceiling: allocation capacity (unknown until execution)"
-        in normal
-    )
-    assert "Stage thread caps:" in normal
-    assert "Repeated-stage concurrency caps:" in normal
-    assert "Stage memory:" in normal
+    for hidden in (
+        "Node request:",
+        "Exclusive allocation:",
+        "Workflow CPU ceiling:",
+        "Stage thread caps:",
+        "Repeated-stage concurrency caps:",
+        "Stage memory:",
+    ):
+        assert hidden not in normal
     assert "Dry-run complete; no scheduler or workspace state was written." in normal
     assert "Execution profile:" not in normal
     assert "Scheduler stdout:" not in normal
@@ -4474,6 +4481,12 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
 
     verbose = projections["verbose"]
     assert set(normal.splitlines()) <= set(verbose.splitlines())
+    assert all(
+        line in verbose
+        for line in load_execution_profile(
+            config_path=Path(arguments.profile)
+        ).submission_summary()
+    )
     assert f"Execution profile: {arguments.profile}" in verbose
     assert (
         f"Scheduler stdout: {workspace}/logs/emrys-local-pilot-{token}-%j.out"
@@ -4598,10 +4611,13 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     assert retained.recorded_job_id == "812345"
     assert retained.context["analysis"] == arguments.analysis
     assert "Execution placement: Slurm" in captured.err
-    assert all(line in captured.err for line in admitted.submission_summary())
+    assert admitted.submission_summary()[0] in captured.err
+    assert admitted.submission_summary()[3] in captured.err
+    assert all(line not in captured.err for line in admitted.submission_summary()[1:3])
+    assert all(line not in captured.err for line in admitted.submission_summary()[4:])
     if not execute:
         assert captured.err.index(
-            admitted.submission_summary()[-1]
+            admitted.submission_summary()[3]
         ) < captured.err.index("Execute this plan?")
     assert ("Execute this plan? [y/N]" in captured.err) is not execute
     assert not arguments.log_root.exists()
@@ -5496,7 +5512,7 @@ def test_standalone_report_uses_project_slurm_placement(
         "Allocation request: 256 CPUs, 12:00:00; memory: site default (unknown)"
         in preview
     )
-    assert "Workflow CPU ceiling: 12;" in preview
+    assert "Workflow CPU ceiling: 12;" not in preview
 
     assert control.report_from_args(parser.parse_args([*argv, "--execute"])) == 0
     assert calls == [False] and len(submissions) == 1
@@ -5725,7 +5741,7 @@ def test_attempt_elapsed_uses_only_current_or_latest_attempt(
     )
 
 
-def test_public_help_routes() -> None:
+def test_public_help_routes(capsys: pytest.CaptureFixture[str]) -> None:
     for command, expected in (
         (("run", "--help"), "usage: emrys run"),
         (("resume", "--help"), "usage: emrys resume"),
@@ -5733,24 +5749,21 @@ def test_public_help_routes() -> None:
         (("watch", "--help"), "usage: emrys watch"),
         (("stop", "--help"), "usage: emrys stop"),
     ):
-        result = subprocess.run(
-            [sys.executable, "-I", "-m", "emrys", *command],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0
-        assert expected in result.stdout
+        with pytest.raises(SystemExit) as result:
+            cli.main(command)
+        assert result.value.code == 0
+        output = capsys.readouterr().out
+        assert expected in output
         if command[0] == "run":
-            assert "--through {analysis,processing}" in result.stdout
-            assert "--from-processing-run" in result.stdout
-            assert "--profile NAME_OR_ABSOLUTE_PATH" in result.stdout
+            assert "--through {analysis,processing}" in output
+            assert "--from-processing-run" in output
+            assert "--profile NAME_OR_ABSOLUTE_PATH" in output
         if command[0] == "resume":
-            assert "--through" not in result.stdout
-            assert "--profile NAME_OR_ABSOLUTE_PATH" in result.stdout
+            assert "--through" not in output
+            assert "--profile NAME_OR_ABSOLUTE_PATH" in output
         if command[0] == "stop":
-            assert "--submission REQUEST" in result.stdout
-            assert "--execute" in result.stdout and "--profile" not in result.stdout
+            assert "--submission REQUEST" in output
+            assert "--execute" in output and "--profile" not in output
 
 
 def _package_copy(tmp_path: Path) -> Path:
@@ -6233,21 +6246,24 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         )
         assert public.returncode == 0, public.stdout + public.stderr
         assert "Run admission: valid" in public.stdout
-        assert "Run lock: no lock" in public.stdout
+        verbose = phase != "before producer"
+        assert ("Run lock: no lock" in public.stdout) is verbose
         assert "Attempt outcome: succeeded" in public.stdout
         assert "Scientific Results: complete" in public.stdout
         assert "Reporting admission: blocked" in public.stdout
-        assert public.stdout.count("Reporting transactions:") == 1
-        assert f"{kind}: Started; completion unverified" in public.stdout
+        assert (public.stdout.count("Reporting transactions:") == 1) is verbose
+        assert (f"{kind}: Started; completion unverified" in public.stdout) is verbose
         other_row = (
             "html_report: No admitted start"
             if kind == "run_summary"
             else "run_summary: Verified complete"
         )
-        assert other_row in public.stdout
+        assert (other_row in public.stdout) is verbose
         assert "REPORTING BLOCKER:" in public.stdout
-        assert "Run diagnostic logs: 2 association(s); scan complete." in public.stdout
-        assert "Recovery available: no" in public.stdout
+        assert (
+            "Run diagnostic logs: 2 association(s); scan complete." in public.stdout
+        ) is verbose
+        assert ("Recovery available: no" in public.stdout) is verbose
         assert "Preserve completed Results; do not rerun science." in public.stdout
         assert "Results:" not in public.stdout.splitlines()
         assert "Scientific report:" not in public.stdout
@@ -6329,10 +6345,13 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     )
     assert control.inspect_from_args(inspect_arguments) == 0
     inspect_output = capsys.readouterr().out
-    assert "Run diagnostic logs: 2 association(s); scan complete." in inspect_output
+    assert "Run diagnostic logs:" not in inspect_output
     assert all(str(path) not in inspect_output for path in application_paths)
+    assert (
+        "Run complete: scientific Results and reporting are verified." in inspect_output
+    )
     assert "Run admission: valid" in inspect_output
-    assert "Run lock: no lock" in inspect_output
+    assert "Run lock:" not in inspect_output
     assert "Attempt outcome: succeeded" in inspect_output
     assert "Scientific Results: complete" in inspect_output
     assert "Reporting admission: complete" in inspect_output
@@ -6341,9 +6360,9 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         "Next supported action: Review the verified Results and report paths."
         in inspect_output
     )
-    assert "Scientific milestones:" in inspect_output
+    assert "Scientific milestones:" not in inspect_output
     assert "Current Attempt elapsed:" not in inspect_output
-    assert "Latest Attempt elapsed:" in inspect_output
+    assert "Latest Attempt elapsed:" not in inspect_output
     assert "Run root:" not in inspect_output
     assert "Analysis ID:" not in inspect_output
     assert "Execution Plan ID:" not in inspect_output
@@ -6351,6 +6370,10 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     inspect_arguments.verbose = True
     assert control.inspect_from_args(inspect_arguments) == 0
     verbose_output = capsys.readouterr().out
+    assert "Run diagnostic logs: 2 association(s); scan complete." in verbose_output
+    assert "Run lock: no lock" in verbose_output
+    assert "Scientific milestones:" in verbose_output
+    assert "Latest Attempt elapsed:" in verbose_output
     assert all(str(path) in verbose_output for path in application_paths)
     assert failed.latest_attempt["workflow_attempt_id"] in verbose_output
     assert completed.latest_attempt["workflow_attempt_id"] in verbose_output
@@ -6903,7 +6926,9 @@ def test_public_run_diagnostic_log_discovery_uses_exact_root_without_changing_au
             == 0
         )
         text = capsys.readouterr().out
-        assert "Run diagnostic logs: 1 association(s); scan complete." in text
+        assert ("Run diagnostic logs: 1 association(s); scan complete." in text) is (
+            detail == "verbose"
+        )
         assert (f"Application log search root: {log_root}" in text) is (
             detail == "verbose"
         )
@@ -6929,7 +6954,7 @@ def test_public_run_diagnostic_log_discovery_uses_exact_root_without_changing_au
     monkeypatch.setattr(control._submission_inspection, "_CandidateAdmission", failed)
     assert control.inspect_from_args(parser.parse_args(argv)) == 0
     failed_text = capsys.readouterr().out
-    assert "Run diagnostic logs: 0 association(s); scan unknown." in failed_text
+    assert "Run diagnostic logs:" not in failed_text
     assert (
         "Scientific Results: incomplete" in failed_text
         and "Recovery available: yes" in failed_text

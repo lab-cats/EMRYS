@@ -2138,16 +2138,12 @@ def test_terminal_task_observation_does_not_admit_unverified_results(
         )
         output = capsys.readouterr().out
         assert "Scientific Results: blocked" in output
-        assert "Recovery available: no" in output
-        if detail == "normal":
-            assert "Recorded Task attempts:" not in output
-            assert "Recorded Task outcomes and logs:" not in output
-        else:
-            assert "Recorded Task attempts:" in output
-            assert (
-                "Recorded outcomes do not establish verified scientific completion."
-                in output
-            )
+        assert ("Recovery available: no" in output) is (detail == "verbose")
+        assert "Recorded Task attempts:" not in output
+        assert ("Recorded Task outcomes and logs:" in output) is (
+            detail == "verbose"
+            and any(task.terminal_attempts for task in observed.tasks)
+        )
         if detail == "verbose" and malformed_start:
             assert f"    record: {plan.task_attempt_path}" not in output
         elif detail == "verbose":
@@ -2798,8 +2794,10 @@ def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
                 )
                 assert (f"  {observation}: 1" in output) is verbose
                 assert f"Scientific Results: {state.results_status}" in output
-                assert f"Run lock: {state.lock_observation}" in output
-                assert "Recovery available: no" in output
+                assert (f"Run lock: {state.lock_observation}" in output) is (
+                    verbose or state.lock_observation != "no lock"
+                )
+                assert ("Recovery available: no" in output) is verbose
                 for path in expected_paths:
                     assert (str(path) in output) is verbose
                 if verbose:
@@ -2952,11 +2950,11 @@ def test_live_lock_observation_preserves_admission_and_files(
     assert not observed.recovery_available
     assert len(checked_processes) == process_checks * 3
     assert read_counts == [0 if condition == "namespace" else 1] * 3
-    for display in displays:
+    for index, display in enumerate(displays):
         assert f"Run lock: {expected}" in display
         assert f"Run admission: {observed.integrity}" in display
         assert f"Attempt outcome: {observed.attempt_outcome}" in display
-        assert "Recovery available: no" in display
+        assert ("Recovery available: no" in display) is bool(index % 2)
         if condition in {"local", "remote", "dead"}:
             assert "Recorded lock host: fixture-host; scheduler job: none" in display
         else:
