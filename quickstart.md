@@ -24,12 +24,10 @@ and the standard Bash, Git and curl commands. If an installation command says
 one is unavailable or access is denied, keep the error and ask CSU computing
 support to resolve that prerequisite.
 
-This guide keeps software in `$HOME/EMRYS` and studies beneath
-`$HOME/emrys-projects`. The software directory and each new Project child
-(`emrys-smoke` or `my-study`) must be absent; do not create them yourself.
-The Projects parent may already exist. Use durable storage outside the software
-checkout. Existing Projects keep their original locations and references;
-these instructions do not require moving them.
+This guide keeps software in `$HOME/EMRYS` and new studies beneath its tracked
+`Projects/` directory. The clone already contains that parent; do not create it
+or a new Project child yourself. Existing Projects keep their original locations
+and references; these instructions do not move them.
 
 Paste each block in order. Stop at an error and retain its output and any
 printed log path. Do not delete partial setup or results to retry.
@@ -77,23 +75,20 @@ instructions below restore this environment after reconnecting.
 
 ## 2. Create the supplied study
 
-### Choose a Projects home
+### Enter the Projects home
 
-Create or enter a durable parent for your Projects. This example uses your
-home directory; substitute your institution's durable study storage if needed:
+Enter the Projects directory supplied by the repository:
 
 ```bash
-mkdir -p "$HOME/emrys-projects" &&
-cd "$HOME/emrys-projects" &&
+cd "$EMRYS_SOURCE_ROOT/Projects" &&
 export EMRYS_PROJECTS_ROOT="$(pwd -P)"
 ```
 
-The variable records the physical path from `pwd -P`; choose a location outside
-the software checkout, writable and accessible from the compute nodes. It
-remembers this choice; EMRYS has no global Projects registry. Initialization
-requires a real existing parent and an absent Project child, and refuses
-symlink aliases supplied as destination paths. Stop if entering the parent
-fails; do not continue from the previous directory.
+The variable records the physical path from `pwd -P`. Project children are
+ignored by Git, while `Projects/README.md` explains what belongs here.
+Initialization requires an absent child and refuses a symlink destination.
+Stop if entering the supplied parent fails; do not continue from the previous
+directory.
 
 ### Create the synthetic Project
 
@@ -344,94 +339,36 @@ input files, their checksums and their declared locations for the life of the
 Run. Success with the tiny supplied study does not establish that a full
 dataset will fit the same allocation.
 
-### Create the input lists
+### Create the Project and its input lists
 
-The helper below writes two **manifests**: `samples.tsv` lists libraries and
-their assignments; `partitions.tsv` declares the selected regions. These are
-ordinary text tables with tab-separated columns.
+EMRYS creates the two input lists inside the new Project. `samples.tsv` records
+libraries and biological assignments; `partitions.tsv` records the regions to
+process. You do not construct or format either file.
 
-Replace the paths and example library names with your own. This route accepts
-mate suffixes `_R1`/`_R2` or `_1`/`_2`, followed by `.fastq` or `.fq` and optional
-`.gz`. The shared prefix is the sample ID: `control_1_1.fq.gz` and
-`control_1_2.fq.gz` belong to `control_1`. R1 and R2 must use the same compression.
-Supplying two files for the same sample and mate is rejected, including across
-the two naming conventions. Each `--sample` line gives, in order, the sample ID,
-condition, pairing group and strandedness. Add both FASTQ paths and a matching
-assignment for every further library. Replace `unknown` when the library's
-strandedness is known.
+FASTQ names must end in `_R1`/`_R2` or `_1`/`_2`, followed by `.fastq` or `.fq`
+and optional `.gz`. The shared prefix becomes the proposed sample ID. The
+terminal shows every detected pair and asks for its condition, pairing group,
+and strandedness. EMRYS never infers those biological values from filenames.
 
-Choose a new manifest directory beneath an existing writable parent; do not
-create that final directory yourself. The input FASTQs and any selected regions
-files must already exist.
+From the supplied Projects home, start guided setup:
 
 ```bash
-EMRYS_READS=/absolute/path/to/reads
-EMRYS_REGIONS=/absolute/path/to/regions.bed
-EMRYS_MANIFEST_ROOT=/absolute/durable/path/study-manifests
-emrys init manifests --output-dir "$EMRYS_MANIFEST_ROOT" \
-  --fastq "$EMRYS_READS/control_1_R1.fastq.gz" "$EMRYS_READS/control_1_R2.fastq.gz" \
-          "$EMRYS_READS/treatment_1_R1.fastq.gz" "$EMRYS_READS/treatment_1_R2.fastq.gz" \
-          "$EMRYS_READS/control_2_R1.fastq.gz" "$EMRYS_READS/control_2_R2.fastq.gz" \
-          "$EMRYS_READS/treatment_2_R1.fastq.gz" "$EMRYS_READS/treatment_2_R2.fastq.gz" \
-  --sample control_1 control pair_1 unknown \
-  --sample treatment_1 treatment pair_1 unknown \
-  --sample control_2 control pair_2 unknown \
-  --sample treatment_2 treatment pair_2 unknown \
-  --regions-file study "$EMRYS_REGIONS" --execute
+cd "$EMRYS_PROJECTS_ROOT"
+emrys init my-study --site viking
 ```
 
-For whole chromosomes or explicit intervals, replace the `--regions-file`
-option with repeated `--region PARTITION_ID SELECTOR` options. For example,
-`--region 1 1 --region 2 2 --region X X` selects those three complete contigs;
-`--region target 1:1-100` selects an interval using one-based inclusive
-coordinates. Declare every intended contig or interval explicitly; these
-examples are not an automatic whole-genome selection. No regions file is
-needed for this route. Both options can be combined, with unique partition IDs
-across all selections. Project creation checks names and coordinates against
-the reference FASTA before admitting the study.
-
-Review the resulting `samples.tsv` and `partitions.tsv` with your study
-assignments before continuing. A successful file check cannot establish that
-the pairing or biological labels are correct.
-
-### Answer the scientific setup questions once
-
-Set the actual reference paths, then enter the existing durable directory
-where your new `my-study` Project should be created. Its `my-study` child must
-not exist. Use the [Projects home](#choose-a-projects-home) selected above.
-The ordinary `init NAME` command creates beneath the current directory;
-the synthetic route's `--output-dir` selects an absolute destination instead.
-
-```bash
-EMRYS_REFERENCE_FASTA=/absolute/path/to/reference.fa
-EMRYS_REFERENCE_GTF=/absolute/path/to/genes.gtf
-cd "${EMRYS_PROJECTS_ROOT:?Choose a Projects home first}" &&
-emrys init my-study --site viking \
-  --sample-manifest "$EMRYS_MANIFEST_ROOT/samples.tsv" \
-  --partition-manifest "$EMRYS_MANIFEST_ROOT/partitions.tsv" \
-  --reference-fasta "$EMRYS_REFERENCE_FASTA" \
-  --reference-gtf "$EMRYS_REFERENCE_GTF"
-```
-
-The input paths are already supplied, so the terminal asks the following
-scientific questions. Type each agreed value and press Enter. Where a value
-appears in brackets, Enter accepts it. This command validates the answers and
-prints a review without creating the Project. Review the explicit sample/mate
-assignments, biological pairing groups, strandedness, reference and region
-identities, scientific settings, and selected site. Then copy the printed
-creation command. It carries every answer into the same Python environment;
-you do not need to repeat the questionnaire. It also rechecks the inputs,
-because a preview does not freeze external files.
-
-Preparation reads and hashes the complete declared inputs and checks reference
-and region compatibility. Large inputs can take several minutes. The terminal
-shows the current phase and elapsed time, then rechecks the published Project
-before printing `Project ready:`. Elapsed time is not a completion estimate.
-If interrupted, retain any published or partial Project directory and the
-diagnostic; do not delete it to retry the same name.
+Enter the absolute directory containing the FASTQs. For regions, enter one
+existing BED, VCF, or tab-separated regions file, or leave that prompt empty
+and enter space-separated chromosome/region selectors such as `1 2 X` or
+`1:1-100`. Declare every intended selector; the examples are not automatic
+whole-genome choices. EMRYS then asks for the reference and scientific settings
+below. Type each agreed value and press Enter. Where a value appears in brackets,
+Enter accepts it.
 
 | Prompt | What to enter |
 | --- | --- |
+| `reference fasta` | Absolute path to the study's uncompressed reference FASTA. |
+| `reference gtf` | Absolute path to the matching gene-annotation GTF. |
 | `sjdb overhang` | The STAR splice-junction overhang selected for the study's read length. Obtain this from the analyst who chose the alignment settings. |
 | `genome sa index nbases` | The STAR suffix-array index length selected for this reference. It controls index construction and must suit the genome size. |
 | `control condition` | The exact control label in your sample assignments; `control` in the example above. |
@@ -444,6 +381,15 @@ diagnostic; do not delete it to retry the same name.
 | `absolute difference threshold [0.005]` | The minimum change in the mean fraction of reads carrying the tested alternate base, alongside the odds-ratio cutoff. Enter a fraction: `0.005` is half a percentage point. |
 | `background max fraction [0.01]` | Press Enter for this walkthrough. No background cohort was selected, so this setting is unused. |
 
+The first pass checks the paths, assignments, selectors, and settings without
+reading every FASTQ. Review the displayed interpretation, then paste the exact
+creation command printed by EMRYS. You do not answer the questions again or
+edit the generated command. Creation hashes each FASTQ once, checks reference
+and region compatibility, and rejects any input whose filesystem identity
+changes before publication completes. Large inputs can take several minutes.
+If setup is interrupted, preserve the partial Project and printed diagnostic;
+do not delete it to retry the same name.
+
 After `Project ready:`, enter the new Project and validate it:
 
 ```bash
@@ -453,7 +399,8 @@ emrys validate
 ```
 
 Continue only after `Project validation: PASS`. Setup references the original
-inputs rather than copying them into the Project.
+FASTQs and references rather than copying them. The Project owns the generated
+`samples.tsv` and `partitions.tsv` beside `project.yaml`.
 
 ### Prepare, run and open your study's reports
 
@@ -530,15 +477,14 @@ export PATH="$HOME/.local/bin:$HOME/.pixi/bin:$PATH"
 cd "$HOME/EMRYS" &&
 export EMRYS_SOURCE_ROOT="$(pwd -P)" &&
 source "$EMRYS_SOURCE_ROOT/.venv/bin/activate" &&
-cd "$HOME/emrys-projects" &&
+cd "$EMRYS_SOURCE_ROOT/Projects" &&
 export EMRYS_PROJECTS_ROOT="$(pwd -P)" &&
 cd "$EMRYS_PROJECTS_ROOT/emrys-smoke" &&
 export EMRYS_PROJECT_ROOT="$(pwd -P)" &&
 emrys inspect
 ```
 
-If you chose a different Projects parent, replace `$HOME/emrys-projects` with
-its actual path. For your own study, replace the final Project `cd` line with
+For your own study, replace the final Project `cd` line with
 `cd "$EMRYS_PROJECTS_ROOT/my-study"`. For an existing Project elsewhere, use
 `cd "/full/path/to/existing-project"` instead; keep it at its original location.
 Reconnecting does not require reinstalling EMRYS, recreating the Project or

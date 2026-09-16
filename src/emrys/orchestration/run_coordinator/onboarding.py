@@ -18,6 +18,13 @@ from pathlib import Path
 import yaml
 
 from emrys import __version__
+from emrys.analyses import (
+    BUILTIN_PAIRED_CMH_MODULE_ID,
+    AnalysisInputContextV1,
+    AnalysisModuleLoadError,
+    admit_configuration,
+    load_analysis_module,
+)
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability.inspector import (
@@ -39,7 +46,7 @@ from emrys.libraries.exclusive_publication import (
     publish_exclusive,
     release_lock,
 )
-from emrys.libraries.process_environment import command_flags, guarded_r_environment
+from emrys.libraries.process_environment import guarded_r_environment
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.libraries.references.contigs import (
     ReferenceContigError,
@@ -512,8 +519,7 @@ def publish_create_absent_tree(
         ) from exc
 
 
-_PROJECT_FIELDS = """sample_manifest partition_manifest
-reference_fasta reference_gtf sjdb_overhang genome_sa_index_nbases
+_PROJECT_FIELDS = """reference_fasta reference_gtf sjdb_overhang genome_sa_index_nbases
 control_condition treatment_condition target_change min_sample_dp
 mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold
 background_max_fraction""".split()
@@ -521,7 +527,7 @@ _PROJECT_TYPES = {
     field: converter
     for fields, converter in (
         (
-            "sample_manifest partition_manifest reference_fasta reference_gtf".split(),
+            "reference_fasta reference_gtf".split(),
             Path,
         ),
         ("sjdb_overhang genome_sa_index_nbases min_sample_dp".split(), int),
@@ -549,6 +555,42 @@ def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
         type=_project_name,
         help="Safe name for the new child directory and Project root.",
     )
+    manifests = parser.add_argument_group("Project input lists")
+    manifests.add_argument(
+        "--sample-manifest",
+        type=Path,
+        help="Existing advanced sample manifest to copy into the new Project.",
+    )
+    manifests.add_argument(
+        "--partition-manifest",
+        type=Path,
+        help="Existing advanced partition manifest to copy into the new Project.",
+    )
+    manifests.add_argument(
+        "--fastq",
+        action="extend",
+        nargs="+",
+        type=Path,
+        default=[],
+        help="FASTQs for guided manifest creation; prompted when omitted.",
+    )
+    manifests.add_argument(
+        "--sample",
+        action="append",
+        nargs=4,
+        default=[],
+        metavar=("SAMPLE_ID", "CONDITION", "PAIRING_GROUP", "STRANDEDNESS"),
+        help="Biology for one detected pair; prompted when omitted.",
+    )
+    for name, value in (("regions-file", "PATH"), ("region", "SELECTOR")):
+        manifests.add_argument(
+            f"--{name}",
+            action="append",
+            nargs=2,
+            default=[],
+            metavar=("PARTITION_ID", value),
+            help=f"Partition {name.replace('-', ' ')}; prompted when omitted.",
+        )
     for destination in _PROJECT_FIELDS:
         parser.add_argument(
             f"--{destination.replace('_', '-')}",
@@ -599,14 +641,7 @@ def _collect_project_answers(arguments: argparse.Namespace) -> dict[str, object]
         if value is None:
             label = destination.replace("_", " ")
             suggestion = _PROJECT_SUGGESTIONS.get(destination)
-            suffix = f" [{suggestion}]" if suggestion is not None else ""
-            print(f"{label}{suffix}: ", end="", file=sys.stderr, flush=True)
-            raw = sys.stdin.readline()
-            if raw == "":
-                raise OnboardingError(
-                    f"Project setup ended before {label} was supplied"
-                )
-            raw = raw.strip() or ("" if suggestion is None else str(suggestion))
+            raw = _prompt(label, None if suggestion is None else str(suggestion))
             if not raw:
                 raise OnboardingError(f"{label} is required")
             try:
@@ -625,7 +660,7 @@ def _project_yaml(answers: Mapping[str, object]) -> bytes:
             "target RNA change must name two different bases, like A>G"
         )
     analysis = {
-        "partitions": str(answers["partition_manifest"]),
+        "partitions": "partitions.tsv",
         **{
             key: answers[key]
             for key in (
@@ -644,7 +679,7 @@ def _project_yaml(answers: Mapping[str, object]) -> bytes:
     }
     document = {
         "schema_version": "emrys.project.v1",
-        "dataset": {"samples": str(answers["sample_manifest"])},
+        "dataset": {"samples": "samples.tsv"},
         "reference": {
             "fasta": str(answers["reference_fasta"]),
             "gtf": str(answers["reference_gtf"]),
@@ -658,126 +693,329 @@ def _project_yaml(answers: Mapping[str, object]) -> bytes:
     return yaml.safe_dump(document, sort_keys=False).encode("utf-8")
 
 
+def _prompt(label: str, suggestion: str | None = None) -> str:
+    suffix = f" [{suggestion}]" if suggestion is not None else ""
+    print(f"{label}{suffix}: ", end="", file=sys.stderr, flush=True)
+    raw = sys.stdin.readline()
+    if raw == "":
+        raise OnboardingError(f"Project setup ended before {label} was supplied")
+    return raw.strip() or (suggestion or "")
+
+
+def _interactive_terminal() -> bool:
+    return sys.stdin.isatty() and sys.stderr.isatty()
+
+
+def _discover_fastqs(directory: Path) -> list[Path]:
+    root = _admit_existing_path(
+        directory, "FASTQ directory", directory=True, canonical=True
+    )
+    paths = [
+        path
+        for path in sorted(root.iterdir())
+        if path.is_file() and FASTQ_PAIR_NAME.fullmatch(path.name) is not None
+    ]
+    if not paths:
+        raise OnboardingError(
+            "FASTQ directory contains no recognized paired files ending in "
+            "_R1/_R2 or _1/_2 followed by .fastq/.fq and optional .gz"
+        )
+    return paths
+
+
+def _guided_manifest_members(
+    arguments: argparse.Namespace,
+) -> dict[str, tuple[bytes, int]]:
+    interactive = _interactive_terminal()
+    fastqs = list(getattr(arguments, "fastq", ()))
+    if not fastqs:
+        if not interactive:
+            raise OnboardingError(
+                "input-list creation needs --fastq paths or an interactive terminal"
+            )
+        fastqs = _discover_fastqs(Path(_prompt("FASTQ directory")))
+        arguments.fastq = fastqs
+
+    samples = list(getattr(arguments, "sample", ()))
+    assigned = {row[0] for row in samples}
+    sample_ids: list[str] = []
+    for path in fastqs:
+        match = FASTQ_PAIR_NAME.fullmatch(path.name)
+        if match is None:
+            raise OnboardingError(f"unrecognized FASTQ pair name: {path}")
+        sample_id = str(match["sample"])
+        if sample_id not in sample_ids:
+            sample_ids.append(sample_id)
+    missing = sorted(set(sample_ids) - assigned)
+    if missing and interactive:
+        print("Detected FASTQ pairs:", file=sys.stderr)
+        for sample_id in sorted(sample_ids):
+            print(f"  {sample_id}", file=sys.stderr)
+        for sample_id in missing:
+            samples.append(
+                [
+                    sample_id,
+                    _prompt(f"condition for {sample_id}"),
+                    _prompt(f"pairing group for {sample_id}"),
+                    _prompt(f"strandedness for {sample_id}", "unknown"),
+                ]
+            )
+        arguments.sample = samples
+
+    regions_files = list(getattr(arguments, "regions_file", ()))
+    regions = list(getattr(arguments, "region", ()))
+    if not regions_files and not regions:
+        if not interactive:
+            raise OnboardingError(
+                "input-list creation needs --regions-file/--region or an interactive terminal"
+            )
+        regions_file = _prompt(
+            "regions file (leave blank to enter chromosomes or regions)"
+        )
+        if regions_file:
+            regions_files = [["regions", regions_file]]
+            arguments.regions_file = regions_files
+        else:
+            selectors = shlex.split(_prompt("chromosomes or regions (space-separated)"))
+            if not selectors:
+                raise OnboardingError("at least one chromosome or region is required")
+            regions = [
+                [f"part{index:03d}", selector]
+                for index, selector in enumerate(selectors, start=1)
+            ]
+            arguments.region = regions
+    return _draft_manifest_members(fastqs, samples, regions_files, regions)
+
+
+def _copied_manifest_members(
+    arguments: argparse.Namespace, output: Path
+) -> dict[str, tuple[bytes, int]]:
+    sample_value = getattr(arguments, "sample_manifest", None)
+    partition_value = getattr(arguments, "partition_manifest", None)
+    if (sample_value is None) != (partition_value is None):
+        raise OnboardingError(
+            "--sample-manifest and --partition-manifest must be supplied together"
+        )
+    if sample_value is None:
+        return _guided_manifest_members(arguments)
+    if any(
+        getattr(arguments, name, ())
+        for name in ("fastq", "sample", "regions_file", "region")
+    ):
+        raise OnboardingError(
+            "existing manifests cannot be combined with guided input-list options"
+        )
+
+    sample_path = _admit_supplied_file(sample_value, "sample manifest")
+    sample_data, _ = read_bytes_with_identity(sample_path, "sample manifest")
+    sample_table, _, sample_rows = step08.validate_sample_manifest_bytes(
+        sample_data, sample_path
+    )
+    for row in sample_rows:
+        for mate in ("r1_fastq", "r2_fastq"):
+            value = Path(row[mate])
+            row[mate] = str(
+                _admit_supplied_file(
+                    value if value.is_absolute() else sample_path.parent / value,
+                    f"sample {row['sample_id']} {mate}",
+                )
+            )
+    copied_samples = tsv_bytes(sample_table.header, sample_rows)
+
+    partition_path = _admit_supplied_file(partition_value, "partition manifest")
+    partition_data, _ = read_bytes_with_identity(partition_path, "partition manifest")
+    partition_table = step08.validate_partition_manifest_bytes(
+        partition_data, partition_path
+    )
+    partition_rows = [dict(row) for row in partition_table.rows]
+    for row in partition_rows:
+        if row["selector_type"] == "regions_file":
+            value = Path(row["selector_value"])
+            row["selector_value"] = str(
+                _admit_supplied_file(
+                    value if value.is_absolute() else partition_path.parent / value,
+                    f"partition {row['partition_id']} regions file",
+                )
+            )
+    copied_partitions = tsv_bytes(step08.PARTITION_MANIFEST_HEADER, partition_rows)
+    return {
+        "samples.tsv": (copied_samples, 0o644),
+        "partitions.tsv": (copied_partitions, 0o644),
+    }
+
+
+def _project_replay_flags(
+    arguments: argparse.Namespace, answers: Mapping[str, object]
+) -> tuple[str, ...]:
+    flags: list[str] = []
+    for name, value in {**answers, "site": getattr(arguments, "site", None)}.items():
+        if value is not None:
+            flags.extend((f"--{name.replace('_', '-')}", str(value)))
+    if getattr(arguments, "sample_manifest", None) is not None:
+        flags.extend(("--sample-manifest", str(arguments.sample_manifest)))
+        flags.extend(("--partition-manifest", str(arguments.partition_manifest)))
+    else:
+        flags.append("--fastq")
+        flags.extend(str(path) for path in getattr(arguments, "fastq", ()))
+        for row in getattr(arguments, "sample", ()):
+            flags.append("--sample")
+            flags.extend(str(value) for value in row)
+        for name in ("regions_file", "region"):
+            for row in getattr(arguments, name, ()):
+                flags.append(f"--{name.replace('_', '-')}")
+                flags.extend(str(value) for value in row)
+    return tuple(flags)
+
+
 def _print_project_preview(
-    project: ProjectAdmission,
+    output: Path,
+    project_bytes: bytes,
+    members: Mapping[str, tuple[bytes, int]],
     answers: Mapping[str, object],
-    site: str | None,
+    arguments: argparse.Namespace,
 ) -> None:
-    """Review named init's admitted built-in Analysis and replay its answers."""
+    """Review structure and scientific intent without hashing FASTQ contents."""
 
-    analysis = project.select_analysis()
-    source = analysis.workflow_inputs
-
-    def location(label: str, snapshot: Mapping[str, object]) -> None:
-        print(f"  {label}: {snapshot['path']!r}; SHA-256: {snapshot['sha256']}")
+    definition = orchestration_contracts.load_yaml_object_bytes(project_bytes)
+    orchestration_contracts.validate_record("project", definition)
+    _sample_table, _, samples = step08.validate_sample_manifest_bytes(
+        members["samples.tsv"][0], output / "samples.tsv"
+    )
+    partitions = step08.validate_partition_manifest_bytes(
+        members["partitions.tsv"][0], output / "partitions.tsv"
+    )
+    analysis = definition["analyses"][str(answers["analysis_name"])]
+    try:
+        module = load_analysis_module(BUILTIN_PAIRED_CMH_MODULE_ID)
+        policy = admit_configuration(
+            module.descriptor,
+            {key: value for key, value in analysis.items() if key != "partitions"},
+            AnalysisInputContextV1(
+                samples=tuple(
+                    {
+                        key: row[key]
+                        for key in (
+                            "sample_id",
+                            "condition",
+                            "replicate",
+                            "strandedness",
+                        )
+                    }
+                    for row in samples
+                ),
+                partitions=tuple(dict(row) for row in partitions.rows),
+                reference={"fasta_sha256": "preview", "gtf_sha256": "preview"},
+            ),
+        )
+    except (AnalysisModuleLoadError, TypeError, ValueError) as exc:
+        raise OnboardingError(f"scientific setup is invalid: {exc}") from exc
 
     print("Review the study interpretation before creating the Project:")
-    print(f"  Analysis: {analysis.name}")
-    print(f"  Site: {site or 'none (direct placement)'}")
-    for name in ("samples", "partitions"):
-        location(f"{name} manifest", source[name]["manifest"])
-    for name in ("fasta", "gtf"):
-        location(f"reference {name}", source["reference"][name])
+    print(f"  Project: {output}")
+    print(f"  Analysis: {answers['analysis_name']}")
+    print(f"  Site: {getattr(arguments, 'site', None) or 'none (direct placement)'}")
+    print("  Manifests: samples.tsv, partitions.tsv (inside this Project)")
+    print(f"  Reference FASTA: {answers['reference_fasta']}")
+    print(f"  Reference GTF: {answers['reference_gtf']}")
     print("Sample assignments (pairing groups are explicitly supplied):")
-    for sample in source["samples"]["rows"]:
+    for sample in samples:
         print(
             f"  {sample['sample_id']}: condition={sample['condition']}; "
             f"pairing group={sample['replicate']}; strandedness={sample['strandedness']}"
         )
-        for mate in ("r1_fastq", "r2_fastq"):
-            location(mate, sample[mate])
-    for partition in source["partitions"]["rows"]:
+        print(f"    R1: {sample['r1_fastq']}")
+        print(f"    R2: {sample['r2_fastq']}")
+    for partition in partitions.rows:
         print(
             f"  Partition {partition['partition_id']}: {partition['selector_type']} "
             f"{partition['selector_value']!r}"
         )
-        if partition["selector_file"] is not None:
-            print(
-                f"    format={partition['selector_format']}; "
-                f"compression={partition['selector_compression']}; "
-                f"SHA-256: {partition['selector_file']['sha256']}"
-            )
-    settings = {
-        **source["reference"]["star_index"],
-        **source["analysis"]["policy"]["configuration"],
-    }
     print("Scientific settings:")
-    print(f"  target change: {settings['rna_ref']}>{settings['rna_alt']}")
+    print(f"  target change: {policy['rna_ref']}>{policy['rna_alt']}")
+    settings = {
+        **definition["reference"]["star_index"],
+        **policy,
+    }
     for name, value in settings.items():
         if name not in {"rna_ref", "rna_alt"}:
             print(f"  {name.replace('_', ' ')}: {'none' if value is None else value}")
-    flags = command_flags(
-        *(
-            (name.replace("_", "-"), value)
-            for name, value in {**answers, "site": site}.items()
-            if value is not None
-        )
-    )
     replay = controlled_python_argv(
         sys.executable,
         "-m",
         "emrys",
         "init",
-        project.source_path.parent.name,
-        *flags,
+        output.name,
+        *_project_replay_flags(arguments, answers),
         "--execute",
     )
     print("After review, copy this command to create without repeating the questions.")
-    print("This Python environment will recheck inputs; preview does not freeze them.")
-    parent = shlex.quote(str(project.source_path.parent.parent))
-    print(f"cd {parent} && {shlex.join(replay)}")
+    print("Creation will hash each FASTQ once and reject inputs changed during setup.")
+    print(f"cd {shlex.quote(str(output.parent))} && {shlex.join(replay)}")
 
 
 def init_project_from_args(arguments: argparse.Namespace) -> int:
     """Plan or create one validated Project root around existing inputs."""
 
     try:
+        output = _require_external_absent_output(
+            Path.cwd() / arguments.project_name, source_root()
+        )
+        manifest_members = _copied_manifest_members(arguments, output)
         answers = _collect_project_answers(arguments)
         execution_profile_bytes = project_default_profile_bytes(
             getattr(arguments, "site", None)
         )
-        output = _require_external_absent_output(
-            Path.cwd() / arguments.project_name, source_root()
-        )
-        for field in _PROJECT_FIELDS[:4]:
-            answers[field] = _absolute(Path(answers[field])).resolve(strict=True)
+        for field in ("reference_fasta", "reference_gtf"):
+            answers[field] = _admit_supplied_file(
+                answers[field], field.replace("_", " ")
+            )
         answers["analysis_name"] = arguments.analysis_name
         answers["background_condition"] = arguments.background_condition
         project_bytes = _project_yaml(answers)
+        print(f"Project root: {output}")
+        print("Owned files: project.yaml, samples.tsv, partitions.tsv")
+        print("Owned directories: logs, runs, runtime")
+        print("FASTQs and references remain in place; setup copies no large inputs.")
+        _print_project_preview(
+            output, project_bytes, manifest_members, answers, arguments
+        )
+        if not arguments.execute:
+            print("Dry-run complete; no files were written.")
+            return 0
         print(
-            "Project preparation reads and hashes all declared inputs and checks "
-            "reference compatibility. Large inputs may take several minutes.",
+            "Project creation reads and hashes each declared FASTQ once, then "
+            "checks reference and partition compatibility. Large inputs may take "
+            "several minutes.",
             file=sys.stderr,
         )
+        prepared_files = {
+            output / name: data for name, (data, _mode) in manifest_members.items()
+        }
         with phase_progress("Reading and hashing Project inputs"):
-            preview = _admit_project_data(
+            admission = _admit_project_data(
                 output / "project.yaml",
                 project_bytes,
                 source_root() / PROFILE_RELATIVE_PATH,
+                prepared_files=prepared_files,
             )
         with phase_progress("Checking reference and partition compatibility"):
-            validate_project_admission(preview)
-        print(f"Project root: {output}")
-        print("Owned directories: logs, runs, runtime")
-        print("Referenced inputs remain in place; setup copies no input files.")
-        if not arguments.execute:
-            _print_project_preview(preview, answers, getattr(arguments, "site", None))
-            print("Dry-run complete; no files were written.")
-            return 0
+            validate_project_admission(admission)
+        members = {
+            **manifest_members,
+            (PROJECT_PROFILE_DIRECTORY / "default.yaml").as_posix(): (
+                execution_profile_bytes,
+                0o644,
+            ),
+        }
         publish_create_absent_tree(
             output,
-            {
-                (PROJECT_PROFILE_DIRECTORY / "default.yaml").as_posix(): (
-                    execution_profile_bytes,
-                    0o644,
-                )
-            },
+            members,
             completion_name="project.yaml",
             completion_bytes=project_bytes,
             directories=PROJECT_DIRECTORIES,
+            before_completion=lambda _published: admission.require_inputs_unchanged(),
         )
-        with phase_progress("Verifying the published Project"):
-            validate_project(output / "project.yaml")
+        admission.require_inputs_unchanged()
         print(f"Project ready: {output / 'project.yaml'}")
         return 0
     except (

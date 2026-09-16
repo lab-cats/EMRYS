@@ -29,7 +29,12 @@ from emrys.contracts.orchestration.application_model import (
 from emrys.libraries.validation.mpileup import selector_file_semantics
 from emrys.contracts.scientific_evidence import step08
 from emrys.libraries.validation.errors import ValidationError
-from emrys.libraries.validation.inputs import read_bytes, sha256_with_identity
+from emrys.libraries.validation.inputs import (
+    Snapshot,
+    read_bytes,
+    regular_snapshot,
+    sha256_with_identity,
+)
 from emrys.libraries.validation.tsv import tsv_bytes
 
 
@@ -79,10 +84,24 @@ class ProjectAdmission:
     source_bytes: bytes
     analyses: tuple[AnalysisAdmission, ...]
     dataset_sample_count: int
+    _input_snapshots: tuple[tuple[Path, Snapshot], ...] = ()
 
     @property
     def source_sha256(self) -> str:
         return hashlib.sha256(self.source_bytes).hexdigest()
+
+    def require_inputs_unchanged(self) -> None:
+        """Reject an input whose filesystem identity changed after admission."""
+
+        for path, expected in self._input_snapshots:
+            try:
+                observed = regular_snapshot(path, f"Project input {path.name}")
+            except ValidationError as exc:
+                raise orchestration_contracts.ContractValidationError(str(exc)) from exc
+            if observed != expected:
+                raise orchestration_contracts.ContractValidationError(
+                    f"Project input changed after admission: {path}"
+                )
 
     def select_analysis(
         self,
@@ -132,7 +151,11 @@ def _regular_file(path: Path, label: str) -> tuple[Path, bytes]:
         raise orchestration_contracts.ContractValidationError(str(exc)) from exc
 
 
-def _regular_file_snapshot(path: Path, label: str) -> tuple[Path, dict[str, Any]]:
+def _regular_file_snapshot(
+    path: Path,
+    label: str,
+    input_snapshots: dict[Path, Snapshot] | None = None,
+) -> tuple[Path, dict[str, Any]]:
     """Admit one large input by streaming its identity without retaining bytes."""
 
     admitted_path = Path(os.path.abspath(path))
@@ -140,6 +163,13 @@ def _regular_file_snapshot(path: Path, label: str) -> tuple[Path, dict[str, Any]
         digest, state = sha256_with_identity(admitted_path, label)
     except ValidationError as exc:
         raise orchestration_contracts.ContractValidationError(str(exc)) from exc
+    if input_snapshots is not None:
+        input_snapshots[admitted_path] = Snapshot(
+            state.st_dev,
+            state.st_ino,
+            state.st_size,
+            state.st_mtime_ns,
+        )
     return admitted_path, {
         "path": str(admitted_path),
         "size_bytes": state.st_size,
@@ -181,11 +211,19 @@ def validate_authored_path(value: str, label: str) -> None:
         )
 
 
-def _resolve_authored_path(value: str, base: Path, label: str) -> tuple[Path, bytes]:
+def _resolve_authored_path(
+    value: str,
+    base: Path,
+    label: str,
+    prepared_files: Mapping[Path, bytes] | None = None,
+) -> tuple[Path, bytes]:
     validate_authored_path(value, label)
     candidate = Path(value)
     if not candidate.is_absolute():
         candidate = base / candidate
+    candidate = Path(os.path.abspath(candidate))
+    if prepared_files is not None and candidate in prepared_files:
+        return candidate, prepared_files[candidate]
     return _regular_file(candidate, label)
 
 
@@ -193,12 +231,13 @@ def _resolve_authored_snapshot(
     value: str,
     base: Path,
     label: str,
+    input_snapshots: dict[Path, Snapshot] | None = None,
 ) -> tuple[Path, dict[str, Any]]:
     validate_authored_path(value, label)
     candidate = Path(value)
     if not candidate.is_absolute():
         candidate = base / candidate
-    return _regular_file_snapshot(candidate, label)
+    return _regular_file_snapshot(candidate, label, input_snapshots)
 
 
 def _snapshot(path: Path, data: bytes) -> dict[str, Any]:
@@ -231,6 +270,7 @@ def _normalize_samples(
     manifest_path: Path,
     manifest_data: bytes,
     project_dir: Path,
+    input_snapshots: dict[Path, Snapshot] | None = None,
 ) -> tuple[dict[str, Any], step08.Table]:
     try:
         table, _, rows = step08.validate_sample_manifest_bytes(
@@ -241,10 +281,16 @@ def _normalize_samples(
     normalized_rows: list[dict[str, Any]] = []
     for index, row in enumerate(rows, start=2):
         r1_path, r1_snapshot = _resolve_authored_snapshot(
-            row["r1_fastq"], project_dir, f"Sample manifest row {index} R1 FASTQ"
+            row["r1_fastq"],
+            project_dir,
+            f"Sample manifest row {index} R1 FASTQ",
+            input_snapshots,
         )
         r2_path, r2_snapshot = _resolve_authored_snapshot(
-            row["r2_fastq"], project_dir, f"Sample manifest row {index} R2 FASTQ"
+            row["r2_fastq"],
+            project_dir,
+            f"Sample manifest row {index} R2 FASTQ",
+            input_snapshots,
         )
         if r1_path == r2_path:
             raise orchestration_contracts.ContractValidationError(
@@ -278,6 +324,7 @@ def _normalize_samples(
 def _normalize_partitions(
     manifest_path: Path,
     manifest_data: bytes,
+    input_snapshots: dict[Path, Snapshot] | None = None,
 ) -> dict[str, Any]:
     try:
         table = step08.validate_partition_manifest_bytes(manifest_data, manifest_path)
@@ -292,6 +339,7 @@ def _normalize_partitions(
                 selector_value,
                 manifest_path.parent,
                 f"Partition manifest row {index} regions file",
+                input_snapshots,
             )
             selector_value = str(path)
             selector_format, selector_compression = selector_file_semantics(path)
@@ -321,6 +369,8 @@ def _admit_project_data(
     project_path: str | Path,
     project_data: bytes,
     profile: Mapping[str, Any] | str | Path,
+    *,
+    prepared_files: Mapping[Path, bytes] | None = None,
 ) -> ProjectAdmission:
     """Admit prepared Project bytes at their intended canonical location."""
 
@@ -331,6 +381,14 @@ def _admit_project_data(
     )
     profile_record = _load_profile(profile)
     project_dir = resolved_project.parent
+    prepared = (
+        None
+        if prepared_files is None
+        else {
+            Path(os.path.abspath(path)): data for path, data in prepared_files.items()
+        }
+    )
+    input_snapshots: dict[Path, Snapshot] = {}
     try:
         orchestration_contracts.validate_record("project", definition)
     except orchestration_contracts.ContractValidationError as exc:
@@ -344,20 +402,27 @@ def _admit_project_data(
     analysis_specs = tuple(sorted(definition["analyses"].items()))
 
     sample_path, sample_data = _resolve_authored_path(
-        sample_manifest, project_dir, "Sample manifest"
+        sample_manifest, project_dir, "Sample manifest", prepared
     )
     samples, sample_table = _normalize_samples(
         sample_path,
         sample_data,
         project_dir,
+        input_snapshots,
     )
     dataset_sample_ids = {str(row["sample_id"]) for row in samples["rows"]}
 
     _fasta_path, fasta_snapshot = _resolve_authored_snapshot(
-        reference_definition["fasta"], project_dir, "Reference FASTA"
+        reference_definition["fasta"],
+        project_dir,
+        "Reference FASTA",
+        input_snapshots,
     )
     _gtf_path, gtf_snapshot = _resolve_authored_snapshot(
-        reference_definition["gtf"], project_dir, "Reference GTF"
+        reference_definition["gtf"],
+        project_dir,
+        "Reference GTF",
+        input_snapshots,
     )
     reference_input = {
         "fasta": fasta_snapshot,
@@ -402,8 +467,11 @@ def _admit_project_data(
                 authored_partition,
                 project_dir,
                 f"Analysis {name} partition manifest",
+                prepared,
             )
-            partitions = _normalize_partitions(partition_path, partition_data)
+            partitions = _normalize_partitions(
+                partition_path, partition_data, input_snapshots
+            )
             partition_cache[authored_partition] = partitions
         try:
             module = load_analysis_module(
@@ -531,6 +599,9 @@ def _admit_project_data(
         source_bytes=project_data,
         analyses=tuple(analyses),
         dataset_sample_count=len(samples["rows"]),
+        _input_snapshots=tuple(
+            sorted(input_snapshots.items(), key=lambda item: item[0])
+        ),
     )
 
 
