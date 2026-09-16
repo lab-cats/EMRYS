@@ -57,9 +57,12 @@ selects the sole Run or, before any Run exists, the sole retained submission;
 ambiguity opens the existing terminal picker and fails in noninteractive use.
 `EMRYS_PROJECTS_ROOT` permits the same Run selection from another directory by
 enumerating only immediate canonical Project children. It is not persistent
-selection state and never authorizes a newest-Run inference. Numeric selectors
-and exact scheduler names use diagnostic scheduler selection without admitting
-a Project or Run from scheduler text.
+selection state and never authorizes a newest-Run inference. When no Project
+Run is available, `emrys watch` selects a sole bounded current-user scheduler
+candidate or offers those candidates in the same picker; noninteractive
+ambiguity fails with the candidate IDs. Numeric selectors and exact scheduler
+names use diagnostic scheduler selection without admitting a Project or Run
+from scheduler text.
 
 `emrys setup` is dry-run-first and create-absent. With `--execute`, it publishes
 one mode-`0600` repository-root `.env` containing only its format version,
@@ -452,8 +455,11 @@ Generic current analysis-owner rules and historical named rules are recognized.
 Parsed log completion cannot supply scientific completion or Run authority.
 
 `--job-id [JOB_ID]` selects a raw scheduler view without Project admission;
-omitting the ID uses bounded current-user discovery. A watch with no explicit
-selection and no current Project also discovers through that same owner.
+omitting the ID uses bounded current-user discovery only when exactly one
+candidate exists. A raw caller with several candidates must provide an ID;
+`emrys watch` with no explicit selection and no current Project instead offers
+the bounded candidates in its existing interactive picker and fails with their
+IDs when noninteractive. Neither path infers the newest job.
 Explicit IDs do not rediscover on failure. `--log-dir` supplies a historical
 scheduler root; command-line selectors outrank the legacy environment defaults.
 `--offline` requires an exact ID and both explicit owned regular streams and

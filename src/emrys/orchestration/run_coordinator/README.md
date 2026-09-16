@@ -70,11 +70,14 @@ separate dated Run-evidence/log view and fresh CLI action handoffs.
 automatically selects the sole Project Run or pre-Run request, uses a picker for
 ambiguity, and accepts exact scheduler IDs or names. A declared
 `EMRYS_PROJECTS_ROOT` supplies read-only Run discovery outside a Project
-directory. Verified completion comes from inspection and replaces stale final
-stage counts; scheduler/log completion remains diagnostic.
+directory. With no selectable Run, watch selects a sole bounded current-user
+scheduler candidate or offers all candidates in the same picker; noninteractive
+ambiguity fails with their IDs. Verified completion comes from inspection and
+replaces stale final stage counts; scheduler/log completion remains diagnostic.
 
 Use `--job-id [JOB_ID]` for scheduler-only selection; omitted ID discovers an
-owned recent job, as does watch without a current Project. `--log-dir`,
+owned recent job only when exactly one candidate exists. Raw ambiguity requires
+an explicit ID and never chooses the newest candidate. `--log-dir`,
 `--out`/`--err --offline`, `--refresh` and `--snapshot` preserve the corresponding
 legacy capabilities. Scheduler-only selection cannot execute actions or admit
 a Run from log text. Project requests retain their stronger exact

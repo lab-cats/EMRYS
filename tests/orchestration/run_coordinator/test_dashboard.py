@@ -1041,7 +1041,6 @@ def test_explicit_job_failure_does_not_fall_back_to_discovery(
         pytest.fail("explicit selection must not call candidate discovery")
 
     monkeypatch.setattr(dashboard, "scheduler_selection", reject_explicit)
-    monkeypatch.setattr(dashboard, "scheduler_candidate_ids", unexpected_discovery)
     monkeypatch.setattr(dashboard, "scheduler_candidates", unexpected_discovery)
 
     with pytest.raises(
@@ -1115,7 +1114,7 @@ def test_validate_log_selection_rejects_symlinked_directory(tmp_path: Path) -> N
         )
 
 
-def test_scheduler_candidate_ids_prefers_live_then_recent_root_allocations(
+def test_scheduler_candidates_prefer_live_then_recent_root_allocations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fake_command(argv: list[str], timeout: int = 10) -> str:
@@ -1135,7 +1134,7 @@ def test_scheduler_candidate_ids_prefers_live_then_recent_root_allocations(
     monkeypatch.setenv("LOGNAME", "another-user")
     monkeypatch.setattr(dashboard._scheduler, "command_text", fake_command)
 
-    assert dashboard.scheduler_candidate_ids() == [
+    assert [candidate["job_id"] for candidate in dashboard.scheduler_candidates()] == [
         605305,
         605300,
         605304,
@@ -1143,16 +1142,9 @@ def test_scheduler_candidate_ids_prefers_live_then_recent_root_allocations(
     ]
 
 
-def test_auto_discovery_skips_unprovable_candidate(
+def test_auto_discovery_refuses_multiple_candidates_without_probing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    selected = {
-        "job_id": 605304,
-        "log_dir": "/logs",
-        "out": "/logs/emrys-local-pilot-605304.out",
-        "err": "/logs/emrys-local-pilot-605304.err",
-    }
-    attempted: list[int] = []
     monkeypatch.setattr(
         dashboard,
         "scheduler_candidates",
@@ -1161,18 +1153,34 @@ def test_auto_discovery_skips_unprovable_candidate(
             {"job_id": 605304, "accounting": None},
         ],
     )
+    monkeypatch.setattr(
+        dashboard,
+        "scheduler_candidate_selection",
+        lambda _candidate: pytest.fail("ambiguous candidates must not be probed"),
+    )
 
-    def fake_selection(job_id: int, log_dir: str | None = None) -> dict[str, object]:
-        del log_dir
-        attempted.append(job_id)
-        if job_id == 605305:
-            raise dashboard._scheduler.DiscoveryError("not an EMRYS wrapper job")
-        return selected
+    with pytest.raises(
+        dashboard._scheduler.DiscoveryError,
+        match="candidates: 605305, 605304",
+    ):
+        dashboard.resolve_selection()
 
-    monkeypatch.setattr(dashboard, "scheduler_selection", fake_selection)
 
-    assert dashboard.resolve_selection() == selected
-    assert attempted == [605305, 605304]
+def test_auto_discovery_selects_the_only_candidate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    candidate = {"job_id": 605304, "accounting": None}
+    selected = {"job_id": 605304, "out": "/logs/out", "err": "/logs/err"}
+    monkeypatch.setattr(dashboard, "scheduler_candidates", lambda: [candidate])
+    monkeypatch.setattr(
+        dashboard,
+        "scheduler_candidate_selection",
+        lambda observed: (
+            selected if observed is candidate else pytest.fail("wrong job")
+        ),
+    )
+
+    assert dashboard.resolve_selection() is selected
 
 
 def test_exact_job_name_selection_reuses_scheduler_identity_owner(monkeypatch):
@@ -1455,7 +1463,7 @@ def test_auto_discovery_never_uses_historical_accounting_fallback(
     )
 
     with pytest.raises(
-        dashboard._scheduler.DiscoveryError, match="no recent current-user"
+        dashboard._scheduler.DiscoveryError, match="metadata is unavailable"
     ):
         dashboard.resolve_selection()
 

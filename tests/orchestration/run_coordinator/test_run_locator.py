@@ -263,6 +263,99 @@ def test_watch_routes_run_job_id_and_job_name_without_parallel_monitoring_owner(
     assert selected.submission == "submission-exact"
 
 
+def test_watch_selects_one_discovered_scheduler_job_without_a_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from emrys.orchestration.run_coordinator import dashboard
+
+    parser = argparse.ArgumentParser()
+    control.configure_watch_parser(parser)
+    captured = []
+
+    def inspect(arguments):
+        captured.append(arguments)
+        return 0
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("EMRYS_PROJECTS_ROOT", raising=False)
+    monkeypatch.delenv("EMRYS_DASHBOARD_JOB_ID", raising=False)
+    monkeypatch.setattr(
+        dashboard,
+        "scheduler_candidates",
+        lambda: ({"job_id": 41},),
+    )
+    monkeypatch.setattr(control, "inspect_from_args", inspect)
+
+    assert control.watch_from_args(parser.parse_args([])) == 0
+    assert captured[0].job_id == "41"
+
+
+def test_watch_offers_discovered_scheduler_jobs_in_existing_picker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from emrys.orchestration.run_coordinator import dashboard
+
+    parser = argparse.ArgumentParser()
+    control.configure_watch_parser(parser)
+    captured = []
+
+    def inspect(arguments):
+        captured.append(arguments)
+        return 0
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("EMRYS_PROJECTS_ROOT", raising=False)
+    monkeypatch.delenv("EMRYS_DASHBOARD_JOB_ID", raising=False)
+    monkeypatch.setattr(control.sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(control.sys.stderr, "isatty", lambda: True)
+    monkeypatch.setattr(
+        dashboard,
+        "scheduler_candidates",
+        lambda: ({"job_id": 41}, {"job_id": 42}),
+    )
+
+    class Menu:
+        def __init__(self, choices, **_kwargs):
+            assert tuple(choices) == ("Job 41", "Job 42")
+
+        def show(self):
+            return 1
+
+    monkeypatch.setattr(control, "TerminalMenu", Menu)
+    monkeypatch.setattr(control, "inspect_from_args", inspect)
+
+    assert control.watch_from_args(parser.parse_args([])) == 0
+    assert captured[0].job_id == "42"
+
+
+def test_watch_refuses_ambiguous_scheduler_jobs_without_a_terminal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from emrys.orchestration.run_coordinator import dashboard
+
+    parser = argparse.ArgumentParser()
+    control.configure_watch_parser(parser)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("EMRYS_PROJECTS_ROOT", raising=False)
+    monkeypatch.delenv("EMRYS_DASHBOARD_JOB_ID", raising=False)
+    monkeypatch.setattr(control.sys.stdin, "isatty", lambda: False)
+    monkeypatch.setattr(
+        dashboard,
+        "scheduler_candidates",
+        lambda: ({"job_id": 41}, {"job_id": 42}),
+    )
+    monkeypatch.setattr(
+        control,
+        "inspect_from_args",
+        lambda _arguments: pytest.fail("ambiguous jobs must not open the dashboard"),
+    )
+
+    assert control.watch_from_args(parser.parse_args([])) == 2
+    assert "Multiple scheduler jobs are available; select one: Job 41, Job 42" in (
+        capsys.readouterr().err
+    )
+
+
 def test_watch_ignores_submission_already_associated_with_sole_run(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

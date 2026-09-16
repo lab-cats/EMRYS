@@ -623,11 +623,6 @@ def scheduler_candidates():
     return ordered[:50]
 
 
-def scheduler_candidate_ids():
-    """Compatibility view of the bounded scheduler candidate roster."""
-    return [candidate["job_id"] for candidate in scheduler_candidates()]
-
-
 def scheduler_selection(
     job_id,
     log_dir=None,
@@ -704,6 +699,15 @@ def scheduler_selection(
     )
 
 
+def scheduler_candidate_selection(candidate, job_name=None):
+    accounting = candidate.get("accounting")
+    if accounting and accounting.get("StdOut") and accounting.get("StdErr"):
+        return accounting_stream_selection(accounting)
+    return scheduler_selection(
+        candidate["job_id"], accounting_metadata=accounting, job_name=job_name
+    )
+
+
 def resolve_selection(
     job_id=None, log_dir=None, out_path=None, err_path=None, offline=False
 ):
@@ -728,27 +732,11 @@ def resolve_selection(
         )
     if log_dir:
         raise _scheduler.DiscoveryError("LOG_DIR without JOB_ID is ambiguous")
-    failures = []
-    for candidate in scheduler_candidates():
-        job_id = candidate["job_id"]
-        accounting = candidate.get("accounting")
-        candidate_failures = []
-        if accounting and accounting.get("StdOut") and accounting.get("StdErr"):
-            try:
-                return accounting_stream_selection(accounting)
-            except _scheduler.DiscoveryError as exc:
-                candidate_failures.append("accounting: %s" % exc)
-        try:
-            return scheduler_selection(job_id)
-        except _scheduler.DiscoveryError as exc:
-            candidate_failures.append("scontrol: %s" % exc)
-        failures.append("%s: %s" % (job_id, "; ".join(candidate_failures)))
-    detail = "; ".join(failures[:3])
-    suffix = " (%s)" % detail if detail else ""
-    raise _scheduler.DiscoveryError(
-        "no recent current-user EMRYS wrapper job could be proven%s; "
-        "pass JOB_ID and LOG_DIR" % suffix
-    )
+    candidates = scheduler_candidates()
+    if len(candidates) != 1:
+        ids = ", ".join(str(candidate["job_id"]) for candidate in candidates)
+        raise _scheduler.DiscoveryError("pass JOB_ID; candidates: " + (ids or "none"))
+    return scheduler_candidate_selection(candidates[0])
 
 
 def resolve_named_selection(job_name):
@@ -773,14 +761,7 @@ def resolve_named_selection(job_name):
             f"scheduler job name is ambiguous across job IDs: {ids}; use a job ID"
         )
     candidate = candidates[0]
-    accounting = candidate.get("accounting")
-    if accounting and accounting.get("StdOut") and accounting.get("StdErr"):
-        return accounting_stream_selection(accounting)
-    return scheduler_selection(
-        candidate["job_id"],
-        accounting_metadata=accounting,
-        job_name=job_name,
-    )
+    return scheduler_candidate_selection(candidate, job_name)
 
 
 def parse_epoch(line):

@@ -126,6 +126,7 @@ class _NoProjectRuns(ControlError):
 
 _CONTROL_ERRORS = (
     slurm_submission.SlurmSubmissionError,
+    slurm_submission.scheduler_observation.DiscoveryError,
     ControlError,
     ExecutionProfileError,
     ResourceConfigError,
@@ -2685,6 +2686,30 @@ def watch_from_args(arguments: argparse.Namespace) -> int:
             selector,
             interactive=sys.stdin.isatty() and sys.stderr.isatty(),
         )
+        if (
+            selected is None
+            and selector is None
+            and not os.environ.get("EMRYS_DASHBOARD_JOB_ID", "").strip()
+            and not any(
+                getattr(arguments, key, None)
+                for key in ("job_id", "log_dir", "out", "err", "offline")
+            )
+        ):
+            from . import dashboard
+
+            candidates = tuple(dashboard.scheduler_candidates())
+            if not candidates:
+                raise ControlError("No scheduler jobs are available; pass a job ID")
+            index = 0
+            if len(candidates) > 1:
+                index = _terminal_selection(
+                    tuple(f"Job {item['job_id']}" for item in candidates),
+                    interactive=sys.stdin.isatty() and sys.stderr.isatty(),
+                    title="Select a scheduler job:",
+                    error="Multiple scheduler jobs are available; select one: ",
+                    canceled="Scheduler job selection canceled; nothing was changed.",
+                )
+            arguments.job_id = str(candidates[index]["job_id"])
     except _CONTROL_ERRORS as exc:
         return _control_failure(exc)
     if selected is not None:
