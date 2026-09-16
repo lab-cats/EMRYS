@@ -92,14 +92,23 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
     retained = load_execution_profile(
         REPO_ROOT / "configs/execution_profile.csu_viking_ev_pum1.yaml"
     )
-    assert viking.resource_policy.document() == retained.resource_policy.document()
-    resolved = resolve_resource_policy(
-        viking.resource_policy, AllocationCapacity(256, 524288, "fixture")
-    )
-    assert resolved.workflow_cores == 12
-    assert resolved.workflow_memory_mb == 524288
-    for capacity in ((11, 524288), (256, 524287)):
-        with pytest.raises(ResourceConfigError, match="allocation"):
+    retained_policy = retained.resource_policy.document()
+    assert retained_policy["workflow_memory_mb"] == 524288
+    assert viking.resource_policy.document() == {
+        **retained_policy,
+        "workflow_memory_mb": "allocation",
+    }
+    for memory_mb in (262144, 524287, 524288, 1048576):
+        resolved = resolve_resource_policy(
+            viking.resource_policy, AllocationCapacity(256, memory_mb, "fixture")
+        )
+        assert resolved.workflow_cores == 12
+        assert resolved.workflow_memory_mb == memory_mb
+    for capacity, message in (
+        ((11, 524288), "Workflow cores exceed observed allocation"),
+        ((256, 262143), "Stage 00a concurrency x memory exceeds workflow memory"),
+    ):
+        with pytest.raises(ResourceConfigError, match=message):
             resolve_resource_policy(
                 viking.resource_policy, AllocationCapacity(*capacity, "undersized")
             )
@@ -110,7 +119,10 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
         submission.argv
     )
     summary = "\n".join(viking.submission_summary())
-    assert "Workflow CPU ceiling: 12; memory ceiling: 524288 MiB" in summary
+    assert (
+        "Workflow CPU ceiling: 12; memory ceiling: "
+        "allocation capacity (unknown until execution)" in summary
+    )
     assert "Stage thread caps: 00a=12, 01=2, 02=1, 06=1, 08=4" in summary
     assert "Repeated-stage concurrency caps: 01=6" in summary
 
