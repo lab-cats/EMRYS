@@ -3033,7 +3033,7 @@ def test_malformed_project_is_a_usage_error(
 
 
 @pytest.mark.parametrize("inventory", ("missing", "damaged"))
-def test_sealed_donor_repair_refuses_even_without_an_admissible_inventory(
+def test_malformed_shared_seal_refuses_repair_without_an_admissible_inventory(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     inventory: str,
@@ -3052,7 +3052,7 @@ def test_sealed_donor_repair_refuses_even_without_an_admissible_inventory(
         lambda _name: pytest.fail("sealed donor admitted a package manager"),
     )
     before = _snapshot(tmp_path)
-    with pytest.raises(doctor.DoctorRepairError, match="permanently sealed"):
+    with pytest.raises(doctor.DoctorRepairError, match="re-admit the shared runtime seal"):
         doctor._build_repair_plan(_result(project, ready=False))
     assert _snapshot(tmp_path) == before
 
@@ -3067,12 +3067,163 @@ def test_repair_plan_predating_seal_refuses_before_managed_mutation(
     seal.write_bytes(b"immutable seal\n")
     records: list[str] = []
     _patch_logging(monkeypatch, plan, records)
-    with pytest.raises(doctor.DoctorRepairError, match="permanently sealed"):
+    with pytest.raises(doctor.DoctorRepairError, match="seal appeared"):
         doctor._execute_repair(plan, controls=_controls(project))
     assert seal.read_bytes() == b"immutable seal\n"
     assert not _runtime(plan).managed_root.exists()
     assert not (seal.parent / "maintenance.lock").exists()
     assert records == ["opened", "failed", "closed"]
+
+
+def test_valid_shared_owner_plans_a_fresh_generation_without_writes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = _project(tmp_path)
+    runtime = project.source_path.parent / "runtime"
+    seal = runtime / "shared.json"
+    seal.write_bytes(b"retained seal\n")
+    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(doctor, "_manager", lambda _name: Path("/manager/pixi"))
+    monkeypatch.setattr(doctor, "_file_sha256", lambda _path: "d" * 64)
+    monkeypatch.setattr(
+        doctor,
+        "admit_runtime_seal_bytes",
+        lambda path, _data: SimpleNamespace(
+            path=path,
+            managed_root=runtime / "managed",
+        ),
+    )
+    before = _snapshot(tmp_path)
+
+    plan = doctor._build_repair_plan(_result(project, ready=False))
+
+    assert plan.runtime is not None
+    assert plan.runtime.source_seal == seal
+    assert plan.runtime.source_seal_bytes == seal.read_bytes()
+    assert plan.runtime.replacement_seal is not None
+    assert plan.runtime.replacement_seal.parent.parent == runtime / "generations"
+    assert plan.runtime.managed_root == plan.runtime.replacement_seal.parent / "managed"
+    assert _snapshot(tmp_path) == before
+
+
+def test_dependent_project_requires_the_source_projects_replacement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = _project(tmp_path)
+    profile = project.source_path.parent / "runtime/runtime.tsv"
+    source = tmp_path / "source"
+    source.mkdir()
+    source_project = source / "project.yaml"
+    source_project.write_bytes(b"source Project identity\n")
+    profile_bytes = runtime_inspector.shared_runtime_profile_bytes(
+        source / "runtime/shared.json",
+        b"source seal\n",
+        Path(sys.executable),
+    )
+    profile.write_bytes(profile_bytes)
+    inspection = _inspection(
+        tmp_path,
+        profile=profile,
+        profile_bytes=profile_bytes,
+    )
+    monkeypatch.setattr(
+        doctor,
+        "load_runtime_profile_contract",
+        lambda *_args: (profile_bytes, ()),
+    )
+    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(
+        doctor, "_manager", lambda _name: pytest.fail("dependent admitted repair")
+    )
+
+    with pytest.raises(doctor.DoctorRepairError) as failure:
+        doctor._build_repair_plan(_result(project, ready=False, inspection=inspection))
+
+    assert str(source_project) in str(failure.value)
+    assert "--replace --execute" in str(failure.value)
+
+
+def test_shared_owner_repair_publishes_replacement_without_changing_old_generation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = _project(tmp_path)
+    base = _plan(project)
+    runtime_root = project.source_path.parent / "runtime"
+    generation = runtime_root / "generations" / ("a" * 32)
+    old_profile = b"old shared selection\n"
+    old_seal = runtime_root / "shared.json"
+    old_seal.write_bytes(b"old sealed generation\n")
+    runtime = replace(
+        _runtime(base),
+        managed_root=generation / "managed",
+        profile_bytes=old_profile,
+        source_seal=old_seal,
+        source_seal_bytes=old_seal.read_bytes(),
+        replacement_seal=generation / "shared.json",
+    )
+    runtime.profile.write_bytes(old_profile)
+    plan = replace(base, runtime=runtime)
+    records: list[str] = []
+    _patch_logging(monkeypatch, plan, records)
+    monkeypatch.setattr(doctor, "_file_sha256", lambda _path: runtime.pixi_sha256)
+    monkeypatch.setattr(
+        doctor,
+        "admit_runtime_seal_bytes",
+        lambda path, _data: SimpleNamespace(path=path),
+    )
+    monkeypatch.setattr(doctor, "_repair_actions", lambda _plan: ())
+    monkeypatch.setattr(doctor, "_managed_discovery_environment", lambda _plan: {})
+    direct = _inspection(
+        tmp_path,
+        (_check("python", "tool_version", sys.executable),),
+        profile=runtime.profile,
+        profile_bytes=b"new direct inventory\n",
+    )
+    monkeypatch.setattr(
+        doctor.onboarding, "discover_runtime_profile", lambda **_kwargs: direct
+    )
+    monkeypatch.setattr(
+        doctor, "runtime_seal_bytes", lambda _candidate, _path: b"new seal\n"
+    )
+    replacement_profile = b"new shared selection\n"
+    monkeypatch.setattr(
+        doctor,
+        "shared_runtime_profile_bytes",
+        lambda *_args: replacement_profile,
+    )
+    library = generation / "managed/renv/library"
+    monkeypatch.setattr(
+        doctor,
+        "runtime_profile_checks",
+        lambda *_args: (
+            RuntimeCheck("renv_library", "path_visibility", str(library), (), ".*"),
+        ),
+    )
+    selected = replace(
+        direct,
+        profile_bytes=replacement_profile,
+        profile_sha256=hashlib.sha256(replacement_profile).hexdigest(),
+    )
+    monkeypatch.setattr(
+        doctor, "inspect_runtime_profile_bytes", lambda *_args, **_kwargs: selected
+    )
+    monkeypatch.setattr(doctor, "runtime_file_bindings", lambda *_args, **_kwargs: ())
+    final = _result(project, ready=True, inspection=selected)
+
+    def diagnose(*_args: object, **_kwargs: object) -> doctor.DoctorResult:
+        assert runtime.profile.read_bytes() == replacement_profile
+        return final
+
+    monkeypatch.setattr(doctor, "diagnose_project", diagnose)
+
+    assert doctor._execute_repair(plan, controls=_controls(project)) is final
+    assert old_seal.read_bytes() == b"old sealed generation\n"
+    assert runtime.replacement_seal.read_bytes() == b"new seal\n"
+    assert runtime.profile.read_bytes() == replacement_profile
+    assert not (runtime_root / "maintenance.lock").exists()
+    assert records == ["opened", "terminal", "closed"]
 
 
 def test_repair_readmission_rechecks_seal_while_holding_its_claim(
@@ -3094,7 +3245,7 @@ def test_repair_readmission_rechecks_seal_while_holding_its_claim(
         return owned
 
     monkeypatch.setattr(doctor, "acquire_lock", seal_after_acquisition)
-    with pytest.raises(doctor.DoctorRepairError, match="permanently sealed"):
+    with pytest.raises(doctor.DoctorRepairError, match="seal appeared"):
         doctor._execute_repair(plan, controls=_controls(project))
     assert (runtime / "maintenance.lock").exists()
     assert not _runtime(plan).managed_root.exists()

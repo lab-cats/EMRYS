@@ -50,6 +50,10 @@ class RuntimeInspectionError(RuntimeError):
     """The declared runtime profile could not be inspected safely."""
 
 
+class RuntimeContentMismatchError(RuntimeInspectionError):
+    """A valid shared selector no longer matches the sealed fixed content."""
+
+
 def runtime_profile_bytes(choices: Mapping[str, Path]) -> bytes:
     """Store each selected path once; probe rules belong to the installed policy."""
 
@@ -229,7 +233,7 @@ def runtime_file_bindings(
                     ) != _binding_record(
                         expected[binding.check_id], observations[binding.check_id].check
                     ):
-                        raise RuntimeInspectionError(
+                        raise RuntimeContentMismatchError(
                             f"Sealed runtime content or version changed: {binding.check_id}"
                         )
                 elif binding.path.is_relative_to(
@@ -259,6 +263,35 @@ def _binding_record(binding: RuntimeBinding, check: RuntimeCheck) -> dict[str, s
 def load_runtime_seal(path: Path) -> RuntimeSeal:
     try:
         return profile_contract.load_runtime_seal(path)
+    except (PreflightError, report.ValidationError, OSError) as exc:
+        raise RuntimeInspectionError(str(exc)) from exc
+
+
+def admit_runtime_seal_bytes(path: Path, data: bytes) -> RuntimeSeal:
+    """Admit retained seal bytes while an owning maintenance claim is held."""
+
+    try:
+        return profile_contract.admit_runtime_seal(
+            path, data, require_content=False
+        )
+    except (PreflightError, report.ValidationError, OSError) as exc:
+        raise RuntimeInspectionError(str(exc)) from exc
+
+
+def shared_runtime_selection(
+    data: bytes,
+) -> profile_contract.SharedRuntimeSelection | None:
+    """Read one shared selector without requiring the referenced seal."""
+
+    try:
+        return profile_contract.shared_runtime_selection(data)
+    except (PreflightError, report.ValidationError, OSError) as exc:
+        raise RuntimeInspectionError(str(exc)) from exc
+
+
+def runtime_root_for_seal(path: Path) -> Path:
+    try:
+        return profile_contract.runtime_root_for_seal(path)
     except (PreflightError, report.ValidationError, OSError) as exc:
         raise RuntimeInspectionError(str(exc)) from exc
 
@@ -329,13 +362,17 @@ __all__ = (
     "PYTHON_CHECK_IDS",
     "RuntimeBinding",
     "runtime_file_bindings",
+    "admit_runtime_seal_bytes",
     "load_runtime_seal",
+    "shared_runtime_selection",
+    "runtime_root_for_seal",
     "runtime_profile_choices",
     "runtime_seal_bytes",
     "shared_runtime_profile_bytes",
     "RuntimeCheck",
     "RuntimeInspection",
     "RuntimeInspectionError",
+    "RuntimeContentMismatchError",
     "RuntimeObservation",
     "inspect_runtime_profile_bytes",
     "load_runtime_profile_contract",

@@ -71,6 +71,54 @@ class RuntimeSeal:
         return self.path.parent / "managed"
 
 
+@dataclass(frozen=True, slots=True)
+class SharedRuntimeSelection:
+    seal_path: Path
+    seal_sha256: str
+    python: Path
+
+
+def runtime_root_for_seal(path: Path) -> Path:
+    """Return the owning Project runtime root for one supported seal path."""
+
+    if not path.is_absolute() or path.name != "shared.json":
+        _fail("Runtime seal must name an absolute shared.json")
+    if path.parent.name == "runtime":
+        return path.parent
+    if (
+        re.fullmatch(r"[0-9a-f]{32}", path.parent.name) is not None
+        and path.parent.parent.name == "generations"
+        and path.parent.parent.parent.name == "runtime"
+    ):
+        return path.parent.parent.parent
+    _fail("Runtime seal must belong to a Project runtime or generation")
+
+
+def shared_runtime_selection(data: bytes) -> SharedRuntimeSelection | None:
+    """Admit a shared selector without requiring its referenced seal to exist."""
+
+    header, rows = _profile_rows(data)
+    if header != list(SHARED_PROFILE_HEADER):
+        return None
+    if len(rows) != 1 or set(rows[0]) != set(SHARED_PROFILE_HEADER):
+        _fail("Shared runtime selection must contain exactly one closed row")
+    selected = rows[0]
+    if (
+        not _absolute_choice(selected["seal_path"])
+        or not _absolute_choice(selected["python"])
+        or not isinstance(selected["seal_sha256"], str)
+        or re.fullmatch(r"[0-9a-f]{64}", selected["seal_sha256"]) is None
+    ):
+        _fail("Shared runtime selection has invalid paths or SHA-256")
+    seal_path = Path(selected["seal_path"])
+    runtime_root_for_seal(seal_path)
+    return SharedRuntimeSelection(
+        seal_path,
+        selected["seal_sha256"],
+        Path(selected["python"]),
+    )
+
+
 def _profile_rows(data: bytes) -> tuple[list[str] | None, list[dict[str, str]]]:
     try:
         reader = csv.DictReader(
@@ -91,23 +139,20 @@ def _absolute_choice(value: object) -> bool:
     )
 
 
-def admit_runtime_seal(path: Path, data: bytes) -> RuntimeSeal:
+def admit_runtime_seal(
+    path: Path, data: bytes, *, require_content: bool = True
+) -> RuntimeSeal:
     """Admit the same closed expected-content record before and after publication."""
     if len(data) > SEAL_BYTE_LIMIT:
         _fail("Runtime seal exceeds its byte limit")
-    if (
-        not path.is_absolute()
-        or path.name != "shared.json"
-        or path.parent.name != "runtime"
-    ):
-        _fail("Runtime seal must name an absolute Project/runtime/shared.json")
+    runtime_root_for_seal(path)
     if (
         path.parent.resolve(strict=True) != path.parent
         or path.parent.stat().st_uid != os.getuid()
     ):
         _fail("Runtime seal parent must be canonical and owned by this UID")
     managed = path.parent / "managed"
-    if (
+    if require_content and (
         not managed.is_dir()
         or managed.resolve(strict=True) != managed
         or managed.stat().st_uid != os.getuid()
@@ -135,12 +180,15 @@ def admit_runtime_seal(path: Path, data: bytes) -> RuntimeSeal:
         _fail("Runtime seal must contain the exact native/R choice roster")
     for name, target in choices.items():
         selected = Path(target)
-        if not selected.is_relative_to(managed) or not selected.resolve(
-            strict=True
-        ).is_relative_to(managed):
+        if not selected.is_relative_to(managed) or (
+            require_content
+            and not selected.resolve(strict=True).is_relative_to(managed)
+        ):
             _fail(f"Sealed runtime choice escaped the managed root: {name}")
     library = Path(choices["renv_library"])
-    if not library.is_dir() or library.resolve(strict=True) != library:
+    if require_content and (
+        not library.is_dir() or library.resolve(strict=True) != library
+    ):
         _fail("Sealed R library must be a canonical real directory")
     expected = tuple(
         check
@@ -181,11 +229,19 @@ def admit_runtime_seal(path: Path, data: bytes) -> RuntimeSeal:
         if not target.is_relative_to(managed) or not resolved.is_relative_to(managed):
             _fail(f"Sealed runtime binding escaped the managed root: {check.check_id}")
         selected = (
-            (Path(choices["renv_library"]) / check.target).resolve(strict=True)
+            Path(choices["renv_library"]) / check.target
             if kind == "package_tree"
             else Path(choices["java" if check.check_id == "picard" else check.check_id])
         )
-        if target != selected or resolved != selected.resolve(strict=True):
+        expected_target = (
+            selected.resolve(strict=True)
+            if require_content and kind == "package_tree"
+            else selected
+        )
+        if (
+            (require_content or kind == "file")
+            and target != expected_target
+        ) or (require_content and resolved != selected.resolve(strict=True)):
             _fail(f"Sealed runtime binding path changed: {check.check_id}")
         bindings.append(
             RuntimeBinding(
@@ -205,7 +261,12 @@ def admit_runtime_seal(path: Path, data: bytes) -> RuntimeSeal:
     )
 
 
-def load_runtime_seal(path: Path, expected_sha256: str | None = None) -> RuntimeSeal:
+def load_runtime_seal(
+    path: Path,
+    expected_sha256: str | None = None,
+    *,
+    require_content: bool = True,
+) -> RuntimeSeal:
     if os.path.lexists(path.parent / "maintenance.lock"):
         _fail(
             f"Runtime maintenance claim is unresolved: {path.parent / 'maintenance.lock'}"
@@ -224,27 +285,21 @@ def load_runtime_seal(path: Path, expected_sha256: str | None = None) -> Runtime
         and hashlib.sha256(data).hexdigest() != expected_sha256
     ):
         _fail("Runtime seal differs from the selected SHA-256")
-    result = admit_runtime_seal(path, data)
+    result = admit_runtime_seal(path, data, require_content=require_content)
     if os.path.lexists(path.parent / "maintenance.lock"):
         _fail("Runtime maintenance claim appeared during seal admission")
     return result
 
 
 def runtime_profile_seal(data: bytes) -> RuntimeSeal | None:
-    header, rows = _profile_rows(data)
-    if header != list(SHARED_PROFILE_HEADER):
+    selected = shared_runtime_selection(data)
+    if selected is None:
         return None
-    if len(rows) != 1 or set(rows[0]) != set(SHARED_PROFILE_HEADER):
-        _fail("Shared runtime selection must contain exactly one closed row")
-    selected = rows[0]
-    if (
-        not _absolute_choice(selected["seal_path"])
-        or not _absolute_choice(selected["python"])
-        or not isinstance(selected["seal_sha256"], str)
-        or re.fullmatch(r"[0-9a-f]{64}", selected["seal_sha256"]) is None
-    ):
-        _fail("Shared runtime selection has invalid paths or SHA-256")
-    return load_runtime_seal(Path(selected["seal_path"]), selected["seal_sha256"])
+    return load_runtime_seal(
+        selected.seal_path,
+        selected.seal_sha256,
+        require_content=False,
+    )
 
 
 def runtime_profile_choices(data: bytes) -> dict[str, str]:

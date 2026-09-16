@@ -9,6 +9,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import stat
 import subprocess
 import sys
@@ -2139,6 +2140,82 @@ def test_runtime_reuse_previews_then_seals_and_selects_without_installation(
     with pytest.raises(onboarding.OnboardingError, match="already exists"):
         onboarding.reuse_runtime_profile(project=borrower, donor=donor, execute=True)
     assert len(calls) == 4
+
+
+def test_runtime_reuse_explicitly_replaces_only_the_same_shared_source(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from emrys.evidence.runtime_availability import inspector
+
+    donor, borrower, old_seal, original = _reuse_projects(tmp_path, monkeypatch)
+    onboarding.reuse_runtime_profile(project=borrower, donor=donor, execute=True)
+    old_selection = (borrower.parent / "runtime/runtime.tsv").read_bytes()
+    old_seal_bytes = old_seal.read_bytes()
+
+    generation = donor.parent / "runtime/generations" / ("a" * 32)
+    shutil.copytree(old_seal.parent / "managed", generation / "managed")
+    old_managed = old_seal.parent / "managed"
+    choices = inspector.runtime_profile_choices(original.profile_bytes)
+    replacement_choices = {
+        key: generation / "managed" / path.relative_to(old_managed)
+        if path.is_relative_to(old_managed)
+        else path
+        for key, path in choices.items()
+    }
+    replacement_data = inspector.runtime_profile_bytes(replacement_choices)
+    replacement = inspector.inspect_runtime_profile_bytes(
+        replacement_data,
+        donor.parent / "runtime/runtime.tsv",
+        checks=inspector.runtime_profile_checks(replacement_data, tmp_path),
+        environment={
+            "RENV_LIBRARY": str(replacement_choices["renv_library"]),
+        },
+    )
+    replacement_seal = generation / "shared.json"
+    replacement_seal.write_bytes(
+        inspector.runtime_seal_bytes(replacement, replacement_seal)
+    )
+    donor_profile = inspector.shared_runtime_profile_bytes(
+        replacement_seal, replacement_seal.read_bytes(), Path(sys.executable)
+    )
+    (donor.parent / "runtime/runtime.tsv").write_bytes(donor_profile)
+
+    preview = onboarding.reuse_runtime_profile(
+        project=borrower,
+        donor=donor,
+        execute=False,
+        replace_existing=True,
+    )
+    assert (borrower.parent / "runtime/runtime.tsv").read_bytes() == old_selection
+    assert preview.profile_bytes.startswith(
+        f"seal_path\tseal_sha256\tpython\n{replacement_seal}\t".encode()
+    )
+    onboarding.reuse_runtime_profile(
+        project=borrower,
+        donor=donor,
+        execute=True,
+        replace_existing=True,
+    )
+
+    assert (borrower.parent / "runtime/runtime.tsv").read_bytes() == preview.profile_bytes
+    assert old_seal.read_bytes() == old_seal_bytes
+    assert not (borrower.parent / "runtime/maintenance.lock").exists()
+    other = _project_with_owned_runtime(tmp_path / "other")
+    (other.parent / "runtime/runtime.tsv").write_bytes(
+        inspector.shared_runtime_profile_bytes(
+            tmp_path / "different/runtime/shared.json",
+            b"different source\n",
+            Path(sys.executable),
+        )
+    )
+    with pytest.raises(onboarding.OnboardingError, match="same source Project"):
+        onboarding.reuse_runtime_profile(
+            project=other,
+            donor=donor,
+            execute=True,
+            replace_existing=True,
+        )
 
 
 @pytest.mark.parametrize("failure", ("before_seal", "after_seal", "borrower"))

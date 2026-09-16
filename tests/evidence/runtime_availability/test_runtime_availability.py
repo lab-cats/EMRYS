@@ -1386,6 +1386,27 @@ def test_shared_selector_retains_exact_reference_and_borrower_python_and_r_proje
         inspector.load_runtime_profile_contract(retained, tmp_path)
 
 
+def test_shared_selector_retains_probe_targets_when_sealed_content_is_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seal, original = _managed_seal_fixture(tmp_path, monkeypatch)
+    data = inspector.runtime_seal_bytes(original, seal)
+    seal.write_bytes(data)
+    selection = inspector.shared_runtime_profile_bytes(
+        seal, data, Path(sys.executable)
+    )
+    missing = seal.parent / "managed/star"
+    missing.unlink()
+
+    checks = inspector.runtime_profile_checks(selection, tmp_path)
+
+    assert next(check.target for check in checks if check.check_id == "star") == str(
+        missing
+    )
+    with pytest.raises(inspector.RuntimeInspectionError):
+        inspector.load_runtime_seal(seal)
+
+
 @pytest.mark.parametrize(
     "defect",
     ("missing", "claim", "trailing_row", "extra_column", "bad_sha", "unknown_header"),

@@ -122,8 +122,8 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Open |
 | [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Open |
 | [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Open |
-| [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Open |
-| [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Open |
+| [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Verification pending |
+| [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Verification pending |
 | [CV-U24](#cv-u24-persistent-cli-defaults) | Save site and other repeated CLI values | Open |
 | [CV-U25](#cv-u25-repeated-fastq-hashing-during-init) | One full FASTQ hashing pass across preview and creation | Open |
 | [CV-U26](#cv-u26-manifests-inside-the-project) | Keep manifests inside their Project directory | Open |
@@ -490,7 +490,7 @@ did not specify formulas, a new command name or a particular implementation.
 **Exact instruction challenged:**
 
 > To reuse another Project's managed tools, first follow
-> [sealed runtime reuse](../operations/RUNBOOK.md#reuse-a-sealed-managed-runtime)
+> [sealed runtime reuse](../operations/RUNBOOK.md#reuse-prepared-managed-tools)
 > before this Project has an inventory.
 
 **Operator response:** “If they are following the Quickstart they will have just
@@ -517,6 +517,13 @@ standard Quickstart flow, not an optional Runbook detour. This expands the
 expected smoke-project reuse into an explicit discover/validate/reuse-before-install
 requirement; no discovery mechanism was selected in this findings collection.
 
+**Implemented:** The ordinary Quickstart now previews and selects the prepared
+`emrys-smoke` runtime before Doctor. Selection freshly probes and content-binds
+the source generation and installs nothing; Doctor retains Project, storage and
+placement readiness checks. An absent inventory remains the normal first
+selection. An existing inventory is preserved unless the operator explicitly
+requests a same-source shared replacement.
+
 ### CV-U23 Repair restriction when sharing tools
 
 **Exact wording challenged:** “That optional operation permanently disables
@@ -538,6 +545,30 @@ permanent was not available in retained context.
 tools, lost capability and reason in plain English. The user's challenge to
 permanence remains unresolved; this record does not establish that permanence
 is necessary, approve removal of safeguards or select a replacement policy.
+
+**Resolved policy and implementation:** Sharing no longer permanently disables
+Doctor repair. Doctor never changes a sealed generation in place. It creates and
+verifies a new managed generation, moves only the owning Project's current
+selection, and preserves the old generation for retained Runs and Attempts.
+Dependent Projects remain bound to their exact old generation and require an
+explicit `runtime discover --from-project SOURCE --replace --execute`. The
+replacement admits only an existing shared selector from the same source
+Project, rechecks the new generation, and atomically replaces the exact prior
+selector under the existing maintenance claim.
+
+**Verification:** Focused contract coverage now includes exact-file replacement,
+same-source selection replacement, preserved old seals, generation planning and
+stale-plan refusal. This slice adds 409 net product lines across five existing
+owners, 298 net test lines across four existing test files, and 91 net lines
+across eight existing documentation/owner-contract files. It adds no product
+file, schema or dependency; the necessary growth replaces the permanent repair
+refusal with generation creation, exact selector replacement and caller-complete
+admission through the existing runtime and publication owners. Local compilation,
+lint and documentation structure checks pass. A borrowed environment plus its
+already-unpacked dependency cache passes 339 focused tests except for two
+pre-existing isolated replay cases whose child interpreter cannot see that
+borrowed cache. Hosted standard CI and the two-Project journey remain required;
+institutional smoke-to-study acceptance remains open.
 
 ### CV-U24 Persistent CLI defaults
 

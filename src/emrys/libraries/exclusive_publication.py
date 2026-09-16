@@ -16,12 +16,14 @@ def publish_exclusive(
     error: type[Exception],
     *,
     existing: str | None = None,
+    replace_expected: bytes | None = None,
 ) -> None:
-    """Publish complete bytes at an absent name through one pinned parent."""
+    """Publish complete bytes at an absent or exactly admitted name."""
 
     if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
         raise error("Secure create-exclusive publication is unavailable")
     parent_fd = -1
+    current_fd = -1
     stage = f".{path.name}.{uuid.uuid4().hex}.emrys-stage"
     try:
         parent_fd = os.open(
@@ -47,20 +49,47 @@ def publish_exclusive(
             os.fchmod(stream.fileno(), 0o600)
             os.fsync(stream.fileno())
             stage_state = os.fstat(stream.fileno())
-        os.link(
-            stage,
-            path.name,
-            src_dir_fd=parent_fd,
-            dst_dir_fd=parent_fd,
-            follow_symlinks=False,
-        )
+        if replace_expected is None:
+            os.link(
+                stage,
+                path.name,
+                src_dir_fd=parent_fd,
+                dst_dir_fd=parent_fd,
+                follow_symlinks=False,
+            )
+        else:
+            current_fd = os.open(
+                path.name,
+                os.O_RDONLY
+                | os.O_NOFOLLOW
+                | os.O_NONBLOCK
+                | getattr(os, "O_CLOEXEC", 0),
+                dir_fd=parent_fd,
+            )
+            current_state = os.fstat(current_fd)
+            if not stat.S_ISREG(current_state.st_mode):
+                raise error(f"Refusing to replace changed file: {path}")
+            with os.fdopen(os.dup(current_fd), "rb") as current:
+                current_data = current.read(len(replace_expected) + 1)
+            current_path_state = os.stat(
+                path.name, dir_fd=parent_fd, follow_symlinks=False
+            )
+            if (
+                stat_identity(current_state) != stat_identity(current_path_state)
+                or current_data != replace_expected
+            ):
+                raise error(f"Refusing to replace changed file: {path}")
+            os.replace(stage, path.name, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
         final_state = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
         if (stage_state.st_dev, stage_state.st_ino) != (
             final_state.st_dev,
             final_state.st_ino,
         ):
             raise error(f"Publication did not retain the staged file: {path}")
-        os.unlink(stage, dir_fd=parent_fd)
+        try:
+            os.unlink(stage, dir_fd=parent_fd)
+        except FileNotFoundError:
+            pass
         os.fsync(parent_fd)
         current_parent = path.parent.stat(follow_symlinks=False)
         if (parent_state.st_dev, parent_state.st_ino) != (
@@ -73,6 +102,8 @@ def publish_exclusive(
     except OSError as exc:
         raise error(f"Could not publish {path}: {exc}") from exc
     finally:
+        if current_fd >= 0:
+            os.close(current_fd)
         if parent_fd >= 0:
             try:
                 os.unlink(stage, dir_fd=parent_fd)
