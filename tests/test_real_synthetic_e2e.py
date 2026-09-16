@@ -45,6 +45,11 @@ def _plan(workspace: Path) -> str:
     )
 
 
+def _submission(logs: Path, job_id: str = "42") -> str:
+    stem = logs / f"emrys-local-pilot-{'a' * 32}-{job_id}"
+    return f"JOB_ID={job_id}\nOUT={stem}.out\nERR={stem}.err\n"
+
+
 def test_cli_defaults_to_a_no_write_plan(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -237,11 +242,7 @@ def test_run_submission_and_wait_failure_cancel_once(
     workspace = tmp_path / "workspace"
     run_root = driver.parse_run_plan(_plan(workspace), workspace, no_write=True)
     logs = workspace / "logs"
-    submission = driver.parse_submission(
-        f"JOB_ID=42\nOUT={logs}/emrys-local-pilot-42.out\n"
-        f"ERR={logs}/emrys-local-pilot-42.err\n",
-        logs,
-    )
+    submission = _submission(logs)
     calls: list[tuple[str, ...]] = []
 
     def scheduler(
@@ -260,6 +261,7 @@ def test_run_submission_and_wait_failure_cancel_once(
     with pytest.raises(driver.DriverError, match="cancellation: CANCELLED"):
         driver.wait_for_job(
             submission,
+            log_dir=logs,
             scontrol=Path("scontrol"),
             scancel=Path("scancel"),
             cwd=tmp_path,
@@ -269,7 +271,8 @@ def test_run_submission_and_wait_failure_cancel_once(
     assert run_root.parent == workspace / "runs"
     assert sum(argv[0] == "scancel" for argv in calls) == 1
 
-    stdout, stderr = tmp_path / "job.out", tmp_path / "job.err"
+    submitted = driver.parse_submission(_submission(tmp_path, "43"), tmp_path)
+    stdout, stderr = submitted.stdout, submitted.stderr
     stdout.write_text("")
     stderr.write_text("controlled failure\n")
     monkeypatch.setattr(
@@ -280,7 +283,8 @@ def test_run_submission_and_wait_failure_cancel_once(
         ),
     )
     job = driver.wait_for_job(
-        driver.Job("43", stdout, stderr),
+        _submission(tmp_path, "43"),
+        log_dir=tmp_path,
         scontrol=Path("scontrol"),
         scancel=Path("scancel"),
         cwd=tmp_path,
@@ -289,6 +293,67 @@ def test_run_submission_and_wait_failure_cancel_once(
         expected=("FAILED", "1:0"),
     )
     assert (job.state, job.exit_code) == ("FAILED", "1:0")
+
+
+@pytest.mark.parametrize("job_id", ("42", "700123"))
+def test_submission_requires_matching_request_token_and_job_id(
+    tmp_path: Path, job_id: str
+) -> None:
+    logs = tmp_path / "logs with spaces"
+    job = driver.parse_submission(_submission(logs, job_id), logs)
+    assert job.job_id == job_id
+    assert job.stdout == logs / f"emrys-local-pilot-{'a' * 32}-{job_id}.out"
+    assert job.stderr == job.stdout.with_suffix(".err")
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement", "cancelled"),
+    (
+        ("a" * 32 + "-", "", True),
+        ("a" * 32, "A" * 32, True),
+        ("a" * 32, "a" * 31, True),
+        ("-42.err", "-43.err", True),
+        ("a" * 32 + "-42.err", "b" * 32 + "-42.err", True),
+        ("ERR=", "MISSING_ERR=", True),
+        ("OUT=", "OUT=/elsewhere", True),
+        ("JOB_ID=42", "JOB_ID=42\nJOB_ID=43", False),
+        ("JOB_ID=42", "JOB_ID=42\nJOB_ID=42", False),
+        ("JOB_ID=42", "JOB_ID=0", False),
+        ("JOB_ID=42", "JOB_ID=042", False),
+        ("JOB_ID=42", "MISSING_JOB_ID=42", False),
+    ),
+)
+def test_invalid_submission_cancels_only_one_unambiguous_reported_job(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    original: str,
+    replacement: str,
+    cancelled: bool,
+) -> None:
+    calls = []
+
+    def scheduler(argv, _cwd):
+        calls.append(argv)
+        return subprocess.CompletedProcess(
+            argv, 0, "JobState=CANCELLED ExitCode=0:15", ""
+        )
+
+    monkeypatch.setattr(driver, "_scheduler", scheduler)
+    with pytest.raises(driver.DriverError):
+        driver.wait_for_job(
+            _submission(tmp_path).replace(original, replacement),
+            log_dir=tmp_path,
+            scontrol=Path("scontrol"),
+            scancel=Path("scancel"),
+            cwd=tmp_path,
+            timeout_seconds=1,
+            poll_seconds=0.01,
+        )
+    assert calls == (
+        [("scancel", "--signal=TERM", "42"), ("scontrol", "show", "job", "-o", "42")]
+        if cancelled
+        else []
+    )
 
 
 def _table(path: Path, rows: tuple[tuple[str, str], ...]) -> None:

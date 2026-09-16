@@ -73,6 +73,12 @@ def add_log_arguments(parser: argparse.ArgumentParser) -> None:
         default=None,
         action=_UniqueControl,
     )
+    add_log_root_argument(parser)
+
+
+def add_log_root_argument(parser: argparse.ArgumentParser) -> None:
+    """Add only the log-root selector for read-only diagnostic consumers."""
+
     parser.add_argument(
         "--log-root",
         default=None,
@@ -92,17 +98,33 @@ def resolve_log_controls(
     """Resolve command line, environment, then the operation-owned default."""
 
     environ = dict(os.environ if environment is None else environment)
+    default_root = _absolute_path(default_root)
     level_value, level_source = _select(
         cli_level, environ.get(EMRYS_LOG_LEVEL), LogLevel.NORMAL.value
-    )
-    root_value, root_source = _select(
-        cli_root, environ.get(EMRYS_LOG_ROOT), _absolute_path(default_root)
     )
     try:
         level = LogLevel(_nonempty(level_value))
     except (ValueError, argparse.ArgumentTypeError):
         raise LogControlError("log level must be normal, verbose, or debug") from None
-    return LogControls(level, _absolute_path(root_value), level_source, root_source)
+    root, root_source = resolve_log_root(
+        cli_root=cli_root, environment=environ, default_root=default_root
+    )
+    return LogControls(level, root, level_source, root_source)
+
+
+def resolve_log_root(
+    *,
+    cli_root: str | Path | None = None,
+    environment: Mapping[str, str] | None = None,
+    default_root: Path,
+) -> tuple[Path, ControlSource]:
+    """Resolve one search or writing root without inspecting or creating it."""
+
+    environ = os.environ if environment is None else environment
+    value, source = _select(
+        cli_root, environ.get(EMRYS_LOG_ROOT), _absolute_path(default_root)
+    )
+    return _absolute_path(value), source
 
 
 def _select(

@@ -486,6 +486,198 @@ jobs:
           clean_clone="${RUNNER_TEMP}/emrys-golden-clone"
           evidence_root="${RUNNER_TEMP}/emrys-managed-golden"
           install -d -m 0700 "${evidence_root}"
+          cat > "${evidence_root}/measure-doctor.py" <<'PY'
+          """CI-only observation of one instrumented public-module invocation."""
+
+          import json
+          import os
+          import resource
+          import runpy
+          import sys
+          import time
+          from contextlib import suppress
+          from pathlib import Path
+
+
+          def clock():
+              with suppress(Exception):
+                  return time.monotonic()
+              return None
+
+
+          def usage():
+              result = {}
+              for name, who in (
+                  ("self", resource.RUSAGE_SELF),
+                  ("children", resource.RUSAGE_CHILDREN),
+              ):
+                  try:
+                      value = resource.getrusage(who)
+                      result[name] = {
+                          key: getattr(value, key)
+                          for key in ("ru_utime", "ru_stime", "ru_maxrss")
+                      }
+                  except Exception:
+                      result[name] = None
+              return result
+
+
+          def io_usage():
+              try:
+                  return {
+                      key: int(value)
+                      for key, value in (
+                          line.split(": ")
+                          for line in Path("/proc/self/io").read_text().splitlines()
+                      )
+                  }
+              except Exception:
+                  return None
+
+
+          def read_observer(original, counters, *, package=False):
+              def observed(*args, **kwargs):
+                  mode = (
+                      "package_payload"
+                      if package
+                      else "digest"
+                      if kwargs.get("digest_only")
+                      else "suffix"
+                      if kwargs.get("from_end")
+                      else "bytes"
+                  )
+                  try:
+                      bucket = counters.setdefault(
+                          mode,
+                          {
+                              "completed_calls": 0,
+                              "failed_calls": 0,
+                              "completed_bytes": 0,
+                              "elapsed_seconds": 0.0,
+                              "failed_partial_bytes": None,
+                          },
+                      )
+                  except Exception:
+                      return original(*args, **kwargs)
+                  started = clock()
+                  try:
+                      result = original(*args, **kwargs)
+                  except BaseException:
+                      with suppress(Exception):
+                          bucket["failed_calls"] += 1
+                      raise
+                  else:
+                      with suppress(Exception):
+                          size = (
+                              len(result)
+                              if package
+                              else result[1].st_size
+                              if mode == "digest"
+                              else len(result[0])
+                          )
+                          if mode == "digest" and kwargs.get("limit") is not None:
+                              size = min(size, kwargs["limit"])
+                          bucket["completed_calls"] += 1
+                          bucket["completed_bytes"] += size
+                      return result
+                  finally:
+                      finished = clock()
+                      with suppress(Exception):
+                          if started is None or finished is None:
+                              bucket["elapsed_seconds"] = None
+                          elif bucket["elapsed_seconds"] is not None:
+                              bucket["elapsed_seconds"] += finished - started
+
+              return observed
+
+
+          def measure(output, role, arguments):
+              # Sample before EMRYS imports; no initial reads/hashes are repeated.
+              started, before, io_before = clock(), usage(), io_usage()
+              counters, originals = {}, []
+              previous_argv = sys.argv
+              status, exception = None, None
+              try:
+                  from emrys.libraries.validation import inputs
+                  from emrys.libraries import installed_package_identity
+
+                  for module, name, package in (
+                      (inputs, "_read_file", False),
+                      (installed_package_identity, "_read_regular_file", True),
+                  ):
+                      original = getattr(module, name)
+                      originals.append((module, name, original))
+                      setattr(module, name, read_observer(original, counters, package=package))
+                  sys.argv = ["emrys", *arguments]
+                  runpy.run_module("emrys", run_name="__main__", alter_sys=True)
+                  status = 0
+              except BaseException as exc:
+                  exception = type(exc).__name__
+                  if isinstance(exc, SystemExit):
+                      status = (
+                          exc.code if isinstance(exc.code, int) else 0 if exc.code is None else 1
+                      )
+                  raise
+              finally:
+                  finished, after, io_after = clock(), usage(), io_usage()
+                  for module, name, original in originals:
+                      setattr(module, name, original)
+                  sys.argv = previous_argv
+                  # Observation failures never replace the public command's outcome.
+                  try:
+                      cpu = {
+                          name: {
+                              key: after[name][key] - before[name][key]
+                              for key in ("ru_utime", "ru_stime")
+                          }
+                          if before[name] is not None and after[name] is not None
+                          else None
+                          for name in before
+                      }
+                      payload = {
+                          "schema_version": "emrys.ci-doctor-measurement.v1",
+                          "scope": "instrumented public-module invocation; not console-bootstrap timing",
+                          "role": role,
+                          "checkout_sha": os.environ.get("GITHUB_SHA"),
+                          "python_version": sys.version.split()[0],
+                          "platform": sys.platform,
+                          "exit_status": status,
+                          "exception_type": exception,
+                          "elapsed_seconds": finished - started
+                          if started is not None and finished is not None
+                          else None,
+                          "cpu_seconds": cpu,
+                          "resource_before": before,
+                          "resource_after": after,
+                          "maxrss_units": "KiB"
+                          if sys.platform.startswith("linux")
+                          else "platform-dependent",
+                          "rss_scope": "self high-water and largest waited child separately; not peak process-tree RSS; never subtract or sum",
+                          "io_before": io_before,
+                          "io_after": io_after,
+                          "io_delta": {key: io_after[key] - io_before[key] for key in io_before}
+                          if io_before is not None and io_after is not None
+                          else None,
+                          "io_scope": "process and waited children; rchar includes pipes/cache; read_bytes is block-backed storage accounting, not NFS/device traffic; includes observer overhead",
+                          "targeted_reads": counters,
+                          "read_scope": "completed owner bytes only; failed partial bytes unknown; wall time includes failed calls; digest includes hashing; package_payload excludes subsequent hash",
+                          "targeted_read_gaps": "other Python reads, Pixi hashing, semantic/gzip reads, child/R/native reads",
+                          "resource_attribution_gap": "invocation totals do not attribute individual probe CPU/RSS/I/O",
+                      }
+                      with Path(output).open("x", encoding="utf-8") as handle:
+                          json.dump(payload, handle, sort_keys=True, indent=2)
+                          handle.write("\n")
+                  except Exception as exc:
+                      with suppress(Exception):
+                          print(
+                              f"Doctor measurement unavailable: {type(exc).__name__}",
+                              file=sys.stderr,
+                          )
+
+
+          if __name__ == "__main__":
+              measure(sys.argv[1], sys.argv[2], sys.argv[3:])
+          PY
           git clone --no-hardlinks "${GITHUB_WORKSPACE}" "${clean_clone}"
           git -C "${clean_clone}" checkout --detach "${GITHUB_SHA}"
           uv sync \
@@ -521,7 +713,10 @@ jobs:
 
           "${emrys[@]}" validate \
             2>&1 | tee "${evidence_root}/02-validate.log"
-          "${emrys[@]}" doctor --repair --execute \
+          "${clean_clone}/.venv/bin/python" -X pycache_prefix=/dev/null -I \
+            "${evidence_root}/measure-doctor.py" \
+            "${evidence_root}/doctor-donor-measurement.json" donor_setup \
+            doctor --repair --execute \
             2>&1 | tee "${evidence_root}/03-doctor.log"
           "${emrys[@]}" run --execute \
             2>&1 | tee "${evidence_root}/04-run.log"
@@ -535,15 +730,158 @@ jobs:
           printf '%s\n' "${run_root}" > "${evidence_root}/run-root.txt"
           "${emrys[@]}" inspect \
             | tee "${evidence_root}/05-inspect.log"
-          grep --fixed-strings --line-regexp 'Run integrity: valid' \
+          grep --fixed-strings --line-regexp 'Run admission: valid' \
             "${evidence_root}/05-inspect.log"
           grep --fixed-strings --line-regexp 'Attempt outcome: succeeded' \
             "${evidence_root}/05-inspect.log"
           grep --fixed-strings --line-regexp 'Scientific Results: complete' \
             "${evidence_root}/05-inspect.log"
-          grep --fixed-strings --line-regexp 'Reporting: complete' \
+          grep --fixed-strings --line-regexp 'Reporting admission: complete' \
             "${evidence_root}/05-inspect.log"
           test "$(find "${run_root}/results/reports" -type f -name '*.html' | wc -l)" -eq 2
+
+      - name: Seal the completed donor and verify a separate borrower
+        shell: bash
+        run: |
+          set -euo pipefail
+          clean_clone="${{ steps.golden.outputs.clone }}"
+          evidence_root="${{ steps.golden.outputs.evidence }}"
+          donor_root="${evidence_root}/project"
+          borrower_root="${evidence_root}/borrower"
+          emrys=("${clean_clone}/.venv/bin/emrys")
+
+          # Preserve all non-managed bytes and the namespace/stable metadata.
+          # Directory timestamps change when the permanent seal is published.
+          # Doctor separately readmits the seal's fixed native/R content roster.
+          snapshot_donor() (
+            cd "${donor_root}"
+            find . -path './runtime/shared.json' -prune -o \
+              -type d -printf '%p\t%y\t%i\t%m\t%U\t%G\0' -o \
+              -printf '%p\t%y\t%i\t%m\t%U\t%G\t%s\t%T@\t%C@\t%l\0' \
+              | LC_ALL=C sort -z > "${evidence_root}/donor-$1.namespace.tsv"
+            find . \( -path './runtime/managed' -o -path './runtime/shared.json' \) \
+              -prune -o -type f -print0 \
+              | LC_ALL=C sort -z | xargs -0 sha256sum \
+              > "${evidence_root}/donor-$1.sha256"
+          )
+          test ! -e "${donor_root}/runtime/shared.json"
+          snapshot_donor before
+          "${emrys[@]}" init synthetic \
+            --output-dir "${borrower_root}" --execute \
+            2>&1 | tee "${evidence_root}/06-borrower-init.log"
+          "${emrys[@]}" inspect --project "${borrower_root}" \
+            | tee "${evidence_root}/07-borrower-inspect.log"
+          grep --fixed-strings --line-regexp 'Runs: none found at inspection time.' \
+            "${evidence_root}/07-borrower-inspect.log"
+          "${emrys[@]}" runtime discover --project "${borrower_root}" \
+            --from-project "${donor_root}" \
+            2>&1 | tee "${evidence_root}/08-borrower-preview.log"
+          test ! -e "${donor_root}/runtime/shared.json"
+          test ! -e "${donor_root}/runtime/maintenance.lock"
+          test ! -e "${borrower_root}/runtime/runtime.tsv"
+          snapshot_donor preview
+          cmp "${evidence_root}/donor-before.namespace.tsv" "${evidence_root}/donor-preview.namespace.tsv"
+          cmp "${evidence_root}/donor-before.sha256" "${evidence_root}/donor-preview.sha256"
+          "${emrys[@]}" runtime discover --project "${borrower_root}" \
+            --from-project "${donor_root}" --execute \
+            2>&1 | tee "${evidence_root}/09-borrower-select.log"
+          "${clean_clone}/.venv/bin/python" -X pycache_prefix=/dev/null -I \
+            "${evidence_root}/measure-doctor.py" \
+            "${evidence_root}/doctor-borrower-measurement.json" borrower_verification \
+            doctor --project "${borrower_root}" --repair --execute \
+            2>&1 | tee "${evidence_root}/10-borrower-doctor.log"
+          snapshot_donor after
+          cmp "${evidence_root}/donor-before.namespace.tsv" "${evidence_root}/donor-after.namespace.tsv"
+          cmp "${evidence_root}/donor-before.sha256" "${evidence_root}/donor-after.sha256"
+          "${clean_clone}/.venv/bin/python" -I - "${evidence_root}" <<'PY'
+          import csv
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          import yaml
+          from emrys.evidence.storage_inventory.qualification import admit_direct_qualification
+
+          evidence = Path(sys.argv[1])
+          donor, borrower = evidence / "project", evidence / "borrower"
+          logs = list((borrower / "logs/application").glob("maintenance-*/repair-*/emrys-doctor.jsonl"))
+          assert len(logs) == 1, logs
+          events = [json.loads(line) for line in logs[0].read_text().splitlines()]
+          started, = [item for item in events if item["event"] == "repair_started"]
+          terminal, = [item for item in events if item["phase"] == "terminal"]
+          assert started["message"] == "Project verification started."
+          assert started["fields"]["project"] == str(borrower / "project.yaml")
+          assert started["fields"]["runtime_work"] == (
+              "Selected runtime passed current checks; no package-manager work is needed."
+          )
+          assert not {"managed_root", "package_output"} & started["fields"].keys()
+          assert not any(item["event"].startswith("package_manager_") for item in events)
+          assert not list(borrower.rglob("package-output.log"))
+          assert not (borrower / "runtime/managed").exists()
+          assert terminal["event"] == "repair_requalified"
+          assert terminal["message"] == "Project verification completed."
+          assert all(terminal["fields"][key] is True for key in ("ready", "runtime_ready", "storage_ready"))
+          qualified, = [item for item in events if item["event"] == "storage_qualification_admitted"]
+          receipts = []
+          for project in (donor, borrower):
+              definition = yaml.safe_load((project / "project.yaml").read_text())
+              reference = (project / definition["reference"]["fasta"]).resolve(strict=True)
+              receipts.append(admit_direct_qualification(project, reference))
+          assert receipts[0].qualification_id != receipts[1].qualification_id
+          assert qualified["fields"]["receipt"] == str(receipts[1].receipt_path)
+          assert qualified["fields"]["sha256"] == receipts[1].receipt_sha256
+          with (borrower / "runtime/runtime.tsv").open(newline="") as stream:
+              reader = csv.DictReader(stream, delimiter="\t")
+              assert reader.fieldnames == ["seal_path", "seal_sha256", "python"]
+              selection, = list(reader)
+          seal = donor / "runtime/shared.json"
+          assert selection["seal_path"] == str(seal)
+          assert selection["seal_sha256"] == hashlib.sha256(seal.read_bytes()).hexdigest()
+          assert Path(selection["python"]).resolve(strict=True) == Path(sys.executable).resolve(strict=True)
+          assert not (donor / "runtime/maintenance.lock").exists()
+          assert not (borrower / "runtime/maintenance.lock").exists()
+          assert not list((borrower / "runs").glob("run-*"))
+          (evidence / "borrower-verification.json").write_text(json.dumps({
+              "scope": "Hosted direct runtime and storage verification; no borrower scientific Run",
+              "donor_preservation": "Non-managed bytes and namespace/stable metadata except seal; fixed native/R content admitted by Doctor",
+              "donor_seal": selection,
+              "doctor_log": str(logs[0]),
+              "donor_receipt": str(receipts[0].receipt_path),
+              "borrower_receipt": str(receipts[1].receipt_path),
+              "borrower_receipt_sha256": receipts[1].receipt_sha256,
+          }, indent=2) + "\n")
+          PY
+
+      - name: Verify Task descendant containment with the selected samtools
+        shell: bash
+        run: |
+          set -euo pipefail
+          clean_clone="${{ steps.golden.outputs.clone }}"
+          evidence_root="${{ steps.golden.outputs.evidence }}"
+          export EMRYS_TEST_SAMTOOLS="${evidence_root}/project/runtime/managed/.pixi/envs/native/bin/samtools"
+          export EMRYS_TEST_NATIVE_EVIDENCE="${evidence_root}/native-containment"
+          test -x "${EMRYS_TEST_SAMTOOLS}"
+          install -d -m 0700 "${EMRYS_TEST_NATIVE_EVIDENCE}"
+          cd "${clean_clone}"
+          PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
+            tests/orchestration/run_coordinator/test_task.py -k subreaper \
+            --junitxml="${EMRYS_TEST_NATIVE_EVIDENCE}/tests.xml" \
+            2>&1 | tee "${evidence_root}/native-containment.log"
+          .venv/bin/python -I - "${EMRYS_TEST_NATIVE_EVIDENCE}/tests.xml" <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          cases = [
+              case for case in ET.parse(sys.argv[1]).iter("testcase")
+              if case.attrib["name"].startswith("test_task_subreaper_real_canonical_")
+          ]
+          assert len(cases) == 4, [case.attrib for case in cases]
+          assert all(
+              case.find(tag) is None
+              for case in cases for tag in ("skipped", "failure", "error")
+          ), "All four real samtools containment cases must execute successfully"
+          PY
 
       - name: Require the clean clone to remain unchanged
         if: always() && steps.golden.outcome == 'success'
@@ -564,6 +902,10 @@ jobs:
             ${{ runner.temp }}/emrys-managed-golden/*.log
             ${{ runner.temp }}/emrys-managed-golden/*.txt
             ${{ runner.temp }}/emrys-managed-golden/*.tsv
+            ${{ runner.temp }}/emrys-managed-golden/*.sha256
+            ${{ runner.temp }}/emrys-managed-golden/doctor-*-measurement.json
+            ${{ runner.temp }}/emrys-managed-golden/borrower-verification.json
+            ${{ runner.temp }}/emrys-managed-golden/native-containment
             ${{ runner.temp }}/emrys-managed-golden/project/project.yaml
             ${{ runner.temp }}/emrys-managed-golden/project/samples.tsv
             ${{ runner.temp }}/emrys-managed-golden/project/partitions.tsv
@@ -573,8 +915,21 @@ jobs:
             ${{ runner.temp }}/emrys-managed-golden/project/logs
             ${{ runner.temp }}/emrys-managed-golden/project/runs
             ${{ runner.temp }}/emrys-managed-golden/project/runtime/runtime.tsv
+            ${{ runner.temp }}/emrys-managed-golden/project/runtime/shared.json
+            ${{ runner.temp }}/emrys-managed-golden/project/runtime/maintenance.lock
             ${{ runner.temp }}/emrys-managed-golden/project/runtime/profiles
             ${{ runner.temp }}/emrys-managed-golden/project/runtime/.emrys-storage-qualification
+            ${{ runner.temp }}/emrys-managed-golden/borrower/project.yaml
+            ${{ runner.temp }}/emrys-managed-golden/borrower/samples.tsv
+            ${{ runner.temp }}/emrys-managed-golden/borrower/partitions.tsv
+            ${{ runner.temp }}/emrys-managed-golden/borrower/fixture.json
+            ${{ runner.temp }}/emrys-managed-golden/borrower/fixture.manifest.json
+            ${{ runner.temp }}/emrys-managed-golden/borrower/inputs
+            ${{ runner.temp }}/emrys-managed-golden/borrower/logs
+            ${{ runner.temp }}/emrys-managed-golden/borrower/runtime/runtime.tsv
+            ${{ runner.temp }}/emrys-managed-golden/borrower/runtime/maintenance.lock
+            ${{ runner.temp }}/emrys-managed-golden/borrower/runtime/profiles
+            ${{ runner.temp }}/emrys-managed-golden/borrower/runtime/.emrys-storage-qualification
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 14

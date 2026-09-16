@@ -22,7 +22,7 @@ import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
@@ -30,9 +30,11 @@ from types import FrameType
 from typing import TYPE_CHECKING, Any, Iterator, Literal
 
 if TYPE_CHECKING:
-    from emrys.evidence.runtime_availability.inspector import RuntimeInspection
+    from emrys.evidence.runtime_availability.inspector import (
+        RuntimeBinding,
+        RuntimeInspection,
+    )
     from emrys.evidence.storage_inventory.qualification import QualifiedStorage
-    from emrys.orchestration.run_coordinator.doctor import RuntimeBinding
 
 try:
     import fcntl as _fcntl
@@ -133,7 +135,7 @@ LifecyclePhaseObserver = Callable[[str], None]
 ApplicationEventObserver = Callable[[str], None]
 SignalHandler = Callable[[int, FrameType | None], None]
 SignalHandlerInstaller = Callable[
-    [SignalHandler], tuple[Mapping[int, Any], set[signal.Signals]]
+    [SignalHandler, frozenset[int]], tuple[Mapping[int, Any], set[signal.Signals]]
 ]
 SignalHandlerRestorer = Callable[[Mapping[int, Any], set[signal.Signals]], None]
 ProcessSpawner = Callable[[tuple[str, ...], Path, Mapping[str, str]], Any]
@@ -156,12 +158,12 @@ def _ignore_application_event(_event: str) -> None:
 
 def _install_transaction_signal_handlers(
     handler: SignalHandler,
+    watched: frozenset[int],
 ) -> tuple[Mapping[int, Any], set[signal.Signals]]:
     if not hasattr(signal, "pthread_sigmask") or not hasattr(signal, "SIG_BLOCK"):
         raise LifecycleError(
             "This platform lacks required POSIX lifecycle signal masking"
         )
-    watched = {signal.SIGINT, signal.SIGTERM}
     try:
         previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, watched)
     except (OSError, ValueError) as exc:
@@ -171,7 +173,7 @@ def _install_transaction_signal_handlers(
     if watched.intersection(previous_mask):
         signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
         raise LifecycleError(
-            "Lifecycle refuses an ambient mask that already blocks SIGINT or SIGTERM"
+            "Lifecycle refuses an ambient mask that already blocks watched signals"
         )
     previous: dict[int, Any] = {}
     try:
@@ -214,7 +216,7 @@ def _restore_transaction_signal_handlers(
     previous: Mapping[int, Any],
     previous_mask: set[signal.Signals],
 ) -> None:
-    watched = {signal.SIGINT, signal.SIGTERM}
+    watched = set(previous)
     try:
         signal.pthread_sigmask(signal.SIG_BLOCK, watched)
     except (OSError, ValueError) as exc:
@@ -294,6 +296,14 @@ class ProcessGroupOps:
 
 DEFAULT_SIGNAL_OPS = TransactionSignalOps()
 DEFAULT_PROCESS_GROUP_OPS = ProcessGroupOps()
+WORKFLOW_PROCESS_GROUP_OPS = replace(
+    DEFAULT_PROCESS_GROUP_OPS,
+    terminate_grace_seconds=(
+        DEFAULT_PROCESS_GROUP_OPS.terminate_grace_seconds
+        + DEFAULT_PROCESS_GROUP_OPS.kill_grace_seconds
+        + 1.0
+    ),
+)
 
 
 class TransactionSignalController:
@@ -303,9 +313,12 @@ class TransactionSignalController:
         self,
         signal_ops: TransactionSignalOps,
         process_group_ops: ProcessGroupOps,
+        *,
+        watched_signals: frozenset[int] = frozenset((signal.SIGINT, signal.SIGTERM)),
     ) -> None:
         self._signal_ops = signal_ops
         self._process_group_ops = process_group_ops
+        self._watched_signals = watched_signals
         self._previous: Mapping[int, Any] | None = None
         self._previous_mask: set[signal.Signals] | None = None
         self._process_group_id: int | None = None
@@ -317,7 +330,7 @@ class TransactionSignalController:
 
     def __enter__(self) -> "TransactionSignalController":
         self._previous, self._previous_mask = self._signal_ops.install_handlers(
-            self.record
+            self.record, self._watched_signals
         )
         return self
 
@@ -360,7 +373,7 @@ class TransactionSignalController:
             )
         signal.pthread_sigmask(
             signal.SIG_BLOCK,
-            {signal.SIGINT, signal.SIGTERM},
+            self._watched_signals,
         )
         self._receipt_commit_blocked = True
 
@@ -372,7 +385,7 @@ class TransactionSignalController:
     def record(self, signum: int, _frame: FrameType | None = None) -> None:
         """Record only the first signal and forward it at most once."""
 
-        if signum not in {signal.SIGINT, signal.SIGTERM}:
+        if signum not in self._watched_signals:
             raise LifecycleError(f"Unsupported lifecycle signal: {signum}")
         if self.first_signal is None:
             self.first_signal = signum
@@ -429,7 +442,7 @@ class LifecycleOps:
     admit_storage_context: StorageContextAdmission
     admit_runtime_context: RuntimeContextAdmission
     sync_directory: DirectorySynchronizer
-    process_group_ops: ProcessGroupOps = DEFAULT_PROCESS_GROUP_OPS
+    process_group_ops: ProcessGroupOps = WORKFLOW_PROCESS_GROUP_OPS
     observe_mutex: MutexObserver = _ignore_mutex_event
     observe_phase: LifecyclePhaseObserver = _ignore_lifecycle_phase
     observe_application_event: ApplicationEventObserver = _ignore_application_event
@@ -913,14 +926,14 @@ def quiesce_process_group(
     process_group_id: int,
     process: Any,
     ops: ProcessGroupOps,
-) -> None:
-    """Prove a group empty, escalating bounded TERM then KILL when necessary."""
+) -> bool:
+    """Prove a group empty and return whether bounded escalation required KILL."""
 
     try:
         leader_returncode = ops.poll(process)
         group_present = ops.group_exists(process_group_id)
         if leader_returncode is not None and not group_present:
-            return
+            return False
         ops.signal_group(process_group_id, signal.SIGTERM)
         if _wait_for_group_absence(
             process_group_id,
@@ -928,7 +941,7 @@ def quiesce_process_group(
             ops.monotonic() + ops.terminate_grace_seconds,
             ops,
         ):
-            return
+            return False
         ops.signal_group(process_group_id, signal.SIGKILL)
         if _wait_for_group_absence(
             process_group_id,
@@ -936,7 +949,7 @@ def quiesce_process_group(
             ops.monotonic() + ops.kill_grace_seconds,
             ops,
         ):
-            return
+            return True
     except ProcessGroupAmbiguity:
         raise
     except BaseException as exc:
@@ -951,7 +964,7 @@ def _run_process_group(
     cwd: Path,
     signals: TransactionSignalController,
     *,
-    ops: ProcessGroupOps = DEFAULT_PROCESS_GROUP_OPS,
+    ops: ProcessGroupOps = WORKFLOW_PROCESS_GROUP_OPS,
 ) -> WorkflowResult:
     """Spawn one sanitized process group and return only after quiescence proof."""
 
@@ -989,7 +1002,11 @@ def _run_process_group(
                     )
             ops.sleep(ops.poll_interval_seconds)
         quiescence_attempted = True
-        quiesce_process_group(process_group_id, process, ops)
+        forced_quiescence = quiesce_process_group(process_group_id, process, ops)
+        if return_code == -signal.SIGKILL or kill_sent or forced_quiescence:
+            raise ProcessGroupAmbiguity(
+                "Forced workflow termination cannot prove separately owned native groups stopped"
+            )
         signals.raise_forwarding_error()
         signals.clear_process_group(process_group_id)
         registered = False
@@ -997,7 +1014,10 @@ def _run_process_group(
         if quiescence_attempted:
             raise
         try:
-            quiesce_process_group(process_group_id, process, ops)
+            if quiesce_process_group(process_group_id, process, ops):
+                raise ProcessGroupAmbiguity(
+                    "Forced workflow cleanup cannot prove separately owned native groups stopped"
+                )
         except BaseException as cleanup_error:
             raise ProcessGroupAmbiguity(
                 "Delegated process group could not be proved quiescent after an execution-boundary failure"
@@ -1214,6 +1234,7 @@ def _admit_runtime_context(
     from emrys.evidence.runtime_availability.inspector import (  # noqa: PLC0415
         RuntimeInspectionError,
         inspect_runtime_profile_bytes,
+        runtime_file_bindings,
         runtime_profile_checks,
     )
     from emrys.orchestration.run_coordinator import doctor  # noqa: PLC0415
@@ -1297,7 +1318,7 @@ def _admit_runtime_context(
         expected_tools = doctor.required_tool_identities(
             runtime_inspection,
             bindings=(
-                *doctor.runtime_file_bindings(
+                *runtime_file_bindings(
                     runtime_inspection,
                     package_tree_ids=package_tree_ids,
                     explicit_file_ids=explicit_file_ids,
@@ -1307,7 +1328,7 @@ def _admit_runtime_context(
             python_executable=request.python_executable,
             runtime_profile_path=profile_path,
         )
-    except doctor.DoctorInputError as exc:
+    except (RuntimeInspectionError, doctor.DoctorInputError) as exc:
         raise LifecycleError(
             f"Could not project re-observed runtime identities: {exc}"
         ) from exc
@@ -1552,6 +1573,29 @@ def _admit_request(
     )
 
 
+def _require_frozen_retries(
+    attempt: Mapping[str, Any], observed: inspection.RunInspection
+) -> None:
+    expected = {
+        (
+            item.expected.machine_key,
+            item.expected.scope_id,
+        ): item.retry_task_attempt_record
+        for item in observed.tasks
+        if item.state == "pending"
+    }
+    frozen = {
+        (owner, scope): entry["retry_task_attempt_record"]
+        for owner, scopes in attempt["tasks"].items()
+        for scope, entry in scopes.items()
+        if "workflow_attempt_record" not in entry
+    }
+    if frozen != expected:
+        raise LifecycleError(
+            "Resume task retries differ from the exact admitted history"
+        )
+
+
 def _operation_preflight(
     operation: Operation,
     root: Path,
@@ -1588,7 +1632,7 @@ def _operation_preflight(
     )
     if not observed.recovery_available:
         raise LifecycleError(
-            "Resume requires an independently revalidated between-task boundary: "
+            "Resume requires an independently revalidated closed-task boundary: "
             + "; ".join(
                 observed.blockers
                 or (
@@ -1608,6 +1652,7 @@ def _operation_preflight(
     for field in inspection.attempt_fields():
         if attempt[field] != latest[field]:
             raise LifecycleError(f"Resume attempt is incompatible on {field}")
+    _require_frozen_retries(attempt, observed)
 
 
 def _under_lock_attempt_preflight(
@@ -1653,7 +1698,7 @@ def _under_lock_attempt_preflight(
         or observed.latest_receipt is None
     ):
         raise LifecycleError(
-            "Resume lost its revalidated between-task boundary under lock: "
+            "Resume lost its revalidated closed-task boundary under lock: "
             + "; ".join(
                 observed.blockers
                 or (
@@ -1669,6 +1714,7 @@ def _under_lock_attempt_preflight(
     for field in inspection.attempt_fields():
         if attempt[field] != observed.latest_attempt[field]:
             raise LifecycleError(f"Resume became incompatible on {field}")
+    _require_frozen_retries(attempt, observed)
 
 
 def _terminal_receipt(
@@ -1680,7 +1726,7 @@ def _terminal_receipt(
     lock_bytes: bytes,
     status: str,
     result: WorkflowResult | None,
-    preentry_tasks: list[dict[str, Any]],
+    terminal_tasks: list[dict[str, Any]],
     task_starts: list[dict[str, Any]],
     verified: list[dict[str, Any]],
     blockers: Sequence[str],
@@ -1688,7 +1734,7 @@ def _terminal_receipt(
     now: datetime,
 ) -> dict[str, Any]:
     receipt = {
-        "schema_version": "emrys.attempt-receipt.v2",
+        "schema_version": "emrys.attempt-receipt.v3",
         "run_id": attempt["run_id"],
         "execution_contract_sha256": attempt["execution_contract_sha256"],
         "profile_sha256": attempt["profile_sha256"],
@@ -1702,7 +1748,7 @@ def _terminal_receipt(
         "finished_at": _timestamp(now),
         "snakemake_exit_code": None if result is None else result.exit_code,
         "termination_signal": None if result is None else result.termination_signal,
-        "preentry_task_attempt_records": preentry_tasks,
+        "task_attempt_records": terminal_tasks,
         "task_start_records": task_starts,
         "verified_tasks": verified,
         "blockers": list(dict.fromkeys(blockers)),
@@ -1845,7 +1891,7 @@ def _run_attempt_locked(
     )
     verified = list(evidence.verified_tasks)
     task_starts = list(evidence.task_start_records)
-    preentry_tasks = list(evidence.preentry_task_attempt_records)
+    terminal_tasks = list(evidence.task_attempt_records)
     missing = list(evidence.missing_tasks)
     blockers = [
         *inspection.state_tree_blockers(root),
@@ -1978,7 +2024,7 @@ def _run_attempt_locked(
         )
         verified = list(evidence.verified_tasks)
         task_starts = list(evidence.task_start_records)
-        preentry_tasks = list(evidence.preentry_task_attempt_records)
+        terminal_tasks = list(evidence.task_attempt_records)
         missing = list(evidence.missing_tasks)
         blockers = [
             *runtime_blockers,
@@ -2064,7 +2110,7 @@ def _run_attempt_locked(
         lock_bytes=lock_bytes,
         status=status,
         result=result,
-        preentry_tasks=preentry_tasks,
+        terminal_tasks=terminal_tasks,
         task_starts=task_starts,
         verified=verified,
         blockers=blockers,
@@ -2088,7 +2134,7 @@ def _run_attempt_locked(
                     lock_bytes=lock_bytes,
                     status="interrupted",
                     result=result,
-                    preentry_tasks=preentry_tasks,
+                    terminal_tasks=terminal_tasks,
                     task_starts=task_starts,
                     verified=verified,
                     blockers=blockers,

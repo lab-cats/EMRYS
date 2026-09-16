@@ -661,11 +661,11 @@ def _admit_identity(
             "attempt-receipt",
         )
         if (
-            receipt.get("schema_version") != "emrys.attempt-receipt.v2"
+            receipt.get("schema_version") != "emrys.attempt-receipt.v3"
             or receipt.get("status") != "succeeded"
         ):
             raise ReportingBoundaryError(
-                "New reporting publication requires a successful terminal v2 Attempt"
+                "New reporting publication requires a successful terminal v3 Attempt"
             )
     return _AdmittedIdentity(
         root=root,

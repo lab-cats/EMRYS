@@ -117,9 +117,38 @@ Do not clear caches/libraries wholesale, modify a shared library, or relock
 during diagnosis. A stale lock requires manifest/lock review; workflow execution
 never installs dependencies.
 
+**Runtime maintenance claim remains.** `runtime/maintenance.lock` blocks another
+managed repair after interrupted or failed work. Keep it with the runtime and
+Doctor log. A missing process, elapsed time, or cancelled job does not establish
+that package-manager descendants stopped; do not delete the claim to retry.
+Resolve ownership and partial installation with the maintainer. Successful
+repair releases its exact claim before reporting success; a release durability
+error still reports failure, even if the pathname is already absent.
+Verification without package work does not acquire this claim and is not proof
+that the runtime is safe to modify or share.
+
+**Sealed runtime refused.** Keep `runtime/shared.json`, its donor installation,
+the borrower inventory, and any `maintenance.lock`. A seal permanently disables
+EMRYS-managed donor repair; there is no unseal or automatic cleanup command.
+Selection can fail after sealing and before borrower publication. Missing or
+changed fixed tool/package content, unresolved claims and unavailable donor
+paths block admission. Do not edit the recorded digest, copy qualification
+receipts or remove the seal to bypass this check. Resolve the cause with the
+maintainer; use a separately prepared Project for a different runtime.
+
 **Runtime inventory already exists.** Discovery preserves even identical-looking
 inventories. Use Doctor to inspect the admitted runtime; replacing it requires
 an explicit migration/recovery decision, not deletion followed by rediscovery.
+
+**Runtime qualification failed after installation.** Read the exact maintenance
+log printed as `diagnostics:`. Its `runtime_check_failed` records identify the
+check, target, expected and observed result, exit/error details, host, inventory
+digest, and phase. For automatic compute qualification, use the exact job's
+stderr path printed at submission; those checks retain their details there
+without a second maintenance log. Package installation success does not imply
+runtime qualification. Preserve these logs before retrying. For a new read-only
+diagnosis, `emrys doctor --log-level verbose` shows individual failed checks;
+it observes the current environment and cannot reconstruct an older failure.
 
 ### Watching Doctor's installation log
 
@@ -182,3 +211,31 @@ variables, requesting an exclusive node, or imposing an arbitrary memory request
 **Missing scheduler stream.** Check the exact job with the Runbook's
 [`squeue`/`sacct` commands](RUNBOOK.md#inspecting-a-slurm-run). Slurm may not have
 opened its stream yet; scheduler success does not establish Run completion.
+
+**Submission or waited-job error.** Read the operation and underlying error:
+failure to invoke `sbatch` differs from failure to prepare or read Doctor's
+submission records. Retain the printed scheduler diagnostics and, for Doctor,
+both submission transcripts. Escaped characters in the message represent the
+original scheduler text; full Doctor transcripts remain at the printed paths.
+
+If a job ID was confirmed, the job was accepted: inspect that exact ID and its
+printed stdout/stderr paths before another action. A nonzero
+[`sbatch --wait` exit](https://slurm.schedmd.com/sbatch.html#OPT_wait) can reflect
+job failure or signal termination; exit 1 alone does not establish cancellation.
+During task finalization, a catchable termination signal can arrive after one
+terminal record is written but before the next reference is published. Keep
+both present and absent-record diagnostics: a retained successful task-attempt
+record alone does not prove a complete verified task or a recoverable Run.
+Use inspection's supported recovery decision; preserve incomplete chains,
+logs, native partials, and locks. SIGKILL and lost native-worker ownership can
+still leave ambiguity that requires maintainer investigation.
+`Forced workflow termination cannot prove separately owned native groups
+stopped` means the outer workflow ended without proof that all native writers
+stopped. EMRYS retains the Run lock and omits the Attempt receipt. A missing
+outer process or completed scheduler job does not authorize removing that lock;
+retain the Run and native workspace for investigation.
+If the response leaves the job ID unconfirmed, keep the command, submission
+time, and response, and resolve acceptance with the scheduler/operator before
+retrying. EMRYS does not automatically resubmit an uncertain request. Scheduler
+accounting is operational evidence; inspect the Run to determine its actual
+completion and supported recovery.

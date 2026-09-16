@@ -71,6 +71,60 @@ def open_log(
     )
 
 
+def test_intent_is_durable_before_external_action_and_keeps_log_open(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    attempt = open_log(tmp_path)
+    synchronized = []
+    synchronize = ApplicationLogFile.synchronize
+
+    def sync(file: ApplicationLogFile) -> None:
+        synchronize(file)
+        synchronized.append(read_records(file.path)[-1]["event"])
+
+    monkeypatch.setattr(ApplicationLogFile, "synchronize", sync)
+    attempt.intent(
+        event_name="slurm_stop_intent",
+        message="Controller request admitted.",
+        fields={
+            "argv": field(("/site/scancel", "--ctld", "--me", "700123")),
+            "client_file_binding": field(("a" * 64, 1, 2, 0o100755, 0, 12, 100, 100)),
+        },
+    )
+    assert synchronized == ["slurm_stop_intent"]
+    intent = read_records(attempt.path)[-1]
+    assert intent["phase"] == "intent" and intent["console_detail"] == "durable_only"
+    assert intent["fields"]["argv"] == ["/site/scancel", "--ctld", "--me", "700123"]
+    attempt.logger(component="scheduler", phase="observe").info(
+        "Post-check observation."
+    )
+    attempt.terminal(event_name="slurm_stop_observed", message="Observation retained.")
+    assert synchronized == ["slurm_stop_intent", "slurm_stop_observed"]
+
+
+@pytest.mark.parametrize("boundary", ("write_bytes", "synchronize"))
+def test_required_intent_failure_closes_log_and_preserves_partial_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, boundary: str
+) -> None:
+    attempt = open_log(tmp_path)
+
+    def fail(*_args: object) -> None:
+        raise ApplicationLogStorageError("intent storage unavailable")
+
+    monkeypatch.setattr(ApplicationLogFile, boundary, fail)
+    with pytest.raises(ApplicationLogError):
+        attempt.intent(event_name="slurm_stop_intent", message="Controller request.")
+    assert attempt.path.exists()
+    with pytest.raises(ApplicationLogError, match="closed"):
+        attempt.logger(component="scheduler", phase="stop")
+    assert [record["event"] for record in read_records(attempt.path)] == (
+        ["attempt_opened", "slurm_stop_intent"]
+        if boundary == "synchronize"
+        else ["attempt_opened"]
+    )
+    assert attempt.close()
+
+
 def test_attempt_writes_exact_schema_to_protected_path_before_stderr(
     tmp_path: Path,
 ) -> None:

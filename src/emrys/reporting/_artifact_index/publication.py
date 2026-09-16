@@ -9,6 +9,7 @@ import sys
 import uuid
 from pathlib import Path
 
+from emrys.libraries import exclusive_publication
 from emrys.reporting import _files, _signals
 
 from .context import recheck_inputs, recheck_source_identity
@@ -124,14 +125,16 @@ def publish_context(evidence: EvidenceContext) -> None:
     lock_payload = (
         f"run_id\t{context.run_id}\npid\t{os.getpid()}\nrun_token\t{run_token}\n"
     ).encode()
-    ownership = _files.acquire_lock(context.lock_path, lock_payload, ArtifactIndexError)
+    ownership = exclusive_publication.acquire_lock(
+        context.lock_path, lock_payload, ArtifactIndexError
+    )
     try:
         previous_signal_handlers = _signals.install(
             ArtifactIndexError, "Artifact-index", "publication"
         )
     except BaseException as exc:
         try:
-            _files.release_lock(
+            exclusive_publication.release_lock(
                 context.lock_path, ownership, lock_payload, ArtifactIndexError
             )
         except ArtifactIndexError as cleanup_exc:
@@ -157,7 +160,9 @@ def publish_context(evidence: EvidenceContext) -> None:
         current = temp_records.lstat()
         scratch_identity[temp_records] = (current.st_dev, current.st_ino)
         for path, payload in projected:
-            _files.write_bytes_exclusive(temp_records / path.name, payload, mode=0o666)
+            exclusive_publication.write_bytes_exclusive(
+                temp_records / path.name, payload, mode=0o666
+            )
         _files.fsync_path(temp_records)
         recheck_inputs(context)
         recheck_source_identity(context)
@@ -233,7 +238,7 @@ def publish_context(evidence: EvidenceContext) -> None:
             rollback_failed = True
             with contextlib.suppress(OSError, ArtifactIndexError):
                 assert_directory()
-                _files.write_bytes_exclusive(
+                exclusive_publication.write_bytes_exclusive(
                     recovery_path,
                     (
                         f"Artifact-index rollback was incomplete.\nOriginal error: {exc}\n"
@@ -256,7 +261,7 @@ def publish_context(evidence: EvidenceContext) -> None:
                         path, run_token, scratch_identity.get(path), ArtifactIndexError
                     )
                 assert_directory()
-                _files.release_lock(
+                exclusive_publication.release_lock(
                     context.lock_path, ownership, lock_payload, ArtifactIndexError
                 )
             except (OSError, ArtifactIndexError) as cleanup_exc:
@@ -272,7 +277,7 @@ def publish_context(evidence: EvidenceContext) -> None:
             state = "publication is complete" if committed else "rollback completed"
             with contextlib.suppress(OSError, ArtifactIndexError):
                 assert_directory()
-                _files.write_bytes_exclusive(
+                exclusive_publication.write_bytes_exclusive(
                     recovery_path,
                     (
                         f"Artifact-index {state} but owned cleanup was incomplete.\n"

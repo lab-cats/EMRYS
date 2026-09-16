@@ -886,6 +886,7 @@ def _tasks(
     attempt_id: str,
     compact_time: str,
     retained: Mapping[tuple[str, str], dict[str, Any]],
+    retries: Mapping[tuple[str, str], Mapping[str, str]],
     resources: ResourcePlan,
     processing_source_root: Path | None,
     processing_artifact_paths: Mapping[tuple[str, str, str], Path],
@@ -913,6 +914,10 @@ def _tasks(
         run.analysis.revision, run.execution_plan, run.run_binding
     )
     expected = inspection.expected_tasks(authority, profile)
+    if set(retries) - {(item.machine_key, item.scope_id) for item in expected} or (
+        set(retries) & set(retained)
+    ):
+        raise MaterializationError("Retry references must select fresh expected tasks")
     owners = {str(item["machine_key"]): item for item in profile["owner_tasks"]}
     if readiness.installed_package is None:
         raise MaterializationError(
@@ -1228,6 +1233,9 @@ def _tasks(
             input_declarations.append(declaration)
         record = {
             "task_attempt_id": task_id,
+            "retry_task_attempt_record": (
+                dict(retries[identity]) if identity in retries else None
+            ),
             "owner_run_token": owner_run_token,
             "scope_type": task.scope["scope_type"],
             "producer_argv": list(producer),
@@ -1260,7 +1268,6 @@ def _tasks(
             {
                 validation.parent,
                 *output_directories,
-                run_root / "state" / "task-starts" / task.machine_key,
                 run_root / "state" / "verified" / task.machine_key,
             }
         )
@@ -1301,6 +1308,9 @@ def build_attempt_plan(
     placement: Mapping[str, Any] | None = None,
     supersedes_workflow_attempt_id: str | None = None,
     retained_tasks: Mapping[tuple[str, str], dict[str, Any]] | None = None,
+    retry_task_attempt_records: Mapping[tuple[str, str], Mapping[str, str]]
+    | None = None,
+    retained_sample_manifest: PlannedFile | None = None,
     processing_source: inspection.ProcessingSourceAdmission | None = None,
 ) -> AttemptPlan:
     """Build one complete attempt without touching the filesystem."""
@@ -1327,7 +1337,18 @@ def build_attempt_plan(
     ):
         selected_sample_path = (
             run_root / "contract" / "workflow-inputs" / attempt_id / "samples.tsv"
+            if retained_sample_manifest is None
+            else retained_sample_manifest.path
         )
+        if retained_sample_manifest is not None and (
+            retained_sample_manifest.data != selected_sample_manifest
+            or selected_sample_path.parent.parent
+            != run_root / "contract" / "workflow-inputs"
+            or selected_sample_path.name != "samples.tsv"
+        ):
+            raise MaterializationError(
+                "Retained sample projection differs from its history"
+            )
         source = {
             **source,
             "samples": {
@@ -1339,9 +1360,14 @@ def build_attempt_plan(
                 },
             },
         }
-        selected_sample_file = PlannedFile(
-            selected_sample_path,
-            selected_sample_manifest,
+        if retained_sample_manifest is None:
+            selected_sample_file = PlannedFile(
+                selected_sample_path,
+                selected_sample_manifest,
+            )
+    elif retained_sample_manifest is not None:
+        raise MaterializationError(
+            "Retained sample projection has no selected analysis"
         )
     plan_source = run.execution_plan.record["identity"].get("processing_source")
     if (plan_source is None) != (processing_source is None) or (
@@ -1401,6 +1427,7 @@ def build_attempt_plan(
         attempt_id,
         compact,
         retained,
+        {} if retry_task_attempt_records is None else retry_task_attempt_records,
         resources,
         processing_source_root,
         processing_artifact_paths,
@@ -1438,7 +1465,7 @@ def build_attempt_plan(
     )
     authored_paths = analysis.authored_paths
     attempt = {
-        "schema_version": "emrys.workflow-attempt.v3",
+        "schema_version": "emrys.workflow-attempt.v4",
         "run_id": run.run_id,
         "execution_contract_sha256": _sha256(execution_bytes),
         "profile_sha256": _sha256(

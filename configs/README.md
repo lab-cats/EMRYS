@@ -144,15 +144,96 @@ declares them so. Retain provider checksums: file binding does not prove provena
 | `selector_type` | `region` for a bcftools `-r` expression or `regions_file` for an admitted `-R` file. |
 | `selector_value` | A FASTA/FAI contig or interval, or a literal regions-file path. |
 
+The [quickstart's manifest helper](../quickstart.md#create-the-input-lists)
+accepts repeated `--region PARTITION_ID SELECTOR` and
+`--regions-file PARTITION_ID PATH` options. They can be combined; partition IDs
+must be unique across both forms. A selector such as `1` selects that entire
+contig without a regions file. Reference compatibility is checked during
+Project creation.
+
 Partitions must not overlap. Begin with a small declared region when verifying
 an unfamiliar runtime. Zero candidates and a header-only VCF may be valid when
 the declared transaction reconciles.
+
+## Reusing an existing study definition
+
+Operate a current Project in place with `emrys validate --project /absolute/path/project.yaml`
+and the same `--project` selection on Doctor and Run. Named `emrys init NAME`
+provides guided creation: omit `--execute`, review its admitted study summary,
+then copy its quoted creation command to retain every answer without repeating
+the questions. Referenced inputs are freshly checked on that second invocation.
+
+Legacy bundles are preserved, not translated automatically. Unsupported fields
+retain their schema diagnostics and point to guided setup or correction of a
+current definition. Confirm biological assignments and scientific settings with
+the study owner. Do not copy only a Project YAML into a new directory: relative
+FASTQ paths in a sample manifest resolve from the Project root, even when the
+manifest path itself is absolute. A move can therefore change their meaning.
 
 ## Execution profile
 
 Execution settings are separate from scientific inputs. The
 [coordinator contract](../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
 owns profile selection and precedence.
+
+### Create a named profile without writing YAML
+
+From an existing Project, preview placement and resource choices with
+`emrys profile create NAME`. Choose `--site viking`, `--placement direct`, or
+`--placement slurm`; add `--project /absolute/path/project.yaml` when outside
+the Project. A name identifies `runtime/profiles/NAME.yaml`. Existing files,
+including `default.yaml`, are preserved.
+
+For example, these are explicit illustrative budgets, not a measured cohort
+preset. Adjust them to your study and site limits before creation:
+
+```bash
+emrys profile create cohort --site viking \
+  --cpus-per-task 8 --memory-mb 32768 --time 08:00:00 \
+  --workflow-cores 8 --workflow-memory-mb 24576
+```
+
+Review the complete placement, workflow, and stage settings. Repeat the same
+command with `--execute` to create the absent profile, then select it with
+`emrys doctor --profile cohort --repair` and `emrys run --profile cohort`.
+Preview and creation do not read FASTQs, probe tools, or request an allocation;
+Doctor and execution still perform their independent admission checks.
+
+Custom Slurm placement requires `--cpus-per-task`, `--time`, and an absolute
+`--scratch-parent`. Optional fields are `--account`, `--partition`, `--qos`,
+`--memory-mb`, `--nodelist`, and `--exclusive`/`--no-exclusive`. Exact module
+setup requires both an absolute `--module-init` and one or more ordered
+`--module` values. Direct placement rejects Slurm-only options.
+
+Set workflow budgets with `--workflow-cores` and `--workflow-memory-mb`.
+The repeatable `--step-threads STAGE=COUNT`, `--stage-memory-mb STAGE=MIB`, and
+`--stage-concurrency STAGE=COUNT` options use the existing stage identifiers
+and resource validation. Any resource override saves the complete reviewed
+computational policy. With placement options alone, the profile leaves
+computational policy unspecified: a new Run uses packaged defaults and a
+resumed Run retains its immutable policy. To change computation, create a new
+Run. A larger reservation does not itself increase workflow or stage limits.
+
+Impossible declared relationships fail during profile admission, before an
+allocation: for example, three tasks with four threads each cannot fit an
+eight-core workflow budget. Memory checks apply where the declared values
+prove a conflict; symbolic `allocation`/`workflow` values remain symbolic until
+actual allocation admission. An explicit CLI correction is applied before
+these relationship checks. EMRYS does not silently lower an allowance.
+
+Slurm planning also rejects a final workflow policy that cannot fit its explicit
+CPU or memory request. This is a reservation check, not a claim about the node's
+observed or free memory. An omitted memory request remains unknown even when
+exclusivity is requested. Placement-only resume compares its retained Run policy;
+actual allocation checks still run after the scheduler starts the job.
+
+The four-CPU initial Viking placement serves a bounded fixture, not a promise
+that a full cohort will fit or run efficiently. Qualification uses the selected
+allocation request, so choosing a large request can also increase queue time.
+Capacity and scientific-tool memory requirements must be checked for the
+actual workload; this command neither estimates demand nor tunes resources.
+
+### Profile document
 
 An `emrys.execution-profile.v1` document separates resource budgets from
 placement (where to run):

@@ -6,10 +6,13 @@ import argparse
 import gzip
 import os
 import re
+import shlex
 import stat
 import sys
+import hashlib
+import uuid
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import yaml
@@ -23,9 +26,21 @@ from emrys.evidence.runtime_availability.inspector import (
     inspect_runtime_profile_bytes,
     runtime_profile_checks,
     runtime_profile_bytes,
+    load_runtime_profile_contract,
+    load_runtime_seal,
+    runtime_profile_choices,
+    runtime_file_bindings,
+    runtime_seal_bytes,
+    shared_runtime_profile_bytes,
 )
-from emrys.libraries.exclusive_publication import publish_exclusive
-from emrys.libraries.process_environment import guarded_r_environment
+from emrys.libraries.application_logging import phase_progress
+from emrys.libraries.exclusive_publication import (
+    acquire_lock,
+    publish_exclusive,
+    release_lock,
+)
+from emrys.libraries.process_environment import command_flags, guarded_r_environment
+from emrys.libraries.source_authority import controlled_python_argv
 from emrys.libraries.references.contigs import (
     ReferenceContigError,
     parse_fasta_lines,
@@ -47,9 +62,19 @@ from emrys.orchestration.run_coordinator.normalization import (
     validate_authored_path,
 )
 from emrys.orchestration.run_coordinator.execution_profile import (
+    ExecutionProfileError,
     PROJECT_PROFILE_DIRECTORY,
     add_site_argument,
+    admit_execution_profile_bytes,
+    load_execution_profile,
     project_default_profile_bytes,
+    project_execution_profile_path,
+)
+from emrys.orchestration.run_coordinator.resource_policy import (
+    ResourceConfigError,
+    add_resource_override_arguments,
+    overrides_from_args,
+    resume_resource_policy,
 )
 from emrys.stages.gtf_to_bed12 import converter as gtf_converter
 
@@ -72,8 +97,8 @@ PATH_TOOL_COMMANDS = {
     "gunzip": "gunzip",
 }
 FASTQ_PAIR_NAME = re.compile(
-    r"^(?P<sample>[A-Za-z0-9][A-Za-z0-9._-]*)_R(?P<mate>[12])"
-    r"(?P<suffix>\.(?:fastq|fq)(?:\.gz)?)$"
+    r"^(?P<sample>[A-Za-z0-9][A-Za-z0-9._-]*)_R?(?P<mate>[12])"
+    r"\.(?:fastq|fq)(?:\.gz)?$"
 )
 
 
@@ -135,6 +160,166 @@ def add_project_argument(parser: argparse.ArgumentParser) -> None:
         "--project",
         help="Named Project directory or exact project.yaml path; default: current Project.",
     )
+
+
+_PLACEMENT_FIELDS = (
+    "account",
+    "partition",
+    "qos",
+    "cpus_per_task",
+    "memory_mb",
+    "time",
+    "exclusive",
+    "nodelist",
+    "scratch_parent",
+)
+
+
+def configure_profile_create_parser(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("name", help="Absent Project profile name, without .yaml.")
+    add_project_argument(parser)
+    placement = parser.add_mutually_exclusive_group(required=True)
+    add_site_argument(placement)
+    placement.add_argument("--placement", choices=("direct", "slurm"))
+    for field in _PLACEMENT_FIELDS:
+        if field == "exclusive":
+            parser.add_argument("--exclusive", action=argparse.BooleanOptionalAction)
+        else:
+            parser.add_argument(
+                "--" + field.replace("_", "-"),
+                type=int if field in {"cpus_per_task", "memory_mb"} else str,
+                help="Explicit Slurm placement value; omission retains the selected site setting.",
+            )
+    parser.add_argument(
+        "--module-init", help="Absolute initialization file for exact modules."
+    )
+    parser.add_argument(
+        "--module",
+        action="append",
+        default=[],
+        help="Exact module to load, in order; repeatable.",
+    )
+    add_resource_override_arguments(parser)
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Create the absent profile after displaying its settings.",
+    )
+    parser.set_defaults(_command_parser=parser)
+
+
+def profile_create_from_args(arguments: argparse.Namespace) -> int:
+    """Preview or create execution settings without reading scientific inputs."""
+
+    try:
+        project = project_definition_path(arguments.project)
+        project_data, _ = read_bytes_with_identity(project, "Project definition")
+        orchestration_contracts.validate_record(
+            "project", orchestration_contracts.load_yaml_object_bytes(project_data)
+        )
+        if Path(arguments.name).is_absolute():
+            raise OnboardingError(
+                "Profile creation requires a Project profile name, not a path"
+            )
+        destination = project_execution_profile_path(project, arguments.name)
+        if (
+            destination.parent.resolve(strict=True) != destination.parent
+            or not destination.parent.is_dir()
+        ):
+            raise OnboardingError(
+                "Profile parent must be an existing canonical directory"
+            )
+        if os.path.lexists(destination):
+            raise OnboardingError(f"Existing profile was preserved: {destination}")
+        document = orchestration_contracts.load_yaml_object_bytes(
+            project_default_profile_bytes(arguments.site)
+        )
+        if arguments.placement == "slurm":
+            document["placement"] = {
+                "kind": "slurm",
+                **dict.fromkeys(_PLACEMENT_FIELDS),
+                "exclusive": False,
+                "modules": {"mode": "none", "init": "", "load": []},
+            }
+        placement = document["placement"]
+        supplied = {
+            field: getattr(arguments, field)
+            for field in _PLACEMENT_FIELDS
+            if getattr(arguments, field) is not None
+        }
+        if placement["kind"] == "direct" and (
+            supplied or arguments.module_init is not None or arguments.module
+        ):
+            raise OnboardingError(
+                "Slurm placement options require --site or --placement slurm"
+            )
+        placement.update(supplied)
+        if placement["kind"] == "slurm":
+            missing = [
+                field
+                for field in ("cpus_per_task", "time", "scratch_parent")
+                if placement[field] is None
+            ]
+            if missing:
+                raise OnboardingError(
+                    "Custom Slurm placement requires: "
+                    + ", ".join("--" + field.replace("_", "-") for field in missing)
+                )
+        if arguments.module_init is not None or arguments.module:
+            if not arguments.module_init or not arguments.module:
+                raise OnboardingError(
+                    "Exact modules require both --module-init and --module"
+                )
+            placement["modules"] = {
+                "mode": "exact",
+                "init": arguments.module_init,
+                "load": arguments.module,
+            }
+        defaults = load_execution_profile()
+        overrides = overrides_from_args(arguments)
+        if overrides.labels():
+            document["resources"] = resume_resource_policy(
+                defaults.resource_policy, overrides=overrides
+            ).document()
+        data = yaml.safe_dump(document, sort_keys=False).encode("utf-8")
+        profile = admit_execution_profile_bytes(
+            orchestration_contracts.canonical_json_bytes(defaults.document()),
+            destination,
+            data,
+        )
+        profile.validate_reservation()
+        print(f"Execution profile: {str(destination)!r}")
+        for line in profile.submission_summary():
+            print(line)
+        print(
+            "Computational settings: complete reviewed policy will be saved in this profile."
+            if profile.computational_resources_explicit
+            else "Computational settings: packaged defaults; a resumed Run retains its existing policy."
+        )
+        print(
+            "This preview does not verify runtime readiness or observed allocation capacity."
+        )
+        if not arguments.execute:
+            print(
+                "Dry-run complete; no files were written. Repeat with --execute to create this profile."
+            )
+            return 0
+        publish_exclusive(destination, data, OnboardingError)
+        load_execution_profile(
+            destination, expected_binding_sha256=profile.binding_sha256
+        )
+        print(f"Profile created. Select it with --profile {arguments.name}.")
+        return 0
+    except (
+        OSError,
+        OnboardingError,
+        ExecutionProfileError,
+        ResourceConfigError,
+        ValidationError,
+        orchestration_contracts.ContractValidationError,
+    ) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
 
 
 def _require_external_absent_output(value: str | Path, root: Path) -> Path:
@@ -473,6 +658,76 @@ def _project_yaml(answers: Mapping[str, object]) -> bytes:
     return yaml.safe_dump(document, sort_keys=False).encode("utf-8")
 
 
+def _print_project_preview(
+    project: ProjectAdmission,
+    answers: Mapping[str, object],
+    site: str | None,
+) -> None:
+    """Review named init's admitted built-in Analysis and replay its answers."""
+
+    analysis = project.select_analysis()
+    source = analysis.workflow_inputs
+
+    def location(label: str, snapshot: Mapping[str, object]) -> None:
+        print(f"  {label}: {snapshot['path']!r}; SHA-256: {snapshot['sha256']}")
+
+    print("Review the study interpretation before creating the Project:")
+    print(f"  Analysis: {analysis.name}")
+    print(f"  Site: {site or 'none (direct placement)'}")
+    for name in ("samples", "partitions"):
+        location(f"{name} manifest", source[name]["manifest"])
+    for name in ("fasta", "gtf"):
+        location(f"reference {name}", source["reference"][name])
+    print("Sample assignments (pairing groups are explicitly supplied):")
+    for sample in source["samples"]["rows"]:
+        print(
+            f"  {sample['sample_id']}: condition={sample['condition']}; "
+            f"pairing group={sample['replicate']}; strandedness={sample['strandedness']}"
+        )
+        for mate in ("r1_fastq", "r2_fastq"):
+            location(mate, sample[mate])
+    for partition in source["partitions"]["rows"]:
+        print(
+            f"  Partition {partition['partition_id']}: {partition['selector_type']} "
+            f"{partition['selector_value']!r}"
+        )
+        if partition["selector_file"] is not None:
+            print(
+                f"    format={partition['selector_format']}; "
+                f"compression={partition['selector_compression']}; "
+                f"SHA-256: {partition['selector_file']['sha256']}"
+            )
+    settings = {
+        **source["reference"]["star_index"],
+        **source["analysis"]["policy"]["configuration"],
+    }
+    print("Scientific settings:")
+    print(f"  target change: {settings['rna_ref']}>{settings['rna_alt']}")
+    for name, value in settings.items():
+        if name not in {"rna_ref", "rna_alt"}:
+            print(f"  {name.replace('_', ' ')}: {'none' if value is None else value}")
+    flags = command_flags(
+        *(
+            (name.replace("_", "-"), value)
+            for name, value in {**answers, "site": site}.items()
+            if value is not None
+        )
+    )
+    replay = controlled_python_argv(
+        sys.executable,
+        "-m",
+        "emrys",
+        "init",
+        project.source_path.parent.name,
+        *flags,
+        "--execute",
+    )
+    print("After review, copy this command to create without repeating the questions.")
+    print("This Python environment will recheck inputs; preview does not freeze them.")
+    parent = shlex.quote(str(project.source_path.parent.parent))
+    print(f"cd {parent} && {shlex.join(replay)}")
+
+
 def init_project_from_args(arguments: argparse.Namespace) -> int:
     """Plan or create one validated Project root around existing inputs."""
 
@@ -489,16 +744,24 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         answers["analysis_name"] = arguments.analysis_name
         answers["background_condition"] = arguments.background_condition
         project_bytes = _project_yaml(answers)
-        preview = _admit_project_data(
-            output / "project.yaml",
-            project_bytes,
-            source_root() / PROFILE_RELATIVE_PATH,
+        print(
+            "Project preparation reads and hashes all declared inputs and checks "
+            "reference compatibility. Large inputs may take several minutes.",
+            file=sys.stderr,
         )
-        validate_project_admission(preview)
+        with phase_progress("Reading and hashing Project inputs"):
+            preview = _admit_project_data(
+                output / "project.yaml",
+                project_bytes,
+                source_root() / PROFILE_RELATIVE_PATH,
+            )
+        with phase_progress("Checking reference and partition compatibility"):
+            validate_project_admission(preview)
         print(f"Project root: {output}")
         print("Owned directories: logs, runs, runtime")
         print("Referenced inputs remain in place; setup copies no input files.")
         if not arguments.execute:
+            _print_project_preview(preview, answers, getattr(arguments, "site", None))
             print("Dry-run complete; no files were written.")
             return 0
         publish_create_absent_tree(
@@ -513,7 +776,8 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             completion_bytes=project_bytes,
             directories=PROJECT_DIRECTORIES,
         )
-        validate_project(output / "project.yaml")
+        with phase_progress("Verifying the published Project"):
+            validate_project(output / "project.yaml")
         print(f"Project ready: {output / 'project.yaml'}")
         return 0
     except (
@@ -553,17 +817,18 @@ def _draft_manifest_members(
     fastqs: Sequence[Path],
     samples: Sequence[Sequence[str]],
     regions_files: Sequence[Sequence[str]],
+    regions: Sequence[Sequence[str]],
 ) -> dict[str, tuple[bytes, int]]:
     """Render validated manifest drafts from explicit paths and biology."""
 
-    pairs: dict[str, dict[str, tuple[Path, bool]]] = {}
+    sample_rows: dict[str, dict[str, str]] = {}
     file_roles: dict[tuple[int, int], str] = {}
     for value in fastqs:
         admitted_path = _admit_supplied_file(value, "supplied FASTQ")
         match = FASTQ_PAIR_NAME.fullmatch(admitted_path.name)
         if match is None:
             raise OnboardingError(
-                "FASTQ names must end in <sample>_R1 or _R2 followed by "
+                "FASTQ names must end in <sample>_R1/_R2 or <sample>_1/_2 followed by "
                 f".fastq/.fq and optional .gz: {admitted_path}"
             )
         sample_id, mate = match["sample"], match["mate"]
@@ -573,66 +838,66 @@ def _draft_manifest_members(
         if previous := file_roles.get(identity):
             raise OnboardingError(f"one FASTQ file is reused as {previous} and {role}")
         file_roles[identity] = role
-        pair = pairs.setdefault(sample_id, {})
-        if mate in pair:
+        row = sample_rows.setdefault(sample_id, {"sample_id": sample_id})
+        column = f"r{mate}_fastq"
+        if column in row:
             raise OnboardingError(f"duplicate R{mate} FASTQ for sample {sample_id}")
-        pair[mate] = (admitted_path, match["suffix"].endswith(".gz"))
+        row[column] = str(admitted_path)
 
-    admitted: dict[str, tuple[Path, Path]] = {}
-    for sample_id, pair in pairs.items():
-        if set(pair) != {"1", "2"}:
+    for sample_id, row in sample_rows.items():
+        if not {"r1_fastq", "r2_fastq"} <= row.keys():
             raise OnboardingError(f"unpaired FASTQ sample: {sample_id}")
-        (r1, r1_gzip), (r2, r2_gzip) = pair["1"], pair["2"]
-        if r1_gzip != r2_gzip:
+        if row["r1_fastq"].endswith(".gz") != row["r2_fastq"].endswith(".gz"):
             raise OnboardingError(
                 f"R1 and R2 FASTQs use different compression for sample {sample_id}"
             )
-        admitted[sample_id] = (r1, r2)
 
     assignments = _indexed_values(samples, "--sample assignment")
-    unexpected = sorted(assignments.keys() - admitted.keys())
+    unexpected = sorted(assignments.keys() - sample_rows.keys())
     if unexpected:
         raise OnboardingError(
             "--sample assignments have no supplied FASTQ pair: " + ", ".join(unexpected)
         )
-    missing = sorted(admitted.keys() - assignments.keys())
+    missing = sorted(sample_rows.keys() - assignments.keys())
     if missing:
         flags = "\n".join(
             f"  --sample {key} CONDITION REPLICATE STRANDEDNESS" for key in missing
         )
         raise OnboardingError(f"biological assignments are required:\n{flags}")
-    for sample_id, assignment in assignments.items():
-        step08.validate_safe_id(f"sample {sample_id} condition", assignment[0])
-
-    sample_rows = [
-        {
-            "sample_id": sample_id,
-            "r1_fastq": str(admitted[sample_id][0]),
-            "r2_fastq": str(admitted[sample_id][1]),
-            "condition": assignments[sample_id][0],
-            "replicate": assignments[sample_id][1],
-            "strandedness": assignments[sample_id][2],
-        }
-        for sample_id in sorted(admitted)
-    ]
-    sample_bytes = tsv_bytes(step08.SAMPLE_MANIFEST_REQUIRED, sample_rows)
+    for sample_id, (condition, replicate, strandedness) in assignments.items():
+        step08.validate_safe_id(f"sample {sample_id} condition", condition)
+        sample_rows[sample_id].update(
+            condition=condition, replicate=replicate, strandedness=strandedness
+        )
+    sample_bytes = tsv_bytes(
+        step08.SAMPLE_MANIFEST_REQUIRED,
+        (sample_rows[key] for key in sorted(sample_rows)),
+    )
     step08.validate_sample_manifest_bytes(sample_bytes, "samples.tsv")
     members = {"samples.tsv": (sample_bytes, 0o644)}
-    if regions_files:
-        partitions = _indexed_values(regions_files, "--regions-file")
-        rows = [
-            {
-                "partition_id": partition_id,
-                "selector_type": "regions_file",
-                "selector_value": str(
+    rows = []
+    for selector_type, selections in (
+        ("regions_file", regions_files),
+        ("region", regions),
+    ):
+        for partition_id, (value,) in sorted(
+            _indexed_values(selections, f"--{selector_type.replace('_', '-')}").items()
+        ):
+            if selector_type == "regions_file":
+                value = str(
                     _admit_supplied_file(
-                        partitions[partition_id][0],
-                        f"partition {partition_id} regions file",
+                        value, f"partition {partition_id} regions file"
                     )
-                ),
-            }
-            for partition_id in sorted(partitions)
-        ]
+                )
+            rows.append(
+                dict(
+                    partition_id=partition_id,
+                    selector_type=selector_type,
+                    selector_value=value,
+                )
+            )
+    if rows:
+        rows.sort(key=lambda row: row["partition_id"])
         partition_bytes = tsv_bytes(step08.PARTITION_MANIFEST_HEADER, rows)
         step08.validate_partition_manifest_bytes(partition_bytes, "partitions.tsv")
         members["partitions.tsv"] = (partition_bytes, 0o644)
@@ -652,7 +917,7 @@ def configure_manifest_init_parser(parser: argparse.ArgumentParser) -> None:
         action="extend",
         nargs="+",
         type=Path,
-        help="Existing FASTQs using the closed <sample>_R1/_R2 naming convention.",
+        help="Existing FASTQs named <sample>_R1/_R2 or <sample>_1/_2 (.fastq/.fq, optional .gz).",
     )
     parser.add_argument(
         "--sample",
@@ -662,14 +927,15 @@ def configure_manifest_init_parser(parser: argparse.ArgumentParser) -> None:
         metavar=("SAMPLE_ID", "CONDITION", "REPLICATE", "STRANDEDNESS"),
         help="Explicit biology for one inferred pair; repeat for every sample.",
     )
-    parser.add_argument(
-        "--regions-file",
-        action="append",
-        nargs=2,
-        default=[],
-        metavar=("PARTITION_ID", "PATH"),
-        help="Optional existing region file; repeat for additional partitions.",
-    )
+    for name, value in (("regions-file", "PATH"), ("region", "REGION")):
+        parser.add_argument(
+            f"--{name}",
+            action="append",
+            nargs=2,
+            default=[],
+            metavar=("PARTITION_ID", value),
+            help=f"Optional {name.replace('-', ' ')}; repeat for additional partitions.",
+        )
     parser.add_argument(
         "--execute", action="store_true", help="Publish; omission is a no-write plan."
     )
@@ -685,6 +951,7 @@ def init_manifests_from_args(arguments: argparse.Namespace) -> int:
             arguments.fastq,
             arguments.sample,
             arguments.regions_file,
+            arguments.region,
         )
         print(f"Output directory: {output}")
         print("Draft manifests: " + ", ".join(sorted(members)))
@@ -1136,8 +1403,91 @@ def publish_runtime_profile(inspection: RuntimeInspection) -> None:
     )
 
 
+def reuse_runtime_profile(
+    *, project: Path, donor: Path, execute: bool
+) -> RuntimeInspection:
+    """Seal an owned donor once and freshly qualify one explicit borrower selection."""
+    package_root = _absolute(source_root())
+    borrower = validate_project(project, root=package_root).project
+    source = validate_project(donor, root=package_root).project
+    destination = project_runtime_directory(borrower, writable=execute) / "runtime.tsv"
+    runtime = project_runtime_directory(source, writable=False)
+    seal_path = runtime / "shared.json"
+    if borrower.source_path == source.source_path:
+        raise OnboardingError("Runtime reuse requires a distinct borrower Project")
+    if os.path.lexists(destination):
+        raise OnboardingError(
+            f"runtime inventory already exists and was preserved: {destination}"
+        )
+
+    def inspect(data: bytes) -> RuntimeInspection:
+        checks = runtime_profile_checks(data, package_root)
+        library = next(
+            Path(check.target) for check in checks if check.check_id == "renv_library"
+        )
+        result = inspect_runtime_profile_bytes(
+            data,
+            destination,
+            checks=checks,
+            environment=guarded_r_environment(package_root, library),
+        )
+        if not result.required_ready:
+            raise RuntimeDiscoveryError(
+                "Required runtime checks did not pass for reuse"
+            )
+        return result
+
+    if os.path.lexists(seal_path):
+        seal_data = load_runtime_seal(seal_path).data
+    else:
+        claim_path = runtime / "maintenance.lock"
+        if os.path.lexists(claim_path):
+            raise OnboardingError(
+                f"Runtime maintenance claim is unresolved: {claim_path}"
+            )
+        ownership = None
+        payload = f"emrys-runtime-seal:{uuid.uuid4().hex}\n".encode("ascii")
+        if execute:
+            project_runtime_directory(source)
+            ownership = acquire_lock(
+                claim_path, payload, OnboardingError, retain_on_failure=True
+            )
+        # Failed or interrupted preparation/publication deliberately retains the claim.
+        data, _checks = load_runtime_profile_contract(
+            runtime / "runtime.tsv", package_root
+        )
+        choices = runtime_profile_choices(data)
+        choices["python"] = Path(sys.executable)
+        candidate = inspect(runtime_profile_bytes(choices))
+        seal_data = runtime_seal_bytes(candidate, seal_path)
+        reference = shared_runtime_profile_bytes(
+            seal_path, seal_data, Path(sys.executable)
+        )
+        if not execute:
+            return replace(
+                candidate,
+                profile_bytes=reference,
+                profile_sha256=hashlib.sha256(reference).hexdigest(),
+            )
+        publish_exclusive(seal_path, seal_data, OnboardingError)
+        assert ownership is not None
+        release_lock(claim_path, ownership, payload, OnboardingError)
+    reference = shared_runtime_profile_bytes(seal_path, seal_data, Path(sys.executable))
+    inspection = inspect(reference)
+    runtime_file_bindings(inspection)
+    if execute:
+        project_runtime_directory(borrower)
+        publish_runtime_profile(inspection)
+    return inspection
+
+
 def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
     add_project_argument(parser)
+    parser.add_argument(
+        "--from-project",
+        metavar="DONOR",
+        help="Reuse a managed donor runtime; --execute permanently seals its native/R content before selection.",
+    )
     parser.add_argument(
         "--execute",
         action="store_true",
@@ -1160,9 +1510,21 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
     """Discover, probe, and optionally admit the active Project runtime."""
 
     try:
-        inspection = discover_runtime_profile(
-            project=project_definition_path(arguments.project)
-        )
+        donor = getattr(arguments, "from_project", None)
+        if donor is None:
+            inspection = discover_runtime_profile(
+                project=project_definition_path(arguments.project)
+            )
+        else:
+            inspection = reuse_runtime_profile(
+                project=project_definition_path(arguments.project),
+                donor=project_definition_path(donor),
+                execute=arguments.execute,
+            )
+            print(
+                f"Donor seal: {project_definition_path(donor).parent / 'runtime/shared.json'}"
+            )
+            print("A donor seal is permanent and disables its managed runtime repair.")
         _print_runtime_inventory(inspection)
         print(f"Inventory: {inspection.profile_path}")
         if not inspection.required_ready:
@@ -1171,7 +1533,8 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
         if not arguments.execute:
             print("Dry-run complete; no files were written.")
             return 0
-        publish_runtime_profile(inspection)
+        if donor is None:
+            publish_runtime_profile(inspection)
         print("Runtime inventory admitted.")
         return 0
     except RuntimeDiscoveryError as exc:
@@ -1193,15 +1556,18 @@ __all__ = (
     "ProjectValidation",
     "RuntimeDiscoveryError",
     "add_project_argument",
+    "configure_profile_create_parser",
     "configure_runtime_discovery_parser",
     "configure_manifest_init_parser",
     "configure_project_init_parser",
     "configure_validation_parser",
     "discover_runtime_from_args",
     "discover_runtime_profile",
+    "reuse_runtime_profile",
     "init_manifests_from_args",
     "init_project_from_args",
     "project_runtime_directory",
+    "profile_create_from_args",
     "project_definition_path",
     "publish_create_absent_tree",
     "publish_runtime_profile",

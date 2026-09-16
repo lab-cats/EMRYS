@@ -237,7 +237,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
     scope = {"scope_type": "sample", "scope_id": "EV-1"}
     command = {"argv": ["emrys-owner", "--execute"], "exit_code": 0}
     workflow_attempt = {
-        "schema_version": "emrys.workflow-attempt.v3",
+        "schema_version": "emrys.workflow-attempt.v4",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -315,10 +315,10 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         ],
     }
     task_start_reference = record_reference(
-        "state/task-starts/star_alignment/EV-1.json"
+        f"attempts/{WORKFLOW_ATTEMPT_ID}/tasks/star_alignment/EV-1/task-start.json"
     )
     task_start = {
-        "schema_version": "emrys.task-start.v2",
+        "schema_version": "emrys.task-start.v3",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -334,9 +334,19 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
             f"attempts/{WORKFLOW_ATTEMPT_ID}/released-run-lock.json"
         ),
         "created_at": "2026-08-12T12:01:30Z",
+        "inputs": [
+            {"role": role, **snapshot(path)}
+            for role, path in (
+                ("workflow_attempt", "/workspace/attempt.json"),
+                ("execution_contract", "/workspace/run.json"),
+                ("workflow_profile", "/workspace/profile.json"),
+                ("fastq", "/data/EV-1.fastq"),
+            )
+        ],
     }
     task_attempt = {
-        "schema_version": "emrys.task-attempt.v3",
+        "schema_version": "emrys.task-attempt.v4",
+        "abort_closure": None,
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -365,7 +375,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "failure_message": None,
     }
     task_attempt.update(
-        inputs=[{"role": "fastq", **snapshot("/data/EV-1.fastq")}],
+        inputs=copy.deepcopy(task_start["inputs"]),
         outputs=[{"role": "bam", **snapshot("/workspace/results/EV-1.bam", ONE_HASH)}],
     )
     verified_task = {
@@ -375,7 +385,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         ),
     }
     attempt_receipt = {
-        "schema_version": "emrys.attempt-receipt.v2",
+        "schema_version": "emrys.attempt-receipt.v3",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -390,14 +400,20 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "finished_at": "2026-08-12T12:03:00Z",
         "snakemake_exit_code": 0,
         "termination_signal": None,
-        "preentry_task_attempt_records": [],
-        "task_start_records": [
+        "task_attempt_records": [
             {
+                "workflow_attempt_id": WORKFLOW_ATTEMPT_ID,
                 "machine_key": "star_alignment",
                 "scope": scope,
-                "record": record_reference(
-                    "state/task-starts/star_alignment/EV-1.json"
-                ),
+                "record": verified_task["task_attempt_record"],
+            }
+        ],
+        "task_start_records": [
+            {
+                "workflow_attempt_id": WORKFLOW_ATTEMPT_ID,
+                "machine_key": "star_alignment",
+                "scope": scope,
+                "record": task_start_reference,
             }
         ],
         "verified_tasks": [
@@ -766,6 +782,64 @@ def test_task_attempt_distinguishes_preentry_failure_from_started_work() -> None
         orchestration.validate_record("task-attempt", preentry)
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        (None, None),
+        ("status", "blocked"),
+        ("task_start_record", None),
+        ("stable_inputs_rechecked", False),
+        ("outputs", [{"role": "published", **snapshot("/workspace/result.bam")}]),
+        ("validation_report", record_reference("products/validation.tsv")),
+        ("failure_message", None),
+        ("inputs", []),
+        ("abort_closure", "process-group-only"),
+    ),
+)
+def test_positive_abort_closure_requires_closed_prepublication_result(
+    field: str | None, value: Any
+) -> None:
+    attempt = lifecycle_records()["task-attempt"]
+    attempt.update(
+        abort_closure="linux-task-prepublication.v1",
+        status="failed",
+        producer={"argv": ["producer"], "exit_code": 143},
+        validator=None,
+        semantic_all_pass=None,
+        outputs=[],
+        validation_report=None,
+        failure_message="producer interrupted before publication",
+    )
+    if field is None:
+        orchestration.validate_record("task-attempt", attempt)
+    else:
+        attempt[field] = value
+        with pytest.raises(orchestration.ContractValidationError, match="Invalid"):
+            orchestration.validate_record("task-attempt", attempt)
+
+
+@pytest.mark.parametrize("record_name", ("task-start", "task-attempt"))
+@pytest.mark.parametrize("field", ("role", "path"))
+def test_start_and_closed_abort_inputs_have_unique_bindings(
+    record_name: str, field: str
+) -> None:
+    record = lifecycle_records()[record_name]
+    if record_name == "task-attempt":
+        record.update(
+            abort_closure="linux-task-prepublication.v1",
+            status="failed",
+            outputs=[],
+            validation_report=None,
+            failure_message="producer failed before publication",
+        )
+    record["inputs"][1][field] = record["inputs"][0][field]
+    with pytest.raises(
+        orchestration.ContractValidationError,
+        match=f"input {field} values must be unique",
+    ):
+        orchestration.validate_record(record_name, record)
+
+
 def test_task_attempt_logs_are_closed_content_references() -> None:
     attempt = lifecycle_records()["task-attempt"]
     attempt["stdout_path"] = attempt.pop("stdout_log")["path"]
@@ -791,7 +865,9 @@ def test_attempt_receipt_terminal_semantics_and_unique_scope_references() -> Non
     receipt["task_start_records"].append(
         copy.deepcopy(receipt["task_start_records"][0])
     )
-    with pytest.raises(orchestration.ContractValidationError, match="unique owner"):
+    with pytest.raises(
+        orchestration.ContractValidationError, match="unique attempt-owner"
+    ):
         orchestration.validate_record("attempt-receipt", receipt)
 
     receipt = lifecycle_records()["attempt-receipt"]
@@ -803,6 +879,7 @@ def test_attempt_receipt_terminal_semantics_and_unique_scope_references() -> Non
 
     receipt = lifecycle_records()["attempt-receipt"]
     receipt["verified_tasks"] = []
+    receipt["task_attempt_records"] = []
     receipt.update(
         status="failed",
         snakemake_exit_code=0,
@@ -832,7 +909,7 @@ def test_attempt_receipt_terminal_semantics_and_unique_scope_references() -> Non
         orchestration.validate_record("attempt-receipt", receipt)
 
 
-def test_attempt_receipt_v2_closes_science_without_reporting_fields() -> None:
+def test_attempt_receipt_closes_science_without_reporting_fields() -> None:
     receipt = lifecycle_records()["attempt-receipt"]
 
     validator = orchestration.schema_validator("attempt-receipt")
@@ -850,6 +927,23 @@ def test_attempt_receipt_v2_closes_science_without_reporting_fields() -> None:
             orchestration.validate_record("attempt-receipt", incompatible)
 
 
+def test_attempt_receipt_retains_multiple_attempts_for_one_task_scope() -> None:
+    receipt = lifecycle_records()["attempt-receipt"]
+    previous = "workflow-20260812T110000Z-" + "c" * 32
+    for field in ("task_start_records", "task_attempt_records"):
+        earlier = copy.deepcopy(receipt[field][0])
+        earlier["workflow_attempt_id"] = previous
+        earlier["record"]["path"] = earlier["record"]["path"].replace(
+            WORKFLOW_ATTEMPT_ID, previous
+        )
+        receipt[field].insert(0, earlier)
+    orchestration.validate_record("attempt-receipt", receipt)
+
+    receipt["task_attempt_records"].pop(0)
+    with pytest.raises(orchestration.ContractValidationError, match="every task start"):
+        orchestration.validate_record("attempt-receipt", receipt)
+
+
 @pytest.mark.parametrize(
     ("field", "value", "diagnostic"),
     (
@@ -863,7 +957,7 @@ def test_attempt_receipt_v2_closes_science_without_reporting_fields() -> None:
         (
             "schema_version",
             "emrys.attempt-receipt.v99",
-            "$.schema_version: 'emrys.attempt-receipt.v2' was expected",
+            "$.schema_version: 'emrys.attempt-receipt.v3' was expected",
         ),
     ),
 )
@@ -900,6 +994,7 @@ def test_workflow_attempt_closes_inline_task_definitions() -> None:
         "scope_type": "sample",
         "task_attempt_id": TASK_ATTEMPT_ID,
         "owner_run_token": "owner-task-1",
+        "retry_task_attempt_record": None,
         "producer_argv": ["scientific-worker", "--label", "label with spaces"],
         "validator_argv": ["scientific-validator"],
         "inputs": [{"role": "reads", "path": "/data/reads.fastq"}],
@@ -926,6 +1021,11 @@ def test_workflow_attempt_closes_inline_task_definitions() -> None:
         {"bogus": 1},
         {**definition, "bogus": 1},
         {key: value for key, value in definition.items() if key != "inputs"},
+        {
+            key: value
+            for key, value in definition.items()
+            if key != "retry_task_attempt_record"
+        },
         {**definition, "producer_argv": []},
         {**definition, "publication": []},
     ):

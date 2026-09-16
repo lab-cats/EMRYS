@@ -788,24 +788,28 @@ def _positive_integer(value: Any, label: str) -> int:
 
 
 def resolve_computational_resources(
-    declaration: Mapping[str, Any], allocation_cores: int, allocation_memory: int
+    declaration: Mapping[str, Any],
+    allocation_cores: int | None = None,
+    allocation_memory: int | None = None,
+    *,
+    limit_source: str = "observed allocation",
 ) -> dict[str, Any]:
-    """Resolve admitted symbolic resources and enforce their allocation limits."""
+    """Check labelled bounds and project memory only when a numeric bound exists."""
     cores = declaration["workflow_cores"]
     memory = declaration["workflow_memory_mb"]
-    if memory == "allocation":
+    if memory == "allocation" and allocation_memory is not None:
         memory = allocation_memory
-    if cores > allocation_cores:
+    if allocation_cores is not None and cores > allocation_cores:
         raise ContractValidationError(
-            f"Workflow cores exceed observed allocation: {cores} > {allocation_cores}"
+            f"Workflow cores exceed {limit_source}: {cores} > {allocation_cores}"
         )
-    if memory > allocation_memory:
+    if allocation_memory is not None and memory > allocation_memory:
         raise ContractValidationError(
-            "Workflow memory exceeds observed allocation: "
+            f"Workflow memory exceeds {limit_source}: "
             f"{memory} > {allocation_memory} MiB"
         )
     stage_memory = {
-        step: memory if value == "workflow" else value
+        step: memory if value == "workflow" and memory != "allocation" else value
         for step, value in declaration["stage_memory_mb"].items()
     }
     for step, stage_mb in stage_memory.items():
@@ -816,11 +820,24 @@ def resolve_computational_resources(
                 f"Stage {step} concurrency x threads exceeds workflow cores: "
                 f"{concurrency} x {threads} > {cores}"
             )
-        if concurrency * stage_mb > memory:
+        if (stage_mb == "workflow" and concurrency > 1) or (
+            isinstance(stage_mb, int)
+            and isinstance(memory, int)
+            and concurrency * stage_mb > memory
+        ):
             raise ContractValidationError(
-                f"Stage {step} concurrency x memory exceeds workflow memory: "
-                f"{concurrency} x {stage_mb} > {memory} MiB"
+                f"Stage {step} concurrency x memory exceeds workflow memory"
+                + (
+                    f" within {limit_source}"
+                    if limit_source != "observed allocation"
+                    else ""
+                )
+                + ": "
+                f"{concurrency} x {stage_mb} > "
+                + (f"{memory} MiB" if isinstance(memory, int) else "workflow")
             )
+    if allocation_memory is None:
+        return dict(declaration)
     return {
         **declaration,
         "workflow_memory_mb": memory,

@@ -128,6 +128,20 @@ def _add_group(
 
 
 def _add_onboarding_commands(command_parsers: Any) -> None:
+    _add_group(
+        command_parsers,
+        "profile",
+        "Preview and create named Project execution profiles.",
+        "profile_operation",
+        (
+            (
+                "create",
+                run_coordinator_onboarding_command,
+                "profile_create",
+                "Preview placement and resource settings; create only with --execute.",
+            ),
+        ),
+    )
     init_parser = command_parsers.add_parser(
         "init",
         help="Initialize one explicit create-absent EMRYS input set.",
@@ -251,6 +265,12 @@ def build_parser() -> argparse.ArgumentParser:
             run_coordinator_control_command,
             "inspect",
             "Inspect one Project-local Run without mutation.",
+        ),
+        (
+            "stop",
+            run_coordinator_control_command,
+            "stop",
+            "Preview or request cancellation of one exact retained submission.",
         ),
     ):
         _add_owned_command(command_parsers, *command, controlled=True)

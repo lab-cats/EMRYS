@@ -9,8 +9,9 @@ defines which owners may import it.
 
 ## Ownership and adoption
 
-One executing `run` or `resume`, independently generated report, or confirmed
-`doctor --repair` operation owns one application attempt. Automatic reporting
+One executing `run` or `resume`, independently generated report, confirmed
+`doctor --repair`, or admitted `stop --execute` operation owns one application
+attempt. Automatic reporting
 continues in its Run attempt rather than opening another log. The Slurm
 submission transport and delegated tasks own none; the compute-side Run owns
 the attempt. Automatic Doctor compute checks write scheduler streams under the
@@ -41,6 +42,8 @@ open or append to the operation log.
   a Project root, it is `<repository-root>/logs/application`, derived from
   source/package identity rather than caller CWD. An explicit root is
   absolute.
+  Stop defaults to the exact submitted request's retained application-log root;
+  explicit command-line and environment controls retain their precedence.
 - A valid dry-run creates no log. Levels change console output only, never probes,
   child flags, computation, artifacts, validation, locking, publication,
   rollback, cleanup, or exits.
@@ -74,6 +77,9 @@ opens it only after confirmation and before lifecycle admission. Doctor opens
 one `maintenance` attempt after repair confirmation and before its first
 filesystem or package-manager mutation. A Slurm submitter opens none; the
 compute delegate opens the Run attempt inside the allocation.
+Stop opens one `maintenance` attempt scoped to the exact submission request
+after target/client admission and explicit execution intent. Already-terminal
+targets need no cancellation or new application log.
 
 The owner assigns `scope_kind` (`run`, `sample`, `cohort`, `reference`,
 `review`, `validation`, or `maintenance`), `scope_id`,
@@ -132,6 +138,10 @@ log, emits one fixed degradation warning, and disables further writes. Logging
 failure never changes workflow execution, receipt bytes or status, rollback,
 recovery, locks, or exit. Catchable signals receive a best-effort event, flush,
 and established child cleanup; uncatchable loss may leave only a partial log.
+Stop has a required pre-mutation intent boundary: a write or synchronization
+failure there refuses the external scheduler command. A logging failure after
+the command leaves its result unconfirmed; it cannot change Run evidence or
+authorize a repeated cancellation.
 
 After an attempted operation fails, stderr ends with a bounded summary naming:
 
@@ -151,11 +161,66 @@ after argument classification. Logs are protected operational data and are not
 automatically rotated, truncated, compressed, uploaded, or deleted. A log
 cannot promote runtime, scheduler, scientific, or biological evidence.
 
+## Doctor phase measurements
+
+Doctor's existing maintenance log may include durable-only `doctor_phase_timing`
+events with `execution_context`, `phase_name`, `elapsed_seconds` (or null when
+unavailable) and `outcome`. Initial no-write inspection and later phases are
+buffered until controlling work and the claim-release decision finish. A single
+flush before the existing terminal event follows the log's degradation boundary;
+it stops after a failed sink and creates no second log.
+Complete invocation time is printed after return/exception, including operator
+confirmation time, and is not appended to an already closed terminal log.
+These measurements cannot substitute for readiness or change receipt authority.
+The same flush may emit durable-only `runtime_check_passed` packets collected
+at actual Doctor inspection/discovery returns. They use the existing runtime
+diagnostic fields plus execution context and the actual phase. Event timestamps
+describe emission after work; they do not date the earlier probe. Failure
+diagnostics keep their existing immediate path, and returned observations are
+not recaptured as fresh checks.
+
 ## Scheduler distinction
 
+An approved exact-request stop uses one maintenance application log and raw
+`scancel.stdout`/`scancel.stderr` siblings. Before cancellation, the logger's
+nonterminal intent boundary writes and synchronizes the exact target, admitted
+client and arguments while leaving the log open. A failed intent write or sync
+prevents the command. The shared transport owns exclusive raw stream creation,
+directory pinning and synchronization; partial output is retained on failure.
+The terminal diagnostic records transport and scheduler observations without
+claiming native quiescence or recovery eligibility. Preview opens no log.
+
 Slurm compatibility streams live under `<project-root>/logs` as
-`emrys-local-pilot-%j.out` and `emrys-local-pilot-%j.err`; they are not
+`emrys-local-pilot-<request-uuid>-%j.out` and
+`emrys-local-pilot-<request-uuid>-%j.err` for ordinary Run/resume/report
+submission. The request token is frozen before confirmation and bound to its
+retained request record. New v3 requests also retain the exact scheduler name
+`emrys-local-pilot-<request-uuid>`; selected observation checks it against live
+metadata in addition to the stream paths. Legacy and Doctor qualification streams retain
+`emrys-local-pilot-%j.out` and `.err`. Scheduler streams are not
 application logs. Submission dry-run creates neither those paths nor an
 application log. The compute delegate receives the resolved controls, opens
 the operation's one application attempt, records scheduler identity only as
 correlation metadata, and projects human output to scheduler stderr.
+
+Ordinary token-bound delegates also emit `submission_context` immediately after
+opening that same application log and before workflow preparation or reporting
+startup. Its durable-only fields are the frozen `request_token`,
+`profile_binding_sha256` and `project_root`. The existing opening event supplies
+the entrypoint and scheduler correlation; later `analysis_prepared` or
+`reporting_started` events supply candidate Run/Attempt identities. The token
+uses the existing private delegate export, is checked against the frozen batch
+script before site initialization, and stays read-only through module setup.
+It does not replace random application-attempt identity. Direct, legacy and
+Doctor paths do not invent a request token. These diagnostic events prepare
+exact log association; they neither establish a Run nor prove its completion.
+
+Selected-request inspection admits a bounded, complete snapshot of exactly one
+matching application log from its retained root and command scope. It displays
+the path and snapshot digest separately from recorded candidate identities.
+Independent Run/Attempt contract admission is required before associating those
+identities; the log alone cannot prove workflow entry or scientific completion.
+Missing, changing, malformed or ambiguous logs remain unknown. The ordinary
+request roster does not scan application logs, and inspection never creates or
+repairs a log. Limits and candidate admission belong to the
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md).
