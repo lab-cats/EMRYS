@@ -70,7 +70,11 @@ profile then contains the built-in Viking placement rather than direct placement
 Named initialization creates Project-owned `samples.tsv` and `partitions.tsv`;
 FASTQs, references and region files remain at their declared locations. Guided
 setup discovers recognized FASTQ pairs and asks for all biological assignments
-and regions. Advanced callers may instead supply both existing manifests; their
+and regions. When STAR index settings are omitted, it suggests `sjdbOverhang`
+from one complete record in each declared FASTQ and `genomeSAindexNbases` from
+the admitted FASTA length. The prompt states that bounded observation, accepts
+an explicit override, and uses the derived values in noninteractive setup.
+Advanced callers may instead supply both existing manifests; their
 validated, path-normalized content is copied into the new Project. It creates
 `runs/`, `logs/`, `runtime/`, and `runtime/profiles/` with mode `0700`, and
 publishes `project.yaml` last. Failure preserves the partial root and never

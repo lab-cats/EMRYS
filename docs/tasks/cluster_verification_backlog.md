@@ -133,7 +133,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Verification pending |
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Open |
 | [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
-| [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Open |
+| [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Verification pending |
 | [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Verification pending |
 | [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Verification pending |
 | [CV-U24](#cv-u24-persistent-cli-defaults) | Save site and other repeated CLI values | Open |
@@ -684,11 +684,27 @@ genome sa index nbases, etc. whenever possible”.
 users should not have to calculate or choose these values themselves. The user
 did not specify formulas, a new command name or a particular implementation.
 
-**Current partial state:** The Viking/PUM1 Quickstart supplies the known study
-values `sjdbOverhang=149` and `genomeSAindexNbases=14`, so that named journey
-requires no calculation. Guided initialization still asks for these values and
-does not derive them for a different read length or reference. The general
-assistance requested by CV-U21 therefore remains Open.
+**Implemented outcome:** The Viking/PUM1 Quickstart retains its known study
+values. For other data, guided initialization now derives missing STAR settings:
+`sjdbOverhang` is the largest observed first-record read length across the
+declared FASTQs minus one, and `genomeSAindexNbases` follows STAR's small-genome
+formula from the admitted FASTA length, floored and bounded to a positive value
+through 14. The prompt reports the observed read and reference bases, offers the
+values as defaults, and preserves explicit overrides. Noninteractive setup uses
+the derived values when only those two flags are omitted.
+
+Preview reads at most one complete record from each FASTQ and streams the FASTA;
+it does not add a full FASTQ hash or claim that the observed records prove a
+variable-length file's global maximum. Creation retains its single full FASTQ
+hashing pass.
+
+**Local verification:** Focused tests cover interactive defaults, noninteractive
+derivation, gzip input and the bounded first-record behavior. All 115
+source-bound onboarding cases pass; the two isolated replay cases reproduce the
+same older-installed-package mismatch on the integration baseline. Ruff
+formatting/lint, documentation checks and diff checks pass. A fresh operator
+exercise with non-synthetic variable-length reads remains required; CV-U21 is
+**Verification pending**.
 
 ### CV-U22 Smoke-project tool reuse
 

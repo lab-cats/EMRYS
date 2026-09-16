@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import gzip
+import math
 import os
 import re
 import shlex
@@ -552,6 +553,7 @@ _PROJECT_SUGGESTIONS = dict(
         strict=True,
     )
 )
+_STAR_FIELDS = {"sjdb_overhang", "genome_sa_index_nbases"}
 
 
 def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
@@ -630,11 +632,70 @@ def _project_name(value: str) -> str:
     return value
 
 
-def _collect_project_answers(arguments: argparse.Namespace) -> dict[str, object]:
+def _first_fastq_read_length(path: Path) -> int:
+    try:
+        if path.name.endswith(".gz"):
+            source = gzip.open(path, "rt", encoding="ascii", newline="")
+        else:
+            source = path.open("r", encoding="ascii", newline="")
+        with source:
+            header, sequence, separator, quality = (
+                source.readline(1_000_001) for _ in range(4)
+            )
+    except (OSError, UnicodeError, EOFError) as exc:
+        raise OnboardingError(
+            f"could not inspect the first FASTQ record in {path}: {exc}"
+        ) from exc
+    sequence = sequence.rstrip("\r\n")
+    quality = quality.rstrip("\r\n")
+    if (
+        not header.startswith("@")
+        or not sequence
+        or not separator.startswith("+")
+        or len(quality) != len(sequence)
+    ):
+        raise OnboardingError(f"first FASTQ record is incomplete or malformed: {path}")
+    return len(sequence)
+
+
+def _star_suggestions(
+    reference_fasta: Path, sample_manifest: bytes, manifest_path: Path
+) -> tuple[dict[str, int], int, int]:
+    _table, _sample_ids, rows = step08.validate_sample_manifest_bytes(
+        sample_manifest, manifest_path
+    )
+    fastqs = sorted(
+        {Path(row[mate]) for row in rows for mate in ("r1_fastq", "r2_fastq")}
+    )
+    read_length = max(_first_fastq_read_length(path) for path in fastqs)
+    try:
+        with reference_fasta.open("r", encoding="utf-8") as source:
+            genome_length = sum(length for _name, length in parse_fasta_lines(source))
+    except (OSError, UnicodeError, ReferenceContigError) as exc:
+        raise OnboardingError(
+            f"could not determine reference length from {reference_fasta}: {exc}"
+        ) from exc
+    return (
+        {
+            "sjdb_overhang": read_length - 1,
+            "genome_sa_index_nbases": max(
+                1, math.floor(min(14, math.log2(genome_length) / 2 - 1))
+            ),
+        },
+        read_length,
+        genome_length,
+    )
+
+
+def _collect_project_answers(
+    arguments: argparse.Namespace,
+    manifest_members: Mapping[str, tuple[bytes, int]],
+    output: Path,
+) -> dict[str, object]:
     missing = [
         f"--{destination.replace('_', '-')}"
         for destination in _PROJECT_FIELDS
-        if getattr(arguments, destination) is None
+        if getattr(arguments, destination) is None and destination not in _STAR_FIELDS
     ]
     interactive = sys.stdin.isatty() and sys.stderr.isatty()
     if missing and not interactive:
@@ -644,19 +705,42 @@ def _collect_project_answers(arguments: argparse.Namespace) -> dict[str, object]
             + "; supply them explicitly or run this command in a terminal"
         )
     answers: dict[str, object] = {}
+    star_suggestions: dict[str, int] | None = None
     for destination in _PROJECT_FIELDS:
         value = getattr(arguments, destination)
+        suggestion = _PROJECT_SUGGESTIONS.get(destination)
+        if value is None and destination in _STAR_FIELDS:
+            if star_suggestions is None:
+                star_suggestions, read_length, genome_length = _star_suggestions(
+                    Path(answers["reference_fasta"]),
+                    manifest_members["samples.tsv"][0],
+                    output / "samples.tsv",
+                )
+                print(
+                    "Suggested STAR settings from the first complete record in each "
+                    f"declared FASTQ (maximum {read_length} bases) and the "
+                    f"{genome_length}-base reference.",
+                    file=sys.stderr,
+                )
+            suggestion = star_suggestions[destination]
         if value is None:
             label = destination.replace("_", " ")
-            suggestion = _PROJECT_SUGGESTIONS.get(destination)
-            raw = _prompt(label, None if suggestion is None else str(suggestion))
+            raw = (
+                str(suggestion)
+                if not interactive
+                else _prompt(label, None if suggestion is None else str(suggestion))
+            )
             if not raw:
                 raise OnboardingError(f"{label} is required")
             try:
                 value = _PROJECT_TYPES.get(destination, str)(raw)
             except (TypeError, ValueError) as exc:
                 raise OnboardingError(f"invalid {label}: {raw!r}") from exc
-        answers[destination] = value
+        answers[destination] = (
+            _admit_supplied_file(value, destination.replace("_", " "))
+            if destination in {"reference_fasta", "reference_gtf"}
+            else value
+        )
     return answers
 
 
@@ -987,14 +1071,10 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             Path.cwd() / arguments.project_name, source_root()
         )
         manifest_members = _copied_manifest_members(arguments, output)
-        answers = _collect_project_answers(arguments)
+        answers = _collect_project_answers(arguments, manifest_members, output)
         execution_profile_bytes = project_default_profile_bytes(
             getattr(arguments, "site", None)
         )
-        for field in ("reference_fasta", "reference_gtf"):
-            answers[field] = _admit_supplied_file(
-                answers[field], field.replace("_", " ")
-            )
         answers["analysis_name"] = arguments.analysis_name
         answers["background_condition"] = arguments.background_condition
         project_bytes = _project_yaml(answers)
