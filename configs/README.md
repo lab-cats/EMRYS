@@ -262,6 +262,13 @@ placement (where to run):
 | `step_threads` | Threads per task for stages that support threaded tools. |
 | `stage_memory_mb` | Memory budget per stage task in MiB; `workflow` uses the workflow budget. |
 
+For Steps `00a`, `00c`, `01`, `02`, `04`, and `05`, the resolved stage budget
+also sets native STAR/samtools buffers or Java heaps with overhead headroom.
+Increasing it raises those limits; it does not enforce total process memory or
+guarantee faster execution. See the
+[command-construction contract](../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+for the derivation and minimum usable budgets.
+
 `placement` chooses direct execution or one Slurm allocation. Its fields cover
 account, partition, `qos` (the site's Quality of Service class), CPUs, memory,
 time, exclusivity, node selection, scratch, and exact module setup. See the

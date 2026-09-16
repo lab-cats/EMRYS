@@ -13,6 +13,7 @@ Usage: src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh \
   --input-bam INPUT_BAM \
   --output-dir OUTPUT_DIR \
   --metrics-dir METRICS_DIR \
+  --native-memory-mb NATIVE_MEMORY_MB \
   --picard-jar PICARD_JAR \
   --java-bin JAVA_BIN \
   --samtools-bin SAMTOOLS_BIN
@@ -29,10 +30,11 @@ source "$script_dir/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$script_dir/../../libraries/file_checks.sh"
 
-declare_required_arguments sample_id input_bam output_dir metrics_dir picard_jar java_bin samtools_bin
+declare_required_arguments sample_id input_bam output_dir metrics_dir picard_jar java_bin samtools_bin native_memory_mb
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --native-memory-mb) assign_option_value "$1" "${2:-}" native_memory_mb; shift 2 ;;
         --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
         --input-bam) assign_option_value "$1" "${2:-}" input_bam; shift 2 ;;
         --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
@@ -46,6 +48,7 @@ while [[ $# -gt 0 ]]; do
 done
 require_arguments
 require_task_work_dir
+validate_positive_integer "--native-memory-mb" "$native_memory_mb"
 
 validate_safe_id "--sample-id" "$sample_id"
 validate_nonempty_file "Input BAM" "$input_bam"
@@ -56,7 +59,7 @@ require_executable "Java" "$java_bin"
 require_executable "samtools" "$samtools_bin"
 output_bam="$output_dir/$sample_id.markdup.bam"
 metrics="$metrics_dir/$sample_id.markdup.metrics.txt"
-"$java_bin" -jar "$picard_jar" MarkDuplicates "INPUT=$input_bam" \
+"$java_bin" "-Xmx${native_memory_mb}m" -jar "$picard_jar" MarkDuplicates "INPUT=$input_bam" \
     "OUTPUT=$output_bam" "METRICS_FILE=$metrics" REMOVE_DUPLICATES=false \
     "TMP_DIR=$EMRYS_TASK_WORK_DIR"
 "$samtools_bin" quickcheck "$output_bam"

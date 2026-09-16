@@ -60,6 +60,11 @@ minimum, not a declaration that unrelated files are invalid.
 [`step_00a_build_star_index.sh`](step_00a_build_star_index.sh) is an internal worker of the
 [Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
+The required internal `--native-memory-mb` argument supplies STAR
+`--limitGenomeGenerateRAM`, converted from MiB to bytes. The
+[Run planner](../../orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+derives this positive budget from the admitted stage allowance.
+
 The worker receives explicit FASTA, GTF, STAR, thread, overhang, and
 suffix-array parameters. `--index-dir` names the runner-created staging
 directory. It runs STAR genome generation, requires the 15 declared members,

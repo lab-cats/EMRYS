@@ -25,6 +25,9 @@ set -euo pipefail
 printf 'java invoked\\n' >> "$java_log"
 printf '%s\\n' "\$@" >> "$java_log"
 
+[[ "\${1:-}" == -Xmx*m ]] || exit 64
+shift
+
 if [[ "\${1:-}" != "-jar" ]]; then
     printf 'fake java expected -jar as first argument\\n' >&2
     exit 64
@@ -137,10 +140,15 @@ printf 'BAM\n' >"$bam"
 printf 'BAI\n' >"$bam.bai"
 printf 'Picard\n' >"$tmp_dir/inputs/picard.jar"
 mkdir "$tmp_dir/metrics"
-command=(bash "$SCRIPT" --sample-id sample --input-bam "$bam"
+command=(bash "$SCRIPT" --native-memory-mb 800 --sample-id sample --input-bam "$bam"
     --output-dir "$tmp_dir/staged" --metrics-dir "$tmp_dir/metrics"
     --picard-jar "$tmp_dir/inputs/picard.jar" --java-bin "$fake_bin/java" --samtools-bin "$fake_bin/samtools")
 "${command[@]}"
+assert_contains "${java_log}" '-Xmx800m'
+: >"${java_log}"
+"${command[@]}" --native-memory-mb 1600
+assert_contains "${java_log}" '-Xmx1600m'
+assert_fails 'positive integer' "${command[@]}" --native-memory-mb 0
 for path in "$tmp_dir/staged/sample.markdup.bam" "$tmp_dir/staged/sample.markdup.bam.bai" "$tmp_dir/metrics/sample.markdup.metrics.txt"; do
     [[ -s "$path" ]] || fail "missing output: $path"
 done

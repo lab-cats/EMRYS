@@ -42,7 +42,6 @@ from emrys.orchestration.run_coordinator import (
 from emrys.orchestration.run_coordinator.normalization import AnalysisAdmission
 from emrys.orchestration.run_coordinator.resource_policy import (
     ComputationalResourceDeclaration,
-    THREAD_CAPABLE_STAGE_IDS,
     ResourcePlan,
 )
 from emrys.orchestration.run_coordinator.run_implementation import (
@@ -335,7 +334,7 @@ def _task_commands(
     source_root: Path,
     runtime: Mapping[str, Any],
     all_paths: Mapping[tuple[str, str], Mapping[str, list[Path]]],
-    threads: int | None,
+    resources: ResourcePlan,
 ) -> tuple[tuple[str, ...], tuple[str, ...], tuple[Path, ...]]:
     sample_rows = {str(row["sample_id"]): row for row in source["samples"]["rows"]}
     partition_rows = {
@@ -364,12 +363,15 @@ def _task_commands(
     rscript = _runtime_path(runtime, "rscript")
     renv_library = Path(_runtime_path(runtime, "renv_library"))
 
-    def declared_threads() -> int:
-        if threads is None:
-            raise MaterializationError(
-                f"Step {step_id} has no declared thread allocation"
-            )
-        return threads
+    threads = resources.threads_for(step_id)
+    # Native heaps/buffers leave one fifth of the stage allowance for overhead.
+    native_memory_mb = dict(resources.stage_memory_mb)[step_id] * 4 // 5
+    if step_id in {"00a", "00c", "01", "02", "04", "05"} and native_memory_mb < (
+        threads if step_id == "02" else 1
+    ):
+        raise MaterializationError(
+            f"Stage {step_id} memory cannot provide a positive native budget"
+        )
 
     if step_id == "00a":
         index_members = paths.get("step00a_star_index_v1", [])
@@ -388,13 +390,14 @@ def _task_commands(
                 ("reference-fasta", fasta),
                 ("reference-gtf", gtf),
                 ("index-dir", working_paths[index_members[0]].parent),
-                ("threads", declared_threads()),
+                ("threads", threads),
                 ("sjdb-overhang", reference["star_index"]["sjdb_overhang"]),
                 (
                     "genome-sa-index-nbases",
                     reference["star_index"]["genome_sa_index_nbases"],
                 ),
                 ("star-bin", star),
+                ("native-memory-mb", native_memory_mb),
             ),
         )
         validator = _validator(
@@ -452,6 +455,7 @@ def _task_commands(
                 ("reference-dict-output", working_paths[dictionary]),
                 ("samtools-bin", samtools),
                 ("gatk-bin", gatk),
+                ("native-memory-mb", native_memory_mb),
                 ("java-bin", java),
             ),
         )
@@ -489,7 +493,7 @@ def _task_commands(
                     ("input-bam", split_bam),
                     ("output-dir", working_paths[fwd].parent),
                     ("qc-dir", working_paths[counts].parent),
-                    ("threads", declared_threads()),
+                    ("threads", threads),
                     ("samtools-bin", samtools),
                 ),
             )
@@ -521,8 +525,9 @@ def _task_commands(
                     ("r2-fastq", sample["r2_fastq"]["path"]),
                     ("star-index", index_dir),
                     ("output-dir", working_paths[bam].parent),
-                    ("threads", declared_threads()),
+                    ("threads", threads),
                     ("star-bin", star),
+                    ("native-memory-mb", native_memory_mb),
                     ("gunzip-bin", gunzip),
                 ),
             )
@@ -547,8 +552,9 @@ def _task_commands(
             producer_arguments = (
                 *command_flags(
                     ("input-alignment", star_bam),
+                    ("native-memory-mb", native_memory_mb),
                     ("output-dir", working_paths[bam].parent),
-                    ("threads", declared_threads()),
+                    ("threads", threads),
                     ("samtools-bin", samtools),
                 ),
             )
@@ -603,6 +609,7 @@ def _task_commands(
                     ("output-dir", working_paths[bam].parent),
                     ("metrics-dir", working_paths[metrics].parent),
                     ("picard-jar", picard_jar),
+                    ("native-memory-mb", native_memory_mb),
                     ("java-bin", java),
                     ("samtools-bin", samtools),
                 ),
@@ -632,6 +639,7 @@ def _task_commands(
                     ("reference-fasta", fasta),
                     ("output-dir", working_paths[bam].parent),
                     ("gatk-bin", gatk),
+                    ("native-memory-mb", native_memory_mb),
                     ("samtools-bin", samtools),
                     ("java-bin", java),
                 ),
@@ -765,7 +773,7 @@ def _task_commands(
                 ("sites-output", working_paths[sites]),
                 ("inputs-output", working_paths[inputs]),
                 ("summary-output", working_paths[summary]),
-                ("threads", declared_threads()),
+                ("threads", threads),
             ),
         )
         producer = _r_owner_command(
@@ -1042,11 +1050,7 @@ def _tasks(
                 source_root=readiness.installed_package.root,
                 runtime=runtime,
                 all_paths=paths_by_scope,
-                threads=(
-                    resources.threads_for(step_id)
-                    if step_id in THREAD_CAPABLE_STAGE_IDS
-                    else None
-                ),
+                resources=resources,
             )
             planned_inputs = tuple(
                 (f"input_{input_index:03d}", path)

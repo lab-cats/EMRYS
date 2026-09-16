@@ -13,6 +13,7 @@ Usage: src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh \
   --input-alignment INPUT_ALIGNMENT \
   --output-dir OUTPUT_DIR \
   --threads THREADS \
+  --native-memory-mb NATIVE_MEMORY_MB \
   --samtools-bin SAMTOOLS_BIN
 
 Internal worker: requires an existing EMRYS_TASK_WORK_DIR supplied by the runner.
@@ -27,10 +28,11 @@ source "$script_dir/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$script_dir/../../libraries/file_checks.sh"
 
-declare_required_arguments sample_id input_alignment output_dir threads samtools_bin
+declare_required_arguments sample_id input_alignment output_dir threads samtools_bin native_memory_mb
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --native-memory-mb) assign_option_value "$1" "${2:-}" native_memory_mb; shift 2 ;;
         --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
         --input-alignment) assign_option_value "$1" "${2:-}" input_alignment; shift 2 ;;
         --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
@@ -42,6 +44,7 @@ while [[ $# -gt 0 ]]; do
 done
 require_arguments
 require_task_work_dir
+validate_positive_integer "--native-memory-mb" "$native_memory_mb"
 
 validate_bam_pair() {
     local bam="$1"
@@ -114,7 +117,9 @@ input_header="$("$samtools_bin" view -H "$input_alignment")" ||
 canonical_source="$input_alignment"
 if ! grep -q '^@HD.*SO:coordinate' <<< "$input_header"; then
     canonical_source="$EMRYS_TASK_WORK_DIR/sorted.bam"
-    "$samtools_bin" sort -@ "$threads" -o "$canonical_source" "$input_alignment"
+    sort_memory_mb=$((native_memory_mb / threads))
+    (( sort_memory_mb > 0 )) || die "Native memory must provide at least 1 MiB per sorting thread."
+    "$samtools_bin" sort -@ "$threads" -m "${sort_memory_mb}M" -o "$canonical_source" "$input_alignment"
 fi
 # Keep the no-rewrite path for an already canonical BAM when hard links work.
 if ! { input_has_canonical_bam_contract "$input_header" && ln -- "$input_alignment" "$output_bam"; }; then

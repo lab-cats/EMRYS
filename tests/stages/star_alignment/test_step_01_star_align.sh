@@ -49,10 +49,15 @@ printf '@read\nACGT\n+\n!!!!\n' >"$tmp_dir/inputs/R1.fastq"
 cp "$tmp_dir/inputs/R1.fastq" "$tmp_dir/inputs/R2.fastq"
 mkdir "$tmp_dir/index"
 printf 'index\n' >"$tmp_dir/index/Genome"
-command=(bash "$SCRIPT" --sample-id sample --r1-fastq "$tmp_dir/inputs/R1.fastq"
+command=(bash "$SCRIPT" --native-memory-mb 800 --sample-id sample --r1-fastq "$tmp_dir/inputs/R1.fastq"
     --r2-fastq "$tmp_dir/inputs/R2.fastq" --star-index "$tmp_dir/index"
     --output-dir "$tmp_dir/staged" --threads 2 --star-bin "$fake_bin/STAR" --gunzip-bin /usr/bin/gunzip)
 "${command[@]}"
+assert_contains "${star_log}" '838860800'
+: >"${star_log}"
+"${command[@]}" --native-memory-mb 1600
+assert_contains "${star_log}" '1677721600'
+assert_fails 'positive integer' "${command[@]}" --native-memory-mb 0
 for suffix in Aligned.sortedByCoord.out.bam Log.final.out Log.out Log.progress.out SJ.out.tab; do
     [[ -s "$tmp_dir/staged/sample.$suffix" ]] || fail "missing STAR $suffix"
 done

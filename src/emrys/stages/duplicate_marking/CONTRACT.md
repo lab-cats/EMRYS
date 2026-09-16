@@ -40,6 +40,11 @@ attempt.
 [`step_04_mark_duplicates.sh`](step_04_mark_duplicates.sh) is an internal worker of the
 [Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
+The required internal `--native-memory-mb` argument supplies Java
+`-Xmx<N>m` before the Picard jar invocation. The
+[Run planner](../../orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+derives this positive budget from the admitted stage allowance.
+
 The worker receives separate staging directories for BAM and metrics. It
 runs Picard with `REMOVE_DUPLICATES=false` and runner scratch as `TMP_DIR`,
 quickchecks the BAM, creates its index with samtools, and requires the complete

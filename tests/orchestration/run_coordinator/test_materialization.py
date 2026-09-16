@@ -1959,6 +1959,78 @@ def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> Non
             assert "--threads" not in producer
 
 
+@pytest.mark.parametrize(
+    "stage_memory_mb, native_memory_mb", ((1025, 820), (2049, 1639))
+)
+def test_plan_freezes_native_memory_only_for_supported_tools(
+    tmp_path: Path, stage_memory_mb: int, native_memory_mb: int
+) -> None:
+    owners = {
+        "emrys.stage.construct_STAR_index.v1": "00a",
+        "emrys.stage.construct_FASTA_sidecars.v1": "00c",
+        "emrys.stage.align_RNA_reads_with_STAR.v1": "01",
+        "emrys.stage.construct_canonical_BAM.v1": "02",
+        "emrys.stage.mark_BAM_duplicates_with_Picard.v1": "04",
+        "emrys.stage.split_N_cigar_reads_with_GATK.v1": "05",
+    }
+    readiness, initial, project, workspace = _readiness(tmp_path, workflow_cores=4)
+    policy = load_execution_profile(
+        config_path=project.parent / "runtime/profiles/default.yaml",
+        resource_overrides=ResourceOverrides(
+            stage_memory_mb=tuple((step, stage_memory_mb) for step in owners.values())
+        ),
+    ).resource_policy
+    resources = resolve_resource_policy(policy, initial.allocation)
+    plan = build_attempt_plan(
+        _run_candidate(readiness, resources),
+        readiness,
+        workspace,
+        resources=resources,
+        operation="execute",
+    )
+    observed = set()
+    for record in _task_records(plan):
+        producer = record["producer_argv"]
+        owner = record["machine_key"]
+        if owner in owners:
+            observed.add(owner)
+            assert producer[producer.index("--native-memory-mb") + 1] == str(
+                native_memory_mb
+            )
+        else:
+            assert "--native-memory-mb" not in producer
+        assert "--native-memory-mb" not in record["validator_argv"]
+    assert observed == set(owners)
+    assert not (workspace / "runs").exists()
+
+
+@pytest.mark.parametrize("step, memory_mb", (("00a", 1), ("02", 2)))
+def test_plan_rejects_unusable_native_memory_before_publication(
+    tmp_path: Path, step: str, memory_mb: int
+) -> None:
+    readiness, initial, project, workspace = _readiness(
+        tmp_path,
+        workflow_cores=4,
+        step_threads={"00a": 1, "01": 1, "02": 3, "06": 1, "08": 1},
+    )
+    policy = load_execution_profile(
+        config_path=project.parent / "runtime/profiles/default.yaml",
+        resource_overrides=ResourceOverrides(stage_memory_mb=((step, memory_mb),)),
+    ).resource_policy
+    resources = resolve_resource_policy(policy, initial.allocation)
+    with pytest.raises(
+        MaterializationError, match=f"Stage {step} memory cannot provide"
+    ):
+        build_attempt_plan(
+            _run_candidate(readiness, resources),
+            readiness,
+            workspace,
+            resources=resources,
+            operation="execute",
+        )
+    assert not (workspace / "runs").exists()
+
+
 def test_plan_records_stage_specific_concurrency(tmp_path: Path) -> None:
     plan = _plan(
         tmp_path,

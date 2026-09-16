@@ -649,6 +649,20 @@ In `materialization.py`, `_tasks` resolves scopes and final/working paths;
 producer arguments, validator arguments, and inputs. Its caller immediately
 names these three results. STAR directories, shared reference files, sample and
 partition inputs, and guarded R commands retain their distinct construction.
+For Steps `00a`, `00c`, `01`, `02`, `04`, and `05`, command construction freezes
+`floor(stage_memory_mb * 4 / 5)` from the resolved task allowance into the
+internal worker argument `--native-memory-mb`. STAR receives byte limits for
+index generation and BAM sorting; samtools' unsorted-input fallback receives
+the native allowance divided by its declared sorting threads, rounded down in
+MiB; Picard and GATK receive a Java maximum heap in MiB. Other stages retain
+their existing commands. Planning rejects a native allowance below 1 MiB
+(below 1 MiB per sorting thread for Step `02`) before publishing a Run.
+The remaining allowance provides overhead headroom, not a hard process-RSS
+limit or a guarantee that a workload fits. Increasing an admitted stage budget
+increases these native limits; faster execution still depends on the workload.
+The existing profile is the only resource authority, with no additional
+operator setting. Changed resources create a distinct Run; existing immutable
+Runs retain their policies and normal implementation-identity checks.
 One immutable Attempt manifest supplies the installed Snakemake backend.
 The public surface exposes no engine force, unlock, cleanup, retry, plugin,
 or alternate-workflow escape hatch.

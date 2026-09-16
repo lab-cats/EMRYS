@@ -103,7 +103,7 @@ case "\$subcommand" in
             printf 'fake gatk missing --tmp-dir\\n' >&2
             exit 64
         fi
-        if [[ "\$java_options" != -Djava.io.tmpdir=* ]]; then
+        if [[ "\$java_options" != -Xmx*m\ -Djava.io.tmpdir=* ]]; then
             printf 'fake gatk missing java.io.tmpdir option\\n' >&2
             exit 64
         fi
@@ -219,9 +219,14 @@ reference_fasta="$tmp_dir/inputs/genome.fa"
 write_input_bam_pair "$input_bam"
 write_reference "$reference_fasta"
 export FAKE_SAMPLE_ID=sample
-command=(bash "$SCRIPT" --sample-id sample --input-bam "$input_bam" --reference-fasta "$reference_fasta"
+command=(bash "$SCRIPT" --native-memory-mb 800 --sample-id sample --input-bam "$input_bam" --reference-fasta "$reference_fasta"
     --output-dir "$tmp_dir/staged" --gatk-bin "$fake_bin/gatk" --samtools-bin "$fake_bin/samtools" --java-bin "$fake_bin/java")
 "${command[@]}"
+assert_contains "${gatk_log}" '-Xmx800m'
+: >"${gatk_log}"
+"${command[@]}" --native-memory-mb 1600
+assert_contains "${gatk_log}" '-Xmx1600m'
+assert_fails 'positive integer' "${command[@]}" --native-memory-mb 0
 assert_contains "$tmp_dir/staged/sample.split_ncigar.bam" $'@HD\tVN:1.6\tSO:coordinate'
 [[ -s "$tmp_dir/staged/sample.split_ncigar.bam.bai" ]] || fail 'missing canonical BAI'
 assert_contains "$gatk_log" "-Djava.io.tmpdir=$EMRYS_TASK_WORK_DIR"
