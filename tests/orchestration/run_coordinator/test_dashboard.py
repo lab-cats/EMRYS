@@ -446,6 +446,31 @@ def test_missing_or_invalid_counts_never_invent_completion(stats, capsys):
     assert "unknown not completed" in capsys.readouterr().out
 
 
+def test_finished_log_without_run_evidence_is_not_presented_as_active_waiting():
+    model = dashboard.parse_workflow(
+        """Finished jobid: 1 (Rule: rank_cohort_candidates_with_paired_CMH)
+Finished jobid: 2 (Rule: project_candidate_scientific_context)
+Finished jobid: 3 (Rule: local_pipeline_slice)
+36 of 36 steps (100%) done
+"""
+    )
+
+    assert model["log_done"] is True
+    assert dashboard.progress_line(model, 100) == (
+        "Workflow log finished; Run completion unverified"
+    )
+    assert dashboard.workflow_phase(model) == (4, "LOG FINISHED; RUN UNVERIFIED")
+    pipeline = _flatten_render_lines(dashboard.pipeline_lines(model, 10, 100))
+    rows = pipeline.splitlines()
+    for key in ("09", "10"):
+        row = next(line for line in rows if line.startswith(key))
+        assert "1/?" in row and row.endswith("OBSERVED")
+    report = next(line for line in rows if line.startswith("REPORT"))
+    assert "0/?" in report and report.endswith("NOT OBSERVED")
+    assert "OBSERVED" in pipeline and "NOT OBSERVED" in pipeline
+    assert "WAITING" not in pipeline and "PENDING" not in pipeline
+
+
 def test_expected_counts_are_fallback_context_not_fabricated_global_progress():
     expected = {"01": 12, "06": 12, "07": 40}
     model = dashboard.parse_workflow(

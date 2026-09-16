@@ -9,6 +9,7 @@ import argparse
 import importlib.util
 import curses
 import datetime as dt
+from collections import Counter
 import os
 import re
 import statistics
@@ -1146,6 +1147,7 @@ def parse_workflow(stderr_text, *, expected=None, rule_stages=None):
         "sample_order": sample_order,
         "progress_done": progress_done,
         "progress_total": progress_total,
+        "log_done": progress_total == progress_done != 0 and not active and not warning,
         "last_completion": last_completion,
         "warning": warning,
     }
@@ -1528,23 +1530,21 @@ def job_lines(slurm, identity, width, attrs):
 def progress_values(model):
     total = model["progress_total"]
     complete = max(model["progress_done"], sum(model["done"].values()))
-    if total is not None and complete > total:
-        total = None
+    total = None if total is not None and complete > total else total
     return complete, total, None if total is None else total - complete
 
 
 def progress_line(model, width, terminal_state=None):
     complete, total, remaining = progress_values(model)
+    if model["log_done"]:
+        return "Workflow log finished; Run completion unverified"
     if total is None:
-        if terminal_state:
-            return (
-                "%d Snakemake jobs observed complete | job ended; total unknown"
-                % complete
-            )
-        return (
-            "%d Snakemake jobs observed complete | total and remaining unknown"
-            % complete
+        detail = (
+            "job ended; total unknown"
+            if terminal_state
+            else "total and remaining unknown"
         )
+        return "%d Snakemake jobs observed complete | %s" % (complete, detail)
     bar_width = max(10, min(28, width - 48))
     filled = int((complete / total) * bar_width + 0.5) if total else 0
     bar = "[" + "#" * filled + "-" * (bar_width - filled) + "]"
@@ -1562,9 +1562,7 @@ def pipeline_lines(model, now, width, include_summary=True, terminal_state=None)
     if include_summary:
         lines.extend([(progress_line(model, width, terminal_state), "cyan"), ""])
     lines.append("STEP    STAGE                       DONE     ELAPSED      STATE")
-    active_counts = {}
-    for info in model["active"].values():
-        active_counts[info["stage"]] = active_counts.get(info["stage"], 0) + 1
+    active_counts = Counter(info["stage"] for info in model["active"].values())
     for key, title, _, _, _, _ in STAGES:
         expected = model.get("expected", {}).get(key)
         done = model["done"].get(key, 0)
@@ -1579,6 +1577,8 @@ def pipeline_lines(model, now, width, include_summary=True, terminal_state=None)
             state, style = "INCOMPLETE", "red"
         elif terminal_state:
             state, style = "NOT REACHED", "dim"
+        elif model["log_done"]:
+            state, style = ("OBSERVED", "cyan") if done else ("NOT OBSERVED", "dim")
         elif running:
             state, style = "RUNNING (%d)" % running, "yellow_bold"
         elif done:
@@ -1620,6 +1620,8 @@ def workflow_phase(model):
     for number, title, keys in groups:
         if active.intersection(keys):
             return number, title + " (observed)"
+    if model["log_done"]:
+        return 4, "LOG FINISHED; RUN UNVERIFIED"
     for number, title, keys in groups:
         if any(
             expected.get(key) is not None and model["done"].get(key, 0) < expected[key]
@@ -1931,10 +1933,7 @@ def sample_lane_lines(model, now, width, terminal_state=None):
             ]
         )
         aggregate_keys = ("07", "08", "09", "10", "REPORT")
-        active_counts = {}
-        for info in model["active"].values():
-            key = info.get("stage")
-            active_counts[key] = active_counts.get(key, 0) + 1
+        active_counts = Counter(info["stage"] for info in model["active"].values())
         aggregate_segments = [("Aggregate lane: ", "label")]
         for index, key in enumerate(aggregate_keys):
             expected = model.get("expected", {}).get(key)
@@ -2067,11 +2066,11 @@ def overview_lines(slurm, identity, model, width):
 
 def workflow_frontier_lines(model, now, width):
     phase_number, _ = workflow_phase(model)
-    active_counts = {}
-    for info in model["active"].values():
-        key = info.get("stage")
-        if key and key != "FINAL":
-            active_counts[key] = active_counts.get(key, 0) + 1
+    active_counts = Counter(
+        info["stage"]
+        for info in model["active"].values()
+        if info.get("stage") != "FINAL"
+    )
     ordered_active = [row[0] for row in STAGES if row[0] in active_counts]
     lines = [("WORKFLOW FRONTIER", "panel_title")]
     lines.extend(

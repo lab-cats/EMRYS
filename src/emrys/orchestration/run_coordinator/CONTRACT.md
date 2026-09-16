@@ -452,7 +452,12 @@ parser. Sample lanes, peer timing, stage context, progress history, activity,
 errors, scheduler resources and historical accounting remain available.
 Reported Job stats define invocation counts; absent totals remain unknown.
 Generic current analysis-owner rules and historical named rules are recognized.
-Parsed log completion cannot supply scientific completion or Run authority.
+Parsed log completion cannot supply scientific completion or Run authority. If
+the trace reaches its complete Snakemake total with no active or error-like
+record, raw views say `Workflow log finished; Run completion unverified`.
+Stages with incomplete totals become `OBSERVED` or `NOT OBSERVED`, never active
+waiting or pending work; admitted Run evidence remains the only completion
+projection.
 
 `--job-id [JOB_ID]` selects a raw scheduler view without Project admission;
 omitting the ID uses bounded current-user discovery only when exactly one

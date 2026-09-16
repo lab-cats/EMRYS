@@ -73,7 +73,9 @@ ambiguity, and accepts exact scheduler IDs or names. A declared
 directory. With no selectable Run, watch selects a sole bounded current-user
 scheduler candidate or offers all candidates in the same picker; noninteractive
 ambiguity fails with their IDs. Verified completion comes from inspection and
-replaces stale final stage counts; scheduler/log completion remains diagnostic.
+replaces stale final stage counts. A finished raw workflow log is labeled
+unverified and clears misleading waiting/pending states without claiming Run
+completion.
 
 Use `--job-id [JOB_ID]` for scheduler-only selection; omitted ID discovers an
 owned recent job only when exactly one candidate exists. Raw ambiguity requires

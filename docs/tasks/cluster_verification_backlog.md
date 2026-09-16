@@ -129,7 +129,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Open |
 | [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Verification pending |
 | [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Open |
-| [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Open |
+| [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Verification pending |
 | [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Open |
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Open |
 | [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Open |
@@ -704,6 +704,16 @@ available, watch must show its verified projection. With only raw diagnostic
 logs, it must distinguish “workflow log finished; Run completion unverified”
 from active waiting and must not call unavailable reporting `PENDING`. CV-U17
 returns to **Open**.
+
+**Approved correction:** Raw log parsing now retains one bounded distinction
+between a finished Snakemake invocation and a verified Run. When the reported
+total is complete with no active or error-like record, the overview says
+`Workflow log finished; Run completion unverified`, the phase repeats that
+limit, observed stages are no longer called `WAITING`, and unavailable reporting
+is `NOT OBSERVED` rather than `PENDING`. Admitted Run evidence continues to
+replace the diagnostic projection with verified counts and completion. The
+dashboard suite passes locally; Viking display acceptance remains required, so
+CV-U17 is **Verification pending**.
 
 ### CV-U18 Interactive input-list creation
 
