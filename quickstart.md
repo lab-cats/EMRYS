@@ -291,12 +291,10 @@ original FASTQs and reference files and owns its generated manifests beside
 
 ### Prepare, run and open the EV/PUM1 reports
 
-On the head node, prepare this Project. To reuse another Project's managed tools,
-first follow [sealed runtime reuse](docs/operations/RUNBOOK.md#reuse-a-sealed-managed-runtime)
-before this Project has an inventory. Current EMRYS does not select the smoke
-Project's tools automatically. Reuse prevents later EMRYS-managed repair of
-the smoke Project's shared installation, and this Project still needs its own
-readiness checks. Do not apply reuse after its runtime has already been prepared.
+On the head node, select the tools that the smoke Project just prepared. The
+first command below previews and verifies the selection without writing. The
+second verifies it again and records it for this Project. Neither command
+installs packages.
 
 Initialization selects the historical EV/PUM1 resource policy automatically,
 with the same Viking placement described in step 2. Doctor checks the selected
@@ -306,12 +304,20 @@ is needed for this path. For a Project created with older settings, follow
 and use that profile for both Doctor and Run.
 
 ```bash
+emrys runtime discover --from-project "$EMRYS_PROJECTS_ROOT/emrys-smoke"
+emrys runtime discover --from-project "$EMRYS_PROJECTS_ROOT/emrys-smoke" --execute
 emrys doctor --repair
 ```
 
-Review the plan, answer `y`, and wait for `EMRYS is ready.` Doctor prepares the
-managed tools and coordinates the compute and head-node storage checks. The
-Viking settings were selected during initialization; no scheduler or storage
+Doctor still checks this Project, storage and intended compute placement. If the
+shared tools pass, Doctor performs no package installation. If their owning
+smoke Project later needs repair, Doctor creates a separate verified generation;
+it does not change the files selected by this Project. This Project remains
+blocked on a damaged old generation until you explicitly select the replacement
+named by Doctor with `runtime discover --from-project ... --replace --execute`.
+
+Review the Doctor plan, answer `y`, and wait for `EMRYS is ready.` The Viking
+settings were selected during initialization; no scheduler or storage
 configuration needs to be written by hand. If a check fails, stop and retain
 the diagnostic and log path instead of deleting state or changing resources.
 

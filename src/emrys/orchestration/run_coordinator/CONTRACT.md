@@ -189,15 +189,24 @@ policy. This maintenance exclusion alone does not freeze runtime content or esta
 cross-Project sharing; an immutable expected-content seal and fresh borrower
 qualification remain necessary.
 
-Explicit `runtime discover --from-project DONOR` supplies that sharing route.
+Explicit `runtime discover --from-project SOURCE` supplies that sharing route.
 Preview probes and prepares an expected-content seal without publication;
-`--execute` claims the donor, rechecks its inventory/content, exclusively
-publishes `runtime/shared.json`, releases the exact claim, freshly checks the
-borrower selection and exclusively publishes the borrower's inventory. An
-already sealed donor is read-only. Failure preserves surviving claims/seals;
-borrower publication failure cannot undo a donor seal. Donor managed repair
-refuses any seal object at planning and re-admission, including a stale plan
-under its maintenance claim. Verification-only operations remain available.
+`--execute` claims the source, rechecks its inventory/content, exclusively
+publishes its initial `runtime/shared.json`, releases the exact claim, freshly
+checks the dependent selection and exclusively publishes its inventory. Failure
+preserves surviving claims and seals; dependent publication failure cannot undo
+a source seal. Verification-only operations remain available.
+
+Doctor repairs an owned shared runtime by creating a fresh
+`runtime/generations/<generation>/managed` tree and seal. It never modifies the
+sealed source generation. After full probe and content binding, Doctor atomically
+replaces only the owner's current inventory under the existing maintenance
+claim. Each dependent Project retains its old exact selector until
+`runtime discover --from-project SOURCE --replace --execute` freshly verifies
+the current source generation and atomically replaces that same-source selector.
+Retained Run and Attempt profiles continue to name their original generation.
+Stale plans, changed selectors, cross-source replacement and unsafe publication
+retain their evidence and claim and refuse mutation.
 The [runtime owner](../../evidence/runtime_availability/README.md#sealed-managed-runtime-reuse)
 defines the closed seal/selector formats and fixed-content boundary. The exact
 selector is retained through Run/Attempt inventories; borrower admission still

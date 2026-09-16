@@ -7,7 +7,7 @@ and the Project runtime inventory; this owner returns observations.
 
 [`inspector.py`](inspector.py) reads the Project inventory as two TSV columns,
 `check_id` and `target`, with one absolute path for each of 12 runtime choices,
-or the sealed donor selector described below.
+or the shared-runtime selector described below.
 The installed policy derives all 26 fixed checks, including Python and Java
 aliases, Picard arguments, and the selected R launcher. The installed package
 supplies the R project path. Doctor adds the selected analysis module's declared
@@ -58,13 +58,14 @@ checks performed, not successful workflow execution or scientific validity.
 
 ## Sealed managed runtime reuse
 
-`emrys runtime discover --project BORROWER --from-project DONOR` probes a
-distinct managed donor without writing. `--execute` publishes the donor's
-permanent `runtime/shared.json` seal before creating the borrower's inventory.
-Both Projects must admit, the destination inventory must be absent, and the
-donor's selected native/R targets and resolved package roots must stay inside
-its canonical, UID-owned `runtime/managed` directory. External cache links
-cannot supply sealed package trees. Existing ordinary inventories remain valid.
+`emrys runtime discover --project BORROWER --from-project SOURCE` probes a
+distinct managed source without writing. `--execute` publishes its initial
+`runtime/shared.json` seal before creating the dependent Project's inventory.
+Both Projects must admit. The destination inventory must be absent unless
+`--replace` selects a new generation from the same source Project. The
+source's selected native/R targets and resolved package roots must stay inside
+its canonical, UID-owned managed generation. External cache links cannot supply
+sealed package trees. Existing ordinary inventories remain valid.
 
 The seal is closed canonical JSON, limited to 64 KiB, with `schema_version: 1`,
 `managed_root`, the eleven non-Python `choices`, and the fixed native/R `bindings`.
@@ -72,24 +73,35 @@ Each binding records its check ID, selected/resolved path, SHA-256, observed
 version and file/package-tree kind. It is an expected-content baseline, not
 a copied qualification receipt or a claim about the entire environment.
 
-The borrower's TSV has exactly the header `seal_path`, `seal_sha256`, `python`
-and one row. It binds the absolute donor seal and its exact digest while keeping
-the borrower's current Python interpreter. The installed probe policy derives
-all checks. Doctor and Run/resume freshly probe and hash through the same
-runtime binding owner; retained Run/Attempt inventory bytes preserve this
-selector. Missing/changed seals, unresolved maintenance claims, inaccessible
-targets, incompatible versions or changed fixed content refuse admission.
+The dependent Project's TSV has exactly the header `seal_path`, `seal_sha256`,
+`python` and one row. It binds the absolute source seal and its exact digest
+while keeping the dependent Project's current Python interpreter. The installed
+probe policy derives all checks. Doctor and Run/resume freshly probe and hash
+through the same runtime binding owner; retained Run/Attempt inventory bytes
+preserve this selector. Missing/changed seals, unresolved maintenance claims,
+inaccessible targets, incompatible versions or changed fixed content refuse
+admission.
 
-EMRYS-managed repair refuses any donor seal object, including malformed seals;
-failed publication may leave a permanent seal and unresolved maintenance claim.
-There is no unseal, automatic claim cleanup or receipt-copy bypass. Keep the
-donor location and fixed content available to every borrower. External tools
-can still change filesystem content, so operators must avoid those changes.
+Doctor does not modify a sealed generation. Repair of a Project that owns shared
+tools creates `runtime/generations/<generation>/managed` and a new seal, verifies
+the complete replacement, then atomically replaces only that Project's current
+inventory. Dependent Projects keep their exact old selector and must use
+`runtime discover --from-project SOURCE --replace --execute` to move to the new
+generation. Replacement requires the same source Project, an exact admitted
+prior selector, fresh probes and the dependent Project's maintenance claim.
+Retained Run/Attempt selectors continue to name their original generation.
+
+Failed publication may leave a seal, generation and unresolved maintenance
+claim. There is no automatic claim cleanup or receipt-copy bypass. Keep the
+source location and selected fixed content available to every dependent
+Project. External tools can still change filesystem content, so operators must
+avoid those changes.
 Native shared libraries, shebang interpreters, transitive R dependencies and
 the complete managed directory are outside this fixed-target baseline.
-Borrower Python/EMRYS, Analysis dependencies, storage and allocation checks
-remain independent. Site accessibility and scientific execution need their own
-evidence. See the [operator procedure](../../../../docs/operations/RUNBOOK.md#reuse-a-sealed-managed-runtime).
+Dependent-Project Python/EMRYS, Analysis dependencies, storage and allocation
+checks remain independent. Site accessibility and scientific execution need
+their own evidence. See the
+[operator procedure](../../../../docs/operations/RUNBOOK.md#reuse-prepared-managed-tools).
 
 ## What qualification establishes
 

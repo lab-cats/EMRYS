@@ -109,7 +109,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Open |
 | [CV-U06](#cv-u06-available-resources) | Restore historical workflow and stage resources | Verification pending |
 | [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Open |
-| [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Open |
+| [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Verification pending |
 | [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Verification pending |
 | [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Completed |
 | [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Verification pending |
@@ -123,8 +123,8 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Open |
 | [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
 | [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Open |
-| [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Open |
-| [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Open |
+| [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Verification pending |
+| [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Verification pending |
 | [CV-U24](#cv-u24-persistent-cli-defaults) | Save site and other repeated CLI values | Open |
 | [CV-U25](#cv-u25-repeated-fastq-hashing-during-init) | One full FASTQ hashing pass across preview and creation | Open |
 | [CV-U26](#cv-u26-manifests-inside-the-project) | Keep manifests inside their Project directory | Open |
@@ -294,14 +294,28 @@ placement, workflow, stage-thread, concurrency and memory policy; the operator
 does not author a resource profile. Quickstart supplies the sample assignments,
 regions, STAR parameters, analysis thresholds and resource values inline while
 moving detailed Doctor, recovery and format material to their existing owners.
+The real-study path now previews and selects the compatible tools prepared by
+the smoke Project before Doctor, without installing packages or detouring into
+the Runbook. If the shared owner later needs repair, Doctor creates a new
+generation rather than changing the generation retained by another Project.
 
-**Remaining outcome:** The smoke Project's compatible runtime is not yet
-discovered and selected automatically; the novice path still links to the
-separate reuse procedure and repeats `--site viking`. Those gaps remain owned by
-CV-U22 and CV-U24. Full standard CI, a fresh Viking installation and a novice
-smoke-to-EV/PUM1 walkthrough also remain pending. CV-U08 therefore remains
-**Open**. The historical policy and retained study evidence support the selected
-values but are not a new whole-Run cluster execution or performance measurement.
+**Verification limit:** The Quickstart still spells out `--site viking` at each
+Project-creation boundary. CV-U24 owns the separate persistent-default
+convenience; the current commands remain complete and require no site decision
+from the operator. Full standard CI, a fresh Viking installation and a novice
+smoke-to-EV/PUM1 walkthrough remain pending. CV-U08 is therefore
+**Verification pending**. The historical policy and retained study evidence
+support the selected values but are not a new whole-Run cluster execution or
+performance measurement.
+
+Local integration checks pass 631 tests across every test file changed by this
+tranche, with one Linux-only materialization test skipped on macOS. Six isolated
+child-interpreter cases were deselected because the borrowed installed checkout
+lacks `simple_term_menu` or `coolname_hash`; the corresponding current-source
+paths pass in process. Documentation structure checks pass for 169 Markdown
+documents and three Mermaid sources, all 13 Quickstart Bash fences pass
+`bash -n`, and focused Ruff, compilation and diff checks pass. No dependency
+installation, CI, cluster execution or scientific review was performed.
 
 ### CV-U09 Synthetic-project explanation
 
@@ -550,7 +564,7 @@ did not specify formulas, a new command name or a particular implementation.
 **Exact instruction challenged:**
 
 > To reuse another Project's managed tools, first follow
-> [sealed runtime reuse](../operations/RUNBOOK.md#reuse-a-sealed-managed-runtime)
+> [sealed runtime reuse](../operations/RUNBOOK.md#reuse-prepared-managed-tools)
 > before this Project has an inventory.
 
 **Operator response:** “If they are following the Quickstart they will have just
@@ -577,6 +591,13 @@ standard Quickstart flow, not an optional Runbook detour. This expands the
 expected smoke-project reuse into an explicit discover/validate/reuse-before-install
 requirement; no discovery mechanism was selected in this findings collection.
 
+**Implemented:** The ordinary Quickstart now previews and selects the prepared
+`emrys-smoke` runtime before Doctor. Selection freshly probes and content-binds
+the source generation and installs nothing; Doctor retains Project, storage and
+placement readiness checks. An absent inventory remains the normal first
+selection. An existing inventory is preserved unless the operator explicitly
+requests a same-source shared replacement.
+
 ### CV-U23 Repair restriction when sharing tools
 
 **Exact wording challenged:** “That optional operation permanently disables
@@ -598,6 +619,30 @@ permanent was not available in retained context.
 tools, lost capability and reason in plain English. The user's challenge to
 permanence remains unresolved; this record does not establish that permanence
 is necessary, approve removal of safeguards or select a replacement policy.
+
+**Resolved policy and implementation:** Sharing no longer permanently disables
+Doctor repair. Doctor never changes a sealed generation in place. It creates and
+verifies a new managed generation, moves only the owning Project's current
+selection, and preserves the old generation for retained Runs and Attempts.
+Dependent Projects remain bound to their exact old generation and require an
+explicit `runtime discover --from-project SOURCE --replace --execute`. The
+replacement admits only an existing shared selector from the same source
+Project, rechecks the new generation, and atomically replaces the exact prior
+selector under the existing maintenance claim.
+
+**Verification:** Focused contract coverage now includes exact-file replacement,
+same-source selection replacement, preserved old seals, generation planning and
+stale-plan refusal. This slice adds 409 net product lines across five existing
+owners, 298 net test lines across four existing test files, and 91 net lines
+across eight existing documentation/owner-contract files. It adds no product
+file, schema or dependency; the necessary growth replaces the permanent repair
+refusal with generation creation, exact selector replacement and caller-complete
+admission through the existing runtime and publication owners. Local compilation,
+lint and documentation structure checks pass. A borrowed environment plus its
+already-unpacked dependency cache passes 339 focused tests except for two
+pre-existing isolated replay cases whose child interpreter cannot see that
+borrowed cache. Hosted standard CI and the two-Project journey remain required;
+institutional smoke-to-study acceptance remains open.
 
 ### CV-U24 Persistent CLI defaults
 

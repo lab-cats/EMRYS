@@ -18,6 +18,57 @@ class ClaimError(RuntimeError):
     pass
 
 
+def test_publish_replaces_only_the_exact_admitted_file(tmp_path: Path) -> None:
+    target = tmp_path / "runtime.tsv"
+    target.write_bytes(b"old selection\n")
+
+    publication.publish_exclusive(
+        target,
+        b"new selection\n",
+        ClaimError,
+        replace_expected=b"old selection\n",
+    )
+
+    assert target.read_bytes() == b"new selection\n"
+    assert not tuple(tmp_path.glob(".*.emrys-stage"))
+    with pytest.raises(ClaimError, match="changed file"):
+        publication.publish_exclusive(
+            target,
+            b"third selection\n",
+            ClaimError,
+            replace_expected=b"old selection\n",
+        )
+    assert target.read_bytes() == b"new selection\n"
+
+
+@pytest.mark.parametrize("changed", ("symlink", "fifo"))
+def test_publish_replacement_refuses_nonregular_target(
+    tmp_path: Path, changed: str
+) -> None:
+    target = tmp_path / "runtime.tsv"
+    if changed == "symlink":
+        retained = tmp_path / "retained"
+        retained.write_bytes(b"old selection\n")
+        target.symlink_to(retained)
+    else:
+        os.mkfifo(target)
+
+    with pytest.raises(ClaimError):
+        publication.publish_exclusive(
+            target,
+            b"new selection\n",
+            ClaimError,
+            replace_expected=b"old selection\n",
+        )
+
+    assert (
+        target.is_symlink()
+        if changed == "symlink"
+        else stat.S_ISFIFO(target.lstat().st_mode)
+    )
+    assert not tuple(tmp_path.glob(".*.emrys-stage"))
+
+
 def test_claim_and_staged_writer_handle_short_writes_and_sync_in_order(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
