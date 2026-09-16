@@ -29,12 +29,14 @@ This guide keeps software in `$HOME/EMRYS` and new studies beneath its tracked
 or a new Project child yourself. Existing Projects keep their original locations
 and references; these instructions do not move them.
 
-**Steps 1–5 are ready to paste unchanged.** Step 7 asks for the locations of
-the delivered EV/PUM1 FASTQs, reference and annotation; every other known value
-is given in that step. Paste blocks in order. Stop at an error and retain its
+**Steps 1–5 are ready to paste unchanged.** The setup command in step 1 asks
+three questions whose defaults are given there. Step 7 asks for the locations
+of the delivered EV/PUM1 FASTQs, reference and annotation; every other known
+value is given in that step. Paste blocks in order. Stop at an error and retain its
 output and any printed log path. Do not delete partial setup or results to retry.
 Keep quotation marks when pasting commands. `$HOME` means your Viking home
-directory; the `EMRYS_...` variables below remember locations for later commands.
+directory. `EMRYS_SOURCE_ROOT` below names the checkout; prompted setup saves the
+repeated EMRYS command defaults.
 A backslash (`\`) at the end of a line continues the same command on the next
 line. Paste the whole block, keeping each backslash as the final character.
 
@@ -72,6 +74,19 @@ EMRYS records the implementation used for a Run. The path commands use `pwd -P`
 so EMRYS receives the actual storage location rather than a symbolic-link
 shortcut.
 
+Save the values that EMRYS will reuse. Run this from the repository root:
+
+```bash
+emrys setup --execute
+```
+
+Press Enter to accept the displayed `Projects` home and `viking` site. Leave the
+optional log root empty so each Project keeps its own application logs. EMRYS
+creates the ignored repository-root `.env` with mode `0600`; commands run in the
+checkout or its Project directories load it automatically. An explicit command
+line value wins over the process environment, which wins over `.env`, which wins
+over a built-in default.
+
 The [returning to the Project](#returning-to-the-project-in-a-new-terminal)
 instructions below restore this environment after reconnecting.
 
@@ -82,11 +97,10 @@ instructions below restore this environment after reconnecting.
 Enter the Projects directory supplied by the repository:
 
 ```bash
-cd "$EMRYS_SOURCE_ROOT/Projects" &&
-export EMRYS_PROJECTS_ROOT="$(pwd -P)"
+cd "$EMRYS_SOURCE_ROOT/Projects"
 ```
 
-The variable records the physical path from `pwd -P`. Project children are
+The saved Projects home records this physical directory. Project children are
 ignored by Git, while `Projects/README.md` explains what belongs here.
 Initialization requires an absent child and refuses a symlink destination.
 Stop if entering the supplied parent fails; do not continue from the previous
@@ -102,9 +116,8 @@ resources or whether its scientific choices are correct. Create it with the
 built-in Viking settings:
 
 ```bash
-export EMRYS_PROJECT_ROOT="$EMRYS_PROJECTS_ROOT/emrys-smoke"
-emrys init synthetic --site viking --output-dir "$EMRYS_PROJECT_ROOT" --execute &&
-cd "$EMRYS_PROJECT_ROOT" &&
+emrys init synthetic --output-dir "$(pwd -P)/emrys-smoke" --execute &&
+cd emrys-smoke &&
 emrys validate
 ```
 
@@ -118,8 +131,9 @@ using account `viking-users`, partition `long`, QoS `normal`, site-default memor
 and private temporary storage under `/tmp`. Slurm chooses the node.
 EMRYS uses the historical EV/PUM1 policy: 12 workflow cores, 512 GiB and the
 restored stage-specific thread, concurrency and memory allowances. The
-`--site viking` choice supplies the placement automatically; you do not configure
-Slurm or write a resource profile. The same defaults apply to real-data Projects.
+saved `viking` choice supplies the placement automatically; you do not
+configure Slurm or write a resource profile. The same default applies to
+real-data Projects.
 
 ## 3. Prepare the scientific tools
 
@@ -241,8 +255,8 @@ inside the new Project. FASTQ names must end in `_R1`/`_R2` or `_1`/`_2`, then
 `.fastq`, `.fq`, or either extension plus `.gz`.
 
 ```bash
-cd "$EMRYS_PROJECTS_ROOT" &&
-emrys init pum1-study --site viking
+cd "$EMRYS_SOURCE_ROOT/Projects" &&
+emrys init pum1-study
 ```
 
 Enter the absolute FASTQ directory, delivered reference FASTA and matching GTF
@@ -292,8 +306,7 @@ the printed diagnostic if creation stops.
 After `Project ready:`, validate the new Project:
 
 ```bash
-export EMRYS_PROJECT_ROOT="$EMRYS_PROJECTS_ROOT/pum1-study"
-cd "$EMRYS_PROJECT_ROOT" &&
+cd "$EMRYS_SOURCE_ROOT/Projects/pum1-study" &&
 emrys validate
 ```
 
@@ -316,8 +329,8 @@ is needed for this path. For a Project created with older settings, follow
 and use that profile for both Doctor and Run.
 
 ```bash
-emrys runtime discover --from-project "$EMRYS_PROJECTS_ROOT/emrys-smoke"
-emrys runtime discover --from-project "$EMRYS_PROJECTS_ROOT/emrys-smoke" --execute
+emrys runtime discover --from-project "$EMRYS_SOURCE_ROOT/Projects/emrys-smoke"
+emrys runtime discover --from-project "$EMRYS_SOURCE_ROOT/Projects/emrys-smoke" --execute
 emrys doctor --repair
 ```
 
@@ -372,16 +385,13 @@ export PATH="$HOME/.local/bin:$HOME/.pixi/bin:$PATH"
 cd "$HOME/EMRYS" &&
 export EMRYS_SOURCE_ROOT="$(pwd -P)" &&
 source "$EMRYS_SOURCE_ROOT/.venv/bin/activate" &&
-cd "$EMRYS_SOURCE_ROOT/Projects" &&
-export EMRYS_PROJECTS_ROOT="$(pwd -P)" &&
-cd "$EMRYS_PROJECTS_ROOT/emrys-smoke" &&
-export EMRYS_PROJECT_ROOT="$(pwd -P)" &&
+cd "$EMRYS_SOURCE_ROOT/Projects/emrys-smoke" &&
 emrys inspect
 ```
 
 For the EV/PUM1 study, replace the final Project `cd` line with
-`cd "$EMRYS_PROJECTS_ROOT/pum1-study"`. For an existing Project elsewhere, use
-`cd "/full/path/to/existing-project"` instead; keep it at its original location.
+`cd "$EMRYS_SOURCE_ROOT/Projects/pum1-study"`. For an existing Project elsewhere,
+use `cd "/full/path/to/existing-project"` instead; keep it at its original location.
 Reconnecting does not require reinstalling EMRYS, recreating the Project or
 resubmitting work. From another directory, select it explicitly with
 `emrys inspect --project "/full/path/to/existing-project/project.yaml"`.

@@ -119,6 +119,138 @@ def _project_arguments(
     )
 
 
+def test_setup_prompts_for_and_publishes_closed_cli_defaults(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Terminal(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    root = tmp_path / "checkout"
+    projects = root / "Projects"
+    projects.mkdir(parents=True)
+    (root / ".git").mkdir()
+    (root / "src/emrys").mkdir(parents=True)
+    (root / "pyproject.toml").write_text("[project]\nname='emrys'\n")
+    for key in ("EMRYS_PROJECTS_ROOT", "EMRYS_SITE", "EMRYS_LOG_ROOT"):
+        monkeypatch.delenv(key, raising=False)
+    stderr = Terminal()
+    monkeypatch.chdir(projects)
+    monkeypatch.setattr(onboarding.sys, "stdin", Terminal("\n\n\n"))
+    monkeypatch.setattr(onboarding.sys, "stderr", stderr)
+
+    assert cli.main(["setup", "--execute"]) == 0
+
+    saved = root / ".env"
+    assert saved.read_text() == (
+        f"EMRYS_ENV_VERSION=1\nEMRYS_PROJECTS_ROOT={projects}\nEMRYS_SITE=viking\n"
+    )
+    assert stat.S_IMODE(saved.stat().st_mode) == 0o600
+    assert "Projects home" in stderr.getvalue()
+    assert "site [viking]" in stderr.getvalue()
+    assert "log root (optional)" in stderr.getvalue()
+    loaded: dict[str, str] = {}
+    assert onboarding.load_saved_cli_environment(projects, loaded) == saved
+    assert loaded == {
+        "EMRYS_PROJECTS_ROOT": str(projects),
+        "EMRYS_SITE": "viking",
+    }
+
+
+def test_saved_cli_defaults_preserve_process_values_and_supply_log_root(
+    tmp_path: Path,
+) -> None:
+    projects = tmp_path / "Projects"
+    log_root = tmp_path / "central logs"
+    nested = projects / "study"
+    nested.mkdir(parents=True)
+    (nested / ".env").write_text("UNRELATED=value\n", encoding="utf-8")
+    saved = tmp_path / ".env"
+    saved.write_text(
+        "EMRYS_ENV_VERSION=1\n"
+        f"EMRYS_PROJECTS_ROOT={projects}\n"
+        "EMRYS_SITE=viking\n"
+        f"EMRYS_LOG_ROOT={log_root}\n",
+        encoding="utf-8",
+    )
+    environment = {"EMRYS_PROJECTS_ROOT": "/process/projects"}
+
+    assert onboarding.load_saved_cli_environment(nested, environment) == saved
+    assert environment == {
+        "EMRYS_PROJECTS_ROOT": "/process/projects",
+        "EMRYS_SITE": "viking",
+        "EMRYS_LOG_ROOT": str(log_root),
+    }
+
+
+def test_saved_cli_defaults_reject_unknown_keys_before_loading(
+    tmp_path: Path,
+) -> None:
+    saved = tmp_path / ".env"
+    saved.write_text(
+        "EMRYS_ENV_VERSION=1\n"
+        f"EMRYS_PROJECTS_ROOT={tmp_path}\n"
+        "EMRYS_SITE=viking\n"
+        "TOKEN=secret\n",
+        encoding="utf-8",
+    )
+    environment: dict[str, str] = {}
+
+    with pytest.raises(onboarding.OnboardingError, match="invalid saved CLI setting"):
+        onboarding.load_saved_cli_environment(tmp_path, environment)
+    assert environment == {}
+
+
+def test_saved_site_defaults_existing_site_arguments(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("EMRYS_SITE", "viking")
+    parser = cli.build_parser()
+
+    synthetic = parser.parse_args(
+        ["init", "synthetic", "--output-dir", str(tmp_path / "project")]
+    )
+    profile = parser.parse_args(["profile", "create", "cluster"])
+
+    assert synthetic.site == "viking"
+    assert profile.site == "viking"
+
+
+def test_setup_is_dry_run_first_and_preserves_an_existing_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "checkout"
+    projects = root / "Projects"
+    projects.mkdir(parents=True)
+    (root / ".git").mkdir()
+    (root / "src/emrys").mkdir(parents=True)
+    (root / "pyproject.toml").write_text("[project]\nname='emrys'\n")
+    for key in ("EMRYS_PROJECTS_ROOT", "EMRYS_SITE", "EMRYS_LOG_ROOT"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.chdir(root)
+
+    log_root = root / "central logs"
+    command = [
+        "setup",
+        "--projects-root",
+        str(projects),
+        "--site",
+        "viking",
+        "--log-root",
+        str(log_root),
+    ]
+    assert cli.main(command) == 0
+    assert not (root / ".env").exists()
+    assert cli.main([*command, "--execute"]) == 0
+    before = (root / ".env").read_bytes()
+    assert f"EMRYS_LOG_ROOT={log_root}\n".encode() in before
+    assert cli.main([*command, "--execute"]) == 2
+    assert (root / ".env").read_bytes() == before
+
+
 def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

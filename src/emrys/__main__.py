@@ -128,6 +128,12 @@ def _add_group(
 
 
 def _add_onboarding_commands(command_parsers: Any) -> None:
+    _add_owned_command(
+        command_parsers,
+        "setup",
+        run_coordinator_onboarding_command,
+        "setup",
+    )
     _add_group(
         command_parsers,
         "profile",
@@ -343,6 +349,11 @@ def _normalize_public_argv(argv: Sequence[str]) -> tuple[str, ...]:
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse and dispatch one supported EMRYS command."""
     supplied = sys.argv[1:] if argv is None else argv
+    try:
+        run_coordinator_onboarding_command.load_saved_cli_environment(Path.cwd())
+    except run_coordinator_onboarding_command.OnboardingError as exc:
+        print(f"emrys: error: {exc}", file=sys.stderr)
+        return 2
     parser = build_parser()
     arguments, unrecognized = parser.parse_known_args(_normalize_public_argv(supplied))
     if unrecognized:

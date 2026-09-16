@@ -136,7 +136,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Verification pending |
 | [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Verification pending |
 | [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Verification pending |
-| [CV-U24](#cv-u24-persistent-cli-defaults) | Save site and other repeated CLI values | Open |
+| [CV-U24](#cv-u24-persistent-cli-defaults) | Save site and other repeated CLI values | Verification pending |
 | [CV-U25](#cv-u25-repeated-fastq-hashing-during-init) | One full FASTQ hashing pass across preview and creation | Verification pending |
 | [CV-U26](#cv-u26-manifests-inside-the-project) | Keep manifests inside their Project directory | Verification pending |
 | [CV-U27](#cv-u27-tested-smoke-to-real-resource-guidance) | Tested workload profile, Doctor checks and exact submission | Verification pending |
@@ -819,17 +819,32 @@ supplying `--site`. Support saved values through `.env` or a similar configurati
 mechanism, and identify other repeated CLI values that can be supplied this way.
 The exact file format, supported settings and precedence rules were not chosen.
 
-**Question still open:** The discussion suggested Projects home, selected
-Project, site, execution profile, runtime location and log location as candidates
-for persistent defaults. Those were assistant suggestions, not a verified list
-of existing environment-variable support or a user-approved settings inventory.
-No claim that EMRYS currently loads `.env` files was established.
+**Implemented outcome:** `emrys setup` now asks for Projects home, site and an
+optional application-log root. Its dry run shows the selected values;
+`--execute` creates one ignored, mode-`0600`, repository-root `.env` without
+overwriting an existing file. EMRYS loads the nearest marked file from the
+current directory or its parents. The format accepts only
+`EMRYS_PROJECTS_ROOT`, `EMRYS_SITE` and optional `EMRYS_LOG_ROOT`, plus its
+version marker. Unknown, duplicate, incomplete, unsupported and unsafe values
+fail before any setting is loaded.
 
-**Current partial state:** `EMRYS_PROJECTS_ROOT` now supplies the bounded
-Projects-home discovery root used by watch, but it does not persist the selected
-site or the other proposed defaults. Quickstart still supplies `--site viking`
-at each Project-creation boundary, and no `.env` settings owner or precedence
-contract was added. CV-U24 remains Open.
+The precedence is explicit CLI, existing process environment, `.env`, then the
+built-in default. The saved site feeds existing `--site` arguments, the Projects
+home feeds existing bounded cross-Project discovery, and the log root feeds the
+existing logging controls. Selected Project, execution profile, runtime and
+scientific values remain Project- or command-owned and are deliberately excluded
+from global defaults. Quickstart performs prompted setup once and no longer
+repeats `--site viking` or shell exports for Projects home.
+
+**Local verification:** Focused tests cover prompted creation, mode and exact
+closed bytes, parent discovery, optional log-root loading, process-environment
+precedence, unknown-key rejection, dry-run behavior and no-clobber publication.
+All 117 source-bound onboarding cases and 141 execution-profile, Run-location
+and application-logging cases pass. Two isolated replay cases and one isolated
+logging smoke case reproduce their older-installed-package mismatches on the
+integration baseline. Ruff formatting/lint, documentation checks, all 14
+Quickstart Bash blocks and diff checks pass. A fresh Viking reconnect and novice
+walkthrough remain required; CV-U24 is **Verification pending**.
 
 ### CV-U25 Repeated FASTQ hashing during Init
 
