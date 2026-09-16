@@ -688,7 +688,7 @@ def test_manifest_init_output_passes_through_project_reference_admission(
     region: str,
     valid: bool,
 ) -> None:
-    project = tmp_path / "project"
+    project = tmp_path / "manifest-study"
     arguments = _project_arguments(tmp_path, project, execute=True)
     _, _, samples = step08.validate_sample_manifest(arguments.sample_manifest)
     drafts = tmp_path / "drafts"
