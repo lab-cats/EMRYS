@@ -127,18 +127,29 @@ error still reports failure, even if the pathname is already absent.
 Verification without package work does not acquire this claim and is not proof
 that the runtime is safe to modify or share.
 
-**Sealed runtime refused.** Keep `runtime/shared.json`, its donor installation,
-the borrower inventory, and any `maintenance.lock`. A seal permanently disables
-EMRYS-managed donor repair; there is no unseal or automatic cleanup command.
-Selection can fail after sealing and before borrower publication. Missing or
-changed fixed tool/package content, unresolved claims and unavailable donor
-paths block admission. Do not edit the recorded digest, copy qualification
-receipts or remove the seal to bypass this check. Resolve the cause with the
-maintainer; use a separately prepared Project for a different runtime.
+**Shared runtime needs replacement.** Keep the selected seal, its managed
+generation, the dependent Project's inventory, and any `maintenance.lock`.
+Missing or changed fixed tool/package content, unresolved claims and unavailable
+source paths block admission. Run Doctor in the Project that owns the shared
+tools. Doctor prepares a separate verified generation and preserves the old
+one. Then preview and apply the exact replacement from each dependent Project:
+
+```bash
+emrys runtime discover --from-project /absolute/source/project.yaml --replace
+emrys runtime discover --from-project /absolute/source/project.yaml --replace --execute
+```
+
+Replacement accepts only an existing shared selection from the same source
+Project. Do not edit the recorded digest, copy qualification receipts, remove a
+seal, or delete the old generation to bypass admission. A failed repair or
+selection can leave a partial generation and claim; retain both for the
+maintainer.
 
 **Runtime inventory already exists.** Discovery preserves even identical-looking
-inventories. Use Doctor to inspect the admitted runtime; replacing it requires
-an explicit migration/recovery decision, not deletion followed by rediscovery.
+inventories. Use Doctor to inspect the admitted runtime. `--replace` changes only
+an existing shared selection to a freshly verified generation from the same
+source Project; other replacement decisions still require explicit migration or
+recovery rather than deletion followed by rediscovery.
 
 **Runtime qualification failed after installation.** Read the exact maintenance
 log printed as `diagnostics:`. Its `runtime_check_failed` records identify the

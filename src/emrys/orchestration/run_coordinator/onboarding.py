@@ -26,8 +26,10 @@ from emrys.evidence.runtime_availability.inspector import (
     inspect_runtime_profile_bytes,
     runtime_profile_checks,
     runtime_profile_bytes,
+    shared_runtime_selection,
     load_runtime_profile_contract,
     load_runtime_seal,
+    runtime_root_for_seal,
     runtime_profile_choices,
     runtime_file_bindings,
     runtime_seal_bytes,
@@ -1404,9 +1406,9 @@ def publish_runtime_profile(inspection: RuntimeInspection) -> None:
 
 
 def reuse_runtime_profile(
-    *, project: Path, donor: Path, execute: bool
+    *, project: Path, donor: Path, execute: bool, replace_existing: bool = False
 ) -> RuntimeInspection:
-    """Seal an owned donor once and freshly qualify one explicit borrower selection."""
+    """Freshly qualify one source generation for a dependent Project."""
     package_root = _absolute(source_root())
     borrower = validate_project(project, root=package_root).project
     source = validate_project(donor, root=package_root).project
@@ -1415,9 +1417,22 @@ def reuse_runtime_profile(
     seal_path = runtime / "shared.json"
     if borrower.source_path == source.source_path:
         raise OnboardingError("Runtime reuse requires a distinct borrower Project")
-    if os.path.lexists(destination):
+    try:
+        existing = (
+            read_bytes_with_identity(destination, "Runtime inventory")[0]
+            if os.path.lexists(destination)
+            else None
+        )
+    except ValidationError as exc:
+        raise OnboardingError(str(exc)) from exc
+    if existing is not None and not replace_existing:
         raise OnboardingError(
-            f"runtime inventory already exists and was preserved: {destination}"
+            f"runtime inventory already exists and was preserved: {destination}; "
+            "use --replace only to replace a shared selection from the same Project"
+        )
+    if existing is None and replace_existing:
+        raise OnboardingError(
+            f"runtime inventory is absent; omit --replace: {destination}"
         )
 
     def inspect(data: bytes) -> RuntimeInspection:
@@ -1437,14 +1452,23 @@ def reuse_runtime_profile(
             )
         return result
 
-    if os.path.lexists(seal_path):
+    claim_path = runtime / "maintenance.lock"
+    if os.path.lexists(claim_path):
+        raise OnboardingError(f"Runtime maintenance claim is unresolved: {claim_path}")
+    source_data, _source_checks = load_runtime_profile_contract(
+        runtime / "runtime.tsv", package_root
+    )
+    source_selection = shared_runtime_selection(source_data)
+    if source_selection is not None:
+        seal_path = source_selection.seal_path
+        if runtime_root_for_seal(seal_path) != runtime:
+            raise OnboardingError(
+                "The selected source runtime is not owned by the source Project"
+            )
+        seal_data = load_runtime_seal(seal_path).data
+    elif os.path.lexists(seal_path):
         seal_data = load_runtime_seal(seal_path).data
     else:
-        claim_path = runtime / "maintenance.lock"
-        if os.path.lexists(claim_path):
-            raise OnboardingError(
-                f"Runtime maintenance claim is unresolved: {claim_path}"
-            )
         ownership = None
         payload = f"emrys-runtime-seal:{uuid.uuid4().hex}\n".encode("ascii")
         if execute:
@@ -1452,11 +1476,13 @@ def reuse_runtime_profile(
             ownership = acquire_lock(
                 claim_path, payload, OnboardingError, retain_on_failure=True
             )
+            current_data, _current_checks = load_runtime_profile_contract(
+                runtime / "runtime.tsv", package_root
+            )
+            if current_data != source_data:
+                raise OnboardingError("Source runtime inventory changed before sealing")
         # Failed or interrupted preparation/publication deliberately retains the claim.
-        data, _checks = load_runtime_profile_contract(
-            runtime / "runtime.tsv", package_root
-        )
-        choices = runtime_profile_choices(data)
+        choices = runtime_profile_choices(source_data)
         choices["python"] = Path(sys.executable)
         candidate = inspect(runtime_profile_bytes(choices))
         seal_data = runtime_seal_bytes(candidate, seal_path)
@@ -1476,8 +1502,42 @@ def reuse_runtime_profile(
     inspection = inspect(reference)
     runtime_file_bindings(inspection)
     if execute:
-        project_runtime_directory(borrower)
-        publish_runtime_profile(inspection)
+        if os.path.lexists(claim_path):
+            raise OnboardingError(
+                f"Runtime maintenance claim appeared during selection: {claim_path}"
+            )
+        current_source, _current_checks = load_runtime_profile_contract(
+            runtime / "runtime.tsv", package_root
+        )
+        if current_source != source_data:
+            raise OnboardingError(
+                "Source runtime inventory changed during selection; preview again"
+            )
+        borrower_runtime = project_runtime_directory(borrower)
+        if existing is None:
+            publish_runtime_profile(inspection)
+        else:
+            current_selection = shared_runtime_selection(existing)
+            if current_selection is None:
+                raise OnboardingError(
+                    "--replace requires an existing shared runtime selection"
+                )
+            if runtime_root_for_seal(current_selection.seal_path) != runtime:
+                raise OnboardingError(
+                    "--replace requires the same source Project as the existing shared runtime"
+                )
+            selection_claim = borrower_runtime / "maintenance.lock"
+            payload = f"emrys-runtime-selection:{uuid.uuid4().hex}\n".encode("ascii")
+            ownership = acquire_lock(
+                selection_claim, payload, OnboardingError, retain_on_failure=True
+            )
+            publish_exclusive(
+                destination,
+                reference,
+                OnboardingError,
+                replace_expected=existing,
+            )
+            release_lock(selection_claim, ownership, payload, OnboardingError)
     return inspection
 
 
@@ -1485,13 +1545,18 @@ def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
     add_project_argument(parser)
     parser.add_argument(
         "--from-project",
-        metavar="DONOR",
-        help="Reuse a managed donor runtime; --execute permanently seals its native/R content before selection.",
+        metavar="SOURCE",
+        help="Reuse a source Project's managed tools; --execute seals the selected generation before selection.",
     )
     parser.add_argument(
         "--execute",
         action="store_true",
         help="Publish the admitted inventory; omission is a no-write discovery.",
+    )
+    parser.add_argument(
+        "--replace",
+        action="store_true",
+        help="Replace an existing shared selection from the same source Project; preview remains no-write without --execute.",
     )
     parser.set_defaults(_command_parser=parser)
 
@@ -1511,6 +1576,9 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
 
     try:
         donor = getattr(arguments, "from_project", None)
+        replace_existing = getattr(arguments, "replace", False)
+        if replace_existing and donor is None:
+            raise OnboardingError("--replace requires --from-project")
         if donor is None:
             inspection = discover_runtime_profile(
                 project=project_definition_path(arguments.project)
@@ -1520,11 +1588,15 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
                 project=project_definition_path(arguments.project),
                 donor=project_definition_path(donor),
                 execute=arguments.execute,
+                replace_existing=replace_existing,
             )
+            selected = shared_runtime_selection(inspection.profile_bytes)
+            assert selected is not None
+            print(f"Source seal: {selected.seal_path}")
             print(
-                f"Donor seal: {project_definition_path(donor).parent / 'runtime/shared.json'}"
+                "Shared tools remain content-bound; Doctor creates a new generation "
+                "instead of changing tools used by other Projects."
             )
-            print("A donor seal is permanent and disables its managed runtime repair.")
         _print_runtime_inventory(inspection)
         print(f"Inventory: {inspection.profile_path}")
         if not inspection.required_ready:

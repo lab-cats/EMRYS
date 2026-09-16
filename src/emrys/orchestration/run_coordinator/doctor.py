@@ -29,11 +29,18 @@ from emrys.evidence.runtime_availability.inspector import (
     RuntimeBinding,
     RuntimeCheck,
     RuntimeInspection,
+    RuntimeContentMismatchError,
     RuntimeInspectionError,
     RuntimeObservation,
     inspect_runtime_profile_bytes,
+    admit_runtime_seal_bytes,
     load_runtime_profile_contract,
+    runtime_root_for_seal,
+    shared_runtime_profile_bytes,
+    shared_runtime_selection,
+    runtime_seal_bytes,
     runtime_file_bindings,
+    runtime_profile_checks,
 )
 from emrys.evidence.storage_inventory import qualification as storage_qualification
 from emrys.libraries.application_logging import (
@@ -61,6 +68,8 @@ from emrys.libraries.process_environment import (
     guarded_rscript_argv,
     sanitized_subprocess_environment,
 )
+from emrys.libraries.validation.errors import ValidationError
+from emrys.libraries.validation.inputs import read_bytes_with_identity
 from emrys.libraries.source_authority import (
     InstalledPackage,
     InstalledPackageError,
@@ -549,6 +558,7 @@ def diagnose_project(
             profile_bytes, fixed_checks = load_runtime_profile_contract(
                 profile_path, root
             )
+            selected_shared = shared_runtime_selection(profile_bytes)
         except RuntimeInspectionError as exc:
             raise DoctorInputError(str(exc)) from exc
         additions, package_tree_ids, explicit_file_ids = _module_dependency_checks(
@@ -603,10 +613,26 @@ def diagnose_project(
                 "package manager; Doctor repairs only native tools and R."
             )
         if any(item.check.check_id in fixed_ids - PYTHON_CHECK_IDS for item in failed):
-            remediations.append(
-                "Run `emrys doctor --repair` for an EMRYS-managed runtime, or repair "
-                "and re-admit the selected site environment without editing runtime.tsv."
-            )
+            if (
+                selected_shared is not None
+                and runtime_root_for_seal(selected_shared.seal_path)
+                != onboarding.runtime_profile_path(project).parent
+            ):
+                donor = (
+                    runtime_root_for_seal(selected_shared.seal_path).parent
+                    / "project.yaml"
+                )
+                remediations.append(
+                    "The Project that owns these shared tools must prepare their "
+                    "replacement. Then run `emrys runtime discover --from-project "
+                    f"{donor} --replace --execute`."
+                )
+            else:
+                remediations.append(
+                    "Run `emrys doctor --repair` for an EMRYS-managed runtime, or "
+                    "repair and re-admit the selected site environment without "
+                    "editing runtime.tsv."
+                )
         if any(item.check.check_id in custom_ids for item in failed):
             remediations.append(
                 "Install the selected analysis module and its declared dependencies "
@@ -614,6 +640,7 @@ def diagnose_project(
                 "restores only the fixed EMRYS runtime."
             )
         donor_seal = onboarding.runtime_profile_path(project).parent / "shared.json"
+        content_matches = True
         try:
             runtime_bindings = runtime_file_bindings(
                 inspection,
@@ -622,12 +649,36 @@ def diagnose_project(
                 donor_seal=donor_seal
                 if profile_path == onboarding.runtime_profile_path(project)
                 and os.path.lexists(donor_seal)
+                and shared_runtime_selection(profile_bytes) is None
                 else None,
             )
+        except RuntimeContentMismatchError as exc:
+            runtime_bindings = ()
+            content_matches = False
+            blockers.append(str(exc))
+            owner = (
+                None
+                if selected_shared is None
+                else runtime_root_for_seal(selected_shared.seal_path)
+            )
+            if (
+                owner is None
+                or owner == onboarding.runtime_profile_path(project).parent
+            ):
+                remediations.append(
+                    "Run `emrys doctor --repair`; it will prepare a replacement "
+                    "generation without changing the shared tools in place."
+                )
+            else:
+                remediations.append(
+                    "The Project that owns these shared tools must prepare their "
+                    "replacement. Then run `emrys runtime discover --from-project "
+                    f"{owner.parent / 'project.yaml'} --replace --execute`."
+                )
         except RuntimeInspectionError as exc:
             raise DoctorInputError(str(exc)) from exc
         bindings = (*runtime_bindings, *bindings)
-        runtime_ready = python_ready and not failed
+        runtime_ready = python_ready and not failed and content_matches
     if execution_error is not None:
         selection = "default" if execution_profile is None else "selected"
         blockers.append(
@@ -664,6 +715,9 @@ class _ManagedRuntimePlan:
     manifest_bytes: bytes
     lock_bytes: bytes
     r_settings_bytes: bytes
+    source_seal: Path | None = None
+    source_seal_bytes: bytes | None = None
+    replacement_seal: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -687,7 +741,9 @@ class _RepairPlan:
             return "Selected runtime passed current checks; no package-manager work is needed."
         action = (
             "Prepare a managed runtime inventory; package managers check any retained tools and caches."
-            if self.runtime.profile_bytes is None
+            if self.runtime.profile_bytes is None and self.runtime.source_seal is None
+            else "Create and verify a replacement generation; other Projects keep their existing selection until explicitly replaced."
+            if self.runtime.replacement_seal is not None
             else "Check/update tools selected by the retained managed runtime inventory."
         )
         return f"{action} Package-manager output records which packages are reused, installed, or changed."
@@ -741,13 +797,6 @@ def _file_sha256(path: Path) -> str:
         raise DoctorRepairError(
             f"could not bind package manager {path}: {exc}"
         ) from exc
-
-
-def _refuse_sealed_repair(runtime: Path) -> None:
-    if os.path.lexists(runtime / "shared.json"):
-        raise DoctorRepairError(
-            f"Runtime is permanently sealed; repair refused: {runtime / 'shared.json'}"
-        )
 
 
 def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
@@ -827,7 +876,6 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
         r_settings_bytes = (_PACKAGE_ROOT / "renv/settings.json").read_bytes()
     except (OSError, onboarding.OnboardingError) as exc:
         raise DoctorRepairError(str(exc)) from exc
-    _refuse_sealed_repair(runtime)
     managed = runtime / "managed"
     if os.path.lexists(runtime / "maintenance.lock"):
         raise DoctorRepairError(
@@ -850,6 +898,47 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
             raise DoctorRepairError(
                 f"could not re-admit the managed runtime inventory: {exc}"
             ) from exc
+    source_seal: Path | None = None
+    source_seal_bytes: bytes | None = None
+    replacement_seal: Path | None = None
+    try:
+        selection = (
+            None if profile_bytes is None else shared_runtime_selection(profile_bytes)
+        )
+        if selection is not None:
+            source_seal = selection.seal_path
+        elif os.path.lexists(runtime / "shared.json"):
+            source_seal = runtime / "shared.json"
+        if source_seal is not None:
+            owner = runtime_root_for_seal(source_seal)
+            if owner != runtime:
+                donor = owner.parent / "project.yaml"
+                raise DoctorRepairError(
+                    "This Project uses tools shared by another Project. Doctor will "
+                    "not change that installation. After its owner prepares a replacement, "
+                    "run `emrys runtime discover --from-project "
+                    f"{donor} --replace --execute`."
+                )
+            source_seal_bytes, _seal_state = read_bytes_with_identity(
+                source_seal, "Shared runtime seal"
+            )
+            if (
+                selection is not None
+                and hashlib.sha256(source_seal_bytes).hexdigest()
+                != selection.seal_sha256
+            ):
+                raise DoctorRepairError(
+                    "shared runtime seal differs from the selected SHA-256"
+                )
+            admitted_seal = admit_runtime_seal_bytes(source_seal, source_seal_bytes)
+            replacement_seal = (
+                runtime / "generations" / uuid.uuid4().hex / "shared.json"
+            )
+            managed = replacement_seal.parent / "managed"
+    except (RuntimeInspectionError, ValidationError) as exc:
+        raise DoctorRepairError(
+            f"could not re-admit the shared runtime seal: {exc}"
+        ) from exc
     pixi = _manager("pixi")
     managed_plan = _ManagedRuntimePlan(
         managed_root=managed,
@@ -860,9 +949,17 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
         manifest_bytes=manifest_bytes,
         lock_bytes=lock_bytes,
         r_settings_bytes=r_settings_bytes,
+        source_seal=source_seal,
+        source_seal_bytes=source_seal_bytes,
+        replacement_seal=replacement_seal,
     )
     if result.inspection is not None:
-        if not _profile_is_managed(profile_checks, managed_plan):
+        admitted_plan = (
+            replace(managed_plan, managed_root=admitted_seal.managed_root)
+            if source_seal is not None
+            else managed_plan
+        )
+        if not _profile_is_managed(profile_checks, admitted_plan):
             raise DoctorRepairError(
                 "the admitted runtime inventory is site- or user-owned and was "
                 "preserved; repair that environment or explicitly admit a replacement"
@@ -875,8 +972,9 @@ def _readmit_repair_plan(
     *,
     before_storage: bool,
 ) -> None:
-    if plan.runtime is not None:
-        _refuse_sealed_repair(plan.runtime.managed_root.parent)
+    runtime = plan.runtime
+    if runtime is not None:
+        _readmit_runtime_seal_plan(runtime)
     try:
         installed_package = admit_installed_package(root=plan.installed_package.root)
         project = onboarding.validate_project(
@@ -906,15 +1004,19 @@ def _readmit_repair_plan(
         installed_package != plan.installed_package
         or project != plan.project
         or (plan.storage is not None and observed_storage != plan.storage)
-        or (
-            plan.runtime is not None
-            and runtime_root != plan.runtime.managed_root.parent
-        )
+        or (plan.runtime is not None and runtime_root != plan.runtime.profile.parent)
     ):
         raise DoctorRepairError("Doctor plan changed before execution")
-    runtime = plan.runtime
     if runtime is None:
         return
+    if (
+        before_storage
+        and runtime.replacement_seal is not None
+        and os.path.lexists(runtime.replacement_seal.parent)
+    ):
+        raise DoctorRepairError(
+            "replacement runtime generation appeared before execution"
+        )
     if _file_sha256(runtime.pixi) != runtime.pixi_sha256:
         raise DoctorRepairError("admitted package manager changed before execution")
     if not before_storage:
@@ -948,9 +1050,57 @@ def _readmit_repair_plan(
         raise DoctorRepairError("runtime inventory changed before execution")
 
 
+def _readmit_runtime_seal_plan(runtime: _ManagedRuntimePlan) -> None:
+    """Require the exact shared-generation state admitted by the repair plan."""
+
+    if runtime.source_seal is None:
+        if os.path.lexists(runtime.profile.parent / "shared.json"):
+            raise DoctorRepairError("shared runtime seal appeared before execution")
+        return
+    assert runtime.source_seal_bytes is not None
+    try:
+        source_data, _source_state = read_bytes_with_identity(
+            runtime.source_seal, "Shared runtime seal"
+        )
+        if source_data != runtime.source_seal_bytes:
+            raise DoctorRepairError("shared runtime seal changed before replacement")
+        admitted = admit_runtime_seal_bytes(runtime.source_seal, source_data)
+        if runtime_root_for_seal(admitted.path) != runtime.profile.parent:
+            raise DoctorRepairError("shared runtime owner changed before replacement")
+    except (RuntimeInspectionError, ValidationError) as exc:
+        raise DoctorRepairError(
+            f"shared runtime seal changed before replacement: {exc}"
+        ) from exc
+
+
 def _admit_managed_root(plan: _ManagedRuntimePlan) -> None:
     root = plan.managed_root
     try:
+        if plan.replacement_seal is not None:
+            generation = plan.replacement_seal.parent
+            generations = generation.parent
+            runtime = plan.profile.parent
+            if (
+                root != generation / "managed"
+                or generations != runtime / "generations"
+                or os.path.lexists(generation)
+            ):
+                raise DoctorRepairError(
+                    "replacement runtime generation changed before creation"
+                )
+            if not os.path.lexists(generations):
+                generations.mkdir(mode=0o700)
+            state = generations.lstat()
+            if (
+                not stat.S_ISDIR(state.st_mode)
+                or stat.S_ISLNK(state.st_mode)
+                or generations.resolve(strict=True) != generations
+                or state.st_uid != os.getuid()
+            ):
+                raise DoctorRepairError(
+                    f"runtime generations directory is not owned: {generations}"
+                )
+            generation.mkdir(mode=0o700)
         if not os.path.lexists(root):
             root.mkdir(mode=0o700)
         state = root.lstat()
@@ -1266,9 +1416,9 @@ def _print_repair_plan(plan: _RepairPlan) -> None:
     if plan.runtime is not None:
         runtime = plan.runtime
         _stderr(f"  Managed runtime: {runtime.managed_root}")
-        _stderr(
-            f"  Maintenance claim: {runtime.managed_root.parent / 'maintenance.lock'}"
-        )
+        _stderr(f"  Maintenance claim: {runtime.profile.parent / 'maintenance.lock'}")
+        if runtime.replacement_seal is not None:
+            _stderr(f"  Replacement seal: {runtime.replacement_seal}")
         _stderr(
             "  A retained claim blocks further repair; release errors require reconciliation."
         )
@@ -1536,11 +1686,11 @@ def _execute_repair(
         _stderr(f"Runtime work: {plan.runtime_work}")
         if plan.runtime is not None:
             runtime_root = onboarding.project_runtime_directory(plan.project)
-            if runtime_root != plan.runtime.managed_root.parent:
+            if runtime_root != plan.runtime.profile.parent:
                 raise DoctorRepairError(
                     "Doctor runtime parent changed before maintenance"
                 )
-            _refuse_sealed_repair(runtime_root)
+            _readmit_runtime_seal_plan(plan.runtime)
             claim_path = runtime_root / "maintenance.lock"
             payload = f"emrys-doctor:{uuid.uuid4().hex}\n".encode("ascii")
             ownership = acquire_lock(
@@ -1635,7 +1785,60 @@ def _execute_repair(
                 )
             if not candidate.required_ready:
                 raise DoctorRepairError("repaired runtime did not pass qualification")
-            if runtime.profile_bytes is None:
+            if runtime.replacement_seal is not None:
+                seal_data = runtime_seal_bytes(candidate, runtime.replacement_seal)
+                publish_exclusive(
+                    runtime.replacement_seal,
+                    seal_data,
+                    DoctorRepairError,
+                )
+                reference = shared_runtime_profile_bytes(
+                    runtime.replacement_seal,
+                    seal_data,
+                    Path(sys.executable),
+                )
+                replacement_checks = runtime_profile_checks(
+                    reference, plan.installed_package.root
+                )
+                replacement_library = next(
+                    Path(check.target)
+                    for check in replacement_checks
+                    if check.check_id == "renv_library"
+                )
+                with tempfile.TemporaryDirectory(prefix="emrys-doctor-") as temporary:
+                    candidate = inspect_runtime_profile_bytes(
+                        reference,
+                        runtime.profile,
+                        checks=replacement_checks,
+                        environment={
+                            **guarded_r_environment(
+                                plan.installed_package.root,
+                                replacement_library,
+                            ),
+                            "TMPDIR": temporary,
+                        },
+                    )
+                runtime_file_bindings(candidate)
+                if not candidate.required_ready:
+                    raise DoctorRepairError(
+                        "replacement runtime did not pass qualification"
+                    )
+                if runtime.profile_bytes is None:
+                    onboarding.publish_runtime_profile(candidate)
+                else:
+                    publish_exclusive(
+                        runtime.profile,
+                        candidate.profile_bytes,
+                        DoctorRepairError,
+                        replace_expected=runtime.profile_bytes,
+                    )
+                emit(
+                    "runtime_profile_admitted",
+                    "Replacement runtime generation admitted.",
+                    profile=runtime.profile,
+                    sha256=candidate.profile_sha256,
+                )
+            elif runtime.profile_bytes is None:
                 onboarding.publish_runtime_profile(candidate)
                 emit(
                     "runtime_profile_admitted",

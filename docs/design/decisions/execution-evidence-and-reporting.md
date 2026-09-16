@@ -52,6 +52,12 @@ separate from this default. Existing storage evidence is retained on retry;
 storage receipts do not prove runtime compatibility. Compute, validation, and
 reporting never install dependencies.
 
+A shared managed generation remains immutable. Doctor repair creates and fully
+qualifies a new Project-owned generation, then replaces only the owner's current
+selection. Dependent Projects retain their exact old selector until an explicit
+same-source replacement is freshly admitted. Retained Run and Attempt profiles
+continue to name their original generation.
+
 Repository R activation remains opt-in through `EMRYS_USE_RENV=1`. Report
 rendering uses only the locked packaged Jinja2, Matplotlib, and Logomaker
 environment and a private temporary cache. Neither path accesses the network or
