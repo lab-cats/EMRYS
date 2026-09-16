@@ -806,10 +806,12 @@ def _collect_project_answers(
     arguments: argparse.Namespace,
     manifest_members: Mapping[str, tuple[bytes, int]],
     output: Path,
+    *,
+    fields: Sequence[str] = _PROJECT_FIELDS,
 ) -> dict[str, object]:
     missing = [
         f"--{destination.replace('_', '-')}"
-        for destination in _PROJECT_FIELDS
+        for destination in fields
         if getattr(arguments, destination) is None and destination not in _STAR_FIELDS
     ]
     interactive = sys.stdin.isatty() and sys.stderr.isatty()
@@ -821,7 +823,7 @@ def _collect_project_answers(
         )
     answers: dict[str, object] = {}
     star_suggestions: dict[str, int] | None = None
-    for destination in _PROJECT_FIELDS:
+    for destination in fields:
         value = getattr(arguments, destination)
         suggestion = _PROJECT_SUGGESTIONS.get(destination)
         if value is None and destination in _STAR_FIELDS:
@@ -901,16 +903,15 @@ def _project_yaml(answers: Mapping[str, object]) -> bytes:
 
 
 def _prompt(label: str, suggestion: str | None = None) -> str:
-    suffix = f" [{suggestion}]" if suggestion is not None else ""
-    print(f"{label}{suffix}: ", end="", file=sys.stderr, flush=True)
+    console_print(label, style="bold cyan", file=sys.stderr, end="")
+    if suggestion is not None:
+        message = f" (Press ENTER for {suggestion})"
+        console_print(message, style="dim", file=sys.stderr, end="")
+    print(": ", end="", file=sys.stderr, flush=True)
     raw = sys.stdin.readline()
     if raw == "":
         raise OnboardingError(f"Project setup ended before {label} was supplied")
     return raw.strip() or (suggestion or "")
-
-
-def _interactive_terminal() -> bool:
-    return sys.stdin.isatty() and sys.stderr.isatty()
 
 
 def _discover_fastqs(directory: Path) -> list[Path]:
@@ -933,27 +934,23 @@ def _discover_fastqs(directory: Path) -> list[Path]:
 def _guided_manifest_members(
     arguments: argparse.Namespace,
 ) -> dict[str, tuple[bytes, int]]:
-    interactive = _interactive_terminal()
+    interactive = sys.stdin.isatty() and sys.stderr.isatty()
     fastqs = list(getattr(arguments, "fastq", ()))
     if not fastqs:
         if not interactive:
-            raise OnboardingError(
-                "input-list creation needs --fastq paths or an interactive terminal"
-            )
+            raise OnboardingError("guided input lists require --fastq or a terminal")
         fastqs = _discover_fastqs(Path(_prompt("FASTQ directory")))
         arguments.fastq = fastqs
 
     samples = list(getattr(arguments, "sample", ()))
     assigned = {row[0] for row in samples}
-    sample_ids: list[str] = []
+    sample_ids: set[str] = set()
     for path in fastqs:
         match = FASTQ_PAIR_NAME.fullmatch(path.name)
         if match is None:
             raise OnboardingError(f"unrecognized FASTQ pair name: {path}")
-        sample_id = str(match["sample"])
-        if sample_id not in sample_ids:
-            sample_ids.append(sample_id)
-    missing = sorted(set(sample_ids) - assigned)
+        sample_ids.add(str(match["sample"]))
+    missing = sorted(sample_ids - assigned)
     if missing and interactive:
         print("Detected FASTQ pairs:", file=sys.stderr)
         for sample_id in sorted(sample_ids):
@@ -976,14 +973,17 @@ def _guided_manifest_members(
             raise OnboardingError(
                 "input-list creation needs --regions-file/--region or an interactive terminal"
             )
-        regions_file = _prompt(
-            "regions file (leave blank to enter chromosomes or regions)"
+        print(
+            "Choose a regions file, or press Enter to type FASTA names/regions.",
+            file=sys.stderr,
         )
+        regions_file = _prompt("optional regions file")
         if regions_file:
             regions_files = [["regions", regions_file]]
             arguments.regions_file = regions_files
         else:
-            selectors = shlex.split(_prompt("chromosomes or regions (space-separated)"))
+            label = f"FASTA names/regions from {Path(arguments.reference_fasta).name}"
+            selectors = shlex.split(_prompt(label))
             if not selectors:
                 raise OnboardingError("at least one chromosome or region is required")
             regions = [
@@ -1172,8 +1172,9 @@ def _print_project_preview(
         "--execute",
     )
     if not getattr(arguments, "execute", False):
-        print("Create this Project without repeating the questions:")
-        print("Creation will hash each FASTQ once and reject changed inputs.")
+        present("Preview complete; Project not created.", style="yellow")
+        print("Next action: copy and run the complete command below. It will hash each")
+        print("FASTQ once, reject changed inputs, and create without asking again.")
         print(f"cd {shlex.quote(str(output.parent))} && {shlex.join(replay)}")
 
 
@@ -1185,6 +1186,14 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         output = _require_external_absent_output(
             Path.cwd() / arguments.project_name, source_root()
         )
+        reference_answers = _collect_project_answers(
+            arguments,
+            {},
+            output,
+            fields=("reference_fasta", "reference_gtf"),
+        )
+        for field, value in reference_answers.items():
+            setattr(arguments, field, value)
         manifest_members = _copied_manifest_members(arguments, output)
         answers = _collect_project_answers(arguments, manifest_members, output)
         execution_profile_bytes = project_default_profile_bytes(
@@ -1202,7 +1211,6 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             verbose=getattr(arguments, "verbose", False),
         )
         if not arguments.execute:
-            present("Dry-run complete; no files were written.", style="yellow")
             return 0
         print(
             "Project creation reads and hashes each declared FASTQ once, then "

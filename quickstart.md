@@ -259,9 +259,34 @@ cd "$EMRYS_SOURCE_ROOT/Projects" &&
 emrys init pum1-study
 ```
 
-Enter the absolute FASTQ directory, delivered reference FASTA and matching GTF
-when asked. These paths depend on where the files are stored on Viking and are
-the only values this guide cannot supply. Confirm that all six FASTQ pairs were
+The first two prompts ask for an existing reference FASTA and its matching GTF.
+These are study inputs supplied with the sequencing delivery or obtained from
+the same reference source; EMRYS does not generate or download them. The FASTA
+contains the reference sequences, and the GTF describes features on those same
+sequences. If either file is missing, stop and obtain the matching pair from the
+data provider or reference source rather than substituting an unrelated file.
+Enter their absolute Viking paths.
+
+Next enter the scientific settings below. Prompts show optional defaults as
+`Press ENTER for VALUE`; those words remain visible without terminal color, and
+the default itself is dimmed when color is available.
+
+| Prompt | EV/PUM1 value |
+| --- | --- |
+| `sjdb overhang` | `149` |
+| `genome sa index nbases` | `14` |
+| `control condition` | `EV` |
+| `treatment condition` | `PUM1` |
+| `target change` | `A>G` |
+| `min sample dp (Press ENTER for 1)` | Press Enter |
+| `mean dp threshold (Press ENTER for 50)` | Press Enter |
+| `fdr threshold (Press ENTER for 0.05)` | Press Enter |
+| `common or threshold (Press ENTER for 1.2)` | Press Enter |
+| `absolute difference threshold (Press ENTER for 0.005)` | Press Enter |
+| `background max fraction (Press ENTER for 0.01)` | Press Enter; no background cohort is selected, so it is unused |
+
+EMRYS then asks for the absolute FASTQ directory. This path depends on where the
+delivered files were stored on Viking. Confirm that all six FASTQ pairs were
 found, then assign them exactly as follows:
 
 | Sample | Condition | Pairing group | Strandedness |
@@ -273,35 +298,30 @@ found, then assign them exactly as follows:
 | `ABE_EV4` | `EV` | `4` | `reverse` |
 | `ABE_PUM1_4` | `PUM1` | `4` | `reverse` |
 
-Leave the regions-file prompt empty. At the selector prompt, enter this complete
-space-separated list; the names must match the delivered reference:
+EMRYS offers two mutually exclusive ways to divide the reference for analysis:
+
+- An existing regions file is a BED- or VCF-like text file listing selected
+  intervals. Use this only when the study delivery includes the intended file.
+- Otherwise, press Enter at `optional regions file` and type reference sequence
+  names or regions separated by spaces. Sequence names are the first words after
+  `>` in the FASTA headers. Project creation validates them against that FASTA.
+
+The delivered EV/PUM1 study does not require a separate regions file. Press
+Enter, then enter this complete space-separated list at the prompt that names
+your FASTA:
 
 ```text
 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y MT
 ```
 
-The original study has 150-base reads. Enter the remaining values exactly as
-shown:
-
-| Prompt | EV/PUM1 value |
-| --- | --- |
-| `sjdb overhang` | `149` |
-| `genome sa index nbases` | `14` |
-| `control condition` | `EV` |
-| `treatment condition` | `PUM1` |
-| `target change` | `A>G` |
-| `min sample dp [1]` | Press Enter for `1` |
-| `mean dp threshold [50]` | Press Enter for `50` |
-| `fdr threshold [0.05]` | Press Enter for `0.05` |
-| `common or threshold [1.2]` | Press Enter for `1.2` |
-| `absolute difference threshold [0.005]` | Press Enter for `0.005` |
-| `background max fraction [0.01]` | Press Enter for `0.01`; no background cohort is selected, so it is unused |
-
-The first pass validates paths, assignments, selectors and settings without
-hashing every FASTQ. Review the displayed interpretation, then paste the exact
-creation command printed by EMRYS. That command carries every answer forward,
-hashes each FASTQ once and refuses changed inputs. Keep any partial Project and
-the printed diagnostic if creation stops.
+The first pass admits the reference paths and reviews assignments, selectors and
+settings without hashing every FASTQ. It then says `Preview complete; Project
+not created.` Review the displayed interpretation. Under `Next action`, copy and
+run the entire command—although long, it carries every answer forward without
+asking again. That command hashes each FASTQ once, validates reference and
+partition compatibility, and refuses changed inputs. Keep any partial Project
+and the printed diagnostic if creation stops. Successful creation ends with
+`Project ready:` followed by the new `project.yaml` path.
 
 After `Project ready:`, validate the new Project:
 

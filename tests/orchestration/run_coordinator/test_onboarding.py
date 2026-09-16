@@ -274,7 +274,8 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     assert not output.exists()
     assert list(projects.iterdir()) == []
     preview = capsys.readouterr()
-    assert "Dry-run complete" in preview.out
+    assert "Preview complete; Project not created." in preview.out
+    assert "Next action: copy and run the complete command below." in preview.out
     assert "Reading and hashing Project inputs" not in preview.err
     assert f"Output directory: {output}" in preview.out
     assert "Libraries (4):" in preview.out
@@ -371,9 +372,15 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
     arguments.sample = []
     arguments.regions_file = []
     arguments.region = []
+    reference_fasta = arguments.reference_fasta
+    reference_gtf = arguments.reference_gtf
+    arguments.reference_fasta = None
+    arguments.reference_gtf = None
     terminal = Terminal(
         "\n".join(
             (
+                str(reference_fasta),
+                str(reference_gtf),
                 str(reads),
                 "EV",
                 "pair_1",
@@ -395,7 +402,8 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
     )
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(onboarding.sys, "stdin", terminal)
-    monkeypatch.setattr(onboarding.sys, "stderr", Terminal())
+    terminal_output = Terminal()
+    monkeypatch.setattr(onboarding.sys, "stderr", terminal_output)
 
     assert onboarding.init_project_from_args(arguments) == 0
     assert (output / "samples.tsv").is_file()
@@ -406,6 +414,12 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
         definition["analyses"][arguments.analysis_name]["partitions"]
         == "partitions.tsv"
     )
+    prompts = terminal_output.getvalue()
+    assert prompts.index("reference fasta") < prompts.index("FASTQ directory")
+    assert (
+        "Choose a regions file, or press Enter to type FASTA names/regions." in prompts
+    )
+    assert f"FASTA names/regions from {Path(reference_fasta).name}" in prompts
 
 
 @pytest.mark.parametrize("site", (None, "viking"))
@@ -499,19 +513,8 @@ def test_guided_project_preview_replays_exact_answers_without_new_prompts(
     assert tokens[:4] == ["cd", str(projects), "&&", sys.executable]
     assert tokens[-1] == "--execute"
 
-    created = subprocess.run(
-        replay,
-        shell=True,
-        executable="/bin/sh",
-        cwd=tmp_path,
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-    assert created.returncode == 0, created.stderr
-    assert "Project ready:" in created.stdout
+    assert cli.main(tokens[tokens.index("emrys") + 1 :]) == 0
+    assert "Project ready:" in capsys.readouterr().out
     expected = yaml.safe_load(
         (study / "source/project.yaml").read_text(encoding="utf-8")
     )
@@ -634,7 +637,7 @@ def test_init_project_requires_every_noninteractive_answer(
 ) -> None:
     assert cli.main(["init", "experiment"]) == 2
     error = capsys.readouterr().err
-    assert "input-list creation needs --fastq paths" in error
+    assert "missing Project setup answers: --reference-fasta, --reference-gtf" in error
 
 
 def test_init_project_prompts_and_requires_explicit_suggestion_acceptance(
@@ -650,6 +653,7 @@ def test_init_project_prompts_and_requires_explicit_suggestion_acceptance(
     arguments.min_sample_dp = None
     terminal_input = Terminal("C>T\n\n")
     terminal_output = Terminal()
+    monkeypatch.setenv("NO_COLOR", "1")
     monkeypatch.setattr(onboarding.sys, "stdin", terminal_input)
     monkeypatch.setattr(onboarding.sys, "stderr", terminal_output)
 
@@ -658,7 +662,26 @@ def test_init_project_prompts_and_requires_explicit_suggestion_acceptance(
     assert answers["target_change"] == "C>T"
     assert answers["min_sample_dp"] == 1
     assert "target change:" in terminal_output.getvalue()
-    assert "min sample dp [1]:" in terminal_output.getvalue()
+    assert "min sample dp (Press ENTER for 1):" in terminal_output.getvalue()
+
+
+def test_init_prompt_colors_label_and_dims_explicit_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Terminal(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    terminal_output = Terminal()
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("TERM", "xterm-256color")
+    monkeypatch.setattr(onboarding.sys, "stdin", Terminal("\n"))
+    monkeypatch.setattr(onboarding.sys, "stderr", terminal_output)
+
+    assert onboarding._prompt("min sample dp", "1") == "1"
+    rendered = terminal_output.getvalue()
+    assert "\x1b[" in rendered
+    assert "min sample dp" in rendered and "Press ENTER for 1" in rendered
 
 
 def test_init_project_rejects_eof_instead_of_accepting_a_suggestion(
@@ -703,8 +726,8 @@ def test_init_project_suggests_star_values_from_declared_inputs(
     assert "first complete record in each declared FASTQ" in rendered
     assert "maximum 4 bases" in rendered
     assert "12-base reference" in rendered
-    assert "sjdb overhang [3]:" in rendered
-    assert "genome sa index nbases [1]:" in rendered
+    assert "sjdb overhang (Press ENTER for 3):" in rendered
+    assert "genome sa index nbases (Press ENTER for 1):" in rendered
 
 
 def test_init_project_uses_derived_star_values_noninteractively(

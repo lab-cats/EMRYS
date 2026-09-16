@@ -130,7 +130,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Verification pending |
 | [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Open |
 | [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Verification pending |
-| [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Open |
+| [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Verification pending |
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Open |
 | [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Open |
 | [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Open |
@@ -767,6 +767,18 @@ transaction, keeping the long replay command for verbose or automation use;
 recording that candidate does not by itself approve the interface or weaken the
 create-absent and input-change checks. This negative Viking acceptance keeps
 CV-U18 **Open**.
+
+**Approved correction:** Guided initialization now collects and admits the
+operator-supplied reference FASTA and matching GTF before FASTQ/partition
+questions. The partition prompt explains the regions-file and FASTA-name/region
+alternatives and names the admitted FASTA. Prompt labels use semantic terminal
+color, defaults are dimmed, and plain output says `Press ENTER for VALUE`.
+No-write completion now says `Preview complete; Project not created` and labels
+the complete replay command as the next action; only publication says `Project
+ready`. The Quickstart explains that EMRYS does not generate the reference pair,
+what each file contains, what to do when it is absent, and how FASTA selectors
+relate to headers. Focused onboarding checks pass locally; novice Viking/PTY
+acceptance remains required, so CV-U18 is **Verification pending**.
 
 ### CV-U19 Long-term interactive CLI
 

@@ -85,17 +85,26 @@ supplies the same value when the flag is omitted. The resulting default profile
 then contains the built-in Viking placement rather than direct placement.
 Named initialization creates Project-owned `samples.tsv` and `partitions.tsv`;
 FASTQs, references and region files remain at their declared locations. Guided
-setup discovers recognized FASTQ pairs and asks for all biological assignments
-and regions. When STAR index settings are omitted, it suggests `sjdbOverhang`
-from one complete record in each declared FASTQ and `genomeSAindexNbases` from
-the admitted FASTA length. The prompt states that bounded observation, accepts
-an explicit override, and uses the derived values in noninteractive setup.
-Advanced callers may instead supply both existing manifests; their
+setup collects and admits the operator-supplied reference FASTA/GTF before it
+discovers recognized FASTQ pairs and asks for biological assignments and one
+partition source. The regions-file and reference-name/region choices are
+explained as alternatives, and the latter prompt names the admitted FASTA.
+Prompt defaults remain explicit as `Press ENTER for VALUE` without color and
+are dimmed in eligible terminals. When STAR index settings are omitted, setup
+suggests `sjdbOverhang` from one complete record in each declared FASTQ and
+`genomeSAindexNbases` from the admitted FASTA length. The prompt states that
+bounded observation, accepts an explicit override, and uses the derived values
+in noninteractive setup. Advanced callers may instead supply both existing
+manifests; their
 validated, path-normalized content is copied into the new Project. It creates
 `runs/`, `logs/`, `runtime/`, and `runtime/profiles/` with mode `0700`, and
 publishes `project.yaml` last. Failure preserves the partial root and never
 overwrites or adopts it. Publication checks the exact prepared member types,
 modes, sizes, and bytes.
+
+A no-write initialization ends with `Preview complete; Project not created`,
+then labels its complete replay command as the next action. Only successful
+publication emits `Project ready:`.
 
 `emrys validate` re-admits every selected Analysis and its reference,
 annotation, sample, and partition compatibility. It invokes no external tool
