@@ -95,31 +95,338 @@ they are not established root causes or completed fixes. Proposed commands,
 flags and future directions remain identified as such. This records the findings
 only, without selecting implementation work or approving new interfaces.
 
-| ID | Area | Finding and requested outcome | Status |
-| --- | --- | --- | --- |
-| CV-U01 | CLI color and readability | Requested color is missing from Init and Validate. Run and Inspect remain unreadable walls of monochrome text. Use meaningful color and readable presentation across these commands. | Open |
-| CV-U02 | Default CLI verbosity | Overall CLI output is far too verbose. Default output must contain only the bare minimum; provide an option for the full detailed output. The verbose option's exact spelling was not specified. | Open |
-| CV-U03 | Init and Validate summaries | Init should show the output directory, libraries and other high-value information only. Validate should report pass or fail, with the specific error on failure. | Open |
-| CV-U04 | Doctor presentation | Doctor is also a wall of text. Show each category's pass/fail status and execution requirements; then show only each step with the existing green text, spinner and timer. Reserve detailed repair/validation plans, package output and runtime work for verbose output. | Open |
-| CV-U05 | Doctor first-run expectations | The notice that the first run may take **5–15 minutes** has disappeared. Restore this expectation-setting message in normal output. | Open |
-| CV-U06 | Available resources | The workflow CPU ceiling is reported as still **4**, contrary to the repeated requirement to be able to use all available resources. The reason for retaining this ceiling was not established in this discussion. | Open |
-| CV-U07 | Projects directory | EMRYS must create the Projects directory automatically. Non-technical users must not be instructed to create it manually; this was already an explicit requirement. | Open |
-| CV-U08 | Quickstart scope and language | Quickstart is still too verbose and has reverted to overly technical language. It must contain the bare minimum needed for a first-time, non-technical operator to install EMRYS and run an analysis on Viking. Move advanced information elsewhere and preserve plain English throughout. | Open |
-| CV-U09 | Synthetic-project explanation | “Create the synthetic project” is unclear to a first-time user. Explain in plain language what it creates, what “synthetic” means and why the user performs this step. | Open |
-| CV-U10 | Unnecessary Quickstart command | `git rev-parse HEAD` is not necessary in the basic operator journey and should be removed from Quickstart. | Open |
-| CV-U11 | Paste-ready Quickstart commands | `export EMRYS_PROJECT_ROOT="${EMRYS_PROJECTS_ROOT:?Choose a Projects home first}/emrys-smoke"` leaves the user unsure what `?` means and whether to paste the command or replace a value. Avoid unexplained shell syntax and clearly distinguish paste-ready commands from values the user must supply. | Open |
-| CV-U12 | Duplicate submission warning | Before another submission of the same work, warn prominently in **red** if an earlier job is pending/running, including when Inspect has not yet populated. Explain that Inspect takes time to display the submission and that submitting again may create duplicate jobs; tell the user to continue only if they understand and intentionally want another submission. The exact enforcement/override mechanism remains unspecified. | Open |
-| CV-U13 | Watching progress | Quickstart must explain how to watch progress in the dashboard. The requested command direction is `emrys watch <JOB_ID or JOB_NAME>`; other identifiers may be allowed. Final syntax and additional identifiers remain unspecified. | Open |
-| CV-U14 | Dashboard logs | Logs need friendlier presentation and meaningful color coding, rather than monochrome text. | Open |
-| CV-U15 | Dashboard action language | “Verify/associate again” is unclear. Explain the action in plain language and make clear whether it refreshes information or changes anything. Its precise behavior was not independently checked during this findings collection. | Open |
-| CV-U16 | Dashboard scrolling | Disable mouse scrolling throughout the dashboard, including the logs. Keep keyboard scrolling with up/down arrows and `j`/`k`. | Open |
-| CV-U17 | Completion communication | Dashboard, Run CLI output and Inspect must clearly communicate when the job is done. The operator reported Steps **9/10** still displayed as pending with **`1/?`** despite successful job completion. Completion and progress displays must agree. | Open |
-| CV-U18 | Interactive input-list creation | The current input-list creation command does not satisfy the previously agreed interactive process. EMRYS must create the lists through guided interaction; non-technical users must not construct or format them themselves. Quickstart must use the guided process. | Open |
-| CV-U19 | Long-term interactive CLI | Eventually, setup and launching analyses should default to guided interactive prompts, without users copying and pasting commands. Advanced manual operation should remain opt-in through a flag such as `--advanced` or similar. This is a longer-term direction; the exact interface is undecided. | Open |
-| CV-U20 | Complete Viking values in Quickstart | Provide expected values **in Quickstart** wherever possible for the explicit “run on Viking” journey. Do not send a naive user to analysts, other people or other documents to obtain values the guide can supply, or leave them to infer those values. | Open |
-| CV-U21 | Technical parameter assistance | Provide a tool to determine `sjdbOverhang`, `genomeSAindexNbases` and similar technical parameters wherever possible, so users do not have to calculate or choose those values themselves. | Open |
-| CV-U22 | Smoke-project tool reuse | Quickstart should assume the tools just prepared by the synthetic smoke project will be reused for the real analysis. Supply the necessary steps and values inline. The instruction to first consult “sealed runtime reuse” before a Project has an inventory contradicts that expected journey and requires unexplained internal knowledge. | Open |
-| CV-U23 | Repair restriction when sharing tools | “That optional operation permanently disables managed repair of the donor” does not explain in plain English which Project/tools are affected, what repair capability is lost or why. The user questioned the restriction and its permanence. The rationale and permanence remain unresolved; this record does not approve removing safeguards or choose a replacement policy. | Open |
+The index links to the detailed records below. Operator quotations preserve the
+reported experience; requested outcomes preserve the instructions given in this
+discussion. Open questions are not filled with inferred implementation decisions.
+
+| ID | Finding | Status |
+| --- | --- | --- |
+| [CV-U01](#cv-u01-cli-color-and-readability) | CLI color and readability | Open |
+| [CV-U02](#cv-u02-default-cli-verbosity) | Minimal default output, optional detail | Open |
+| [CV-U03](#cv-u03-init-and-validate-summaries) | Init and Validate summaries | Open |
+| [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Open |
+| [CV-U05](#cv-u05-doctor-first-run-expectations) | Missing 5–15-minute first-run notice | Open |
+| [CV-U06](#cv-u06-available-resources) | Workflow CPU ceiling still 4 | Open |
+| [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation | Open |
+| [CV-U08](#cv-u08-quickstart-scope-and-language) | Minimal, plain-English Viking Quickstart | Open |
+| [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Open |
+| [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Open |
+| [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Open |
+| [CV-U12](#cv-u12-duplicate-submission-warning) | Warn before accidental duplicate submission | Open |
+| [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Open |
+| [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Open |
+| [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Open |
+| [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Open |
+| [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Open |
+| [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Open |
+| [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Open |
+| [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Open |
+| [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Open |
+| [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Open |
+| [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Open |
+
+### CV-U01 CLI color and readability
+
+**Operator report:** “I said outputs need to be colored; output of init and
+validate are not. Run also unreadable wall of monocolor text. Inspect too.”
+
+**Requested outcome:** Meaningful color and readable output across Init,
+Validate, Run and Inspect. This is a repeated requirement, not a new preference
+limited to one command. Doctor's presentation is separately detailed in CV-U04;
+dashboard logs are included in CV-U14. No color palette was specified.
+
+### CV-U02 Default CLI verbosity
+
+**Operator report:** “Overall cli output is far too verbose by default, there
+should be an option to get all that output but by default it should return only
+the bare minimum, like init, validate, and doctor.”
+
+**Requested outcome:** Normal output contains the minimum information the
+operator needs. Detailed output remains available through an explicit verbose
+option. Adding color alone does not address the excessive amount of text.
+Command-specific expectations are recorded in CV-U03 and CV-U04. The exact
+verbose flag was not chosen in this discussion.
+
+### CV-U03 Init and Validate summaries
+
+**Operator instruction:** “Init can give output directory libraries, and
+anything else that is high value. Validate can just tell pass or fail with
+specific error on failure.”
+
+**Requested outcome:** Init reports the output directory, libraries and other
+high-value information. Validate gives a clear pass/fail result and the specific
+error when it fails. Routine detail belongs in the optional verbose output
+described in CV-U02. The user did not supply an exhaustive list of Init fields.
+
+### CV-U04 Doctor presentation
+
+**Operator report:** “Doctor output is also just wall of text; needs to be more
+user friendly.”
+
+**Detailed instruction:** “Doctor should print each category with pass or not
+with execution requirements. The info about the specific repair and validation
+plan should be reserved for verbose. After that it should only print each step
+with the spinner and timer (the currently green text) as it does currently; the
+specific package output, runtime work, etc is unnecessary.”
+
+**Requested outcome:** Keep the initial category results and execution
+requirements visible. During subsequent work, retain the existing green step
+text, spinner and elapsed timer. Detailed repair/validation plans, package
+output and runtime-work narration are optional verbose information, not the
+default stream. This request concerns presentation; it does not request removing
+the underlying checks or repairs.
+
+### CV-U05 Doctor first-run expectations
+
+**Operator question:** “Why did we lose the message about doctor taking 5-15 mins
+on first run?”
+
+**Requested outcome:** Restore the first-run notice that Doctor may take
+**5–15 minutes**. This is useful expectation-setting in normal output, distinct
+from verbose diagnostics. The reason the notice disappeared was not established
+in this discussion; the duration is the user's requested guidance, not a new
+timing measurement made while recording these findings.
+
+### CV-U06 Available resources
+
+**Operator question:** “Why is workflow CPU ceiling still 4? I said we need to
+be able to use all available resources”.
+
+**Reported problem and requirement:** The operator sees a workflow CPU ceiling
+of **4** despite the prior requirement to be able to use all available resources.
+The retained discussion did not establish why that cap remained or which setting
+produced it. No substitute CPU count, tuning result or resource-selection design
+was agreed here; preserve the resource-use requirement without inventing a cause.
+
+### CV-U07 Projects directory
+
+**Operator instruction:** “user should not be manually creating the projects
+dir - I have made that a clear rule in the past”.
+
+**Requested outcome:** EMRYS creates the Projects directory as part of its normal
+operation. The operator must not have to create it manually as a prerequisite
+or be directed to a separate directory-creation command in Quickstart.
+
+### CV-U08 Quickstart scope and language
+
+**Operator instruction:** “Quickstart is still too verbose; advanced info needs
+to be moved, Quickstart should literally be the bare minimum necessary to get
+emrys installed and run an analysis, for non-technical operators”.
+
+The operator also asked why the language had become too technical again despite
+repeated instructions. This is an audience and scope regression, not just a
+request to shorten individual paragraphs.
+
+**Requested outcome:** One minimal, plain-English path for a first-time,
+non-technical Viking operator to install EMRYS and run an analysis. Move advanced
+information to its appropriate documentation. Necessary explanations and concrete
+values still belong in Quickstart; brevity must not require the reader to guess
+what a step means or obtain missing values elsewhere (CV-U09/U11/U20).
+
+### CV-U09 Synthetic-project explanation
+
+**Operator report:** “What ‘create the synthetic project’ is doing is NOT clear
+to a first time user, it should be explained in plain language.”
+
+**Requested outcome:** Explain what this step creates, what “synthetic” means
+and why the user performs the smoke-test step. A first-time operator should
+understand the purpose before running the command, without having to know the
+project's internal terminology.
+
+### CV-U10 Unnecessary Quickstart command
+
+**Operator instruction:** “Git rev-parse head is not necessary in Quickstart…”
+
+**Requested outcome:** Remove `git rev-parse HEAD` from the basic Quickstart
+journey. This finding concerns an unnecessary operator step; it does not request
+removing EMRYS's own source-identity or provenance records.
+
+### CV-U11 Paste-ready Quickstart commands
+
+**Exact command questioned:**
+
+```bash
+export EMRYS_PROJECT_ROOT="${EMRYS_PROJECTS_ROOT:?Choose a Projects home first}/emrys-smoke"
+```
+
+**Operator question:** “what is the ? Character doing? It is unclear if a user
+is expected to directly paste this or replace a value before”.
+
+**Source of confusion:** The command embeds a prerequisite check in shell syntax.
+`:?` reports an error if the variable is unset or empty; it neither prompts for a
+value nor marks text to replace. The command therefore assumes that the Projects
+home has already been set, which the reader did not find clear.
+
+**Requested outcome:** Clearly distinguish commands to paste unchanged from
+values the user must supply, and make prerequisites understandable. Avoid
+unexplained shell expressions. This also depends on supplying expected Viking
+values directly in Quickstart, as requested in CV-U20.
+
+### CV-U12 Duplicate submission warning
+
+**Scenario supplied by the operator:** A job is already running, but
+`emrys inspect` has not populated yet. The user may interpret the empty or delayed
+display as a failed submission and attempt to submit the work again.
+
+**Requested safeguard:** Give a “big red warning” and tell the user to
+“ONLY submit if they understand what they are doing and that inspect takes time
+to populate”.
+
+**Requested outcome:** For an earlier pending/running submission of the same
+work, explain the display delay and the risk of creating duplicate jobs before
+another submission. Continuing should be an intentional decision made with that
+understanding. The exact enforcement, acknowledgement or override mechanism
+was not decided; no new flag or automatic cancellation behavior is implied.
+
+### CV-U13 Watching progress
+
+**Operator instruction:** “Quickstart should also instruct user how to watch
+progress in dashboard”. The requested command direction was
+`emrys watch {JOB_ID||JOB_NAME}`, with “maybe other identifiers allowed”.
+
+**Requested outcome:** Include the dashboard/progress-watching step in the
+ordinary Quickstart journey. The desired interface accepts a job ID or job name
+through `emrys watch`. The braces and alternatives express the user's proposed
+interface, not a paste-ready command. Additional identifiers and final command
+syntax remain unspecified.
+
+### CV-U14 Dashboard logs
+
+**Operator instruction:** “Logs in dashboard should also be friendlier and not
+mono colored”.
+
+**Requested outcome:** Improve the readability and color coding of the log
+content itself. Coloring dashboard headings alone would not address this finding.
+No specific palette, filtering rule or log-content deletion was requested.
+
+### CV-U15 Dashboard action language
+
+**Operator question:** “What does verify/associate again mean in the dashboard?
+Unclear”.
+
+**Requested outcome:** Replace or explain the label in plain language so the
+operator knows what the action does and whether it merely refreshes information
+or changes anything. During the discussion, the assistant described the intended
+meaning as rechecking a job and refreshing its matching Run information and logs.
+That explanation was not independently verified and is not an established
+description of current behavior. The unclear label is the recorded finding.
+
+### CV-U16 Dashboard scrolling
+
+**Operator instruction:** “Should not be able to scroll with mouse in dashboard
+(logs lets you still). Scroll with up and down j/k is permitted.”
+
+**Requested outcome:** Disable mouse scrolling throughout the dashboard,
+including the log view where it reportedly remains possible. Preserve keyboard
+scrolling using the up/down arrows and `j`/`k`.
+
+### CV-U17 Completion communication
+
+**Operator report:** “Needs to communicate to the user when the job is done, in
+dashboard and also just when run from cli or running inspect. I ran into a
+confusing state where dashboard showed steps9/10 as pending 1/? despite the job
+being completed successfully”.
+
+**Requested outcome:** Give a clear completion message in the dashboard, Run CLI
+output and Inspect. Preserve this exact discrepancy for follow-up: Steps **9/10**
+remained **pending**, displaying **`1/?`**, after the operator reported successful
+job completion. The step display and overall completion state must agree. The
+cause and underlying scheduler/Run records were not examined during collection;
+the report does not independently establish scientific or report completion.
+
+### CV-U18 Interactive input-list creation
+
+**Operator report:** “The command to create the input lists is fucking garbage,
+what happened to the interactive process we explicitly discussed?”
+
+**Further instruction:** “The input list creation is NOT something a
+non-technical user should be expected to do”.
+
+**Requested outcome:** EMRYS creates the input lists through the previously
+agreed guided interaction. Users must not construct or format the lists
+themselves, and Quickstart must lead through that guided process. This is a
+functional onboarding requirement, not merely a request to explain a complex
+list-generation command more thoroughly. The exact offending command was not
+provided in this findings batch; whether the interactive route is missing or
+simply absent from the guide was not established.
+
+### CV-U19 Long-term interactive CLI
+
+**Operator direction:** “Eventually the whole setup and even run process should
+not be a user copy pasting commands in but an interactive cli prompt, with the
+option for advanced manual usage by submitting a flag —advanced or similar”.
+
+**Requested outcome:** Guided interactive setup and analysis launch should
+eventually be the default. Advanced users retain an opt-in manual route.
+`--advanced` is an illustrative flag, not a settled interface. The user explicitly
+framed this as an eventual direction; no detailed prompt sequence or migration
+plan was selected here.
+
+### CV-U20 Complete Viking values in Quickstart
+
+**Operator instruction:** “For the Quickstart, all of the expected values must
+be provided IN THE QUICKSTART. This is explicit ‘run on viking’ instructions for
+a naive user stop telling them to consult others or get info from analyst or
+figure shit out just give the desired values whenever possible.”
+
+**Requested outcome:** Provide expected values inline wherever possible for the
+specific Viking journey. Do not send the reader to analysts, other people or
+other documents to obtain values the guide can supply. Do not replace concrete
+values with unexplained placeholders or leave the user to infer them. This
+records the requirement; no new site settings or dataset-specific values were
+selected during this discussion.
+
+### CV-U21 Technical parameter assistance
+
+**Operator instruction:** “There should be a tool for determining sjdb overhang,
+genome sa index nbases, etc. whenever possible”.
+
+**Requested outcome:** Provide assistance that determines `sjdbOverhang`,
+`genomeSAindexNbases` and similar technical values wherever possible. Non-technical
+users should not have to calculate or choose these values themselves. The user
+did not specify formulas, a new command name or a particular implementation.
+
+### CV-U22 Smoke-project tool reuse
+
+**Exact instruction challenged:**
+
+> To reuse another Project's managed tools, first follow
+> [sealed runtime reuse](../operations/RUNBOOK.md#reuse-a-sealed-managed-runtime)
+> before this Project has an inventory.
+
+**Operator response:** “If they are following the Quickstart they will have just
+run the synthetic smoke project and prepared all the tools this should assume
+those will be used.” The operator identified the detour as contrary to repeated
+instructions.
+
+**Requested outcome:** Make reuse of the smoke project's prepared tools the
+normal continuation into the real analysis. Include any required steps and values
+directly in Quickstart. The user must not need a separate advanced procedure or
+understand “sealed runtimes” and inventory timing to follow that continuation.
+This is a request to carry already-prepared tools through the ordinary journey,
+not merely to rename the link to the separate guide.
+
+### CV-U23 Repair restriction when sharing tools
+
+**Exact wording challenged:** “That optional operation permanently disables
+managed repair of the donor;”
+
+**Operator questions:** “what does this mean? Why? Again with the unclear
+language I told you to write in fucking English”.
+
+**Concern recorded:** The instruction describes a significant loss of repair
+functionality through unexplained jargon. In the intended Quickstart journey,
+“donor” refers to the earlier smoke Project whose tools would be reused. The
+assistant interpreted the sentence as preventing Doctor from repairing or
+reinstalling that shared tool installation, and offered protecting other analyses
+from tool changes as the intended rationale. That interpretation and rationale
+were not independently verified. The original decision to make the restriction
+permanent was not available in retained context.
+
+**Requested outcome and unresolved question:** Explain the affected Project,
+tools, lost capability and reason in plain English. The user's challenge to
+permanence remains unresolved; this record does not establish that permanence
+is necessary, approve removal of safeguards or select a replacement policy.
 
 ## P0 outcomes
 
