@@ -2140,9 +2140,7 @@ def test_standalone_dashboard_ignores_mouse_and_restores_tracking(
     args = SimpleNamespace(
         job_id=JOB_ID, out=str(stdout), err=str(stderr), refresh=30, offline=True
     )
-    dashboard.dashboard(
-        _FakeScreen(keys=[dashboard.curses.KEY_MOUSE, ord("q")]), args
-    )
+    dashboard.dashboard(_FakeScreen(keys=[dashboard.curses.KEY_MOUSE, ord("q")]), args)
     assert len(rendered) == 2
     assert masks == [dashboard.curses.ALL_MOUSE_EVENTS, 0]
 
