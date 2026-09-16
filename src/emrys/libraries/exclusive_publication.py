@@ -10,6 +10,16 @@ from contextlib import contextmanager
 from pathlib import Path
 
 
+def _link_exclusive(source: str, destination: str, parent: int) -> None:
+    os.link(
+        source,
+        destination,
+        src_dir_fd=parent,
+        dst_dir_fd=parent,
+        follow_symlinks=False,
+    )
+
+
 def publish_exclusive(
     path: Path,
     data: bytes,
@@ -25,6 +35,7 @@ def publish_exclusive(
     parent_fd = -1
     current_fd = -1
     stage = f".{path.name}.{uuid.uuid4().hex}.emrys-stage"
+    displaced: str | None = None
     try:
         parent_fd = os.open(
             path.parent,
@@ -50,13 +61,7 @@ def publish_exclusive(
             os.fsync(stream.fileno())
             stage_state = os.fstat(stream.fileno())
         if replace_expected is None:
-            os.link(
-                stage,
-                path.name,
-                src_dir_fd=parent_fd,
-                dst_dir_fd=parent_fd,
-                follow_symlinks=False,
-            )
+            _link_exclusive(stage, path.name, parent_fd)
         else:
             current_fd = os.open(
                 path.name,
@@ -69,23 +74,47 @@ def publish_exclusive(
             current_state = os.fstat(current_fd)
             if not stat.S_ISREG(current_state.st_mode):
                 raise error(f"Refusing to replace changed file: {path}")
-            with os.fdopen(os.dup(current_fd), "rb") as current:
-                current_data = current.read(len(replace_expected) + 1)
-            current_path_state = os.stat(
-                path.name, dir_fd=parent_fd, follow_symlinks=False
-            )
-            if (
-                stat_identity(current_state) != stat_identity(current_path_state)
-                or current_data != replace_expected
-            ):
+            current_data = os.pread(current_fd, len(replace_expected) + 1, 0)
+            if current_data != replace_expected:
                 raise error(f"Refusing to replace changed file: {path}")
-            os.replace(stage, path.name, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
+            displaced = f"{stage}.displaced"
+            os.rename(
+                path.name,
+                displaced,
+                src_dir_fd=parent_fd,
+                dst_dir_fd=parent_fd,
+            )
+            moved = os.stat(displaced, dir_fd=parent_fd, follow_symlinks=False)
+            same_file = os.path.samestat(current_state, moved)
+            same_data = os.pread(current_fd, len(replace_expected) + 1, 0)
+            if not same_file or same_data != replace_expected:
+                try:
+                    _link_exclusive(displaced, path.name, parent_fd)
+                except FileExistsError as exc:
+                    raise error(
+                        f"Refusing to replace changed file; competing file retained at "
+                        f"{path.parent / displaced}"
+                    ) from exc
+                os.unlink(displaced, dir_fd=parent_fd)
+                displaced = None
+                os.fsync(parent_fd)
+                raise error(f"Refusing to replace changed file: {path}")
+            try:
+                _link_exclusive(stage, path.name, parent_fd)
+            except FileExistsError as exc:
+                os.unlink(displaced, dir_fd=parent_fd)
+                displaced = None
+                os.fsync(parent_fd)
+                raise error(f"Refusing to replace changed file: {path}") from exc
         final_state = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
         if (stage_state.st_dev, stage_state.st_ino) != (
             final_state.st_dev,
             final_state.st_ino,
         ):
             raise error(f"Publication did not retain the staged file: {path}")
+        if displaced is not None:
+            os.unlink(displaced, dir_fd=parent_fd)
+            displaced = None
         try:
             os.unlink(stage, dir_fd=parent_fd)
         except FileNotFoundError:

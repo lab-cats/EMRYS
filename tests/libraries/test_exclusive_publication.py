@@ -41,6 +41,32 @@ def test_publish_replaces_only_the_exact_admitted_file(tmp_path: Path) -> None:
     assert target.read_bytes() == b"new selection\n"
 
 
+def test_publish_replacement_preserves_a_concurrent_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "runtime.tsv"
+    target.write_bytes(b"old selection\n")
+    rename = os.rename
+
+    def race(source: str, destination: str, **kwargs: object) -> None:
+        target.unlink()
+        target.write_bytes(b"competing selection\n")
+        rename(source, destination, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(os, "rename", race)
+
+    with pytest.raises(ClaimError, match="changed file"):
+        publication.publish_exclusive(
+            target,
+            b"new selection\n",
+            ClaimError,
+            replace_expected=b"old selection\n",
+        )
+
+    assert target.read_bytes() == b"competing selection\n"
+    assert not tuple(tmp_path.glob(".*.emrys-stage*"))
+
+
 @pytest.mark.parametrize("changed", ("symlink", "fifo"))
 def test_publish_replacement_refuses_nonregular_target(
     tmp_path: Path, changed: str
