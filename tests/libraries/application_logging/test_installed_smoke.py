@@ -69,7 +69,7 @@ def test_clean_installed_scheduler_delegate_owns_one_attempt_and_separates_strea
     assert scheduler_out.read_text(encoding="utf-8") == "machine\n"
     assert "Subprocess event." in stderr_text
     path = log_root / "run-run-1/attempt-1/smoke.jsonl"
-    assert stderr_text.count(str(path)) == 1
+    assert str(path) not in stderr_text
     assert list(log_root.rglob("*.jsonl")) == [path]
     records = [json.loads(line) for line in path.read_text().splitlines()]
     assert [record["event"] for record in records] == [
