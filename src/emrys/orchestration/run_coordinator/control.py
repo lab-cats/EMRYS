@@ -630,9 +630,7 @@ def _next_supported_action(observed: inspection.RunInspection) -> str:
         return "Preserve this Run; review the latest Attempt receipt. Do not generate reports."
     if observed.results_status == "complete":
         if observed.reporting_status == "not applicable":
-            return (
-                "Inspect this Run's verified scientific artifacts with --verbose."
-            )
+            return "Inspect this Run's verified scientific artifacts with --verbose."
         if observed.reporting_status == "complete":
             return "Review the verified Results and report paths."
         return f"Generate reports with {_run_followup('report', observed.run_root, observed.run_id, '--execute')}."
@@ -1254,7 +1252,8 @@ def _print_plan(
     project_label = plan.run.analysis.source_path.parent.name
     console_print(f"Project: {project_label!a}", style="bold")
     console_print(f"Analysis: {plan.run.analysis.name!a}", style="blue")
-    console_print(f"Run: {inspection.human_run_name(plan.run.run_id)}", style="bold blue")
+    run_name = inspection.human_run_name(plan.run.run_id)
+    console_print(f"Run: {run_name}", style="bold blue")
     full_analysis = _reporting_applicable(plan)
     if full_analysis:
         boundary = "complete analysis"
@@ -1274,27 +1273,22 @@ def _print_plan(
             "processing_source"
         )
     ) is not None:
-        console_print(
-            f"Processing source: {inspection.human_run_name(processing_source['source_run_id'])}",
-        )
-    console_print(f"Work: {plan.new_task_count} pending, {reused} reusable", style="yellow" if plan.new_task_count else "green")
-    console_print(f"Reporting: {reporting}", style="green" if report_enabled else "yellow")
+        source_id = processing_source["source_run_id"]
+        console_print(f"Processing source: {inspection.human_run_name(source_id)}")
+    console_print(f"Work: {plan.new_task_count} pending, {reused} reusable")
+    console_print(f"Reporting: {reporting}")
     if verbose:
-        console_print(f"Run ID: {plan.run.run_id}")
-        if processing_source is not None:
-            console_print(
-                f"Processing source Run ID: {processing_source['source_run_id']}",
-            )
-        console_print(
+        details = [
+            f"Run ID: {plan.run.run_id}",
             f"Analysis revision: {plan.run.analysis.revision.analysis_revision_id}",
-        )
-        console_print(
             f"Execution Plan ID: {plan.run.execution_plan.execution_plan_id}",
-        )
-        console_print(f"Run root: {plan.run_root}")
-        console_print(
+            f"Run root: {plan.run_root}",
             f"Resources: {resources.workflow_cores} cores, {resources.workflow_memory_mb} MiB",
-        )
+        ]
+        if processing_source is not None:
+            details.insert(1, f"Processing source Run ID: {source_id}")
+        for line in details:
+            console_print(line)
         console_print("Step thread allocations:")
         for step_id, threads in resources.step_threads:
             console_print(f"  Step {step_id}: {threads}")
@@ -1480,6 +1474,8 @@ def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
         metavar="REQUEST",
         help="Inspect one exact request directory name or absolute path and query its scheduler state; excludes a Run selector.",
     )
+
+
 def configure_stop_parser(parser: argparse.ArgumentParser) -> None:
     onboarding.add_project_argument(parser)
     parser.add_argument(
@@ -2215,7 +2211,8 @@ def inspect_from_args(
         slurm_submission.SlurmSubmissionError,
     ) as exc:
         return _control_failure(exc)
-    console_print(f"Run: {inspection.human_run_name(run_root.name)}", style="bold blue", file=sys.stdout)
+    present = partial(console_print, file=sys.stdout)
+    present(f"Run: {inspection.human_run_name(run_root.name)}", style="bold blue")
     if applications is not None:
         for line in _inspection_presentation.run_application_lines(
             applications, detail=detail
@@ -2244,7 +2241,7 @@ def inspect_from_args(
             f"{inspection.human_run_name(observed.processing_source_run_id)} "
             f"({source_state})"
         )
-    console_print("Scientific milestones", style="bold blue", file=sys.stdout)
+    present("Scientific milestones:", style="bold blue")
     for label, state, verified, total in milestones:
         print(f"  {label}: {state}")
         if detail != "normal":
@@ -2392,8 +2389,11 @@ def inspect_from_args(
     ):
         for blocker in blockers:
             _print_safe(f"{blocker_label}: {blocker}")
-    console_print(f"Recovery available: {'yes' if observed.recovery_available else 'no'}", style="yellow" if observed.recovery_available else None, file=sys.stdout)
-    console_print(f"Next supported action: {_next_supported_action(observed)}", style="bold", file=sys.stdout)
+    print(f"Recovery available: {'yes' if observed.recovery_available else 'no'}")
+    present(
+        f"Next supported action: {_next_supported_action(observed)}",
+        style="bold",
+    )
     for line in result_lines:
         _print_safe(line)
     return 0

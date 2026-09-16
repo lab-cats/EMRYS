@@ -13,6 +13,7 @@ import hashlib
 import uuid
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
+from functools import partial
 from pathlib import Path
 
 import yaml
@@ -709,7 +710,8 @@ def _print_project_preview(
         print(f"  target change: {settings['rna_ref']}>{settings['rna_alt']}")
         for name, value in settings.items():
             if name not in {"rna_ref", "rna_alt"}:
-                print(f"  {name.replace('_', ' ')}: {'none' if value is None else value}")
+                label = name.replace("_", " ")
+                print(f"  {label}: {'none' if value is None else value}")
     flags = command_flags(
         *(
             (name.replace("_", "-"), value)
@@ -734,6 +736,7 @@ def _print_project_preview(
 def init_project_from_args(arguments: argparse.Namespace) -> int:
     """Plan or create one validated Project root around existing inputs."""
 
+    present = partial(console_print, file=sys.stdout)
     try:
         answers = _collect_project_answers(arguments)
         execution_profile_bytes = project_default_profile_bytes(
@@ -763,13 +766,18 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         analysis = preview.select_analysis()
         source = analysis.workflow_inputs
         samples = source["samples"]["rows"]
-        console_print("Project preparation", style="bold blue", file=sys.stdout)
-        print(f"  Output directory: {output}")
-        print(f"  Libraries ({len(samples)}): {', '.join(str(row['sample_id']) for row in samples)}")
-        print(f"  Analysis: {analysis.name}; site: {getattr(arguments, 'site', None) or 'direct'}")
-        print(f"  Reference: {source['reference']['fasta']['path']}")
-        print(f"  Partitions: {len(source['partitions']['rows'])}")
-        print(f"  Comparison: {answers['control_condition']} -> {answers['treatment_condition']}; target {answers['target_change']}")
+        libraries = ", ".join(str(row["sample_id"]) for row in samples)
+        site = getattr(arguments, "site", None) or "direct"
+        present("Project preparation", style="bold blue")
+        print(
+            f"  Output directory: {output}",
+            f"  Libraries ({len(samples)}): {libraries}",
+            f"  Analysis: {analysis.name}; site: {site}",
+            f"  Reference: {source['reference']['fasta']['path']}",
+            f"  Partitions: {len(source['partitions']['rows'])}",
+            f"  Comparison: {answers['control_condition']} -> {answers['treatment_condition']}; target {answers['target_change']}",
+            sep="\n",
+        )
         if not arguments.execute:
             _print_project_preview(
                 preview,
@@ -777,7 +785,7 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
                 getattr(arguments, "site", None),
                 verbose=getattr(arguments, "verbose", False),
             )
-            console_print("Dry-run complete; no files were written.", style="yellow", file=sys.stdout)
+            present("Dry-run complete; no files were written.", style="yellow")
             return 0
         publish_create_absent_tree(
             output,
@@ -793,7 +801,7 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         )
         with phase_progress("Verifying the published Project"):
             validate_project(output / "project.yaml")
-        console_print(f"Project ready: {output / 'project.yaml'}", style="green", file=sys.stdout)
+        present(f"Project ready: {output / 'project.yaml'}", style="green")
         return 0
     except (
         OSError,
@@ -1168,17 +1176,14 @@ def validate_from_args(arguments: argparse.Namespace) -> int:
         OnboardingError,
         orchestration_contracts.ContractValidationError,
     ) as exc:
-        console_print(
-            f"Project validation: FAIL — {exc}", style="red", file=sys.stderr
-        )
+        console_print(f"Project validation: FAIL — {exc}", style="red", file=sys.stderr)
         return 1
-    project = result.project
-    reference = project.analyses[0].workflow_inputs["reference"]
     verbose = getattr(arguments, "verbose", False)
-    warning = f" — {len(result.gtf_warnings)} warning(s); use --verbose for details" if result.gtf_warnings and not verbose else ""
-    console_print(f"Project validation: PASS{warning}", style="yellow" if warning else "green", file=sys.stdout)
+    console_print("Project validation: PASS", style="green", file=sys.stdout)
     if not verbose:
         return 0
+    project = result.project
+    reference = project.analyses[0].workflow_inputs["reference"]
     print(f"  Project: {project.source_path}")
     print(f"  Project SHA-256: {project.source_sha256}")
     print(f"  Samples: {result.sample_count}")

@@ -34,6 +34,7 @@ class LogControls:
         if self.root_source not in ("command_line", "environment", "default"):
             raise LogControlError("log-control source is invalid")
 
+
 class _UniqueControl(argparse.Action):
     def __call__(
         self,
@@ -84,10 +85,9 @@ def resolve_log_controls(
 ) -> LogControls:
     """Resolve command line, environment, then the operation-owned default."""
 
-    environ = dict(os.environ if environment is None else environment)
     default_root = _absolute_path(default_root)
     root, root_source = resolve_log_root(
-        cli_root=cli_root, environment=environ, default_root=default_root
+        cli_root=cli_root, environment=environment, default_root=default_root
     )
     return LogControls(verbose, root, root_source)
 
@@ -101,18 +101,11 @@ def resolve_log_root(
     """Resolve one search or writing root without inspecting or creating it."""
 
     environ = os.environ if environment is None else environment
-    value, source = _select(
-        cli_root, environ.get(EMRYS_LOG_ROOT), _absolute_path(default_root)
-    )
-    return _absolute_path(value), source
-
-
-def _select(
-    cli: object | None, env: object | None, default: object
-) -> tuple[object, ControlSource]:
-    if cli is not None:
-        return cli, "command_line"
-    return (env, "environment") if env is not None else (default, "default")
+    if cli_root is not None:
+        return _absolute_path(cli_root), "command_line"
+    if (environment_root := environ.get(EMRYS_LOG_ROOT)) is not None:
+        return _absolute_path(environment_root), "environment"
+    return _absolute_path(default_root), "default"
 
 
 def _nonempty(value: object) -> str:

@@ -1460,9 +1460,7 @@ def test_project_validation_summary_is_analysis_module_neutral(
         == 0
     )
     normal = capsys.readouterr().out
-    assert normal.splitlines() == [
-        "Project validation: PASS — 1 warning(s); use --verbose for details"
-    ]
+    assert normal.splitlines() == ["Project validation: PASS"]
     assert (
         onboarding.validate_from_args(
             argparse.Namespace(project=project_path, verbose=True)
@@ -1483,7 +1481,10 @@ def test_project_validation_reports_invalid_project(
     assert (
         onboarding.validate_from_args(argparse.Namespace(project=missing_request)) == 1
     )
-    assert "Project validation: FAIL — Project definition is unavailable" in capsys.readouterr().err
+    assert (
+        "Project validation: FAIL — Project definition is unavailable"
+        in capsys.readouterr().err
+    )
 
 
 @pytest.mark.parametrize("invocation_directory", ("checkout", "projects_parent"))

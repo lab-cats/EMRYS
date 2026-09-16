@@ -171,8 +171,8 @@ def test_attempt_writes_exact_schema_to_protected_path_before_stderr(
     assert records[0]["fields"] == {
         "entrypoint": "emrys-run",
         "execution_attempt_id": "attempt-1",
-            "log_level": "verbose",
-            "log_level_source": "command_line",
+        "log_level": "verbose",
+        "log_level_source": "command_line",
         "log_root_source": "command_line",
         "log_path": str(path),
         "scope": "run:run-7",

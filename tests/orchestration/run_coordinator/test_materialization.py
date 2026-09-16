@@ -6192,9 +6192,12 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert "Attempt receipt:" in verbose_output
     assert "Run authority records:" in verbose_output
     assert (
-        f"SHA-256={completed.authority.analysis_revision.record_sha256}" in verbose_output
+        f"SHA-256={completed.authority.analysis_revision.record_sha256}"
+        in verbose_output
     )
-    assert f"SHA-256={completed.authority.execution_plan.record_sha256}" in verbose_output
+    assert (
+        f"SHA-256={completed.authority.execution_plan.record_sha256}" in verbose_output
+    )
     assert f"SHA-256={completed.authority.run_binding.record_sha256}" in verbose_output
     assert "Effective plan: backend=local; engine=snakemake" in verbose_output
     assert "TASK " in verbose_output

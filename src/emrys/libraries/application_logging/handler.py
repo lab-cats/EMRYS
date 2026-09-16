@@ -178,7 +178,9 @@ class AttemptLog:
                 "entrypoint": field(identity.entrypoint),
                 "execution_attempt_id": field(identity.execution_attempt_id),
                 "log_level": field("verbose" if controls.verbose else "normal"),
-                "log_level_source": field("command_line" if controls.verbose else "default"),
+                "log_level_source": field(
+                    "command_line" if controls.verbose else "default"
+                ),
                 "log_root_source": field(controls.root_source),
                 "log_path": field(str(self.path), console=True),
                 "scope": field(f"{identity.scope_kind}:{identity.scope_id}"),

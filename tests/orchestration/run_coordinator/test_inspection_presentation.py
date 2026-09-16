@@ -159,7 +159,7 @@ def test_recorded_application_outcomes_are_dated_escaped_diagnostics_in_all_view
             outcome is not None
         )
         if outcome:
-            assert f"  {application.application_log}" in lines
+            assert (f"  {application.application_log}" in lines) is (detail != "normal")
     assert application.status == "run-and-attempt-associated"
     assert application.workflow_attempt_id == "workflow-earlier"
 
