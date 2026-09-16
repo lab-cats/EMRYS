@@ -78,8 +78,32 @@ authority.
 ## Watch one fixed selection
 
 The dashboard offers the legacy overview and detail screens plus verified
-Run evidence and selected logs. For a submitted Project request, including
-before its Run exists:
+Run evidence and selected logs. From a Project, the ordinary command selects
+the sole retained submission before its Run exists, or the sole Run afterward:
+
+```bash
+emrys watch
+```
+
+Several plausible selections open a terminal picker. Noninteractive use must
+provide an exact selector; EMRYS never selects the newest Run or request. A Run
+name or ID uses Project evidence. A numeric ID or exact scheduler name selects
+scheduler diagnostics:
+
+```bash
+emrys watch international-jackrabbit
+emrys watch 12345
+emrys watch emrys-local-pilot-EXACT_REQUEST_TOKEN
+```
+
+When `EMRYS_PROJECTS_ROOT` names the canonical Projects home, `emrys watch`
+can be started from another directory. It scans only immediate Project children,
+selects one available Run, or opens the same picker. This is read-only discovery,
+not a registry or current/latest marker. An exact `--project` also works from
+any directory.
+
+For a submitted Project request selected explicitly, including before its Run
+exists:
 
 ```bash
 emrys inspect --project "$EMRYS_PROJECT_ROOT" --submission "submission-EXACT_TOKEN" --watch
@@ -99,7 +123,8 @@ emrys inspect --snapshot --job-id 12345 --log-dir /absolute/scheduler/logs
 emrys inspect --snapshot --job-id 12345 --offline --out /absolute/scheduler/logs/emrys-local-pilot-12345.out --err /absolute/scheduler/logs/emrys-local-pilot-12345.err
 ```
 
-Without a current `project.yaml`, plain `emrys inspect --watch` also discovers
+Without a current Project, declared Projects home, or explicit selector, plain
+`emrys watch` and `emrys inspect --watch` discover
 a current-user EMRYS job. Discovery checks live jobs and bounded recent
 accounting; it never scans storage for a newest log. Explicit IDs never fall
 back to another job. `EMRYS_DASHBOARD_JOB_ID` and `EMRYS_DASHBOARD_LOG_DIR` are
@@ -123,6 +148,9 @@ placement and batch usage. Counts come from the reported invocation; unknown
 counts stay unknown. Logs describe observed workflow activity and cannot prove
 scientific completion. Resource maxima are per-task batch-step observations,
 not total job I/O or whole-process memory. Read their observation dates.
+When admitted Run evidence establishes completed Results, its verified Task
+counts replace stale diagnostic stage counts and the view announces completion.
+Scheduler completion and log text alone never produce that announcement.
 
 Automatic refresh checks scheduler diagnostics and stream updates every 30
 seconds; `--refresh SECONDS` accepts intervals of at least five seconds. A
@@ -487,6 +515,11 @@ completion unverified` records a start, not proof that its worker still runs.
 `No admitted start` may reflect absent or invalid records. Read printed blockers
 before choosing an action; neither count overrides the four completion lines
 or inspection's recovery decision.
+
+`emrys watch` uses the same Run picker and inspection authority. A successful
+Slurm submission is labelled **submitted** and returns before completion;
+`watch` and `inspect` announce completion only after current Run evidence admits
+the successful Attempt, complete Results, and applicable reporting state.
 
 Selected submission inspection also prints the retained scheduler name for new
 v3 requests and requires that exact name in scheduler metadata. Older requests

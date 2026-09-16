@@ -144,24 +144,36 @@ if you need to diagnose setup.
 emrys run
 ```
 
-Review the submission summary and answer `y` once. Slurm runs the Analysis and
-both reports on a compute node. Save the printed job number and log paths. The
-head-node prompt returns while Slurm continues; you may disconnect without
-stopping the submitted Run.
+Review the short submission summary and answer `y` once. EMRYS prints `JOB_ID`,
+`JOB_NAME` and the log paths, then says that the Slurm job was submitted and
+completion is not yet verified. The head-node prompt returns while Slurm runs
+the Analysis and reports; you may disconnect without stopping it. Submit once
+and keep the Project and its inputs in place.
 
-Check the Run from the head node:
+Watch progress from the Project on the head node:
 
 ```bash
-emrys inspect
+emrys watch
 ```
 
-Inspection shows the retained submission and any available Run. A queued job
-may not have created its Run yet. **No Run shown is not a reason to submit
-again.** Keep the job number and request record, wait, and inspect again.
-Inspection does not start or change work. If the job's state stays unclear,
-use the [exact-request check](docs/operations/RUNBOOK.md#retain-a-submission-before-its-run-exists)
-before deciding what to do.
-Completion is confirmed by all four lines:
+With one retained submission or one Run, EMRYS selects it automatically. If
+several are plausible, choose the intended one from the picker; EMRYS never
+assumes the newest. You can instead use the exact printed
+job ID or job name, for example `emrys watch 12345`. Press `r` to recheck the
+fixed selection and its evidence; press `q` to leave. Leaving the dashboard
+does not stop the job.
+
+A queued job may not have created its Run yet. **No Run shown is not a reason
+to submit again.** Keep the job number and request record, wait, and watch
+again. A retained response or scheduler observation does not prove completion.
+If the job's state stays unclear, use the
+[exact-request check](docs/operations/RUNBOOK.md#retain-a-submission-before-its-run-exists).
+An `UNKNOWN` observation remains unresolved.
+
+The dashboard and static inspection announce `Run complete` only from admitted
+Run evidence. When Results are complete, verified Task counts replace stale
+log-derived stage counts. Read the evidence dates before relying on the display.
+Completion is confirmed by the announcement and all four lines:
 
 ```text
 Run admission: valid
@@ -335,13 +347,13 @@ Keep the printed job number and log paths. From the same Project on the head
 node, check progress with:
 
 ```bash
-emrys inspect
+emrys watch
 ```
 
 A queued job has not created its Run yet. Keep the retained submission request
 shown by inspection; an absent Run does not authorize another submission. Once
 the Run appears, repeat inspection until the four completion lines shown in
-step 4 appear. Inspection prints both
+step 4 appear. Static `emrys inspect` prints both
 report paths. Copy this Run's complete `results` directory to your computer
 and open its Scientific and Evidence reports using the instructions in step 5.
 

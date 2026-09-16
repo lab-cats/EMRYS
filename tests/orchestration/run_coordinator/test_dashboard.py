@@ -1175,6 +1175,39 @@ def test_auto_discovery_skips_unprovable_candidate(
     assert attempted == [605305, 605304]
 
 
+def test_exact_job_name_selection_reuses_scheduler_identity_owner(monkeypatch):
+    selected = {"job_id": JOB_ID, "out": "/logs/out", "err": "/logs/err"}
+    monkeypatch.setattr(
+        dashboard,
+        "scheduler_candidates",
+        lambda: [{"job_id": JOB_ID, "job_name": "emrys-request", "accounting": None}],
+    )
+    observed = []
+
+    def select(job_id, **options):
+        observed.append((job_id, options))
+        return selected
+
+    monkeypatch.setattr(dashboard, "scheduler_selection", select)
+    assert dashboard.resolve_named_selection("emrys-request") is selected
+    assert observed == [
+        (JOB_ID, {"accounting_metadata": None, "job_name": "emrys-request"})
+    ]
+
+
+def test_exact_job_name_selection_refuses_ambiguous_ids(monkeypatch):
+    monkeypatch.setattr(
+        dashboard,
+        "scheduler_candidates",
+        lambda: [
+            {"job_id": 41, "job_name": "emrys-request", "accounting": None},
+            {"job_id": 42, "job_name": "emrys-request", "accounting": None},
+        ],
+    )
+    with pytest.raises(dashboard._scheduler.DiscoveryError, match="ambiguous"):
+        dashboard.resolve_named_selection("emrys-request")
+
+
 def test_auto_discovery_uses_accounting_declared_completed_streams(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

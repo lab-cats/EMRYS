@@ -114,11 +114,11 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Completed |
 | [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Verification pending |
 | [CV-U12](#cv-u12-duplicate-submission-warning) | Warn before accidental duplicate submission | Open |
-| [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Open |
+| [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Verification pending |
 | [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Open |
 | [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Open |
 | [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Open |
-| [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Open |
+| [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Verification pending |
 | [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Open |
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Open |
 | [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
@@ -132,8 +132,8 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U28](#cv-u28-historical-stage-configuration-and-wall-time) | Restore benchmark-derived stage settings and wall-time performance | Verification pending |
 | [CV-U29](#cv-u29-early-inspect-and-dashboard-feedback) | Show useful information before monitoring fully populates | Open |
 | [CV-U30](#cv-u30-dashboard-color-and-pane-layout) | Restore dashboard colors and readable pane layout | Open |
-| [CV-U31](#cv-u31-dashboard-automatic-run-selection) | Select the current Run without parameters; record lost functionality | Open |
-| [CV-U32](#cv-u32-dashboard-independent-of-working-directory) | Open the dashboard from outside the Project directory | Open |
+| [CV-U31](#cv-u31-dashboard-automatic-run-selection) | Select the current Run without parameters; record lost functionality | Verification pending |
+| [CV-U32](#cv-u32-dashboard-independent-of-working-directory) | Open the dashboard from outside the Project directory | Verification pending |
 | [CV-U33](#cv-u33-dashboard-resource-usage) | Restore resource-usage display and preserve the wall-time objective | Open |
 
 ### CV-U01 CLI color and readability
@@ -414,6 +414,21 @@ through `emrys watch`. The braces and alternatives express the user's proposed
 interface, not a paste-ready command. Additional identifiers and final command
 syntax remain unspecified.
 
+**Implemented software outcome:** `emrys watch [RUN_OR_JOB]` now enters the
+existing inspection watch owner. From a Project it automatically selects the
+sole retained submission before Run creation or the sole Run afterward; an
+ambiguous selection uses the existing terminal picker and fails explicitly for
+noninteractive use. Numeric scheduler IDs and exact scheduler names reuse the
+bounded scheduler discovery and identity checks. Run submission prints both
+identifiers, labels the result submitted rather than complete, and prints the
+exact job-ID watch command. Quickstart now makes the parameter-free Project
+command the ordinary progress step.
+
+**Verification and limit:** Focused selector, scheduler-name, presentation and
+public-parser checks pass locally. Scheduler-name selection still requires one
+exact current-user root allocation; duplicate names require the numeric ID.
+Viking terminal use remains pending, so the card is Verification pending.
+
 ### CV-U14 Dashboard logs
 
 **Operator instruction:** “Logs in dashboard should also be friendlier and not
@@ -457,6 +472,22 @@ remained **pending**, displaying **`1/?`**, after the operator reported successf
 job completion. The step display and overall completion state must agree. The
 cause and underlying scheduler/Run records were not examined during collection;
 the report does not independently establish scientific or report completion.
+
+**Implemented software outcome:** Direct execution prints completion after its
+successful Attempt and applicable report verification. Slurm submission instead
+prints `Submitted` and says completion is not yet verified. Static inspection
+and watch share one completion projection from admitted Run evidence. When that
+evidence establishes complete Results, the dashboard replaces stale log-derived
+stage counts with verified Task counts, clears diagnostic active work and shows
+the applicable reporting/finalization state. Scheduler state and log text alone
+cannot produce the completion message.
+
+**Verification and limit:** The reported Step 09/10 shape is covered by a fixture
+whose diagnostic trace has `1/?`-equivalent missing totals while Run evidence
+verifies both tasks and reporting; the dashboard renders both stages `1/1 DONE`
+and announces completion. Focused checks pass locally. The original Viking Run
+records were not supplied, so its historical cause remains uncharacterized and
+institutional display acceptance is pending.
 
 ### CV-U18 Interactive input-list creation
 
@@ -857,6 +888,21 @@ they are not a verified complete regression inventory. No comparison was
 performed during this recording task, and no new rule for ambiguous selections
 was chosen.
 
+**Implemented selection:** The ordinary watch command reuses the existing Run
+locator. One Run is selected without parameters; several Runs open a picker and
+automation must provide an exact human name, full ID or unique prefix. Retained
+submissions use the same one-or-picker rule before Run creation. No timestamp,
+directory order or scheduler text chooses a latest Run.
+
+**Regression inventory:** Source comparison confirms that installed watch still
+reuses the legacy overview/detail renderer, pipeline history, sample lanes,
+timings, activity, scheduler discovery, historical accounting, offline streams,
+refresh control and resource fields. The reported color/layout regression is
+CV-U30, resource visibility is CV-U33, mouse behavior is CV-U16, log styling is
+CV-U14 and action wording is CV-U15. No additional lost legacy behavior was
+identified in this bounded source audit; Viking/operator comparison remains
+required, so completeness is not claimed and the card is Verification pending.
+
 ### CV-U32 Dashboard independent of working directory
 
 **Operator instruction:** “Should not need to be in the specific project dir to
@@ -867,6 +913,31 @@ selected Project's directory. Changing into a particular Project directory must
 not be an ordinary prerequisite. This requirement coexists with automatic
 selection (CV-U31) and explicit selection (CV-U13); the Project-discovery
 mechanism was not specified in this discussion.
+
+**Implemented discovery:** `EMRYS_PROJECTS_ROOT`, already used by the operator
+journey, now supplies a bounded read-only discovery root. Watch inspects at most
+256 immediate children, admits only canonical real Project definitions and Run
+directories, and then applies the same sole-selection/picker rules. It creates
+no registry, selected-Project file or mutable state. `--project` remains the
+exact alternative from any directory. CV-U07 still owns creation and the final
+location of the Projects home; this card consumes that declared path without
+creating it or moving existing Projects.
+
+**Verification and limit:** Focused cases cover one Project, multiple Projects,
+ambiguous noninteractive use and invocation without a current directory Project.
+No institutional filesystem or terminal exercise ran; the card is Verification
+pending.
+
+**Tranche consolidation and accounting:** The four cards add no production
+file, schema, dependency, configuration record or mutable selection state.
+`watch` routes through the existing inspection/dashboard owner, static and live
+completion share one projection, and one terminal-selection helper replaces the
+duplicated picker mechanics. The expert `inspect` surface and legacy dashboard
+parser/renderer remain necessary owners, so this bounded audit found no complete
+production surface that these cards safely supersede. The current source-code
+diff is 385 insertions and 42 deletions, a net increase of 343 lines; committing
+that quantified exception requires the repository-owner approval recorded with
+this tranche.
 
 ### CV-U33 Dashboard resource usage
 

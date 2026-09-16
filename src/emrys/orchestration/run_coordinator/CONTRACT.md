@@ -52,6 +52,15 @@ terminal offers an exact choice when several exist. Automation must provide an
 unambiguous selector. EMRYS never infers the latest Run. The human name is
 presentation only; the content-derived Run ID remains authority.
 
+`emrys watch` reuses this selector and inspection owner. From a Project it
+selects the sole Run or, before any Run exists, the sole retained submission;
+ambiguity opens the existing terminal picker and fails in noninteractive use.
+`EMRYS_PROJECTS_ROOT` permits the same Run selection from another directory by
+enumerating only immediate canonical Project children. It is not persistent
+selection state and never authorizes a newest-Run inference. Numeric selectors
+and exact scheduler names use diagnostic scheduler selection without admitting
+a Project or Run from scheduler text.
+
 ## No-write and publication boundaries
 
 `emrys init PROJECT_NAME` is dry-run-first and publishes only with `--execute`
@@ -317,6 +326,8 @@ Neither the response nor record timestamps establish acceptance, current state,
 Run association or process absence. No scheduler query or file write occurs.
 A Project with no Runs still displays its request roster successfully;
 explicit Run selection retains its existing missing/ambiguous selection errors.
+Submission prints its exact scheduler ID and name and labels the outcome
+submitted; only subsequent admitted Run inspection can announce completion.
 
 `inspect --submission REQUEST` selects one exact retained directory name or
 absolute path, mutually exclusive with a Run selector. The ordinary roster

@@ -267,6 +267,12 @@ def build_parser() -> argparse.ArgumentParser:
             "Inspect one Project-local Run without mutation.",
         ),
         (
+            "watch",
+            run_coordinator_control_command,
+            "watch",
+            "Watch the current Run or an exact scheduler job.",
+        ),
+        (
             "stop",
             run_coordinator_control_command,
             "stop",

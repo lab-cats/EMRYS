@@ -64,6 +64,18 @@ def reporting_observation(records: Mapping[str, object]) -> str:
     return "No admitted start"
 
 
+def completion_line(observed: RunInspection) -> str | None:
+    """State verified completion without promoting scheduler or log observations."""
+
+    if observed.attempt_outcome != "succeeded" or observed.results_status != "complete":
+        return None
+    if observed.reporting_status == "complete":
+        return "Run complete: scientific Results and reporting are verified."
+    if observed.reporting_status == "not applicable":
+        return "Run complete: requested scientific work is verified."
+    return f"Scientific work complete; reporting is {observed.reporting_status}."
+
+
 def milestone_progress(
     tasks: tuple[TaskInspection, ...],
     *,
@@ -659,6 +671,8 @@ def render_snapshot(
             attempt_elapsed_line(observed, now=snapshot.verified_at or now)
             + " (latest Run Attempt; elapsed at dated verification)"
         )
+        if completion := completion_line(observed):
+            lines.append(completion)
         milestones = milestone_progress(
             observed.tasks,
             processing_source_state=None
@@ -775,12 +789,36 @@ def render_dashboard(
             else "unbound"
         )
     )
+    workflow = snapshot.workflow or dashboard.parse_workflow("")
+    identity = dict(snapshot.control_identity or {})
+    if snapshot.observed is not None:
+        if completion := completion_line(snapshot.observed):
+            identity["verified_status"] = completion
+        if snapshot.observed.results_status == "complete":
+            workflow = {
+                **workflow,
+                "active": {},
+                "done": dict(workflow["done"]),
+                "expected": dict(workflow["expected"]),
+            }
+            counts = Counter(task.expected.step_id for task in snapshot.observed.tasks)
+            for key in dashboard.STAGE_BY_KEY:
+                if key not in {"REPORT", "FINAL"}:
+                    workflow["expected"][key] = counts.get(key, 0)
+                    workflow["done"][key] = counts.get(key, 0)
+            if snapshot.observed.reporting_status in {"complete", "not applicable"}:
+                workflow["expected"]["REPORT"] = int(
+                    snapshot.observed.reporting_status == "complete"
+                )
+                workflow["done"]["REPORT"] = workflow["expected"]["REPORT"]
+                workflow["expected"]["FINAL"] = 1
+                workflow["done"]["FINAL"] = 1
     dashboard.render(
         canvas,
         job_id,
         snapshot.scheduler or {"state": "QUERYING"},
-        snapshot.control_identity or {},
-        snapshot.workflow or dashboard.parse_workflow(""),
+        identity,
+        workflow,
         refresh_seconds,
         time.monotonic()
         - max(0, (datetime.now(UTC) - snapshot.trace_at).total_seconds())

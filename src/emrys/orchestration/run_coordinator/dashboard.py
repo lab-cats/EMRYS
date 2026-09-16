@@ -536,14 +536,15 @@ def scheduler_candidates():
             "-u",
             user,
             "-o",
-            "%i|%T",
+            "%i|%j|%T",
         ]
     )
-    live_ids = []
+    live_jobs = {}
     for line in live.splitlines():
-        job_id = line.split("|", 1)[0].strip()
+        fields = line.split("|")
+        job_id = fields[0].strip()
         if _scheduler.JOB_ID_RE.fullmatch(job_id):
-            live_ids.append(int(job_id))
+            live_jobs[int(job_id)] = fields[1].strip() if len(fields) >= 3 else None
 
     since = (dt.date.today() - dt.timedelta(days=DISCOVERY_DAYS)).isoformat()
     recent = _scheduler.command_text(
@@ -605,12 +606,20 @@ def scheduler_candidates():
             recent_by_id[numeric_id] = record
 
     ordered = []
-    for job_id in sorted(set(live_ids), reverse=True):
-        ordered.append({"job_id": job_id, "accounting": None})
-    for job_id in sorted(set(recent_by_id) - set(live_ids), reverse=True):
+    for job_id in sorted(live_jobs, reverse=True):
+        ordered.append(
+            {"job_id": job_id, "job_name": live_jobs[job_id], "accounting": None}
+        )
+    for job_id in sorted(set(recent_by_id) - set(live_jobs), reverse=True):
         record = recent_by_id[job_id]
         if record is not None:
-            ordered.append({"job_id": job_id, "accounting": record})
+            ordered.append(
+                {
+                    "job_id": job_id,
+                    "job_name": record.get("JobName"),
+                    "accounting": record,
+                }
+            )
     return ordered[:50]
 
 
@@ -620,7 +629,11 @@ def scheduler_candidate_ids():
 
 
 def scheduler_selection(
-    job_id, log_dir=None, allow_accounting_fallback=False, accounting_metadata=None
+    job_id,
+    log_dir=None,
+    allow_accounting_fallback=False,
+    accounting_metadata=None,
+    job_name=None,
 ):
     if log_dir and not os.path.isabs(log_dir):
         raise _scheduler.DiscoveryError("LOG_DIR must be an absolute path")
@@ -630,6 +643,10 @@ def scheduler_selection(
         if accounting is None and allow_accounting_fallback:
             accounting = _scheduler.slurm_accounting_metadata(job_id)
         if accounting is not None:
+            if job_name is not None and accounting.get("JobName") != job_name:
+                raise _scheduler.DiscoveryError(
+                    "Slurm accounting job name differs from the selected name"
+                )
             accounting_out = accounting.get("StdOut")
             accounting_err = accounting.get("StdErr")
             if bool(accounting_out) != bool(accounting_err):
@@ -650,6 +667,8 @@ def scheduler_selection(
             "Slurm metadata is unavailable for job %s" % job_id
         )
     _scheduler.validate_scheduler_identity(job_id, metadata, owner_field="UserId")
+    if job_name is not None and metadata.get("JobName") != job_name:
+        raise _scheduler.DiscoveryError("Slurm job name differs from the selected name")
     state = _scheduler.normalized_job_state(metadata.get("JobState"))
     allow_missing = state in {"PENDING", "CONFIGURING"}
     scheduler_out = metadata.get("StdOut")
@@ -729,6 +748,38 @@ def resolve_selection(
     raise _scheduler.DiscoveryError(
         "no recent current-user EMRYS wrapper job could be proven%s; "
         "pass JOB_ID and LOG_DIR" % suffix
+    )
+
+
+def resolve_named_selection(job_name):
+    """Resolve one exact bounded scheduler name without guessing among matches."""
+    if (
+        not isinstance(job_name, str)
+        or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", job_name) is None
+    ):
+        raise _scheduler.DiscoveryError("JOB_NAME must be one bounded scheduler name")
+    candidates = [
+        candidate
+        for candidate in scheduler_candidates()
+        if candidate.get("job_name") == job_name
+    ]
+    if not candidates:
+        raise _scheduler.DiscoveryError(
+            "no recent current-user EMRYS wrapper job has that exact name"
+        )
+    if len(candidates) != 1:
+        ids = ", ".join(str(candidate["job_id"]) for candidate in candidates)
+        raise _scheduler.DiscoveryError(
+            f"scheduler job name is ambiguous across job IDs: {ids}; use a job ID"
+        )
+    candidate = candidates[0]
+    accounting = candidate.get("accounting")
+    if accounting and accounting.get("StdOut") and accounting.get("StdErr"):
+        return accounting_stream_selection(accounting)
+    return scheduler_selection(
+        candidate["job_id"],
+        accounting_metadata=accounting,
+        job_name=job_name,
     )
 
 
@@ -1952,6 +2003,11 @@ def overview_lines(slurm, identity, model, width):
     if state in _scheduler.TERMINAL_STATES - {"COMPLETED"}:
         state_style = "red"
     phase_number, phase_title = workflow_phase(model)
+    progress = (
+        (identity["verified_status"], "green_bold")
+        if identity.get("verified_status")
+        else (progress_line(model, width), "cyan")
+    )
     return [
         [
             ("State: ", "label"),
@@ -1961,7 +2017,7 @@ def overview_lines(slurm, identity, model, width):
             (" | Slurm time left: ", "label"),
             (slurm.get("left", "-"), "value"),
         ],
-        (progress_line(model, width), "cyan"),
+        progress,
         field_line(
             "Workflow phase", "%d/4 - %s" % (phase_number, phase_title), "value"
         ),
