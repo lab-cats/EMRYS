@@ -2134,6 +2134,7 @@ def test_standalone_dashboard_ignores_mouse_and_restores_tracking(
 ) -> None:
     stdout, stderr = _make_logs(tmp_path / "logs")
     masks, rendered = [], []
+    monkeypatch.setattr(dashboard, "init_colors", dict)
     monkeypatch.setattr(dashboard.curses, "curs_set", lambda *_args: None)
     monkeypatch.setattr(dashboard.curses, "mousemask", lambda mask: masks.append(mask))
     monkeypatch.setattr(dashboard, "render", lambda *_args: rendered.append(True))
