@@ -632,8 +632,8 @@ selector under the existing maintenance claim.
 
 **Verification:** Focused contract coverage now includes exact-file replacement,
 same-source selection replacement, preserved old seals, generation planning and
-stale-plan refusal. This slice adds 409 net product lines across five existing
-owners, 298 net test lines across four existing test files, and 91 net lines
+stale-plan refusal. This slice adds 395 net product lines across five existing
+owners, 302 net test lines across four existing test files, and 91 net lines
 across eight existing documentation/owner-contract files. It adds no product
 file, schema or dependency; the necessary growth replaces the permanent repair
 refusal with generation creation, exact selector replacement and caller-complete
