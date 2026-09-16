@@ -876,13 +876,18 @@ def _draft_manifest_members(
     step08.validate_sample_manifest_bytes(sample_bytes, "samples.tsv")
     members = {"samples.tsv": (sample_bytes, 0o644)}
     rows = []
-    for selector_type, selections in (("regions_file", regions_files), ("region", regions)):
+    for selector_type, selections in (
+        ("regions_file", regions_files),
+        ("region", regions),
+    ):
         for partition_id, (value,) in sorted(
             _indexed_values(selections, f"--{selector_type.replace('_', '-')}").items()
         ):
             if selector_type == "regions_file":
                 value = str(
-                    _admit_supplied_file(value, f"partition {partition_id} regions file")
+                    _admit_supplied_file(
+                        value, f"partition {partition_id} regions file"
+                    )
                 )
             rows.append(
                 dict(
