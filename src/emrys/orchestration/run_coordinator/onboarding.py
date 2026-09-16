@@ -814,7 +814,7 @@ def _collect_project_answers(
         for destination in fields
         if getattr(arguments, destination) is None and destination not in _STAR_FIELDS
     ]
-    interactive = sys.stdin.isatty() and sys.stderr.isatty()
+    interactive = _interactive_terminal()
     if missing and not interactive:
         raise OnboardingError(
             "missing Project setup answers: "
@@ -914,6 +914,10 @@ def _prompt(label: str, suggestion: str | None = None) -> str:
     return raw.strip() or (suggestion or "")
 
 
+def _interactive_terminal() -> bool:
+    return sys.stdin.isatty() and sys.stderr.isatty()
+
+
 def _discover_fastqs(directory: Path) -> list[Path]:
     root = _admit_existing_path(
         directory, "FASTQ directory", directory=True, canonical=True
@@ -934,7 +938,7 @@ def _discover_fastqs(directory: Path) -> list[Path]:
 def _guided_manifest_members(
     arguments: argparse.Namespace,
 ) -> dict[str, tuple[bytes, int]]:
-    interactive = sys.stdin.isatty() and sys.stderr.isatty()
+    interactive = _interactive_terminal()
     fastqs = list(getattr(arguments, "fastq", ()))
     if not fastqs:
         if not interactive:

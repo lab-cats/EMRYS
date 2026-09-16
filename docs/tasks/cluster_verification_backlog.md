@@ -1436,8 +1436,8 @@ submission transport: normal output hides transcript and scheduler-log paths,
 while `--verbose` retains them. Real narrow-PTY checks cover color and
 `NO_COLOR`, diagnostic ordering, a line boundary before `Slurm submission
 records:`, and readable zero-duration timing. Focused progress, submission and
-Slurm Doctor suites passed 418 tests locally. CV-UX-01 is **Verification pending** for
-standard CI and Viking terminal acceptance.
+Slurm Doctor suites passed 418 tests locally. CV-UX-01 is **Verification pending**
+for standard CI and Viking terminal acceptance.
 
 ## P0 outcomes
 

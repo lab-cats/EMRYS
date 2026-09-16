@@ -148,7 +148,7 @@ def test_setup_prompts_for_and_publishes_closed_cli_defaults(
     )
     assert stat.S_IMODE(saved.stat().st_mode) == 0o600
     assert "Projects home" in stderr.getvalue()
-    assert "site [viking]" in stderr.getvalue()
+    assert "site (Press ENTER for viking)" in stderr.getvalue()
     assert "log root (optional)" in stderr.getvalue()
     loaded: dict[str, str] = {}
     assert onboarding.load_saved_cli_environment(projects, loaded) == saved
@@ -440,6 +440,7 @@ def test_guided_project_preview_replays_exact_answers_without_new_prompts(
     output = projects / "reviewed-study"
     arguments = _project_arguments(study, output, execute=False)
     arguments.site = site
+    monkeypatch.delenv("EMRYS_SITE", raising=False)
     arguments.target_change = None
     arguments.mean_dp_threshold = None
     table, _, samples = step08.validate_sample_manifest(arguments.sample_manifest)
