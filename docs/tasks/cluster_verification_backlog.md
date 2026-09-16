@@ -31,6 +31,16 @@ jobs, with four configured skips, at
 ([CI 34991470527](https://github.com/lab-cats/EMRYS/actions/runs/34991470527)).
 This includes the public Doctor and selected-request accounting cases below.
 
+PR [#266](https://github.com/lab-cats/EMRYS/pull/266) head
+`abd43ff2fcf093fdabc38f5557e86a30fbb3b6c9` contains the later approved CLI,
+onboarding, resource-policy, monitoring, dashboard, runtime-reuse and timeout
+slices recorded below. Its
+[standard CI](https://github.com/lab-cats/EMRYS/actions/runs/35128503816)
+passed all 14 active jobs; four configured manual/nightly lanes were skipped.
+This is hosted software evidence. It is not a fresh Viking installation, an
+institutional scheduler/filesystem exercise, a novice walkthrough, a new
+performance benchmark, scientific review or biological validation.
+
 The covered journey includes donor science/reporting and borrower runtime
 selection/verification, actual Snakemake startup, real-backend/native-fixture
 cancellation, and public inspection around real report producers. Scientific
@@ -56,24 +66,24 @@ no supplied terminal scientific/reporting evidence.
 
 | ID | Priority | Status | Outcome |
 | --- | --- | --- | --- |
-| [CV-01](#cv-01-managed-golden-path-coverage) | P0 | Open | Managed golden path covers the cluster-discovered cases. |
+| [CV-01](#cv-01-managed-golden-path-coverage) | P0 | Verification pending | Managed golden path covers the cluster-discovered cases. |
 | [CV-02](#cv-02-individual-qualification-diagnostics) | P0 | Verification pending | Retain and surface each failed qualification check. |
 | [CV-03](#cv-03-scheduler-and-execution-failure-messages) | P0 | Verification pending | Separate submission, queue, execution, and finalization failures. |
 | [CV-04](#cv-04-workflow-startup-readiness) | P0 | Verification pending | Readiness exercises minimal actual Snakemake startup. |
 | [CV-05](#cv-05-reuse-versus-repeated-repair-work) | P0 | Completed | Explain reused state, repeated checks, and new repair work. |
 | [CV-06](#cv-06-actual-data-onboarding) | P0 | Verification pending | Provide a novice actual-data setup path. |
 | [CV-07](#cv-07-site-and-workload-profile-selection) | P0 | Verification pending | Replace manual Viking resource-profile construction. |
-| [CV-08](#cv-08-compatible-runtime-reuse) | P0 | Open | Reuse an existing compatible managed runtime across Projects. |
-| [CV-09](#cv-09-qualification-scope-and-placement) | P0 | Open | Explain and enforce the qualified execution environment. |
-| [CV-10](#cv-10-external-cancellation-and-recovery) | P0 | Open | Recover safely from externally cancelled jobs when possible. |
-| [CV-11](#cv-11-resource-profile-compatibility) | P0 | Open | Detect and explain resource profiles that cannot fit a node. |
+| [CV-08](#cv-08-compatible-runtime-reuse) | P0 | Verification pending | Reuse an existing compatible managed runtime across Projects. |
+| [CV-09](#cv-09-qualification-scope-and-placement) | P0 | Verification pending | Explain and enforce the qualified execution environment. |
+| [CV-10](#cv-10-external-cancellation-and-recovery) | P0 | Verification pending | Recover safely from externally cancelled jobs when possible. |
+| [CV-11](#cv-11-resource-profile-compatibility) | P0 | Verification pending | Detect and explain resource profiles that cannot fit a node. |
 | [CV-12](#cv-12-unexplained-initial-runtime-qualification-failure) | P0 | Open | Establish the original runtime-qualification failure's cause. |
 | [CV-13](#cv-13-expected-setup-versus-blockers) | P1 | Verification pending | Distinguish expected initial setup needs from failures. |
 | [CV-14](#cv-14-project-directory-layout) | P1 | Verification pending | Give Projects a clear home outside the source checkout. |
-| [CV-15](#cv-15-cross-node-active-run-status) | P1 | Open | Show remote active state without implying proven corruption. |
+| [CV-15](#cv-15-cross-node-active-run-status) | P1 | Verification pending | Show remote active state without implying proven corruption. |
 | [CV-16](#cv-16-monitoring-dashboard) | P1 | Verification pending | Restore an integrated view of scheduler, progress, and logs. |
 | [CV-17](#cv-17-project-creation-progress) | P1 | Verification pending | Explain lengthy input validation during Project creation. |
-| [CV-18](#cv-18-safe-emrys-stop) | P1 | Open | Provide an operator stop action with safe recovery semantics. |
+| [CV-18](#cv-18-safe-emrys-stop) | P1 | Verification pending | Provide an operator stop action with safe recovery semantics. |
 | [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Verification pending | Name verification-only work accurately. |
 | [CV-20](#cv-20-submission-state-before-run-creation) | P1 | Verification pending | Show queued and preparing jobs before a Run exists. |
 | [CV-21](#cv-21-reporting-in-progress-and-visibility) | P1 | Open | Distinguish unfinished report publication from failed reporting. |
@@ -109,33 +119,33 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Verification pending |
 | [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Verification pending |
 | [CV-U06](#cv-u06-available-resources) | Restore historical workflow and stage resources | Verification pending |
-| [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Open |
+| [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Verification pending |
 | [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Verification pending |
 | [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Verification pending |
 | [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Completed |
 | [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Verification pending |
 | [CV-U12](#cv-u12-duplicate-submission-warning) | Warn before accidental duplicate submission | Open |
 | [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Verification pending |
-| [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Open |
-| [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Open |
-| [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Open |
+| [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Verification pending |
+| [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Verification pending |
+| [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Verification pending |
 | [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Verification pending |
-| [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Open |
+| [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Verification pending |
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Open |
 | [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
 | [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Open |
 | [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Verification pending |
 | [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Verification pending |
 | [CV-U24](#cv-u24-persistent-cli-defaults) | Save site and other repeated CLI values | Open |
-| [CV-U25](#cv-u25-repeated-fastq-hashing-during-init) | One full FASTQ hashing pass across preview and creation | Open |
-| [CV-U26](#cv-u26-manifests-inside-the-project) | Keep manifests inside their Project directory | Open |
+| [CV-U25](#cv-u25-repeated-fastq-hashing-during-init) | One full FASTQ hashing pass across preview and creation | Verification pending |
+| [CV-U26](#cv-u26-manifests-inside-the-project) | Keep manifests inside their Project directory | Verification pending |
 | [CV-U27](#cv-u27-tested-smoke-to-real-resource-guidance) | Tested workload profile, Doctor checks and exact submission | Verification pending |
 | [CV-U28](#cv-u28-historical-stage-configuration-and-wall-time) | Restore benchmark-derived stage settings and wall-time performance | Verification pending |
-| [CV-U29](#cv-u29-early-inspect-and-dashboard-feedback) | Show useful information before monitoring fully populates | Open |
-| [CV-U30](#cv-u30-dashboard-color-and-pane-layout) | Restore dashboard colors and readable pane layout | Open |
+| [CV-U29](#cv-u29-early-inspect-and-dashboard-feedback) | Show useful information before monitoring fully populates | Verification pending |
+| [CV-U30](#cv-u30-dashboard-color-and-pane-layout) | Restore dashboard colors and readable pane layout | Verification pending |
 | [CV-U31](#cv-u31-dashboard-automatic-run-selection) | Select the current Run without parameters; record lost functionality | Verification pending |
 | [CV-U32](#cv-u32-dashboard-independent-of-working-directory) | Open the dashboard from outside the Project directory | Verification pending |
-| [CV-U33](#cv-u33-dashboard-resource-usage) | Restore resource-usage display and preserve the wall-time objective | Open |
+| [CV-U33](#cv-u33-dashboard-resource-usage) | Restore resource-usage display and preserve the wall-time objective | Verification pending |
 
 ### CV-U01 CLI color and readability
 
@@ -233,7 +243,8 @@ measurement made while recording these findings.
 **Implemented slice:** Every normal Doctor repair or verification plan now says
 `First Doctor setup can take 5–25 minutes.` before confirmation. Focused local
 fixtures cover both normal suppression and expanded verbose presentation. The
-five cards remain Verification pending for final CI and operator terminal review.
+integrated standard CI recorded above passed; the five cards remain Verification
+pending for operator terminal review.
 
 ### CV-U06 Available resources
 
@@ -260,6 +271,10 @@ this restores the selected historical configuration rather than introducing
 automatic tuning. CV-U33 remains separately owned. See CV-U28 for provenance
 and verification scope.
 
+The packaged defaults and affected admission paths passed the integrated standard
+CI. Institutional execution and any new wall-time measurement remain pending,
+so CV-U06 is **Verification pending**.
+
 ### CV-U07 Projects directory
 
 **Operator instruction:** “user should not be manually creating the projects
@@ -283,7 +298,8 @@ canonical-parent and symlink refusals remain the creation authority.
 
 **Verification limit:** Repository-ignore, documentation-link and onboarding
 checks cover the hosted layout. A fresh Viking clone and operator walkthrough
-remain required; this card stays Open until that evidence is supplied.
+remain required; this card is Verification pending until that evidence is
+supplied.
 
 ### CV-U08 Quickstart scope and language
 
@@ -331,11 +347,11 @@ generation rather than changing the generation retained by another Project.
 **Verification limit:** The Quickstart still spells out `--site viking` at each
 Project-creation boundary. CV-U24 owns the separate persistent-default
 convenience; the current commands remain complete and require no site decision
-from the operator. Full standard CI, a fresh Viking installation and a novice
-smoke-to-EV/PUM1 walkthrough remain pending. CV-U08 is therefore
-**Verification pending**. The historical policy and retained study evidence
-support the selected values but are not a new whole-Run cluster execution or
-performance measurement.
+from the operator. The integrated standard CI recorded above passed. A fresh
+Viking installation and a novice smoke-to-EV/PUM1 walkthrough remain pending,
+so CV-U08 is **Verification pending**. The historical policy and retained study
+evidence support the selected values but are not a new whole-Run cluster
+execution or performance measurement.
 
 Local integration checks pass 631 tests across every test file changed by this
 tranche, with one Linux-only materialization test skipped on macOS. Six isolated
@@ -344,7 +360,7 @@ lacks `simple_term_menu` or `coolname_hash`; the corresponding current-source
 paths pass in process. Documentation structure checks pass for 169 Markdown
 documents and three Mermaid sources, all 13 Quickstart Bash fences pass
 `bash -n`, and focused Ruff, compilation and diff checks pass. No dependency
-installation, CI, cluster execution or scientific review was performed.
+installation, cluster execution or scientific review was performed locally.
 
 ### CV-U09 Synthetic-project explanation
 
@@ -364,8 +380,9 @@ and scientific-choice claims.
 
 **Verification:** The explanation precedes the command and uses no internal
 runtime or scheduler terminology. Bash-fence syntax and changed-document links
-pass locally. CV-U09 is **Verification pending** for the repository documentation
-gate and novice acceptance; neither requires a new cluster run.
+pass locally, and the integrated repository documentation gate recorded above
+passed. CV-U09 is **Verification pending** for novice acceptance; that acceptance
+does not require a new cluster run.
 
 ### CV-U10 Unnecessary Quickstart command
 
@@ -411,9 +428,10 @@ Own-data blocks are explicitly labelled templates and use conspicuous
 and assignments that must replace them.
 
 **Verification:** All Quickstart Bash fences pass `bash -n`; changed-document
-links and anchors pass a focused local check. CV-U11 is **Verification pending**
-for the repository documentation gate and novice acceptance. CV-U20 separately
-owns whether every knowable Viking/PUM1 value has been supplied.
+links and anchors pass a focused local check, and the integrated repository
+documentation gate recorded above passed. CV-U11 is **Verification pending**
+for novice acceptance. CV-U20 separately owns whether every knowable Viking/PUM1
+value has been supplied.
 
 ### CV-U12 Duplicate submission warning
 
@@ -430,6 +448,12 @@ work, explain the display delay and the risk of creating duplicate jobs before
 another submission. Continuing should be an intentional decision made with that
 understanding. The exact enforcement, acknowledgement or override mechanism
 was not decided; no new flag or automatic cancellation behavior is implied.
+
+**Current partial state:** Quickstart says to submit once and warns that an
+absent Run is not a reason to submit again. The integrated watch command selects
+and displays a retained pre-Run submission. `emrys run` does not yet identify an
+earlier pending/running submission of the same work and present the requested
+warning before another submission, so CV-U12 remains Open.
 
 ### CV-U13 Watching progress
 
@@ -454,9 +478,10 @@ exact job-ID watch command. Quickstart now makes the parameter-free Project
 command the ordinary progress step.
 
 **Verification and limit:** Focused selector, scheduler-name, presentation and
-public-parser checks pass locally. Scheduler-name selection still requires one
-exact current-user root allocation; duplicate names require the numeric ID.
-Viking terminal use remains pending, so the card is Verification pending.
+public-parser checks pass locally and in the integrated standard CI.
+Scheduler-name selection still requires one exact current-user root allocation;
+duplicate names require the numeric ID. Viking terminal use remains pending, so
+the card is Verification pending.
 
 ### CV-U14 Dashboard logs
 
@@ -466,6 +491,14 @@ mono colored”.
 **Requested outcome:** Improve the readability and color coding of the log
 content itself. Coloring dashboard headings alone would not address this finding.
 No specific palette, filtering rule or log-content deletion was requested.
+
+**Implemented software outcome:** Installed watch styles literal informational,
+warning, error and completion log lines with distinct colors while preserving
+every byte of text and readable plain-terminal output. Dated scheduler, Run and
+stream headings are emphasized separately from unverified log interpretation.
+Focused rendering tests verify the styles and unchanged literal content; the
+integrated standard CI passed. Institutional terminal and operator acceptance
+remain pending, so CV-U14 is **Verification pending**.
 
 ### CV-U15 Dashboard action language
 
@@ -479,6 +512,13 @@ meaning as rechecking a job and refreshing its matching Run information and logs
 That explanation was not independently verified and is not an established
 description of current behavior. The unclear label is the recorded finding.
 
+**Implemented software outcome:** The installed watch control now says
+`r recheck selection/evidence (read-only)`. The retained standalone dashboard
+uses `r recheck job/logs`. Both labels describe the read-only action without the
+unexplained “verify/associate again” wording. Public terminal fixtures passed the
+integrated standard CI; operator wording acceptance remains pending, so CV-U15
+is **Verification pending**.
+
 ### CV-U16 Dashboard scrolling
 
 **Operator instruction:** “Should not be able to scroll with mouse in dashboard
@@ -487,6 +527,15 @@ description of current behavior. The unclear label is the recorded finding.
 **Requested outcome:** Disable mouse scrolling throughout the dashboard,
 including the log view where it reportedly remains possible. Preserve keyboard
 scrolling using the up/down arrows and `j`/`k`.
+
+**Implemented software outcome:** Installed watch and the retained standalone
+dashboard capture and ignore mouse reports, then restore terminal mouse state on
+exit. Arrow, `j`/`k`, Page Up/Down and Home/`g` keyboard navigation remains.
+Terminal fixtures cover mouse reports, keyboard navigation and restoration and
+passed the integrated standard CI. An external terminal multiplexer can still
+translate a wheel event into an ordinary arrow key before EMRYS receives it.
+Institutional terminal acceptance remains pending, so CV-U16 is
+**Verification pending**.
 
 ### CV-U17 Completion communication
 
@@ -524,6 +573,10 @@ partial, and unstarted work is displayed as `INTERRUPTED`, `INCOMPLETE`, and
 `NOT REACHED`. The dashboard calls the outcome `JOB ENDED` and directs the
 operator to final inspection; it does not infer completion or recovery.
 
+The completion and failed-terminal projections passed the integrated standard
+CI. Historical-cause reconstruction and institutional display acceptance remain
+pending, so CV-U17 is **Verification pending**.
+
 ### CV-U18 Interactive input-list creation
 
 **Operator report:** “The command to create the input lists is fucking garbage,
@@ -550,9 +603,9 @@ answer. The specialist manifest helper remains available for advanced structural
 drafting; ordinary Quickstart no longer exposes its long flag sequence.
 
 **Verification limit:** Direct fixtures cover guided answers, generated replay,
-biological pairing, selector forms and create-absent refusal. CI and a novice
-Viking walkthrough remain required; this card stays Open until that evidence is
-supplied.
+biological pairing, selector forms and create-absent refusal. The integrated
+standard CI recorded above passed. A novice Viking walkthrough remains required;
+this card is **Verification pending** until that evidence is supplied.
 
 ### CV-U19 Long-term interactive CLI
 
@@ -565,6 +618,12 @@ eventually be the default. Advanced users retain an opt-in manual route.
 `--advanced` is an illustrative flag, not a settled interface. The user explicitly
 framed this as an eventual direction; no detailed prompt sequence or migration
 plan was selected here.
+
+**Current partial state:** Named Project initialization now provides the guided
+input and scientific-question flow recorded under CV-U18, while the specialist
+manifest command remains available. Doctor, Run and the complete setup journey
+have not moved to the requested default interactive interface, and no advanced
+mode transition has been selected. CV-U19 remains Open.
 
 ### CV-U20 Complete Viking values in Quickstart
 
@@ -611,9 +670,9 @@ metadata were used without installing dependencies.
 Six isolated child-process cases were excluded because this machine's older
 installed validation checkout lacks `simple_term_menu` or `coolname_hash`; the
 current combined source passed its corresponding in-process coverage. A fresh
-Viking novice walkthrough and full standard CI remain pending; no new cluster
-execution, performance benchmark, scientific review or biological validation
-is claimed. CV-U20 is **Verification pending**.
+Viking novice walkthrough remains pending; the integrated standard CI recorded
+above passed. No new cluster execution, performance benchmark, scientific review
+or biological validation is claimed. CV-U20 is **Verification pending**.
 
 ### CV-U21 Technical parameter assistance
 
@@ -624,6 +683,12 @@ genome sa index nbases, etc. whenever possible”.
 `genomeSAindexNbases` and similar technical values wherever possible. Non-technical
 users should not have to calculate or choose these values themselves. The user
 did not specify formulas, a new command name or a particular implementation.
+
+**Current partial state:** The Viking/PUM1 Quickstart supplies the known study
+values `sjdbOverhang=149` and `genomeSAindexNbases=14`, so that named journey
+requires no calculation. Guided initialization still asks for these values and
+does not derive them for a different read length or reference. The general
+assistance requested by CV-U21 therefore remains Open.
 
 ### CV-U22 Smoke-project tool reuse
 
@@ -664,6 +729,11 @@ placement readiness checks. An absent inventory remains the normal first
 selection. An existing inventory is preserved unless the operator explicitly
 requests a same-source shared replacement.
 
+**Verification limit:** Public preview, selection, content-binding and
+verification-only Doctor cases passed the integrated standard CI. A fresh
+institutional smoke-to-study reuse journey remains pending, so CV-U22 is
+**Verification pending**.
+
 ### CV-U23 Repair restriction when sharing tools
 
 **Exact wording challenged:** “That optional operation permanently disables
@@ -693,8 +763,10 @@ selection, and preserves the old generation for retained Runs and Attempts.
 Dependent Projects remain bound to their exact old generation and require an
 explicit `runtime discover --from-project SOURCE --replace --execute`. The
 replacement admits only an existing shared selector from the same source
-Project, rechecks the new generation, and atomically replaces the exact prior
-selector under the existing maintenance claim.
+Project and rechecks the new generation. Under the existing maintenance claim,
+the shared no-clobber publication owner displaces and reverifies the admitted old
+selector, creates the new selector exclusively, and refuses a competing name; it
+does not use an overwrite primitive or discard a concurrent file.
 
 **Verification:** Focused contract coverage now includes exact-file replacement,
 same-source selection replacement, preserved old seals, generation planning and
@@ -707,8 +779,9 @@ admission through the existing runtime and publication owners. Local compilation
 lint and documentation structure checks pass. A borrowed environment plus its
 already-unpacked dependency cache passes 339 focused tests except for two
 pre-existing isolated replay cases whose child interpreter cannot see that
-borrowed cache. Hosted standard CI and the two-Project journey remain required;
-institutional smoke-to-study acceptance remains open.
+borrowed cache. The integrated hosted standard CI recorded above passed. The
+two-Project institutional smoke-to-study journey remains required, so CV-U23 is
+**Verification pending**.
 
 ### CV-U24 Persistent CLI defaults
 
@@ -726,6 +799,12 @@ Project, site, execution profile, runtime location and log location as candidate
 for persistent defaults. Those were assistant suggestions, not a verified list
 of existing environment-variable support or a user-approved settings inventory.
 No claim that EMRYS currently loads `.env` files was established.
+
+**Current partial state:** `EMRYS_PROJECTS_ROOT` now supplies the bounded
+Projects-home discovery root used by watch, but it does not persist the selected
+site or the other proposed defaults. Quickstart still supplies `--site viking`
+at each Project-creation boundary, and no `.env` settings owner or precedence
+contract was added. CV-U24 remains Open.
 
 ### CV-U25 Repeated FASTQ hashing during Init
 
@@ -759,7 +838,8 @@ retired.
 **Verification limit:** A focused invocation-counter fixture requires zero
 FASTQ hashes for preview and exactly one per FASTQ for creation, with a separate
 mutation-boundary refusal. Comparable large-input timing and a Viking exercise
-remain required; this card stays Open until that evidence is supplied.
+remain required; the implementation passed the integrated standard CI and the
+card is **Verification pending** until that evidence is supplied.
 
 ### CV-U26 Manifests inside the Project
 
@@ -783,7 +863,8 @@ their current manifest locations and receive no automatic migration.
 **Verification limit:** Hosted onboarding and validation fixtures cover exact
 manifest bytes, relative Project references, external input preservation and
 existing-Project compatibility. Institutional operator acceptance remains
-required; this card stays Open until that evidence is supplied.
+required; the integrated standard CI passed and this card is **Verification
+pending** until that evidence is supplied.
 
 ### CV-U27 Tested smoke-to-real resource guidance
 
@@ -810,6 +891,11 @@ shared admission and preview owners, and the Quickstart proceeds through
 Viking profile and select it consistently for both commands. Explicit profiles
 and frozen Run policies are preserved. The documented historical workload is
 six EV/PUM1 libraries; this is not a newly measured workload-size guarantee.
+
+**Verification limit:** The packaged/default-profile, onboarding, Doctor,
+submission and hosted synthetic cases passed the integrated standard CI.
+Institutional smoke-to-real execution and operator acceptance remain pending;
+CV-U27 remains **Verification pending**.
 
 ### CV-U28 Historical stage configuration and wall time
 
@@ -870,8 +956,10 @@ existing cached dependencies; no dependencies were installed. Two
 `test_guided_project_preview_replays_exact_answers_without_new_prompts` cases
 were excluded after isolated subprocesses selected the machine's older installed
 checkout and failed on its missing `simple_term_menu`. Full standard CI,
-including those cases and real-tool hosted E2E, and the institutional walkthrough
-remain pending. No cluster job or new performance benchmark is claimed.
+including those cases and the active managed golden path, passed in the integrated
+run recorded above. The configured real-synthetic E2E lane was skipped, and the
+institutional walkthrough remains pending. No cluster job or new performance
+benchmark is claimed; CV-U28 remains **Verification pending**.
 
 ### CV-U29 Early Inspect and dashboard feedback
 
@@ -892,6 +980,15 @@ sources. These are leads from the earlier discussion, not a selected presentatio
 design or measured proof of the current population delay's cause. No timing
 target or logging change was specified.
 
+**Implemented software outcome:** The ordinary watch command can select a
+retained submission before a Run exists and immediately presents its recorded
+request, scheduler observation and dated diagnostic stream. During refresh it
+keeps the dated prior observations visible and states that refresh is in progress
+instead of showing an empty view. Focused pre-Run and refresh fixtures passed the
+integrated standard CI. No Viking population-time measurement was made, so
+institutional timing and operator acceptance remain pending and CV-U29 is
+**Verification pending**.
+
 ### CV-U30 Dashboard color and pane layout
 
 **Operator report:** “Lost a lot of color from the original dashboard, and also
@@ -905,6 +1002,15 @@ tall. Restore the lost color and formatting from the original dashboard.
 This concerns the overall dashboard layout and information visibility. The
 friendliness and color of the log content remain separately recorded in CV-U14.
 No exact pane heights, color palette or terminal-size policy was specified.
+
+**Implemented software outcome:** The job/resources/Run panel now grows to the
+number of fields it must display, preserving every identity and resource row on
+the tested compact layout. Distinct title, panel-title, label, value, success,
+warning and failure styles restore visual structure, while the controls and
+dated-status information use the full-width footer area. Wide, compact, small,
+plain and colored rendering fixtures passed the integrated standard CI.
+Institutional terminal-size and operator acceptance remain pending, so CV-U30
+is **Verification pending**.
 
 ### CV-U31 Dashboard automatic Run selection
 
@@ -936,7 +1042,9 @@ refresh control and resource fields. The reported color/layout regression is
 CV-U30, resource visibility is CV-U33, mouse behavior is CV-U16, log styling is
 CV-U14 and action wording is CV-U15. No additional lost legacy behavior was
 identified in this bounded source audit; Viking/operator comparison remains
-required, so completeness is not claimed and the card is Verification pending.
+required. The integrated selector, regression-inventory and rendering cases
+passed standard CI, so completeness is not claimed and the card is Verification
+pending.
 
 ### CV-U32 Dashboard independent of working directory
 
@@ -959,9 +1067,9 @@ location of the Projects home; this card consumes that declared path without
 creating it or moving existing Projects.
 
 **Verification and limit:** Focused cases cover one Project, multiple Projects,
-ambiguous noninteractive use and invocation without a current directory Project.
-No institutional filesystem or terminal exercise ran; the card is Verification
-pending.
+ambiguous noninteractive use and invocation without a current directory Project,
+and passed the integrated standard CI. No institutional filesystem or terminal
+exercise ran; the card is Verification pending.
 
 **Tranche consolidation and accounting:** The four cards add no production
 file, schema, dependency, configuration record or mutable selection state.
@@ -986,6 +1094,15 @@ wall-time objective when carrying resource configuration forward. Visibility of
 usage and correctness of resource limits are related requirements; restoring the
 display alone does not resolve the CPU/stage-cap concerns in CV-U06 and CV-U28.
 The exact missing display fields were not enumerated in this batch.
+
+**Implemented software outcome:** The visible job/resources panel retains
+scheduler placement, allocated CPUs, per-task maximum RSS, bytes read/written and
+average task CPU time when admitted accounting supplies them; unavailable usage
+stays explicit. Its dynamic height prevents those rows from being clipped on the
+tested compact layout. CV-U06/CV-U28 restore the selected historical wall-time
+policy separately. Resource-label, identity and layout fixtures passed the
+integrated standard CI. Institutional accounting/display acceptance and any new
+wall-time measurement remain pending, so CV-U33 is **Verification pending**.
 
 ## P0 outcomes
 
@@ -1040,8 +1157,9 @@ selected real-Slurm journey covers a pre-Task failed attempt and resume. Active
 native cancellation through Snakemake and combined restricted export/UID lookup
 now have the bounded fixtures below. Actual Slurm/site cancellation,
 absent/rejected site memory policy and cross-node inspection still require
-the corresponding institutional journeys.
-CV-01 remains Open.
+the corresponding institutional journeys. The integrated standard CI recorded
+above passed the active managed golden path and all other active jobs. CV-01 is
+**Verification pending** for the corresponding institutional journeys.
 
 **Real-backend cancellation boundary:** The existing public materialization
 harness now includes real Snakemake, Task-wrapper and separate native process
@@ -1193,7 +1311,7 @@ The approved growth cap is 50 net product lines in the existing probe owner.
 actual Snakemake 9.25.1 startup cases with Python 3.14.5: ordinary startup,
 unavailable UID lookup, and each supported login-name variable. Separate cases
 exercise timeout, startup, and scratch failures. Public Doctor qualification
-regressions run in CI.
+regressions passed the current integrated standard CI.
 These local runtime and simulated qualification checks do not establish an
 institutional result or scientific completion; those evidence limits remain.
 
@@ -1280,8 +1398,9 @@ minimum necessary expansion approval.
 shell replay with closed stdin, changed working directory, quoted paths,
 arbitrary explicitly assigned mate names, background selection, direct/Viking
 placement, exact scientific values, and preserved source bytes after schema
-refusal. Static checks pass locally; application/subprocess cases run in CI.
-Institutional novice walkthrough remains pending.
+refusal. Static checks pass locally; application/subprocess cases passed the
+current integrated standard CI. Institutional novice walkthrough remains
+pending.
 
 **Original-input manifest follow-up:** The operator's fresh-user walkthrough
 exposed vendor FASTQ mates named `_1`/`_2` and 25 explicit whole-chromosome
@@ -1306,8 +1425,9 @@ scientific execution remain separate.
 Regression fixtures use the public CLI for six vendor-style libraries and 25
 chromosomes, existing naming forms, ambiguous mates, mixed selector forms,
 duplicate IDs, no-write preview, destination preservation, and downstream
-reference admission. Runtime execution of these fixtures and institutional
-acceptance remain pending; local test dependencies were unavailable.
+reference admission. Runtime execution of these fixtures passed the current
+integrated standard CI. Institutional acceptance remains pending; the earlier
+local test environment lacked their dependencies.
 
 ### CV-07 Site and workload profile selection
 
@@ -1340,14 +1460,15 @@ that qualification uses the same allocation request and its queue cost.
 **Verification:** Existing Doctor fixtures cover all selection forms, invalid
 selection without mutation, exact private compute arguments, and selected
 profile changes before submission, after the job, and during finalization.
-Static checks pass; application cases require hosted CI. No actual cluster
+Static checks and the integrated hosted standard CI pass. No actual cluster
 qualification or workload tuning is claimed.
 
 Profile admission passes 32 local tests. Public authoring fixtures cover direct,
 Viking, and custom placement, exact settings, no scientific reads/subprocesses,
 no-write previews, invalid choices, no-clobber destinations, parent replacement,
-and default/published-byte drift. Application cases and institutional novice
-walkthrough remain pending; no performance optimum or actual capacity is claimed.
+and default/published-byte drift. Application cases passed the current integrated
+standard CI. The institutional novice walkthrough remains pending; no performance
+optimum or actual capacity is claimed.
 
 ### CV-08 Compatible runtime reuse
 
@@ -1403,8 +1524,9 @@ not the entire environment, shared libraries or transitive dependencies.
 the source dependency gate. Public two-Project preview/publication, failure and
 stale-repair fixtures plus planned Run/resume and direct lifecycle admission
 passed the combined standard CI. The hosted donor-science/borrower-verification
-journey is covered under CV-01. CV-08 remains Open for institutional two-Project
-acceptance and compute-node accessibility; no borrower scientific Run is claimed.
+journey is covered under CV-01, and the integrated standard CI recorded above
+passed. CV-08 is **Verification pending** for institutional two-Project acceptance
+and compute-node accessibility; no borrower scientific Run is claimed.
 
 ### CV-09 Qualification scope and placement
 
@@ -1428,9 +1550,10 @@ probes; it does not claim complete binary compatibility from version strings.
 Existing code rejects changed content, permissions, failed loaders/probes, and
 incompatible storage at its admission boundaries. This documentation slice was
 checked against those owners and existing direct/Slurm storage, runtime-change,
-and capacity regression cases; it adds no new execution or installation.
-CV-09 remains Open for institutional compatible-node/incompatible-runtime
-acceptance and any concrete incompatibility gaps that evidence identifies.
+and capacity regression cases; it adds no new execution or installation. The
+integrated standard CI recorded above passed. CV-09 is **Verification pending**
+for institutional compatible-node/incompatible-runtime acceptance and any
+concrete incompatibility gaps that evidence identifies.
 
 ### CV-10 External cancellation and recovery
 
@@ -1642,9 +1765,10 @@ The strengthened public cancellation/resume journey passed in 282.22 seconds;
 all 47 native cases passed without skips. Final
 [artifact 10411245477](https://github.com/lab-cats/EMRYS/actions/runs/35002451860/artifacts/10411245477)
 has SHA-256 `7f691245b22bf4b24cd479745b041adfdcc9d11b662f0455ff1ceebde6d16985`.
-CV-10 remains Open for institutional cancellation acceptance and E09's missing finalization/diagnostic
-evidence. This change does not recover the historical interrupted Run or
-establish its cause.
+The later timeout-warning slice also passed the integrated standard CI recorded
+above. CV-10 is **Verification pending** for institutional cancellation acceptance
+and E09's missing finalization/diagnostic evidence. These changes do not recover
+the historical interrupted Run or establish its cause.
 
 ### CV-11 Resource profile compatibility
 
@@ -1676,7 +1800,7 @@ early refusal, correcting overrides, symbolic retention, immutable predecessor
 policy, and an allocation-dependent memory boundary. Broader contract tests
 require installed Analysis entry-point metadata unavailable locally. The
 reservation-fit slice below supplies explicit comparison; institutional
-heterogeneous-node acceptance remains open, so CV-11 remains Open.
+heterogeneous-node acceptance remains pending.
 
 **Implemented reservation-fit slice:** The final effective execution profile
 checks CPU and explicit memory requests before submission, Doctor repair
@@ -1686,8 +1810,9 @@ Placement-only resume applies retained policy first using the existing reads;
 no inherited-policy loader API or fabricated capacity is introduced. Symbols
 are preserved, memory omission stays unknown, and actual allocation admission
 still controls execution. The final pure resource/profile suite passes 64
-tests; public no-submit/no-write, Doctor, authoring, and resume cases run in CI.
-Institutional heterogeneous-node acceptance remains pending.
+tests. Public no-submit/no-write, Doctor, authoring and resume cases passed the
+integrated standard CI recorded above. CV-11 is **Verification pending** for
+institutional heterogeneous-node acceptance.
 
 ### CV-12 Unexplained initial runtime qualification failure
 
@@ -1723,7 +1848,8 @@ Four net product lines implement the change, with no new read, state, or schema.
 **Verification:** Diagnosis-backed tests cover absent versus malformed/explicitly
 missing inventories, failed checks, invalid retained storage evidence, plain
 output, preserved no-write behavior, and unchanged refusals/exits. Static checks
-pass locally; application execution requires CI. Operator acceptance is pending.
+and current integrated application execution pass. Operator acceptance is
+pending.
 
 ### CV-14 Project directory layout
 
@@ -1748,8 +1874,8 @@ operation is added.
 **Verification:** Public onboarding tests exercise synthetic and own-data
 creation beneath the tracked Projects parent. They preserve no-write preview,
 external input references and bytes, ignored Project children, and
-existing-destination refusal. Focused execution and documentation checks run in
-the locked CI environment; operator walkthrough remains pending.
+existing-destination refusal. Focused execution and documentation checks passed
+in the locked integrated CI environment; operator walkthrough remains pending.
 
 ### CV-15 Cross-node active Run status
 
@@ -1784,9 +1910,9 @@ probing an unbound PID. Task fixtures follow the same admitted start through
 local-live, remote-unverified and terminal-incomplete observations; all display
 levels acquire one snapshot per render and preserve files and recovery refusal.
 Existing complete, changed-verified and missing/malformed-start cases cover the
-other labels. The task cases passed the combined standard CI. CV-15
-remains Open for institutional cross-node observations and any remaining
-state distinctions established by those observations.
+other labels. The task cases and current integrated standard CI passed. CV-15 is
+**Verification pending** for institutional cross-node observations and any
+remaining state distinctions established by those observations.
 
 ### CV-16 Monitoring dashboard
 
@@ -1866,7 +1992,8 @@ is nine net lines within the approved ten-line cap, with no new product file.
 no-write preview, then all creation phases. Failure and interruption cases
 cover each validation boundary, preserving inputs and any published state.
 Ruff, formatting, AST, and whitespace checks pass locally; application tests
-run in CI. The institutional large-input walkthrough remains pending.
+passed the current integrated standard CI. The institutional large-input
+walkthrough remains pending.
 
 ### CV-18 Safe EMRYS stop
 
@@ -1905,9 +2032,9 @@ identities. Errors, timeout and interruption preserve records without retry.
 An already terminal target causes no cancellation; a processed request and
 terminal scheduler observation remain distinct from native process absence or
 Run recovery eligibility. No lock, receipt, Task output or retained evidence is
-removed or repaired. Local fixtures and hosted CI can validate these software
-boundaries; actual queued/native-task cancellation and institutional recovery
-evidence remain separate and pending.
+removed or repaired. Local fixtures and the integrated hosted standard CI pass
+these software boundaries. CV-18 is **Verification pending** for actual
+queued/native-task cancellation and institutional recovery evidence.
 
 ### CV-19 Verification and repair vocabulary
 
@@ -2098,7 +2225,7 @@ Public and hosted output consumers use the new admission label.
 start, after start, after producer output, and after verified publication;
 exact retained references/blockers and no writes are checked. Public inspection
 fixtures cover pending/started/complete rows at normal and verbose levels.
-Static checks pass; application cases require hosted CI. These cases establish
+Static checks and the integrated hosted standard CI pass. These cases establish
 the overlap mechanism, not the historical cause of E06. That cause and actual
 site visibility/finalization evidence remain unresolved, so CV-21 remains Open.
 
@@ -2144,8 +2271,9 @@ for minimum necessary expansion; no new product file is added.
 **Verification:** Existing profile, Control, and Doctor tests cover omitted and
 explicit placement fields, exact submitted arguments, no-write previews,
 profile refusal, resume policy, and report reuse. All 30 focused profile tests
-pass locally; public Control and Doctor execution runs in CI. These provide
-software evidence; institutional preview acceptance remains pending.
+pass locally; public Control and Doctor execution passed the integrated standard
+CI. These provide software evidence; institutional preview acceptance remains
+pending.
 
 ## P2 outcomes
 
@@ -2336,9 +2464,10 @@ Timing writes occur after controlling work and the claim-release decision, so
 a degraded diagnostic log cannot interrupt package-output handling.
 Focused fixtures cover precise clocks, failed phases, observation failures,
 no-write diagnosis, existing-log buffering and delegated context. Public fixture
-execution requires hosted CI. Read/hash bytes, probe attribution, process memory,
-actual scheduler timing and comparable before/after measurements remain open;
-this slice establishes timing observations, not a measured speedup.
+execution passed the current integrated hosted CI. Read/hash bytes, probe
+attribution, process memory, actual scheduler timing and comparable before/after
+measurements remain open; this slice establishes timing observations, not a
+measured speedup.
 
 **Retained hosted observation:** The managed golden path at
 `2e03177747e67e8d970083e3994f3c8970d77caf`
@@ -2394,9 +2523,10 @@ the deferred emission. Verbose/debug diagnosis exposes escaped passing details.
 Tool version and Snakemake startup durations are separate. SHA-256 utility
 timing covers its tiny test payload; it does not measure executable/jar or R-tree
 hashing. Existing qualification identities, reads, probes, clocks and log owners
-remain unchanged. Focused runtime tests pass; public Doctor phase, identity,
-failure and observation-degradation fixtures require hosted CI. Full byte/I/O/
-memory attribution and institutional before/after evidence remain Open.
+remain unchanged. Focused runtime tests and the integrated hosted standard CI
+pass the public Doctor phase, identity, failure and observation-degradation
+fixtures. Full byte/I/O/memory attribution and institutional before/after
+evidence remain Open.
 
 **Retained probe attribution:** The managed golden-path job at
 `1f4171d198cada8833f59ccd5a1bfeffab3ebaff`
