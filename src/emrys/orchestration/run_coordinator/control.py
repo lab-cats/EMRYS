@@ -94,6 +94,9 @@ RESUME_DESCRIPTION = "Plan a safe resume, then confirm or use --execute for auto
 INSPECT_DESCRIPTION = (
     "Show retained Project submissions and inspect one Run without changing state."
 )
+WATCH_DESCRIPTION = (
+    "Watch one selected Run or exact scheduler job without changing state."
+)
 STOP_DESCRIPTION = (
     "Preview one exact submission stop; use --execute to request cancellation."
 )
@@ -150,6 +153,25 @@ def _absolute(path: Path) -> Path:
     return Path(os.path.abspath(path))
 
 
+def _terminal_selection(
+    choices: tuple[str, ...],
+    *,
+    interactive: bool,
+    title: str,
+    error: str,
+    canceled: str,
+) -> int:
+    if not interactive:
+        raise ControlError(error + ", ".join(choices))
+    try:
+        selected = TerminalMenu(choices, title=title).show()
+    except (EOFError, KeyboardInterrupt) as exc:
+        raise _RunSelectionCancelled(canceled) from exc
+    if selected is None:
+        raise _RunSelectionCancelled(canceled)
+    return selected
+
+
 def _select_project_run(
     project_path: Path,
     selector: str | None,
@@ -169,19 +191,122 @@ def _select_project_run(
         name if name_counts[name] == 1 else f"{name} ({root.name})"
         for name, root in zip(names, run_roots, strict=True)
     )
-    if not interactive:
-        raise ControlError(
-            "Multiple Runs exist; select one explicitly: " + ", ".join(choices)
+    return run_roots[
+        _terminal_selection(
+            choices,
+            interactive=interactive,
+            title="Select a Run:",
+            error="Multiple Runs exist; select one explicitly: ",
+            canceled="Run selection canceled; nothing was changed.",
         )
+    ]
+
+
+def _projects_home_runs() -> tuple[tuple[Path, Path], ...]:
+    """Locate immediate Project Runs beneath the declared Projects home."""
+
+    selected = os.environ.get("EMRYS_PROJECTS_ROOT", "").strip()
+    if not selected:
+        return ()
+    declared = Path(selected)
+    if not declared.is_absolute():
+        raise ControlError("EMRYS_PROJECTS_ROOT must be an absolute path")
+    home = _absolute(declared)
     try:
-        selected = TerminalMenu(choices, title="Select a Run:").show()
-    except (EOFError, KeyboardInterrupt) as exc:
-        raise _RunSelectionCancelled(
-            "Run selection canceled; nothing was changed."
+        if home.is_symlink() or home.resolve(strict=True) != home or not home.is_dir():
+            raise ControlError(
+                f"EMRYS_PROJECTS_ROOT must be one canonical real directory: {home}"
+            )
+        children = tuple(sorted(home.iterdir(), key=lambda path: path.name))
+    except OSError as exc:
+        raise ControlError(
+            f"Could not inspect EMRYS_PROJECTS_ROOT {home}: {exc}"
         ) from exc
-    if selected is None:
-        raise _RunSelectionCancelled("Run selection canceled; nothing was changed.")
-    return run_roots[selected]
+    if len(children) > 256:
+        raise ControlError(f"EMRYS_PROJECTS_ROOT has more than 256 entries: {home}")
+    result = []
+    for child in children:
+        project = child / "project.yaml"
+        if child.is_symlink() or not child.is_dir() or not os.path.lexists(project):
+            continue
+        admitted = onboarding.project_definition_path(project)
+        result.extend((admitted, run) for run in inspection.project_run_roots(child))
+    return tuple(result)
+
+
+def _select_projects_home_run(
+    selector: str | None, *, interactive: bool
+) -> tuple[Path, Path] | None:
+    candidates = _projects_home_runs()
+    if selector is not None:
+        matches = []
+        for project, run in candidates:
+            try:
+                match = inspection.resolve_run_root((run,), selector)
+            except inspection.InspectionError as exc:
+                if str(exc).startswith("No Project Run matches"):
+                    continue
+                raise
+            matches.append((project, match))
+        candidates = tuple(matches)
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
+    choices = tuple(
+        f"{project.parent.name}: {inspection.human_run_name(run.name)} ({run.name[:16]}...)"
+        for project, run in candidates
+    )
+    return candidates[
+        _terminal_selection(
+            choices,
+            interactive=interactive,
+            title="Select a Run:",
+            error="Multiple Runs are available; select one explicitly: ",
+            canceled="Run selection canceled; nothing was changed.",
+        )
+    ]
+
+
+def _select_project_watch_target(
+    project: Path, *, interactive: bool
+) -> tuple[str, Path | slurm_submission.SubmissionRequestObservation] | None:
+    runs = inspection.project_run_roots(project.parent)
+    requests = slurm_submission.submission_requests(project)
+    run_set = frozenset(runs)
+    requests = tuple(
+        request
+        for request in requests
+        if _submission_inspection.inspect_submission_application(request).run_root
+        not in run_set
+    )
+    candidates: tuple[
+        tuple[str, Path | slurm_submission.SubmissionRequestObservation], ...
+    ] = tuple(("run", run) for run in runs) + tuple(
+        ("submission", request) for request in requests
+    )
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
+    choices = tuple(
+        f"Run: {inspection.human_run_name(value.name)} ({value.name[:16]}...)"
+        if kind == "run" and isinstance(value, Path)
+        else (
+            f"Submission: {value.request_root.name}: "
+            f"job {value.recorded_job_id or 'unconfirmed'}"
+        )
+        for kind, value in candidates
+    )
+    return candidates[
+        _terminal_selection(
+            choices,
+            interactive=interactive,
+            title="Select a Run or submission:",
+            error="Multiple monitoring targets are available; select one explicitly: ",
+            canceled="Monitoring selection canceled; nothing was changed.",
+        )
+    ]
 
 
 def _resolve_run_argument(
@@ -923,8 +1048,11 @@ def _schedule(
         submission, record_path=request_root / "sbatch.stdout"
     )
     print(f"JOB_ID={job_id}")
+    print(f"JOB_NAME={submission.job_name}")
     print(f"OUT={str(submission.stdout_pattern).replace('%j', job_id)}")
     print(f"ERR={str(submission.stderr_pattern).replace('%j', job_id)}")
+    print(f"Submitted Slurm job {job_id}; completion is not yet verified.")
+    print(f"Watch progress: emrys watch {job_id}")
     return 0
 
 
@@ -1184,6 +1312,7 @@ def _execute_plan(
             )
             close_log_best_effort()
             console_print("Reporting: not applicable (partial scientific Run)")
+            console_print("Run complete: requested scientific work is verified.")
             return 0
         if not report_enabled:
             observe_reporting(
@@ -1191,6 +1320,7 @@ def _execute_plan(
             )
             close_log_best_effort()
             console_print("Reporting: skipped (--no-report)")
+            console_print("Scientific work complete; reporting was skipped.")
             return 0
         observe_reporting("reporting_started", "Generating downstream reports.")
         try:
@@ -1226,6 +1356,7 @@ def _execute_plan(
         )
         for line in result_lines:
             console_print(line)
+        console_print("Run complete: scientific Results and reports are verified.")
         return 0
     close_log_best_effort()
     print_failure(
@@ -1387,8 +1518,13 @@ def _add_execution_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _add_run_selector(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("run", nargs="?", metavar="RUN", help="Run name or ID prefix.")
+def _add_run_selector(
+    parser: argparse.ArgumentParser,
+    *,
+    metavar: str = "RUN",
+    help_text: str = "Run name or ID prefix.",
+) -> None:
+    parser.add_argument("run", nargs="?", metavar=metavar, help=help_text)
     onboarding.add_project_argument(parser)
 
 
@@ -1433,14 +1569,25 @@ def configure_report_parser(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
-    _add_run_selector(parser)
-    add_log_root_argument(parser)
-    parser.add_argument(
-        "--watch",
-        action="store_true",
-        help="Watch the exact selection; r refreshes Run verification. Read-only unless --actions is selected.",
+def configure_inspect_parser(
+    parser: argparse.ArgumentParser, *, watch_command: bool = False
+) -> None:
+    _add_run_selector(
+        parser,
+        metavar="RUN_OR_JOB" if watch_command else "RUN",
+        help_text=(
+            "Run name or ID prefix, numeric scheduler job ID, or exact scheduler job name."
+            if watch_command
+            else "Run name or ID prefix."
+        ),
     )
+    add_log_root_argument(parser)
+    if not watch_command:
+        parser.add_argument(
+            "--watch",
+            action="store_true",
+            help="Watch the exact selection; r refreshes Run verification. Read-only unless --actions is selected.",
+        )
     parser.add_argument(
         "--actions",
         action="store_true",
@@ -1487,6 +1634,13 @@ def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
         default="normal",
         help="Select static inspection detail; --watch has overview, details and evidence/log views.",
     )
+
+
+def configure_watch_parser(parser: argparse.ArgumentParser) -> None:
+    """Reuse the inspection selector and dashboard options for ordinary watch."""
+
+    configure_inspect_parser(parser, watch_command=True)
+    parser.set_defaults(watch=True)
 
 
 def configure_stop_parser(parser: argparse.ArgumentParser) -> None:
@@ -2075,10 +2229,21 @@ def inspect_from_args(
         if refresh_seconds < 5:
             raise ControlError("--refresh must be at least 5 seconds")
         raw_selector = getattr(arguments, "job_id", None)
+        raw_job_name = getattr(arguments, "job_name", None)
         raw_mode = raw_selector is not None or any(
             getattr(arguments, key, None)
-            for key in ("log_dir", "out", "err", "offline")
+            for key in ("job_name", "log_dir", "out", "err", "offline")
         )
+        if raw_job_name is not None and (
+            raw_selector is not None
+            or any(
+                getattr(arguments, key, None)
+                for key in ("log_dir", "out", "err", "offline")
+            )
+        ):
+            raise ControlError(
+                "A scheduler job name cannot be combined with job-ID or log selectors"
+            )
         if (
             watching
             and not raw_mode
@@ -2108,16 +2273,20 @@ def inspect_from_args(
                 )
             from . import dashboard
 
-            selected = dashboard.resolve_selection(
-                (os.environ.get("EMRYS_DASHBOARD_JOB_ID", "").strip() or None)
-                if raw_selector in (None, "auto")
-                else raw_selector,
-                getattr(arguments, "log_dir", None)
-                or os.environ.get("EMRYS_DASHBOARD_LOG_DIR", "").strip()
-                or None,
-                getattr(arguments, "out", None),
-                getattr(arguments, "err", None),
-                getattr(arguments, "offline", False),
+            selected = (
+                dashboard.resolve_named_selection(raw_job_name)
+                if raw_job_name is not None
+                else dashboard.resolve_selection(
+                    (os.environ.get("EMRYS_DASHBOARD_JOB_ID", "").strip() or None)
+                    if raw_selector in (None, "auto")
+                    else raw_selector,
+                    getattr(arguments, "log_dir", None)
+                    or os.environ.get("EMRYS_DASHBOARD_LOG_DIR", "").strip()
+                    or None,
+                    getattr(arguments, "out", None),
+                    getattr(arguments, "err", None),
+                    getattr(arguments, "offline", False),
+                )
             )
             return _inspection_presentation.watch(
                 None,
@@ -2244,6 +2413,8 @@ def inspect_from_args(
         )
     print(f"Attempt outcome: {observed.attempt_outcome}")
     print(elapsed)
+    if completion := _inspection_presentation.completion_line(observed):
+        print(completion)
     if observed.processing_source_run_id is not None:
         source_state = (
             "admitted" if observed.processing_source is not None else "blocked"
@@ -2409,6 +2580,75 @@ def inspect_from_args(
     return 0
 
 
+def watch_from_args(arguments: argparse.Namespace) -> int:
+    """Resolve the ordinary monitoring shorthand onto one existing watch path."""
+
+    arguments.watch = True
+    selector = getattr(arguments, "run", None)
+    explicit_project = getattr(arguments, "project", None) is not None
+    if selector is not None and getattr(arguments, "job_id", None) is not None:
+        return _control_failure(
+            ControlError("Select one positional Run/job or --job-id, not both")
+        )
+    if selector is not None and selector.isdecimal():
+        if explicit_project:
+            return _control_failure(
+                ControlError("A scheduler job ID cannot be combined with --project")
+            )
+        arguments.run = None
+        arguments.job_id = selector
+        return inspect_from_args(arguments)
+    current_project = explicit_project or os.path.lexists("project.yaml")
+    if current_project:
+        project = onboarding.project_definition_path(
+            getattr(arguments, "project", None)
+        )
+        if selector is None:
+            try:
+                target = _select_project_watch_target(
+                    project,
+                    interactive=sys.stdin.isatty() and sys.stderr.isatty(),
+                )
+            except _CONTROL_ERRORS as exc:
+                return _control_failure(exc)
+            if target is None:
+                return inspect_from_args(arguments)
+            arguments.project = project
+            kind, selected = target
+            if kind == "run":
+                assert isinstance(selected, Path)
+                arguments.run = selected.name
+            else:
+                assert not isinstance(selected, Path)
+                arguments.submission = selected.request_root.name
+            return inspect_from_args(arguments)
+        if explicit_project:
+            return inspect_from_args(arguments)
+        try:
+            run = inspection.resolve_run_root(
+                inspection.project_run_roots(project.parent), selector
+            )
+        except inspection.InspectionError as exc:
+            if not str(exc).startswith("No Project Run matches"):
+                return _control_failure(exc)
+        else:
+            arguments.project, arguments.run = project, run.name
+            return inspect_from_args(arguments)
+    try:
+        selected = _select_projects_home_run(
+            selector,
+            interactive=sys.stdin.isatty() and sys.stderr.isatty(),
+        )
+    except _CONTROL_ERRORS as exc:
+        return _control_failure(exc)
+    if selected is not None:
+        project, run = selected
+        arguments.project, arguments.run = project, run.name
+    elif selector is not None:
+        arguments.run, arguments.job_name = None, selector
+    return inspect_from_args(arguments)
+
+
 __all__ = (
     "ControlError",
     "INSPECT_DESCRIPTION",
@@ -2416,12 +2656,15 @@ __all__ = (
     "RESUME_DESCRIPTION",
     "RUN_DESCRIPTION",
     "STOP_DESCRIPTION",
+    "WATCH_DESCRIPTION",
     "configure_inspect_parser",
+    "configure_watch_parser",
     "configure_stop_parser",
     "configure_report_parser",
     "configure_resume_parser",
     "configure_run_parser",
     "inspect_from_args",
+    "watch_from_args",
     "stop_from_args",
     "report_from_args",
     "resume_from_args",

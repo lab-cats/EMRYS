@@ -117,6 +117,40 @@ def test_task_observation_distinguishes_current_retry_readiness(
     assert view.task_observation(task) == expected
 
 
+def test_verified_completion_is_clear_and_replaces_stale_log_progress(tmp_path):
+    observed = _run(tmp_path / ("run-" + "a" * 64))
+    observed.attempt_outcome = "succeeded"
+    observed.results_status = "complete"
+    observed.reporting_status = "complete"
+    observed.tasks = tuple(
+        SimpleNamespace(
+            expected=SimpleNamespace(step_id=step),
+            state="verified",
+            retry_task_attempt_record=None,
+        )
+        for step in ("09", "10")
+    )
+    workflow = view.dashboard.parse_workflow("")
+    workflow["done"]["09"] = 1
+    snapshot = view.WatchSnapshot(
+        None,
+        raw_job={"job_id": 42},
+        observed=observed,
+        scheduler={"state": "COMPLETED"},
+        workflow=workflow,
+    )
+
+    assert view.completion_line(observed) == (
+        "Run complete: scientific Results and reporting are verified."
+    )
+    rendered = view.render_dashboard(
+        snapshot, height=56, width=160, view="overview", scroll=0
+    ).plain
+    assert "Run complete: scientific Results and reporting are verified." in rendered
+    assert "09      Paired CMH ranking" in rendered and "1/1" in rendered
+    assert "10      Scientific context" in rendered and "1/1" in rendered
+
+
 @pytest.mark.parametrize("outcome", [None, "attempt_failed", "attempt_interrupted"])
 def test_recorded_application_outcomes_are_dated_escaped_diagnostics_in_all_views(
     tmp_path, monkeypatch, outcome

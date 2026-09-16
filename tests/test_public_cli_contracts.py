@@ -46,6 +46,7 @@ EMRYS_COMMANDS = (
     (("run",), "usage: emrys run"),
     (("resume",), "usage: emrys resume"),
     (("report",), "usage: emrys report"),
+    (("watch",), "usage: emrys watch"),
     (("stop",), "usage: emrys stop"),
     (
         ("validate", "artifact-contracts"),

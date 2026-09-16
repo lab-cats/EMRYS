@@ -57,6 +57,13 @@ resources and activity. It reuses `dashboard.py` as the shared diagnostic
 selection, parsing and presentation owner. The installed terminal adds a
 separate dated Run-evidence/log view and fresh CLI action handoffs.
 
+`emrys watch [RUN_OR_JOB]` is the ordinary entry point over that same owner. It
+automatically selects the sole Project Run or pre-Run request, uses a picker for
+ambiguity, and accepts exact scheduler IDs or names. A declared
+`EMRYS_PROJECTS_ROOT` supplies read-only Run discovery outside a Project
+directory. Verified completion comes from inspection and replaces stale final
+stage counts; scheduler/log completion remains diagnostic.
+
 Use `--job-id [JOB_ID]` for scheduler-only selection; omitted ID discovers an
 owned recent job, as does watch without a current Project. `--log-dir`,
 `--out`/`--err --offline`, `--refresh` and `--snapshot` preserve the corresponding

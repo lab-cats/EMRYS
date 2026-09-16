@@ -4491,8 +4491,11 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     assert len(tokens) == 1
     assert captured.out == (
         "JOB_ID=812345\n"
+        f"JOB_NAME=emrys-local-pilot-{tokens[0]}\n"
         f"OUT={workspace}/logs/emrys-local-pilot-{tokens[0]}-812345.out\n"
         f"ERR={workspace}/logs/emrys-local-pilot-{tokens[0]}-812345.err\n"
+        "Submitted Slurm job 812345; completion is not yet verified.\n"
+        "Watch progress: emrys watch 812345\n"
     )
     assert len(submissions) == 1
     expected_analysis = "''" if execute else "sensitivity"
@@ -5071,6 +5074,12 @@ def test_execution_log_preserves_receipt_and_reporting_boundary(
         assert "Scientific Results remain complete" in captured.err
         assert "Inspect the Run and follow its admitted next action" in captured.err
         assert "emrys report" not in captured.err
+    elif report_mode == "success":
+        assert (
+            "Run complete: scientific Results and reports are verified." in captured.err
+        )
+    elif report_mode == "disabled":
+        assert "Scientific work complete; reporting was skipped." in captured.err
 
 
 @pytest.mark.parametrize(
@@ -5566,6 +5575,7 @@ def test_public_help_routes() -> None:
         (("run", "--help"), "usage: emrys run"),
         (("resume", "--help"), "usage: emrys resume"),
         (("inspect", "--help"), "usage: emrys inspect"),
+        (("watch", "--help"), "usage: emrys watch"),
         (("stop", "--help"), "usage: emrys stop"),
     ):
         result = subprocess.run(
