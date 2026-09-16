@@ -109,9 +109,9 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U06](#cv-u06-available-resources) | Workflow CPU ceiling still 4 | Open |
 | [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Open |
 | [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Open |
-| [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Open |
-| [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Open |
-| [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Open |
+| [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Verification pending |
+| [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Completed |
+| [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Verification pending |
 | [CV-U12](#cv-u12-duplicate-submission-warning) | Warn before accidental duplicate submission | Open |
 | [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Open |
 | [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Open |
@@ -265,6 +265,19 @@ These details are retained in CV-U22 and CV-U24–CV-U28. They are parts of one
 complete smoke-to-real journey, not optional expert prerequisites that can be
 omitted from the novice path.
 
+**Delivered documentation slice:** Quickstart now gives one paste-ready
+synthetic path, explains its purpose before the command, supplies the built-in
+Viking placement values, and keeps routine setup, submission, completion and
+report opening in the guide. Detailed Doctor status, Task interpretation and
+region-format material moved to the Runbook and configuration guide.
+
+**Remaining outcome:** The own-data continuation still exposes separate runtime
+reuse and resource-profile procedures, creates manifests outside the Project,
+and cannot supply tested PUM1 workload settings. Compatible automatic reuse,
+one-pass setup, Project-contained manifests and benchmark-derived settings
+remain owned by CV-U22 and CV-U25–CV-U28. CV-U08 therefore remains **Open**;
+this documentation slice supplies no new Viking execution or workload evidence.
+
 ### CV-U09 Synthetic-project explanation
 
 **Operator report:** “What ‘create the synthetic project’ is doing is NOT clear
@@ -275,6 +288,17 @@ and why the user performs the smoke-test step. A first-time operator should
 understand the purpose before running the command, without having to know the
 project's internal terminology.
 
+**Implemented documentation:** Before the creation command, Quickstart now says
+that EMRYS supplies tiny made-up reads, a reference and scientific settings. It
+explains that the smoke test checks installation, Viking execution and report
+generation before own-data use, while explicitly excluding full-study capacity
+and scientific-choice claims.
+
+**Verification:** The explanation precedes the command and uses no internal
+runtime or scheduler terminology. Bash-fence syntax and changed-document links
+pass locally. CV-U09 is **Verification pending** for the repository documentation
+gate and novice acceptance; neither requires a new cluster run.
+
 ### CV-U10 Unnecessary Quickstart command
 
 **Operator instruction:** “Git rev-parse head is not necessary in Quickstart…”
@@ -282,6 +306,13 @@ project's internal terminology.
 **Requested outcome:** Remove `git rev-parse HEAD` from the basic Quickstart
 journey. This finding concerns an unnecessary operator step; it does not request
 removing EMRYS's own source-identity or provenance records.
+
+**Accepted disposition:** `git rev-parse HEAD` is absent from Quickstart's
+installation journey. EMRYS's own Run implementation identity remains unchanged,
+and the advanced Runbook retains the command where an operator intentionally
+installs and records a chosen release or commit. A repository search confirms
+the removal is confined to the novice guide. CV-U10 is **Completed** at static
+documentation evidence; no runtime or cluster claim is made.
 
 ### CV-U11 Paste-ready Quickstart commands
 
@@ -303,6 +334,18 @@ home has already been set, which the reader did not find clear.
 values the user must supply, and make prerequisites understandable. Avoid
 unexplained shell expressions. This also depends on supplying expected Viking
 values directly in Quickstart, as requested in CV-U20.
+
+**Implemented documentation:** Quickstart labels steps 1–5 as paste-ready and
+chains dependent commands so a failure stops the block. The synthetic Project
+path uses the earlier named Projects-home variable without the `:?` expression.
+Own-data blocks are explicitly labelled templates and use conspicuous
+`REPLACE_WITH_...` values; the surrounding text names the study-specific files
+and assignments that must replace them.
+
+**Verification:** All Quickstart Bash fences pass `bash -n`; changed-document
+links and anchors pass a focused local check. CV-U11 is **Verification pending**
+for the repository documentation gate and novice acceptance. CV-U20 separately
+owns whether every knowable Viking/PUM1 value has been supplied.
 
 ### CV-U12 Duplicate submission warning
 
@@ -417,6 +460,20 @@ other documents to obtain values the guide can supply. Do not replace concrete
 values with unexplained placeholders or leave the user to infer them. This
 records the requirement; no new site settings or dataset-specific values were
 selected during this discussion.
+
+**Delivered documentation slice:** Quickstart now states the built-in Viking
+smoke placement inline: account `viking-users`, partition `long`, QoS `normal`,
+four CPUs, eight hours, site-default memory, nonexclusive placement,
+scheduler-selected node and private `/tmp` scratch. It distinguishes those
+supplied values from own-data file paths and scientific choices, which are
+clearly marked as replacements rather than unexplained placeholders.
+
+**Remaining outcome:** No tested full PUM1 workload profile, benchmark-derived
+stage settings, or automatic STAR-parameter selection is currently established.
+Those gaps remain with CV-U21, CV-U27 and CV-U28 and cannot be filled by guessing
+values in documentation. CV-U20 remains **Open** until the resulting concrete
+PUM1 values can be included directly in the maintained journey. This slice adds
+no institutional execution, performance or scientific evidence.
 
 ### CV-U21 Technical parameter assistance
 
