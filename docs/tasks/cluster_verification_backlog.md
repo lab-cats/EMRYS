@@ -86,7 +86,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-18](#cv-18-safe-emrys-stop) | P1 | Verification pending | Provide an operator stop action with safe recovery semantics. |
 | [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Verification pending | Name verification-only work accurately. |
 | [CV-20](#cv-20-submission-state-before-run-creation) | P1 | Verification pending | Show queued and preparing jobs before a Run exists. |
-| [CV-21](#cv-21-reporting-in-progress-and-visibility) | P1 | Open | Distinguish unfinished report publication from failed reporting. |
+| [CV-21](#cv-21-reporting-in-progress-and-visibility) | P1 | Verification pending | Distinguish unfinished report publication from failed reporting. |
 | [CV-22](#cv-22-complete-submission-preview) | P1 | Verification pending | Show effective placement and computational limits before approval. |
 | [CV-23](#cv-23-safe-project-or-artifact-cleanup) | P2 | Deferred | Decide and scope safe cleanup of unused owned state. |
 | [CV-24](#cv-24-run-center-actions) | P2 | Completed | Explore a dashboard that invokes supported CLI operations. |
@@ -2244,6 +2244,16 @@ the test reader adopted the controlled Python argv owner. It covers producer
 publication boundaries, not arbitrary mid-write timing, institutional filesystem
 visibility or the cause of E06. The later Run-log discovery association assertions
 in this same journey also passed the final combined standard CI above.
+
+**Controlled finalization-fault slice:** The reporting boundary now has
+deterministic coverage for completion publication failing before the verified
+name is visible and failing after the exact complete marker becomes visible.
+Inspection follows the admitted filesystem state: the first case remains
+`Started; completion unverified`, even with a producer receipt present, while
+the second re-admits the visible marker as verified. No sleep, retry, missing-as-
+success rule or new reporting state was added. The historical E06 cause and
+actual Viking storage-visibility behavior still require institutional evidence,
+so CV-21 is **Verification pending** rather than established as a site result.
 
 ### CV-22 Complete submission preview
 

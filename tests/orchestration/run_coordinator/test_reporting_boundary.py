@@ -699,6 +699,61 @@ def test_completion_guard_runs_after_validation_before_verified_publication(
     assert not verified.exists()
 
 
+@pytest.mark.parametrize("verified_visible", (False, True))
+def test_completion_publication_fault_reports_only_visible_verified_state(
+    tmp_path: Path,
+    verified_visible: bool,
+) -> None:
+    built = _build(tmp_path / "fixture")
+    identity = _identity_paths(built)
+    validate = lambda *_arguments, **_keywords: _semantic_result(built.run_summary)
+    ops = _ops(validate)
+    reporting_boundary.publish_start(kind="run_summary", **identity, ops=ops)
+    built.run_summary.parent.mkdir(parents=True, exist_ok=True)
+    built.run_summary.write_bytes(b"semantic artifact receipt\n")
+    paths = reporting_boundary.ledger_paths(built.run_root, "run_summary")
+
+    def fail_completion_publication(path: Path, data: bytes) -> None:
+        if verified_visible:
+            reporting_boundary.DEFAULT_REPORTING_BOUNDARY_OPS.publish_bytes(path, data)
+        raise reporting_boundary.ReportingBoundaryError(
+            "injected completion publication finalization failure"
+        )
+
+    with pytest.raises(
+        reporting_boundary.ReportingBoundaryError,
+        match="injected completion publication finalization failure",
+    ):
+        reporting_boundary.publish_verified(
+            kind="run_summary",
+            receipt_path=built.run_summary,
+            **identity,
+            ops=replace(ops, publish_bytes=fail_completion_publication),
+        )
+
+    records, blockers, locations = inspect_reporting_ledger(
+        built.run_root,
+        built.execution,
+        built.profile,
+        validate,
+    )
+    assert records["run_summary"]["start"] == _reference(paths.start, built.run_root)
+    assert locations == ()
+    if verified_visible:
+        assert records["run_summary"]["verified"] == _reference(
+            paths.verified, built.run_root
+        )
+        assert blockers == [
+            "html_report reporting is absent after a verified transaction prefix"
+        ]
+    else:
+        assert records["run_summary"]["verified"] is None
+        assert blockers == [
+            "Could not close run_summary reporting ledger: "
+            "run_summary reporting start has no verified completion"
+        ]
+
+
 def test_new_reporting_ledger_directories_are_durably_linked(
     tmp_path: Path,
 ) -> None:
