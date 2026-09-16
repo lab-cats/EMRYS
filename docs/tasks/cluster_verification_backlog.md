@@ -518,6 +518,12 @@ and announces completion. Focused checks pass locally. The original Viking Run
 records were not supplied, so its historical cause remains uncharacterized and
 institutional display acceptance is pending.
 
+A later operator-supplied Viking timeout adds the failed-terminal counterpart:
+when exact scheduler state is terminal and not `COMPLETED`, log-derived active,
+partial, and unstarted work is displayed as `INTERRUPTED`, `INCOMPLETE`, and
+`NOT REACHED`. The dashboard calls the outcome `JOB ENDED` and directs the
+operator to final inspection; it does not infer completion or recovery.
+
 ### CV-U18 Interactive input-list creation
 
 **Operator report:** “The command to create the input lists is fucking garbage,
@@ -1475,6 +1481,22 @@ do not establish E09's cause or actual Slurm cancellation behavior. CV-01 adds
 the separately bounded real-Snakemake/native-fixture observation.
 Missing finalization and institutional cancellation evidence remain open. No
 Task or Run becomes recoverable solely because an outer group stopped.
+
+**Wall-time observation and bounded prevention slice:** Operator-supplied
+records for Viking job `621154` report `TIMEOUT` after `08:00:09` against an
+`08:00:00` limit. The affected Step 06 scope had a task start without a terminal
+result; final inspection retained remote lock ownership, found no terminal
+Attempt receipt, reported no recovery, and instructed the operator not to
+resume. The historical Run remains untouched. For future submissions, Slurm now
+warns the batch shell with `TERM` five minutes before the limit; the generated
+wrapper forwards that signal once to its exact EMRYS child and waits for the
+child's actual exit. Existing lifecycle and Task owners remain solely
+responsible for provable closure. Hard kill, missing/late warning, or interrupted
+finalization retains the existing blocked ambiguity. Local wrapper evidence is
+not a real Slurm timeout or institutional recovery result. Focused local
+submission, dashboard, lifecycle, and Task interruption checks pass; the full
+lifecycle/Task collection still requires a current installed-package test
+environment for its isolated-module case.
 
 **Supported recovery boundary:** The earlier fixed-start contract blocked every
 entered Task without verified success, including clean cancellation. The

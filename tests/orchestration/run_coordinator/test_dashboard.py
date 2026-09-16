@@ -443,7 +443,7 @@ def test_missing_or_invalid_counts_never_invent_completion(stats, capsys):
     assert dashboard.workflow_phase(model) == (2, "SAMPLE PROCESSING (observed)")
     dashboard.activity_lines(model, _slurm(terminal=True), {}, 10)
     dashboard.snapshot(JOB_ID, _slurm(terminal=True), {}, model)
-    assert "unknown remaining" in capsys.readouterr().out
+    assert "unknown not completed" in capsys.readouterr().out
 
 
 def test_expected_counts_are_fallback_context_not_fabricated_global_progress():
@@ -1732,6 +1732,54 @@ def test_dashboard_drawing_and_rendering_support_wide_compact_and_small_screens(
     small = _FakeScreen(height=10, width=60)
     dashboard.render(small, JOB_ID, _slurm(), identity, model, 30, 0, "overview", 0)
     assert any("too small" in write[2] for write in small.writes)
+
+
+def test_terminal_timeout_never_presents_stale_work_as_pending_or_running(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    now = 1_800_000_000.0
+    model = _rich_model(now)
+    slurm = _slurm(terminal=True, state="TIMEOUT")
+    identity = _dashboard_identity()
+
+    assert dashboard.latest_sample_state(model, "ABE_EV_2", now, "TIMEOUT") == (
+        "01",
+        "INTERRUPTED",
+        "-",
+    )
+    assert dashboard.latest_sample_state(model, "unpaired", now, "TIMEOUT")[1] == (
+        "NOT REACHED"
+    )
+    pipeline = _flatten_render_lines(
+        dashboard.pipeline_lines(model, now, 100, terminal_state="TIMEOUT")
+    )
+    assert "INTERRUPTED (1)" in pipeline
+    assert "NOT REACHED" in pipeline
+    assert "RUNNING" not in pipeline
+    assert "PENDING" not in pipeline
+    lanes = _flatten_render_lines(
+        dashboard.sample_lane_lines(model, now, 120, "TIMEOUT")
+    )
+    assert "[!] interrupted" in lanes
+    assert "[-] not reached" in lanes
+    assert "job ended before all samples were ready" in lanes
+    assert "ended this job in TIMEOUT" in _flatten_render_lines(
+        dashboard.current_lines(model, identity, now, 100, terminal_state="TIMEOUT")
+    )
+    title, activity = dashboard.activity_lines(model, slurm, identity, now)
+    assert title == "JOB ENDED"
+    assert "scheduler termination alone does not establish recovery" in str(activity)
+
+    monkeypatch.setenv("NO_COLOR", "1")
+    screen = _FakeScreen()
+    dashboard.render.attrs = dashboard.init_colors()
+    dashboard.render(screen, JOB_ID, slurm, identity, model, 30, 0, "details", 0)
+    rendered = "\n".join(write[2] for write in screen.writes)
+    assert "JOB ENDED" in rendered
+    assert "INTERRUPTED" in rendered
+    assert "PENDING" not in rendered
+    dashboard.snapshot(JOB_ID, slurm, identity, model)
+    assert "13 not completed" in capsys.readouterr().out
 
 
 def test_slurm_queries_cover_success_and_failures(

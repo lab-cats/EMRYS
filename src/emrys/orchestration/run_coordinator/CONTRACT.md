@@ -266,6 +266,14 @@ initializer/roster, and delegates to the same grouped Run path. Scheduler
 streams and job identity are operational provenance, never scientific or
 completion authority.
 
+Ordinary submissions request a batch-shell `TERM` warning 300 seconds before
+the Slurm time limit. The generated wrapper catches that warning, forwards it
+once to its exact delegate child, and continues waiting for the child's actual
+exit so the existing lifecycle and Task owners can publish whatever abort and
+Attempt closure they can prove. A missing or late warning, forced kill, or
+interrupted finalization remains ambiguous: the wrapper never fabricates a
+terminal receipt, releases a lock, or declares recovery from scheduler state.
+
 The shared transport retains the failing operation and underlying OS error,
 and includes bounded, escaped scheduler diagnostics. A canonical returned job
 ID establishes acceptance even if the scheduler command then exits nonzero;
@@ -434,6 +442,13 @@ refresh. Exact-request resources come from the same admitted root record;
 batch usage additionally requires local binding before and after the sample.
 Root and usage dates reflect their actual replies, not later proof-query time.
 Missing usage preserves root state and reports usage unknown.
+
+When an exact scheduler observation is terminal and not `COMPLETED`, the
+dashboard freezes log-derived work as `INTERRUPTED`, `INCOMPLETE`, or
+`NOT REACHED`; it does not leave those stages `RUNNING` or `PENDING` and does
+not keep their elapsed timers advancing. This is presentation of a stopped
+scheduler job, not completion, Attempt closure, or recovery authority. Final
+inspection remains the source of supported next actions.
 
 The shared diagnostic reader pins canonical directory/file identities, ownership,
 regular-file type and generation. It reads captured sizes in bounded chunks,
