@@ -521,7 +521,7 @@ def test_init_project_prompts_and_requires_explicit_suggestion_acceptance(
     monkeypatch.setattr(onboarding.sys, "stdin", terminal_input)
     monkeypatch.setattr(onboarding.sys, "stderr", terminal_output)
 
-    answers = onboarding._collect_project_answers(arguments)
+    answers = onboarding._collect_project_answers(arguments, {}, tmp_path / "project")
 
     assert answers["target_change"] == "C>T"
     assert answers["min_sample_dp"] == 1
@@ -543,7 +543,62 @@ def test_init_project_rejects_eof_instead_of_accepting_a_suggestion(
     monkeypatch.setattr(onboarding.sys, "stderr", Terminal())
 
     with pytest.raises(onboarding.OnboardingError, match="ended before min sample dp"):
-        onboarding._collect_project_answers(arguments)
+        onboarding._collect_project_answers(arguments, {}, tmp_path / "project")
+
+
+def test_init_project_suggests_star_values_from_declared_inputs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Terminal(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    output = tmp_path / "project"
+    arguments = _project_arguments(tmp_path, output, execute=False)
+    arguments.sjdb_overhang = None
+    arguments.genome_sa_index_nbases = None
+    members = onboarding._copied_manifest_members(arguments, output)
+    terminal_output = Terminal()
+    monkeypatch.setattr(onboarding.sys, "stdin", Terminal("\n\n"))
+    monkeypatch.setattr(onboarding.sys, "stderr", terminal_output)
+
+    answers = onboarding._collect_project_answers(arguments, members, output)
+
+    assert answers["sjdb_overhang"] == 3
+    assert answers["genome_sa_index_nbases"] == 1
+    rendered = terminal_output.getvalue()
+    assert "first complete record in each declared FASTQ" in rendered
+    assert "maximum 4 bases" in rendered
+    assert "12-base reference" in rendered
+    assert "sjdb overhang [3]:" in rendered
+    assert "genome sa index nbases [1]:" in rendered
+
+
+def test_init_project_uses_derived_star_values_noninteractively(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "project"
+    arguments = _project_arguments(tmp_path, output, execute=False)
+    arguments.sjdb_overhang = None
+    arguments.genome_sa_index_nbases = None
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(onboarding.sys, "stdin", io.StringIO())
+    monkeypatch.setattr(onboarding.sys, "stderr", io.StringIO())
+
+    assert onboarding.init_project_from_args(arguments) == 0
+    assert not output.exists()
+
+
+def test_star_read_length_inspection_accepts_gzip_and_stops_after_one_record(
+    tmp_path: Path,
+) -> None:
+    fastq = tmp_path / "reads.fastq.gz"
+    with gzip.open(fastq, "wt", encoding="ascii") as destination:
+        destination.write("@first\nACGTAC\n+\nIIIIII\nmalformed trailing data")
+
+    assert onboarding._first_fastq_read_length(fastq) == 6
 
 
 @pytest.mark.parametrize(
