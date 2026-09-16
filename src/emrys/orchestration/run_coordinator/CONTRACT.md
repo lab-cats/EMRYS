@@ -303,6 +303,16 @@ keep distinct stream destinations even if Slurm reuses a job number. Legacy
 v1 contexts remain readable diagnostic records, but their shared `%j` paths do
 not supply request identity. Doctor's private qualification streams are unchanged.
 
+Before a new Run submission, Control compares its scientific request and
+execution-profile binding with retained Project requests and observes each exact
+match through the existing scheduler owner. A matching active request, or one
+whose terminal state cannot be confirmed, produces a prominent duplicate-risk
+warning and prevents `sbatch` unless the operator supplied
+`--allow-duplicate-submission`. Presentation and reporting choices do not make
+the same scientific submission distinct. Terminal and unrelated
+requests do not trigger the override. This check never cancels, retries or
+promotes scheduler diagnostics to Run evidence.
+
 The shared transport requires a transcript destination, opens private raw
 `sbatch.stdout`/`sbatch.stderr` files, and synchronizes their directory before
 launch. Ordinary submission does not add

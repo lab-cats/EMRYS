@@ -89,6 +89,8 @@ from emrys.orchestration.run_coordinator.resource_policy import (
 )
 from emrys.orchestration.run_coordinator import slurm_submission
 
+_NON_WORK = frozenset({"--execute", "--no-report", "--verbose"})
+
 RUN_DESCRIPTION = "Plan an immutable Run; confirm or use --execute. Installs nothing."
 RESUME_DESCRIPTION = "Plan a safe resume, then confirm or use --execute for automation."
 INSPECT_DESCRIPTION = (
@@ -1001,6 +1003,52 @@ def _schedule(
         console_print(f"Scheduler stdout: {submission.stdout_pattern}")
         console_print(f"Scheduler stderr: {submission.stderr_pattern}")
         console_print("Scheduler command: " + shlex.join(submission.argv))
+    if command == "run":
+        try:
+            work_argv = tuple(v for v in delegate_argv if v not in _NON_WORK)
+            risks = []
+            for request in slurm_submission.submission_requests(
+                _absolute(arguments.project)
+            ):
+                context = request.context
+                retained = () if context is None else tuple(context["emrys_argv"])
+                if (
+                    context is None
+                    or context["command"] != "run"
+                    or context["profile_binding_sha256"] != profile.binding_sha256
+                    or tuple(v for v in retained if v not in _NON_WORK) != work_argv
+                ):
+                    continue
+                observed = slurm_submission.observe_submission_request(request)
+                if not bool(observed["terminal"]):
+                    risks.append((request, observed))
+        except slurm_submission.SlurmSubmissionError as exc:
+            raise ControlError(
+                f"Could not check retained submissions; sbatch was not invoked: {exc}"
+            ) from exc
+        if risks:
+            console_print("DUPLICATE SUBMISSION RISK", style="bold white on red")
+            console_print(
+                "An earlier submission of this same work is active or is not yet "
+                "confirmed terminal.",
+                style="bold red",
+            )
+            for request, observed in risks:
+                identifier = request.recorded_job_id or request.request_root.name
+                console_print(f"  {identifier}: scheduler state {observed['state']}")
+            console_print(
+                "Run and inspect displays can take time to populate. An absent Run "
+                "does not mean the earlier submission failed. Use `emrys watch` and "
+                "submit again only if you understand that this may create duplicate jobs."
+            )
+            if not getattr(arguments, "allow_duplicate_submission", False):
+                console_print(
+                    "Submission stopped. Re-run with "
+                    "--allow-duplicate-submission only after reviewing the "
+                    "earlier request.",
+                    style="bold red",
+                )
+                return 2
     if not arguments.execute and not _confirm_execution():
         _print_no_write("scheduler or workspace")
         return 0
@@ -1540,6 +1588,14 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
         help=(
             "Reuse one successful processing Run name or ID from this Project and "
             "execute only the selected Analysis's downstream work."
+        ),
+    )
+    parser.add_argument(
+        "--allow-duplicate-submission",
+        action="store_true",
+        help=(
+            "Submit despite a matching active or unconfirmed retained request. "
+            "This may create duplicate jobs."
         ),
     )
     _add_execution_arguments(parser)

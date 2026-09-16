@@ -3549,6 +3549,7 @@ def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Names
         profile=str(profile),
         verbose=False,
         log_root=None,
+        allow_duplicate_submission=False,
         execute=execute,
     )
 
@@ -4611,6 +4612,7 @@ def test_repeated_scheduled_commands_keep_distinct_frozen_streams(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=True)
+    arguments.allow_duplicate_submission = True
     arguments.run = "run-" + "a" * 64
     workspace = arguments.project.parent
     profile = load_execution_profile(config_path=Path(arguments.profile))
@@ -4640,6 +4642,89 @@ def test_repeated_scheduled_commands_keep_distinct_frozen_streams(
     }
     assert all(record.context["command"] == command for record in records)
     assert all(record.recorded_job_id == "812345" for record in records)
+
+
+@pytest.mark.parametrize("state", ("RUNNING", "UNKNOWN"))
+def test_matching_nonterminal_submission_requires_explicit_duplicate_override(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    state: str,
+) -> None:
+    arguments = _scheduled_run_arguments(tmp_path, execute=True)
+    workspace = arguments.project.parent
+    profile = load_execution_profile(config_path=Path(arguments.profile))
+    controls = control._resolve_controls(arguments, workspace)
+    submissions = []
+
+    def submit(plan, *, record_path):
+        submissions.append(plan)
+        record_path.write_bytes(b"812345;cluster-a\n")
+        record_path.with_suffix(".stderr").write_bytes(b"")
+        return "812345"
+
+    monkeypatch.setattr(control.slurm_submission, "submit", submit)
+    assert (
+        control._schedule(
+            "run", arguments, profile, controls, ResourceOverrides(), workspace
+        )
+        == 0
+    )
+
+    monkeypatch.setattr(
+        control.slurm_submission,
+        "observe_submission_request",
+        lambda _request: {
+            "state": state,
+            "terminal": False,
+            "source": None if state == "UNKNOWN" else "squeue",
+            "cluster": None if state == "UNKNOWN" else "cluster-a",
+            "diagnostic": "fixture unavailable" if state == "UNKNOWN" else None,
+        },
+    )
+    assert (
+        control._schedule(
+            "run", arguments, profile, controls, ResourceOverrides(), workspace
+        )
+        == 2
+    )
+    assert len(submissions) == 1
+    blocked = capsys.readouterr().err
+    assert "DUPLICATE SUBMISSION RISK" in blocked
+    assert f"812345: scheduler state {state}" in blocked
+    assert "displays can take time to populate" in blocked
+    assert "--allow-duplicate-submission" in blocked
+
+    arguments.allow_duplicate_submission = True
+    assert (
+        control._schedule(
+            "run", arguments, profile, controls, ResourceOverrides(), workspace
+        )
+        == 0
+    )
+    assert len(submissions) == 2
+    assert "DUPLICATE SUBMISSION RISK" in capsys.readouterr().err
+
+    arguments.allow_duplicate_submission = False
+    monkeypatch.setattr(
+        control.slurm_submission,
+        "observe_submission_request",
+        lambda _request: {
+            "state": "COMPLETED",
+            "terminal": True,
+            "source": "sacct",
+            "cluster": "cluster-a",
+            "diagnostic": None,
+        },
+    )
+    assert (
+        control._schedule(
+            "run", arguments, profile, controls, ResourceOverrides(), workspace
+        )
+        == 0
+    )
+    assert len(submissions) == 3
+    assert "DUPLICATE SUBMISSION RISK" not in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(
