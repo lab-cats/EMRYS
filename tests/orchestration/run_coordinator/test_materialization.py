@@ -3388,7 +3388,7 @@ def test_execute_failure_summary_names_only_proven_owned_lock_and_recovery(
     assert f"Owned recovery: {recovery_path}" in captured.err
 
 
-def _slurm_profile(tmp_path: Path, *, cpus_per_task: int = 4) -> Path:
+def _slurm_profile(tmp_path: Path, *, cpus_per_task: int = 12) -> Path:
     profile = tmp_path / "slurm.yaml"
     profile.write_text(
         yaml.safe_dump(
@@ -3439,8 +3439,8 @@ def test_new_run_doctor_storage_requirement_tracks_execution_placement(
         control.capacity,
         "observe_allocation",
         lambda: AllocationCapacity(
-            cores=4,
-            memory_mb=16_384,
+            cores=12,
+            memory_mb=524_288,
             source="placement test allocation",
         ),
     )
@@ -4381,7 +4381,8 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     assert "Execution placement: Slurm" in normal
     assert "Analysis: 'sensitivity'" in normal
     assert (
-        "Allocation request: 4 CPUs, 01:00:00; memory: site default (unknown)" in normal
+        "Allocation request: 12 CPUs, 01:00:00; memory: site default (unknown)"
+        in normal
     )
     assert (
         "Node request: 1; requested host(s): scheduler-selected; exact host unknown"

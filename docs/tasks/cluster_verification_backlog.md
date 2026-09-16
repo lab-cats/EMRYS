@@ -518,12 +518,22 @@ operator-supplied because they depend on where the delivered files exist on
 Viking. The guide no longer sends this operator elsewhere to obtain a known
 PUM1 value.
 
-**Verification limit:** The values reconcile to retained configuration,
+**Local verification:** The values reconcile to retained configuration,
 scientific decisions, validation evidence and the restored packaged resource
-policy. Focused local checks and the repository documentation gate remain to be
-run on the combined branch. A fresh Viking novice walkthrough and full standard
-CI remain pending; no new cluster execution, performance benchmark, scientific
-review or biological validation is claimed. CV-U20 is **Verification pending**.
+policy. On the combined branch, 554 focused tests passed across onboarding,
+normalization, execution profiles, resource policy, Doctor, materialization and
+the hosted synthetic E2E; one platform-specific materialization case skipped.
+The documentation gate passed for 169 Markdown documents and three Mermaid
+sources, all 13 Quickstart Bash blocks passed `bash -n`, Ruff lint/format and
+`git diff --check` passed. Existing cached dependencies and temporary package
+metadata were used without installing dependencies.
+
+Six isolated child-process cases were excluded because this machine's older
+installed validation checkout lacks `simple_term_menu` or `coolname_hash`; the
+current combined source passed its corresponding in-process coverage. A fresh
+Viking novice walkthrough and full standard CI remain pending; no new cluster
+execution, performance benchmark, scientific review or biological validation
+is claimed. CV-U20 is **Verification pending**.
 
 ### CV-U21 Technical parameter assistance
 

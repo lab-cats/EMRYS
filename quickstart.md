@@ -1,4 +1,4 @@
-# EMRYS quickstart: Viking smoke test to EV/PUM1 Results
+# EMRYS quickstart: synthetic Project to Results
 
 This guide takes a CSU Viking user from a fresh installation to two reports
 for a small supplied study, then through the original six-library EV/PUM1 study.
@@ -213,7 +213,9 @@ files and backups for diagnosis. Do not delete or force a retry. The
 [recovery guide](docs/operations/TROUBLESHOOTING.md#run-and-reporting-state)
 explains each state and how to select one Run when several exist.
 
-## 7. Create the original EV/PUM1 Project
+## 7. Create a Project for your own data
+
+### Gather the study inputs and scientific choices
 
 Stay on the **Viking head node**, with the environment from step 1 active. Keep
 the delivered FASTQs, their checksums, the delivered Novogene reference FASTA
