@@ -13,4 +13,6 @@ public workflow commands.
   must report matching request-token stream paths in the selected log directory.
   Invalid paths cancel the single reported job through the existing cleanup guard;
   missing or ambiguous job IDs never authorize cancellation.
+  Its explicit four-core resource fixture is also used by the hosted managed
+  golden path; those small-run checks do not inherit the Viking product budget.
 - The coverage tools compare results with reviewed baselines.

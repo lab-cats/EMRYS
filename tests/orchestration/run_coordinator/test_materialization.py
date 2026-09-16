@@ -3445,8 +3445,13 @@ def test_new_run_doctor_storage_requirement_tracks_execution_placement(
         ),
     )
 
-    direct = load_execution_profile()
-    slurm = load_execution_profile(config_path=_slurm_profile(tmp_path))
+    direct = load_execution_profile(
+        project_path.parent / "runtime/profiles/default.yaml"
+    )
+    slurm = replace(
+        load_execution_profile(config_path=_slurm_profile(tmp_path)),
+        resource_policy=direct.resource_policy,
+    )
     assert (
         control._plan_run(
             project_path,
@@ -4770,9 +4775,6 @@ def test_delegated_operation_records_request_before_preparation_in_one_unique_lo
     if command != "run":
         run_root.mkdir(parents=True)
     profile_path = Path(arguments.profile)
-    document = yaml.safe_load(profile_path.read_bytes())
-    document["resources"] = load_execution_profile().resource_policy.document()
-    profile_path.write_text(yaml.safe_dump(document))
     profile = load_execution_profile(profile_path)
     scheduler = control.slurm_submission
     submission = scheduler.plan_submission(

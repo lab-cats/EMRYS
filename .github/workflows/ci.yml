@@ -691,6 +691,20 @@ jobs:
           "${emrys[@]}" init synthetic \
             --output-dir "${project_root}" --execute \
             2>&1 | tee "${evidence_root}/01-init.log"
+          # The hosted fixture uses a four-core budget, independent of Viking defaults.
+          "${clean_clone}/.venv/bin/python" - "${project_root}" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          from tests.tools.real_synthetic_e2e import symbolic_resource_document
+
+          profile = Path(sys.argv[1]) / "runtime/profiles/default.yaml"
+          profile.write_text(json.dumps({
+              "schema_version": "emrys.execution-profile.v1",
+              "resources": symbolic_resource_document(),
+              "placement": {"kind": "direct"},
+          }) + "\n", encoding="utf-8")
+          PY
           printf 'clone=%s\n' "${clean_clone}" >> "${GITHUB_OUTPUT}"
           printf 'evidence=%s\n' "${evidence_root}" >> "${GITHUB_OUTPUT}"
 
@@ -769,6 +783,8 @@ jobs:
           "${emrys[@]}" init synthetic \
             --output-dir "${borrower_root}" --execute \
             2>&1 | tee "${evidence_root}/06-borrower-init.log"
+          cp "${donor_root}/runtime/profiles/default.yaml" \
+            "${borrower_root}/runtime/profiles/default.yaml"
           "${emrys[@]}" inspect --project "${borrower_root}" \
             | tee "${evidence_root}/07-borrower-inspect.log"
           grep --fixed-strings --line-regexp 'Runs: none found at inspection time.' \
