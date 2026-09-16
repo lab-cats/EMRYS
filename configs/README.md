@@ -155,6 +155,18 @@ Partitions must not overlap. Begin with a small declared region when verifying
 an unfamiliar runtime. Zero candidates and a header-only VCF may be valid when
 the declared transaction reconciles.
 
+Region selectors and regions files must use the same chromosome or contig names
+as the reference FASTA. For a `.bed` file, tab-separated columns use zero-based
+coordinates with the end excluded: `chr1`, `0`, `100` selects the first 100
+bases of `chr1`. A plain three-column region table instead uses one-based
+coordinates with both ends included: `chr1`, `1`, `100` selects the same
+interval. Do not change the extension without converting coordinates or use
+this illustrative interval automatically. With the manifest helper,
+`--region 1 1 --region 2 2 --region X X` selects whole contigs and
+`--region target 1:1-100` selects an inclusive interval. Declare each intended
+selector explicitly; `--region` and `--regions-file` may be combined when all
+partition IDs are unique.
+
 ## Reusing an existing study definition
 
 Operate a current Project in place with `emrys validate --project /absolute/path/project.yaml`

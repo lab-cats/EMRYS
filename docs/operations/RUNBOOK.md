@@ -462,6 +462,12 @@ diagnosis. `--detail debug` also adds authority hashes, receipts and task comman
 Planning, execution, and Doctor instead use `--log-level verbose` or `debug`.
 For failed or interrupted Runs, follow [resume and recovery](TROUBLESHOOTING.md#run-and-reporting-state).
 
+The **Scientific task observations** count only admitted evidence. `Started;
+completion unverified` records a start, not proof that its worker still runs.
+`No admitted start` may reflect absent or invalid records. Read printed blockers
+before choosing an action; neither count overrides the four completion lines
+or inspection's recovery decision.
+
 Selected submission inspection also prints the retained scheduler name for new
 v3 requests and requires that exact name in scheduler metadata. Older requests
 remain readable with their original evidence limits. A matching name or a
@@ -710,6 +716,32 @@ unseal or automatic cleanup operation. To use another runtime, prepare a new
 Project and make an explicit selection rather than editing a retained selector.
 
 ## Dependency maintenance
+
+### Doctor status and timing
+
+Doctor's plan says **repair and verification** when package-manager work is
+needed and **verification** when the selected runtime already passes. The
+`Runtime work` line distinguishes a verified runtime, a missing managed
+inventory, and tools selected by a retained inventory. A missing inventory
+after interruption does not prove that packages need reinstalling. Pixi and
+renv record actual package reuse and changes in `package-output.log` beside
+the maintenance JSONL; see [installation logs](TROUBLESHOOTING.md#watching-doctors-installation-log).
+
+| Status | Meaning |
+| --- | --- |
+| Runtime `NOT PREPARED` | The default runtime inventory has not been created; review proposed setup actions. |
+| Runtime `CHECKS FAILED` | The selected runtime failed required checks; retain named diagnostics. |
+| Storage `NOT QUALIFIED` | Required storage proof is unavailable or invalid; read the observed problem. |
+| Execution `NOT ADMITTED` | The selected execution profile cannot be used; follow its diagnostic. |
+
+`PASS` means that domain passed current checks. `DOCTOR BLOCKED` means the
+requested maintenance action cannot proceed. Doctor changes only Project-owned
+tools and preparation records; it does not obtain scientific inputs, change a
+study design, or repair Results. A verification-only plan does not invoke package
+managers, but repeats current file/runtime checks and, for Slurm, compute checks
+and head-node finalization. Declining the plan with Enter or `n` makes no repair.
+After an error, retain diagnostics; do not change dependency locks or clear
+installation folders to force another attempt.
 
 Doctor prints its full invocation elapsed time and exit outcome, including time
 spent awaiting operator confirmation. Add `--log-level verbose` for precise

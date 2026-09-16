@@ -31,8 +31,10 @@ The Projects parent may already exist. Use durable storage outside the software
 checkout. Existing Projects keep their original locations and references;
 these instructions do not require moving them.
 
-Paste each block in order. Stop at an error and retain its output and any
-printed log path. Do not delete partial setup or results to retry.
+**Steps 1–5 are ready to paste unchanged.** Step 7 uses your own study files;
+replace the marked example paths and sample details before running it. Paste
+blocks in order. Stop at an error and retain its output and any printed log
+path. Do not delete partial setup or results to retry.
 Keep quotation marks when pasting commands. `$HOME` means your Viking home
 directory; the `EMRYS_...` variables below remember locations for later commands.
 A backslash (`\`) at the end of a line continues the same command on the next
@@ -45,32 +47,32 @@ renv to install the required R packages. Install uv and Pixi in your own account
 with these commands. Their installers may update your shell startup files:
 
 ```bash
-curl -LsSf https://astral.sh/uv/0.12.3/install.sh | sh
-curl -fsSL https://pixi.sh/install.sh | PIXI_VERSION=v0.75.0 bash
-export PATH="$HOME/.local/bin:$HOME/.pixi/bin:$PATH"
-uv --version
+set -o pipefail &&
+curl -LsSf https://astral.sh/uv/0.12.3/install.sh | sh &&
+curl -fsSL https://pixi.sh/install.sh | PIXI_VERSION=v0.75.0 bash &&
+export PATH="$HOME/.local/bin:$HOME/.pixi/bin:$PATH" &&
+uv --version &&
 pixi --version
 ```
 
 Download EMRYS and install its locked Python environment:
 
 ```bash
-cd "$HOME"
-git clone https://github.com/lab-cats/EMRYS.git
-cd EMRYS
-export EMRYS_SOURCE_ROOT="$(pwd -P)"
-git rev-parse HEAD
-uv sync --locked --no-default-groups --group workflow --python 3.14
-source "$EMRYS_SOURCE_ROOT/.venv/bin/activate"
+cd "$HOME" &&
+git clone https://github.com/lab-cats/EMRYS.git &&
+cd EMRYS &&
+export EMRYS_SOURCE_ROOT="$(pwd -P)" &&
+uv sync --locked --no-default-groups --group workflow --python 3.14 &&
+source "$EMRYS_SOURCE_ROOT/.venv/bin/activate" &&
 emrys --version
 ```
 
 uv downloads the selected Python version if needed. The final command prints
 the installed EMRYS version; a missing-command or installation error must be
-resolved before continuing. Keep the printed Git commit ID with your notes and
-leave this checkout unchanged for the exercise. EMRYS records the implementation
-used for a Run. The path commands use `pwd -P` so EMRYS receives the actual
-storage location rather than a symbolic-link shortcut.
+resolved before continuing. Leave this checkout unchanged for the exercise;
+EMRYS records the implementation used for a Run. The path commands use `pwd -P`
+so EMRYS receives the actual storage location rather than a symbolic-link
+shortcut.
 
 The [returning to the Project](#returning-to-the-project-in-a-new-terminal)
 instructions below restore this environment after reconnecting.
@@ -79,8 +81,7 @@ instructions below restore this environment after reconnecting.
 
 ### Choose a Projects home
 
-Create or enter a durable parent for your Projects. This example uses your
-home directory; substitute your institution's durable study storage if needed:
+Use this Projects home on Viking:
 
 ```bash
 mkdir -p "$HOME/emrys-projects" &&
@@ -88,21 +89,25 @@ cd "$HOME/emrys-projects" &&
 export EMRYS_PROJECTS_ROOT="$(pwd -P)"
 ```
 
-The variable records the physical path from `pwd -P`; choose a location outside
-the software checkout, writable and accessible from the compute nodes. It
-remembers this choice; EMRYS has no global Projects registry. Initialization
+The variable records the physical path from `pwd -P`. Keep this location outside
+the software checkout and accessible from the compute nodes. Initialization
 requires a real existing parent and an absent Project child, and refuses
 symlink aliases supplied as destination paths. Stop if entering the parent
 fails; do not continue from the previous directory.
 
 ### Create the synthetic Project
 
-Create the supplied Project with the built-in Viking settings:
+"Synthetic" means that EMRYS supplies a tiny example study, including made-up
+reads, a reference and scientific settings. This smoke test checks that the
+installation can prepare tools, run work on Viking and produce reports before
+you use your own data. It does not test whether your study will fit the same
+resources or whether its scientific choices are correct. Create it with the
+built-in Viking settings:
 
 ```bash
-export EMRYS_PROJECT_ROOT="${EMRYS_PROJECTS_ROOT:?Choose a Projects home first}/emrys-smoke"
-emrys init synthetic --site viking --output-dir "$EMRYS_PROJECT_ROOT" --execute
-cd "$EMRYS_PROJECT_ROOT"
+export EMRYS_PROJECT_ROOT="$EMRYS_PROJECTS_ROOT/emrys-smoke"
+emrys init synthetic --site viking --output-dir "$EMRYS_PROJECT_ROOT" --execute &&
+cd "$EMRYS_PROJECT_ROOT" &&
 emrys validate
 ```
 
@@ -111,9 +116,12 @@ settings are supplied; there is no configuration file to edit. `--execute`
 creates the Project; `validate` only checks it. Creation will not overwrite an
 existing destination. Preserve any partial directory if creation fails.
 
-The Viking choice is saved in this Project. It supplies the account, partition,
-resource request and temporary-storage location for subsequent commands; you
-do not need to look up those values or provide them again.
+The saved Viking smoke-test settings are account `viking-users`, partition
+`long`, QoS `normal`, four CPUs, eight hours, site-default memory and private
+temporary storage under `/tmp`. The allocation is not exclusive and Slurm
+chooses the node. The `--site viking` choice supplies these settings;
+you do not enter them or configure Slurm. They are smoke-test settings,
+not a tested budget for a full PUM1 study.
 
 ## 3. Prepare the scientific tools
 
@@ -121,62 +129,16 @@ do not need to look up those values or provide them again.
 emrys doctor --repair
 ```
 
-Doctor names the planned actions: **repair and verification** when package-manager
-work is needed, or **verification** when the selected runtime already passes.
-Answer `y` to begin the displayed plan. **Allow more than ten minutes for setup;
-downloads, compilation and queue waits can extend it considerably.** This is a
-planning allowance, not a completion deadline: verification alone can exceed
-ten minutes. The progress display names the current stage and shows elapsed
-time. Complete installation output is retained at the printed log location.
-For optional detail while setup runs, see
-[watching the installation log](docs/operations/TROUBLESHOOTING.md#watching-doctors-installation-log).
-
-When needed, Doctor checks/updates the tools on the head node; Pixi and renv
-report which packages they reuse or change in the retained package output.
-The plan's `Runtime work` line distinguishes a currently verified runtime,
-preparing a missing managed inventory, and checking/updating tools selected by
-a retained inventory. A missing inventory can follow an interrupted setup;
-it does not mean all tools must be installed again. The manager output at
-`package-output.log` records actual package reuse and changes.
-An unchanged retry still checks current files, tools and storage at the required
-boundaries. An interrupted setup may reuse retained packages while completing
-missing work; changed inputs or tools must pass fresh checks. A previous success
-is retained evidence of that attempt, not a promise that the current files pass.
-Doctor then submits the required compute-node checks and confirms that the
-study's storage works across both nodes. Keep
-this command running until it reports `EMRYS is ready.` All of the scheduler
-and storage setup is handled by EMRYS.
-At return, Slurm accounting timing separates submitted-to-start and eligible
-queue waits from allocation wall time when an exact record is available.
-Allocation wall time includes launch and verification overhead; it is not
-scientific compute time. Unavailable timing does not change Doctor's result.
-
-Read Doctor's status words and the accompanying execution requirements:
-
-| Status | Meaning |
-| --- | --- |
-| Runtime `NOT PREPARED` | The default runtime inventory has not been created. Review the proposed setup actions. |
-| Runtime `CHECKS FAILED` | The selected runtime was inspected and failed required checks; retain the named diagnostics. |
-| Storage `NOT QUALIFIED` | Required storage proof is unavailable or invalid. The detail distinguishes the observed problem; this is not always fresh setup. |
-| Execution `NOT ADMITTED` | The execution profile cannot be used as selected. Follow its diagnostic before running. |
-
-`PASS` means that domain passed its current checks. `DOCTOR BLOCKED` means the
-requested maintenance operation itself cannot proceed; it remains a refusal.
-Downloads, compilation, verification, and Slurm queue waits can all add time.
-
-A verification-only plan reuses the selected runtime without invoking package
-managers. It repeats current input/runtime checks and, for Slurm, compute checks
-and head-node finalization because earlier success cannot establish that those
-files and environments are still unchanged. Elapsed time for the Slurm stage
-includes both queue waiting and compute work.
-For precise phase times, use `--log-level verbose`; the full invocation time
-also includes time spent waiting for your confirmation.
-
-Doctor changes only the Project-owned tools and preparation records. It does
-not obtain your scientific inputs, change your study design or repair Results.
-An empty answer or `n` declines the repair. If repair exits with an error, retain
-the printed log and resolve its cause before another attempt. Do not change
-dependency locks or clear installation folders to force it through.
+Doctor shows its plan before changing Project-owned tools. Answer `y` to start;
+Enter or `n` declines. Allow more than ten minutes: downloads, verification and
+Slurm queue waits can take considerably longer, even when tools are reused.
+Doctor names the current stage and elapsed time. Keep it running until it says
+`EMRYS is ready.` It checks the tools and storage on the head and compute nodes;
+EMRYS handles Slurm setup. If Doctor reports a refusal or fails, stop and keep
+the printed diagnostic and log path. Do not clear installation folders to retry.
+See [Doctor status and timing](docs/operations/RUNBOOK.md#doctor-status-and-timing)
+for detailed status words and [installation logs](docs/operations/TROUBLESHOOTING.md#watching-doctors-installation-log)
+if you need to diagnose setup.
 
 ## 4. Run the study
 
@@ -184,14 +146,10 @@ dependency locks or clear installation folders to force it through.
 emrys run
 ```
 
-Review the short submission summary and answer `y`. Slurm will run the Analysis
-and generate both reports on a compute node. EMRYS prints the job number and
-log locations. Submit once and keep the Project and its inputs in place.
-
-At `Execute this plan? [y/N]`, `y` or `yes` starts submission; Enter or `n`
-declines it. After successful submission, the head-node prompt returns and
-Slurm continues the work independently. Save the printed job number and log
-paths. You do not need to stay logged in to keep a submitted Run running.
+Review the submission summary and answer `y` once. Slurm runs the Analysis and
+both reports on a compute node. Save the printed job number and log paths. The
+head-node prompt returns while Slurm continues; you may disconnect without
+stopping the submitted Run.
 
 Check the Run from the head node:
 
@@ -199,20 +157,12 @@ Check the Run from the head node:
 emrys inspect
 ```
 
-Inspection first lists retained submission requests, including their exact
-directories, recorded response job IDs and diagnostics. It then selects an
-available Run. A queued job has not created its Run yet; `Runs: none found at
-inspection time` does not mean you should submit again. The retained response
-alone does not prove the job's current state. Keep uncertain or partial records,
-wait and repeat `emrys inspect`; it does not start or change work.
-To check one exact request's queue state or accounting result, follow
-[submission inspection](docs/operations/RUNBOOK.md#retain-a-submission-before-its-run-exists).
-An `UNKNOWN` observation leaves the request unresolved; keep its records before
-considering another submission.
-For one terminal view of scheduler observations, dated Task evidence and logs,
-use [inspection watch](docs/operations/RUNBOOK.md#watch-one-fixed-selection).
-Press `r` there to verify progress again and `q` to leave; leaving the view does
-not stop a job. Read the evidence dates before relying on a displayed result.
+Inspection shows the retained submission and any available Run. A queued job
+may not have created its Run yet. **No Run shown is not a reason to submit
+again.** Keep the job number and request record, wait, and inspect again.
+Inspection does not start or change work. If the job's state stays unclear,
+use the [exact-request check](docs/operations/RUNBOOK.md#retain-a-submission-before-its-run-exists)
+before deciding what to do.
 Completion is confirmed by all four lines:
 
 ```text
@@ -222,41 +172,18 @@ Scientific Results: complete
 Reporting admission: complete
 ```
 
-**Scientific task observations** counts the evidence already admitted. `Started;
-completion unverified` means a start record is present, not that a worker is
-currently running. `No admitted start` can mean absent or invalid records; read
-the printed blockers before choosing an action. These counts do not override
-the completion lines or recovery decision.
-
-For retained Task outcomes and their exact stdout/stderr paths, add
-`--detail verbose` to inspection. Each row names its original Attempt, including
-failed retries. A recorded `succeeded` outcome still needs verified scientific
-completion. Missing or changed log evidence remains a blocker; keep the files.
-
 Keep the original Project, inputs, runtime, logs and complete Run so
 the computation remains inspectable. An unsuccessful inspection prints the
-problem and the next supported action; retain that output before attempting
-recovery.
+problem and the next supported action; retain that output before recovery.
+For dated Task evidence, retries and exact logs, see
+[inspection detail](docs/operations/RUNBOOK.md#project-and-run-operations).
 
 ## 5. Open the reports
 
 Inspection prints the report paths. In your usual CSU file-transfer application,
 copy the Run's complete `results` directory to your computer. Keep its folders
-together so links to tables and other report files continue to work.
-For a terminal-only transfer with a checksum comparison, follow the
-[report retrieval procedure](docs/operations/RUNBOOK.md#retrieve-reports-from-a-terminal)
-from a terminal on your own computer.
-
-On Viking, the reports sit within this layout. Use the actual paths printed
-by inspection; `<PROJECT>` and `<RUN_ID>` below explain the folder structure:
-
-```text
-<PROJECT>/runs/<RUN_ID>/results/reports/<RUN_ID>/
-    <RUN_ID>.scientific_report.html
-    <RUN_ID>.evidence_report.html
-```
-
-Inside the copied directory, open these two HTML files in your web browser:
+together so links to tables work. In the copied directory, open the two files
+below in your browser. Use the actual Run ID printed by inspection:
 
 ```text
 reports/<RUN_ID>/<RUN_ID>.scientific_report.html
@@ -267,9 +194,9 @@ The **Scientific report** presents the candidates. The **Evidence report**
 explains how the data was generated and which checks passed. The supplied
 study should produce three Step 09 candidate rows, with one significant row.
 `FWD_like` and `REV_like` are alignment groups, not biological strand labels.
-Copied reports still name the original input and runtime locations. Keep the
-original Project and its supporting files on Viking; copying the reports does
-not replace those records.
+Keep the original Project and supporting files on Viking. If you use only a
+terminal to transfer files, follow the [checked transfer procedure](docs/operations/RUNBOOK.md#retrieve-reports-from-a-terminal)
+from your own computer.
 
 This completes the synthetic walkthrough. It demonstrates this particular
 software, input and execution path; it does not establish biological validity
@@ -278,21 +205,15 @@ or readiness for every dataset.
 ## 6. If execution or reporting did not complete
 
 Run `emrys inspect` from the Project and read **Next supported action:** and
-any listed blockers. The same saved Viking settings apply to recovery and
-report generation; issue the commands below from the head node.
-
-| What inspection reports | What to do |
-| --- | --- |
-| Work is still running | Wait and inspect again. Do not submit another Run or resume active work. |
-| Run lock says `remote ownership unverified` | The recorded owner is on another host. Keep its host/job details and inspect again; this observation does not prove the job stopped or authorize recovery. |
-| Computation failed or was interrupted, with `Recovery available: yes` | Run `emrys resume`, review its plan and answer `y` for the supported retry. It checks completed work before reusing it and records a new Attempt for the same Run. |
-| Scientific Results are complete, but reports are missing and generation is unblocked | Run `emrys report` to check the proposed reporting work, then `emrys report --execute` to submit it. Inspect again when it finishes. Completed scientific work does not need to be repeated. |
-| A state is blocked, or reporting refuses partial files | Stop and retain the inspection output and printed logs for the EMRYS maintainer. Do not delete files, remove locks or force a retry. |
-
-Keep partial outputs, logs, locks, backups and receipts. With several Runs,
-select the intended one by its printed name or ID when prompted; do not assume
-the newest directory is the one you want. `validate`, `doctor` without repair,
-`inspect` and `report` without `--execute` are read-only.
+its blockers. If work may still be running or another host's ownership is
+unverified, wait and inspect again; do not submit or resume it. If inspection
+offers recovery, use `emrys resume`, review the plan and answer `y`. If
+Scientific Results are complete and report generation is unblocked, preview
+with `emrys report`, then submit with `emrys report --execute` and inspect
+again. If inspection is blocked, stop and keep its output, logs, locks, partial
+files and backups for diagnosis. Do not delete or force a retry. The
+[recovery guide](docs/operations/TROUBLESHOOTING.md#run-and-reporting-state)
+explains each state and how to select one Run when several exist.
 
 ## 7. Create a Project for your own data
 
@@ -303,7 +224,7 @@ inventory and preparation records.
 
 ### Gather the study inputs and scientific choices
 
-Have the study's scientist or analyst confirm these before starting:
+Before using your own data, have its files and scientific assignments ready:
 
 - **Paired-end reads:** one R1 FASTQ and one R2 FASTQ for each library, together
   with the sequencing provider's checksums. R1 and R2 are the two reads from
@@ -325,19 +246,11 @@ Have the study's scientist or analyst confirm these before starting:
   The example values offered during setup are suggestions, not validated
   settings for every study.
 
-Strandedness must be `forward`, `reverse`, `unstranded`, or `unknown`. Use the
-library preparation information; `unknown` records that you do not know, and
-does not turn a stranded library into an unstranded one. It is distinct from
-the later mechanical `FWD_like` and `REV_like` alignment labels.
-
-Region selectors and regions files must use the same chromosome or contig names
-as the FASTA.
-For a `.bed` file, columns are separated by tabs and coordinates are zero-based
-with the end excluded: `chr1`, `0`, `100` selects the first 100 bases of `chr1`.
-A plain three-column region table instead uses one-based coordinates with both
-ends included: `chr1`, `1`, `100` selects that same interval. Do not change the
-filename extension without converting the coordinates. Use regions chosen for
-the study; do not use this illustrative interval automatically.
+Use the library preparation information for strandedness; `unknown` records
+missing information and is not a claim that the library is unstranded. Regions
+must use the same chromosome names as the FASTA. The
+[region file formats](configs/README.md#partition-manifest) explain coordinates
+if you are creating a new regions file.
 
 EMRYS does not download study data or decide experimental pairing. Keep the
 input files, their checksums and their declared locations for the life of the
@@ -350,24 +263,24 @@ The helper below writes two **manifests**: `samples.tsv` lists libraries and
 their assignments; `partitions.tsv` declares the selected regions. These are
 ordinary text tables with tab-separated columns.
 
-Replace the paths and example library names with your own. This route accepts
-mate suffixes `_R1`/`_R2` or `_1`/`_2`, followed by `.fastq` or `.fq` and optional
-`.gz`. The shared prefix is the sample ID: `control_1_1.fq.gz` and
-`control_1_2.fq.gz` belong to `control_1`. R1 and R2 must use the same compression.
-Supplying two files for the same sample and mate is rejected, including across
-the two naming conventions. Each `--sample` line gives, in order, the sample ID,
-condition, pairing group and strandedness. Add both FASTQ paths and a matching
-assignment for every further library. Replace `unknown` when the library's
-strandedness is known.
+Replace the paths and example library names with your own. The helper recognizes
+R1/R2 filenames ending in `_R1`/`_R2` or `_1`/`_2`, with `.fastq` or `.fq` and
+optional `.gz`. Each `--sample` line gives the sample ID, condition, pairing
+group and strandedness in that order. Add both FASTQs and one assignment for
+every further library. Replace `unknown` when strandedness is known.
 
-Choose a new manifest directory beneath an existing writable parent; do not
-create that final directory yourself. The input FASTQs and any selected regions
-files must already exist.
+The block below is a **template, not a command to paste unchanged**. Replace
+the `REPLACE_WITH_...` paths, example FASTQ names, sample assignments and
+regions-file choice with your study's existing files and agreed design before
+running it. Choose a new manifest directory beneath an existing writable
+parent; do not create that final directory yourself. Current EMRYS creates
+these manifests outside the Project. The input FASTQs and regions file must
+already exist.
 
 ```bash
-EMRYS_READS=/absolute/path/to/reads
-EMRYS_REGIONS=/absolute/path/to/regions.bed
-EMRYS_MANIFEST_ROOT=/absolute/durable/path/study-manifests
+EMRYS_READS="/REPLACE_WITH_READS_DIRECTORY"
+EMRYS_REGIONS="/REPLACE_WITH_REGIONS_FILE.bed"
+EMRYS_MANIFEST_ROOT="/REPLACE_WITH_DURABLE_PARENT/my-study-manifests"
 emrys init manifests --output-dir "$EMRYS_MANIFEST_ROOT" \
   --fastq "$EMRYS_READS/control_1_R1.fastq.gz" "$EMRYS_READS/control_1_R2.fastq.gz" \
           "$EMRYS_READS/treatment_1_R1.fastq.gz" "$EMRYS_READS/treatment_1_R2.fastq.gz" \
@@ -380,15 +293,11 @@ emrys init manifests --output-dir "$EMRYS_MANIFEST_ROOT" \
   --regions-file study "$EMRYS_REGIONS" --execute
 ```
 
-For whole chromosomes or explicit intervals, replace the `--regions-file`
-option with repeated `--region PARTITION_ID SELECTOR` options. For example,
-`--region 1 1 --region 2 2 --region X X` selects those three complete contigs;
-`--region target 1:1-100` selects an interval using one-based inclusive
-coordinates. Declare every intended contig or interval explicitly; these
-examples are not an automatic whole-genome selection. No regions file is
-needed for this route. Both options can be combined, with unique partition IDs
-across all selections. Project creation checks names and coordinates against
-the reference FASTA before admitting the study.
+If you have explicit chromosome or interval selectors instead of a regions
+file, replace `--regions-file study "$EMRYS_REGIONS"` with `--region
+PARTITION_ID SELECTOR` for each region. This does not automatically select the
+whole genome. See the [partition manifest guide](configs/README.md#partition-manifest)
+for selector formats; Project creation checks them against the reference.
 
 Review the resulting `samples.tsv` and `partitions.tsv` with your study
 assignments before continuing. A successful file check cannot establish that
@@ -396,16 +305,17 @@ the pairing or biological labels are correct.
 
 ### Answer the scientific setup questions once
 
-Set the actual reference paths, then enter the existing durable directory
+Replace both `REPLACE_WITH_...` paths below with your existing reference and
+annotation files. Set the actual reference paths, then enter the durable directory
 where your new `my-study` Project should be created. Its `my-study` child must
 not exist. Use the [Projects home](#choose-a-projects-home) selected above.
 The ordinary `init NAME` command creates beneath the current directory;
 the synthetic route's `--output-dir` selects an absolute destination instead.
 
 ```bash
-EMRYS_REFERENCE_FASTA=/absolute/path/to/reference.fa
-EMRYS_REFERENCE_GTF=/absolute/path/to/genes.gtf
-cd "${EMRYS_PROJECTS_ROOT:?Choose a Projects home first}" &&
+EMRYS_REFERENCE_FASTA="/REPLACE_WITH_REFERENCE_FASTA.fa"
+EMRYS_REFERENCE_GTF="/REPLACE_WITH_REFERENCE_GTF.gtf"
+cd "$EMRYS_PROJECTS_ROOT" &&
 emrys init my-study --site viking \
   --sample-manifest "$EMRYS_MANIFEST_ROOT/samples.tsv" \
   --partition-manifest "$EMRYS_MANIFEST_ROOT/partitions.tsv" \
@@ -432,8 +342,8 @@ diagnostic; do not delete it to retry the same name.
 
 | Prompt | What to enter |
 | --- | --- |
-| `sjdb overhang` | The STAR splice-junction overhang selected for the study's read length. Obtain this from the analyst who chose the alignment settings. |
-| `genome sa index nbases` | The STAR suffix-array index length selected for this reference. It controls index construction and must suit the genome size. |
+| `sjdb overhang` | Study-specific STAR setting for read length; the Viking smoke preset does not select it for your data. |
+| `genome sa index nbases` | Study-specific STAR index setting for reference size; the Viking smoke preset does not select it for your data. |
 | `control condition` | The exact control label in your sample assignments; `control` in the example above. |
 | `treatment condition` | The exact treatment label; `treatment` in the example above. |
 | `target change` | Two different bases separated by `>`, such as `A>G`, according to the study question. |
@@ -448,7 +358,7 @@ After `Project ready:`, enter the new Project and validate it:
 
 ```bash
 export EMRYS_PROJECT_ROOT="$(pwd -P)/my-study"
-cd "$EMRYS_PROJECT_ROOT"
+cd "$EMRYS_PROJECT_ROOT" &&
 emrys validate
 ```
 
@@ -459,8 +369,19 @@ inputs rather than copying them into the Project.
 
 On the head node, prepare this Project. To reuse another Project's managed tools,
 first follow [sealed runtime reuse](docs/operations/RUNBOOK.md#reuse-a-sealed-managed-runtime)
-before this Project has an inventory. That optional operation permanently
-disables managed repair of the donor; this Project still needs its own checks.
+before this Project has an inventory. Current EMRYS does not select the smoke
+Project's tools automatically. Reuse prevents later EMRYS-managed repair of
+the smoke Project's shared installation, and this Project still needs its own
+readiness checks. Do not apply reuse after its runtime has already been prepared.
+
+Before Doctor, check the study's resource needs. The saved four-CPU,
+eight-hour settings are for the smoke test; they are not a tested PUM1 cohort
+budget. If unsuitable, select an existing named profile or use
+[profile creation](configs/README.md#create-a-named-profile-without-writing-yaml)
+with reviewed values. Use the same selected profile for Doctor and Run. For a
+profile named `cohort`, replace the two default commands below with
+`emrys doctor --profile cohort --repair` and `emrys run --profile cohort`.
+Do not lower a stage allowance merely to make a plan pass.
 
 ```bash
 emrys doctor --repair
@@ -478,28 +399,9 @@ Submit the study once, reviewing the summary and answering `y`:
 emrys run
 ```
 
-Review the requested hosts, exclusivity, CPUs, time, and memory, followed by
-workflow and stage limits. A CPU reservation can exceed the workflow's CPU
-ceiling; it does not guarantee that every CPU will be used. Site-default memory
-and scheduler-selected hosts remain unknown until allocation. Doctor shows the
-same requested placement when it plans compute qualification. If the requested
-settings are unsuitable, decline submission and select an appropriate profile;
-do not lower a stage allowance merely to make a plan pass.
-
-Use the same explicit profile with Doctor and the later submission. For example,
-if your Project already has `runtime/profiles/cohort.yaml`, run
-`emrys doctor --profile cohort --repair`, then `emrys run --profile cohort`.
-An absolute profile path is also accepted. Omission selects the Project default;
-an invalid explicit selection stops with its diagnostic. Each invocation
-reviews its current profile, so retain the selected file unchanged between
-qualification and submission.
-
-To create that named profile without editing YAML, use
-`emrys profile create cohort --site viking` with your explicit allocation and
-workflow options, review its output, then repeat with `--execute`. Follow the
-[profile creation guide](configs/README.md#create-a-named-profile-without-writing-yaml)
-for the complete options and an illustrative example. Initial fixture settings
-are not a measured full-cohort preset.
+Review Doctor's allocation and workflow limits before confirming. Review the
+same limits in Run's submission summary; if they are unsuitable, decline
+submission and revise the selection before another readiness check.
 
 Keep the printed job number and log paths. From the same Project on the head
 node, check progress with:
@@ -547,8 +449,7 @@ resubmitting work. From another directory, select it explicitly with
 
 ## Further help
 
-This guide contains the complete Viking setup and study workflow. If a step
-fails, [troubleshooting](docs/operations/TROUBLESHOOTING.md) explains common
-errors and supported recovery. The [advanced runbook](docs/operations/RUNBOOK.md)
-covers other installation environments, administrator setup and advanced
-execution options; it is not required for this walkthrough.
+If a step fails, [troubleshooting](docs/operations/TROUBLESHOOTING.md) explains
+common errors and supported recovery. The
+[runbook](docs/operations/RUNBOOK.md) covers other installation environments,
+existing Projects and advanced execution options.
