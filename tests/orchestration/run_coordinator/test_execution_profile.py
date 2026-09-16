@@ -19,6 +19,7 @@ from emrys.orchestration.run_coordinator.resource_policy import (
     ResourceOverrides,
     resolve_resource_policy,
 )
+from tests.tools.real_synthetic_e2e import symbolic_resource_document
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 RESOURCE_SCHEMA_VERSION = "emrys.local-pilot-resources.v1"
@@ -66,7 +67,7 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
     default.write_bytes(execution_profile.PROJECT_DEFAULT_PROFILE_BYTES)
     profile = load_execution_profile(config_path=default)
     assert isinstance(profile.placement, DirectPlacement)
-    assert profile.resource_policy.declaration.workflow_cores == 4
+    assert profile.resource_policy.declaration.workflow_cores == 12
     assert profile.source_path == default
     assert not profile.computational_resources_explicit
     assert profile.document()["placement"] == {"kind": "direct"}
@@ -78,16 +79,40 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
         "account": "viking-users",
         "partition": "long",
         "qos": "normal",
-        "cpus_per_task": 4,
+        "cpus_per_task": 256,
         "memory_mb": None,
-        "time": "08:00:00",
-        "exclusive": False,
+        "time": "12:00:00",
+        "exclusive": True,
         "nodelist": None,
         "scratch_parent": "/tmp",
         "modules": {"mode": "none", "init": "", "load": []},
     }
     assert viking.resource_policy == profile.resource_policy
     assert not viking.computational_resources_explicit
+    retained = load_execution_profile(
+        REPO_ROOT / "configs/execution_profile.csu_viking_ev_pum1.yaml"
+    )
+    assert viking.resource_policy.document() == retained.resource_policy.document()
+    resolved = resolve_resource_policy(
+        viking.resource_policy, AllocationCapacity(256, 524288, "fixture")
+    )
+    assert resolved.workflow_cores == 12
+    assert resolved.workflow_memory_mb == 524288
+    for capacity in ((11, 524288), (256, 524287)):
+        with pytest.raises(ResourceConfigError, match="allocation"):
+            resolve_resource_policy(
+                viking.resource_policy, AllocationCapacity(*capacity, "undersized")
+            )
+    submission = slurm_submission.plan_submission(
+        viking, emrys_argv=("emrys", "run"), log_dir=tmp_path / "logs"
+    )
+    assert {"--cpus-per-task=256", "--exclusive", "--time=12:00:00"}.issubset(
+        submission.argv
+    )
+    summary = "\n".join(viking.submission_summary())
+    assert "Workflow CPU ceiling: 12; memory ceiling: 524288 MiB" in summary
+    assert "Stage thread caps: 00a=12, 01=2, 02=1, 06=1, 08=4" in summary
+    assert "Repeated-stage concurrency caps: 01=6" in summary
 
 
 def test_default_project_profile_rejects_retired_adjacent_configuration(
@@ -113,7 +138,7 @@ def test_selected_resource_fragment_then_explicit_overrides(tmp_path: Path) -> N
         {
             "schema_version": execution_profile.SCHEMA_VERSION,
             "resources": {
-                "schema_version": RESOURCE_SCHEMA_VERSION,
+                **symbolic_resource_document(),
                 "workflow_cores": 6,
                 "step_threads": {"00a": 6},
             },
@@ -200,7 +225,11 @@ def test_reservation_fit_rejects_only_declared_conflicts_without_mutation(
     }
     source = _write_profile(
         tmp_path / "profile.yaml",
-        {"schema_version": execution_profile.SCHEMA_VERSION, "placement": placement},
+        {
+            "schema_version": execution_profile.SCHEMA_VERSION,
+            "resources": symbolic_resource_document(),
+            "placement": placement,
+        },
     )
     profile = load_execution_profile(source, resource_overrides=overrides)
     before = profile.document(), profile.binding_sha256, source.read_bytes()
@@ -225,6 +254,7 @@ def test_reservation_fit_preserves_symbols_and_actual_allocation_admission(
         tmp_path / "profile.yaml",
         {
             "schema_version": execution_profile.SCHEMA_VERSION,
+            "resources": symbolic_resource_document(),
             "placement": {
                 **_slurm_placement(tmp_path),
                 "exclusive": exclusive,
@@ -266,7 +296,7 @@ def test_profile_relationships_are_checked_after_explicit_correcting_overrides(
         tmp_path / "profile.yaml",
         {
             "schema_version": execution_profile.SCHEMA_VERSION,
-            "resources": {"schema_version": RESOURCE_SCHEMA_VERSION, **resources},
+            "resources": {**symbolic_resource_document(), **resources},
         },
     )
     before = source.read_bytes()
@@ -305,6 +335,7 @@ def test_submission_summary_keeps_requests_limits_and_unknown_capacity_distinct(
         tmp_path / "profile.yaml",
         {
             "schema_version": execution_profile.SCHEMA_VERSION,
+            "resources": symbolic_resource_document(),
             "placement": placement if scheduled else {"kind": "direct"},
         },
     )
@@ -602,7 +633,7 @@ def test_profile_yaml_is_closed_without_environment_references(
 @pytest.mark.parametrize(
     ("relative_path", "workflow_cores", "cpus_per_task", "exclusive"),
     (
-        ("configs/execution_profile.example.yaml", 4, 4, False),
+        ("configs/execution_profile.example.yaml", 12, 256, True),
         ("configs/execution_profile.csu_viking_ev_pum1.yaml", 12, 256, True),
     ),
 )

@@ -75,10 +75,10 @@ placement:
   account: viking-users
   partition: long
   qos: normal
-  cpus_per_task: 4
+  cpus_per_task: 256
   memory_mb: null
-  time: "08:00:00"
-  exclusive: false
+  time: "12:00:00"
+  exclusive: true
   nodelist: null
   scratch_parent: /tmp
   modules:

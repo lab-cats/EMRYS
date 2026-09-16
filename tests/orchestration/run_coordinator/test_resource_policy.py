@@ -28,26 +28,11 @@ from emrys.orchestration.run_coordinator.resource_policy import (
     resume_resource_policy,
 )
 
+from tests.tools.real_synthetic_e2e import (
+    symbolic_resource_document as _document,
+)
+
 DEFAULT_SHA256 = "d" * 64
-
-
-def _document() -> dict[str, Any]:
-    return {
-        "schema_version": "emrys.local-pilot-resources.v1",
-        "workflow_cores": 4,
-        "workflow_memory_mb": "allocation",
-        "stage_concurrency": {step_id: 1 for step_id in REPEATABLE_STAGE_IDS},
-        "step_threads": {
-            "00a": 4,
-            "01": 4,
-            "02": 1,
-            "06": 4,
-            "08": 1,
-            "09": 1,
-            "10": 1,
-        },
-        "stage_memory_mb": {step_id: "workflow" for step_id in STAGE_IDS},
-    }
 
 
 def _policy(

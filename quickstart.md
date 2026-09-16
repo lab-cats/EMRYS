@@ -116,12 +116,13 @@ settings are supplied; there is no configuration file to edit. `--execute`
 creates the Project; `validate` only checks it. Creation will not overwrite an
 existing destination. Preserve any partial directory if creation fails.
 
-The saved Viking smoke-test settings are account `viking-users`, partition
-`long`, QoS `normal`, four CPUs, eight hours, site-default memory and private
-temporary storage under `/tmp`. The allocation is not exclusive and Slurm
-chooses the node. The `--site viking` choice supplies these settings;
-you do not enter them or configure Slurm. They are smoke-test settings,
-not a tested budget for a full PUM1 study.
+The saved Viking settings request one exclusive node with 256 CPUs for 12 hours,
+using account `viking-users`, partition `long`, QoS `normal`, site-default memory
+and private temporary storage under `/tmp`. Slurm chooses the node.
+EMRYS uses the historical EV/PUM1 policy: 12 workflow cores, 512 GiB and the
+restored stage-specific thread, concurrency and memory allowances. The
+`--site viking` choice supplies the placement automatically; you do not configure
+Slurm or write a resource profile. The same defaults apply to real-data Projects.
 
 ## 3. Prepare the scientific tools
 
@@ -374,14 +375,12 @@ Project's tools automatically. Reuse prevents later EMRYS-managed repair of
 the smoke Project's shared installation, and this Project still needs its own
 readiness checks. Do not apply reuse after its runtime has already been prepared.
 
-Before Doctor, check the study's resource needs. The saved four-CPU,
-eight-hour settings are for the smoke test; they are not a tested PUM1 cohort
-budget. If unsuitable, select an existing named profile or use
-[profile creation](configs/README.md#create-a-named-profile-without-writing-yaml)
-with reviewed values. Use the same selected profile for Doctor and Run. For a
-profile named `cohort`, replace the two default commands below with
-`emrys doctor --profile cohort --repair` and `emrys run --profile cohort`.
-Do not lower a stage allowance merely to make a plan pass.
+Initialization selects the historical EV/PUM1 resource policy automatically,
+with the same Viking placement described in step 2. Doctor checks the selected
+profile and the compute allocation before Run submission. No resource editing
+is needed for this path. For a Project created with older settings, follow
+[existing Project profile selection](configs/README.md#create-a-named-profile-without-writing-yaml)
+and use that profile for both Doctor and Run.
 
 ```bash
 emrys doctor --repair

@@ -103,11 +103,13 @@ Any separately selected empty-header correction is a distinct behavior decision.
 
 ### 3. Tune existing resource profiles
 
-The [default profile][default-profile] reserves the entire workflow memory for
-every stage, preventing simultaneous tasks even when the DAG and CPU capacity
-permit them. The [Viking example][viking-profile] requests 256 CPUs but permits
-12 workflow cores. That is a configuration distinction, not measured CPU
-utilization; a large node may have been selected for memory.
+CV-U06/CV-U28 restore the historical EV/PUM1 per-stage allowances in the
+[default profile][default-profile], replacing the whole-workflow memory claims
+that serialized tasks. The [Viking example][viking-profile] retains the original
+policy: 256 requested CPUs and 12 workflow cores. The operator accepted this
+historical policy as the default; the measurements below concern further tuning,
+not a prerequisite for its restoration. Requested capacity remains distinct
+from measured utilization.
 
 Measure concurrent samples versus threads per task, realistic per-stage memory
 reservations, and Step 07 partition concurrency. Use existing profile controls

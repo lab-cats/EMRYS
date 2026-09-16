@@ -523,6 +523,13 @@ already-complete reports require no new submission profile. Automatic reporting 
 in the Run's existing allocation. Initial Viking selection changes placement
 only, not the scientific resource policy or Run identity.
 
+Packaged resources restore the historical six-library EV/PUM1 policy: 12 workflow
+cores, 524288 MiB and the retained per-stage concurrency, thread and memory
+allowances. Initial Viking placement requests 256 CPUs on one exclusive node
+for 12 hours, with site-default allocation memory. Workflow budgets and scheduler
+requests remain separate; actual allocation admission still verifies capacity.
+Existing explicit Project overrides and immutable Run policies are preserved.
+
 One pure formatter on the admitted execution profile supplies Doctor and
 Run/resume/report submission summaries. It shows requested nodes and exclusivity,
 allocation CPUs/time/memory and site fields, plus declared workflow and stage

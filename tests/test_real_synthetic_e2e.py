@@ -134,7 +134,7 @@ def test_step09_oracle_rejects_unknown_significant_status(tmp_path: Path) -> Non
         )
 
 
-def test_adapters_and_default_resource_projection(tmp_path: Path) -> None:
+def test_adapters_and_explicit_fixture_resource_projection(tmp_path: Path) -> None:
     python = Path("/runtime/bin/python")
     java = Path("/runtime/bin/java")
     assert b"importlib.metadata" in driver.rseqc_adapter_bytes(
@@ -185,7 +185,7 @@ def test_adapters_and_default_resource_projection(tmp_path: Path) -> None:
         module_init=module_init,
     )
     profile_document = json.loads(rendered)
-    assert "resources" not in profile_document
+    assert profile_document["resources"] == driver.symbolic_resource_document()
     assert profile_document["placement"]["modules"] == {
         "mode": "exact",
         "init": str(module_init),
@@ -193,10 +193,9 @@ def test_adapters_and_default_resource_projection(tmp_path: Path) -> None:
     }
     profile = tmp_path / "slurm.json"
     profile.write_bytes(rendered)
-    assert (
-        load_execution_profile(config_path=profile).resource_policy.document()
-        == load_execution_profile().resource_policy.document()
-    )
+    admitted = load_execution_profile(config_path=profile)
+    admitted.validate_reservation()
+    assert admitted.resource_policy.document() == driver.symbolic_resource_document()
 
 
 def test_runtime_environment_seals_science_adapters_and_managed_utilities(

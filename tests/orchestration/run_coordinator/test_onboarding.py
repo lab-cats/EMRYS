@@ -1657,9 +1657,9 @@ def test_profile_creation_previews_exact_settings_without_scientific_reads(
     if mode != "direct":
         arguments += [
             "--cpus-per-task",
-            "8",
+            "32",
             "--memory-mb",
-            "32768",
+            "1048576",
             "--time",
             "02:03:04",
             "--scratch-parent",
@@ -1683,9 +1683,9 @@ def test_profile_creation_previews_exact_settings_without_scientific_reads(
     if resources:
         arguments += [
             "--workflow-cores",
-            "6",
+            "16",
             "--workflow-memory-mb",
-            "8192",
+            "524288",
             "--step-threads",
             "00a=2",
             "--stage-memory-mb",
@@ -1708,7 +1708,9 @@ def test_profile_creation_previews_exact_settings_without_scientific_reads(
         == defaults.resource_policy.default_sha256
     )
     assert profile.computational_resources_explicit is resources
-    assert profile.resource_policy.declaration.workflow_cores == (6 if resources else 4)
+    assert profile.resource_policy.declaration.workflow_cores == (
+        16 if resources else 12
+    )
     assert profile.resource_policy.config_sha256 == (
         hashlib.sha256(selected.read_bytes()).hexdigest() if resources else None
     )
@@ -1720,8 +1722,8 @@ def test_profile_creation_previews_exact_settings_without_scientific_reads(
             "account": "other-account",
             "partition": "compute",
             "qos": "normal",
-            "cpus_per_task": 8,
-            "memory_mb": 32768,
+            "cpus_per_task": 32,
+            "memory_mb": 1048576,
             "time": "02:03:04",
             "exclusive": True,
             "nodelist": "node[01-02]",

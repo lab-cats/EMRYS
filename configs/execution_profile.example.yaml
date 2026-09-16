@@ -9,10 +9,10 @@ placement:
   account: replace-with-site-account
   partition: replace-with-site-partition
   qos: null
-  cpus_per_task: 4
+  cpus_per_task: 256
   memory_mb: null
-  time: "03:00:00"
-  exclusive: false
+  time: "12:00:00"
+  exclusive: true
   nodelist: null
   scratch_parent: /absolute/path/to/compute-scratch
   modules:

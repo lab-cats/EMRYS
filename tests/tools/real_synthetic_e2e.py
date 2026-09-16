@@ -390,6 +390,31 @@ def runtime_environment(paths: Paths, runtime: Runtime) -> dict[str, str]:
     }
 
 
+def symbolic_resource_document() -> dict[str, Any]:
+    """Explicit small budget for symbolic-admission tests and hosted E2E."""
+    from emrys.orchestration.run_coordinator.resource_policy import (
+        REPEATABLE_STAGE_IDS,
+        STAGE_IDS,
+    )
+
+    return {
+        "schema_version": "emrys.local-pilot-resources.v1",
+        "workflow_cores": 4,
+        "workflow_memory_mb": "allocation",
+        "stage_concurrency": {step_id: 1 for step_id in REPEATABLE_STAGE_IDS},
+        "step_threads": {
+            "00a": 4,
+            "01": 4,
+            "02": 1,
+            "06": 4,
+            "08": 1,
+            "09": 1,
+            "10": 1,
+        },
+        "stage_memory_mb": {step_id: "workflow" for step_id in STAGE_IDS},
+    }
+
+
 def slurm_execution_profile_bytes(
     *,
     account: str | None,
@@ -408,6 +433,7 @@ def slurm_execution_profile_bytes(
     try:
         document = {
             "schema_version": SCHEMA_VERSION,
+            "resources": symbolic_resource_document(),
             "placement": {
                 "kind": "slurm",
                 "account": account,
@@ -1292,6 +1318,17 @@ def run_driver(
         )
         transcripts.run(f"{label}-init-plan", init, cwd=repo)
         transcripts.run(f"{label}-init", [*init, "--execute"], cwd=repo)
+        # Pin the disposable fixture budget before Doctor or any Run exists.
+        (workspace / "runtime/profiles/default.yaml").write_bytes(
+            json.dumps(
+                {
+                    "schema_version": "emrys.execution-profile.v1",
+                    "resources": symbolic_resource_document(),
+                    "placement": {"kind": "direct"},
+                }
+            ).encode()
+            + b"\n",
+        )
         projects[label] = workspace / "project.yaml"
 
     slurm_settings = dict(

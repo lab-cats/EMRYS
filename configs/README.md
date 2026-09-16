@@ -196,13 +196,11 @@ From an existing Project, preview placement and resource choices with
 the Project. A name identifies `runtime/profiles/NAME.yaml`. Existing files,
 including `default.yaml`, are preserved.
 
-For example, these are explicit illustrative budgets, not a measured cohort
-preset. Adjust them to your study and site limits before creation:
+New Viking Projects already select the historical EV/PUM1 policy. For an
+existing Project with an older placement, create a named Viking profile:
 
 ```bash
-emrys profile create cohort --site viking \
-  --cpus-per-task 8 --memory-mb 32768 --time 08:00:00 \
-  --workflow-cores 8 --workflow-memory-mb 24576
+emrys profile create cohort --site viking
 ```
 
 Review the complete placement, workflow, and stage settings. Repeat the same
@@ -239,11 +237,12 @@ observed or free memory. An omitted memory request remains unknown even when
 exclusivity is requested. Placement-only resume compares its retained Run policy;
 actual allocation checks still run after the scheduler starts the job.
 
-The four-CPU initial Viking placement serves a bounded fixture, not a promise
-that a full cohort will fit or run efficiently. Qualification uses the selected
-allocation request, so choosing a large request can also increase queue time.
-Capacity and scientific-tool memory requirements must be checked for the
-actual workload; this command neither estimates demand nor tunes resources.
+The default policy restores the historical six-library EV/PUM1 settings:
+12 workflow cores, 524288 MiB (512 GiB) and explicit stage allowances. Viking
+requests 256 CPUs, exclusive placement and 12 hours; allocation memory comes
+from the site. Doctor and Run show these separate allocation and workflow limits.
+Existing explicit profiles remain unchanged, and resume preserves the
+predecessor Run's policy.
 
 ### Profile document
 

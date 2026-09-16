@@ -3466,11 +3466,17 @@ def test_new_run_doctor_storage_requirement_tracks_execution_placement(
 
 
 def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Namespace:
+    from tests.tools.real_synthetic_e2e import symbolic_resource_document
+
     project = build(tmp_path / "project")
+    profile = _slurm_profile(tmp_path)
+    document = yaml.safe_load(profile.read_bytes())
+    document["resources"] = symbolic_resource_document()
+    profile.write_text(yaml.safe_dump(document), encoding="utf-8")
     return argparse.Namespace(
         project=project,
         analysis="sensitivity",
-        profile=str(_slurm_profile(tmp_path)),
+        profile=str(profile),
         log_level=None,
         log_root=None,
         execute=execute,
@@ -4659,7 +4665,7 @@ def test_public_slurm_errors_keep_control_exit_and_never_retry(
     arguments = argparse.Namespace(
         project=project,
         run=run_id,
-        profile=str(_slurm_profile(root)),
+        profile=str(_slurm_profile(root, cpus_per_task=12)),
         log_level=None,
         log_root=None,
         execute=True,
@@ -5330,10 +5336,10 @@ def test_standalone_report_uses_project_slurm_placement(
     preview = capsys.readouterr().err
     assert "Execution placement: Slurm" in preview
     assert (
-        "Allocation request: 4 CPUs, 08:00:00; memory: site default (unknown)"
+        "Allocation request: 256 CPUs, 12:00:00; memory: site default (unknown)"
         in preview
     )
-    assert "Workflow CPU ceiling: 4;" in preview
+    assert "Workflow CPU ceiling: 12;" in preview
 
     assert control.report_from_args(parser.parse_args([*argv, "--execute"])) == 0
     assert calls == [False] and len(submissions) == 1
@@ -5347,8 +5353,9 @@ def test_standalone_report_uses_project_slurm_placement(
         "--account=viking-users",
         "--partition=long",
         "--qos=normal",
-        "--cpus-per-task=4",
-        "--time=08:00:00",
+        "--cpus-per-task=256",
+        "--time=12:00:00",
+        "--exclusive",
     } <= set(submitted.argv)
     assert not any(value.startswith("--mem=") for value in submitted.argv)
     assert (

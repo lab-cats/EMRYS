@@ -657,7 +657,7 @@ def test_doctor_refuses_incompatible_reservation_before_planning_runtime_repair(
     profile = project.source_path.parent / "runtime/profiles/default.yaml"
     profile.write_bytes(
         project_default_profile_bytes("viking").replace(
-            b"cpus_per_task: 4", b"cpus_per_task: 3"
+            b"cpus_per_task: 256", b"cpus_per_task: 3"
         )
     )
     monkeypatch.setattr(
@@ -677,7 +677,7 @@ def test_doctor_refuses_incompatible_reservation_before_planning_runtime_repair(
     )
 
     assert (
-        "DOCTOR BLOCKED: Workflow cores exceed Slurm reservation: 4 > 3"
+        "DOCTOR BLOCKED: Workflow cores exceed Slurm reservation: 12 > 3"
         in capsys.readouterr().err
     )
     assert _snapshot(tmp_path) == before
@@ -989,7 +989,7 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
         ) == runtime_required
         assert "first setup" not in output.err
         assert "Execution placement: Direct" in output.err
-        assert "Workflow CPU ceiling: 4;" in output.err
+        assert "Workflow CPU ceiling: 12;" in output.err
         assert f"Apply this {operation} plan? [y/N]" in output.err
         assert f"{operation.capitalize()} preview complete" in output.err
         assert (
@@ -2496,7 +2496,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     from emrys.orchestration.run_coordinator.resource_policy import AllocationCapacity
 
     monkeypatch.setattr(
-        doctor, "observe_allocation", lambda: AllocationCapacity(4, 8192, "slurm")
+        doctor, "observe_allocation", lambda: AllocationCapacity(256, 524288, "slurm")
     )
     state = {"compute": False, "probes": 0, "jobs": 0, "finalized": False}
     elapsed = 10.0

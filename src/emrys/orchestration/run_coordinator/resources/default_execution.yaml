@@ -1,39 +1,39 @@
 schema_version: emrys.execution-profile.v1
 resources:
   schema_version: emrys.local-pilot-resources.v1
-  workflow_cores: 4
-  workflow_memory_mb: allocation
+  workflow_cores: 12
+  workflow_memory_mb: 524288
   stage_concurrency:
-    "01": 1
-    "02": 1
-    "02b": 1
-    "03": 1
-    "04": 1
-    "05": 1
-    "06": 1
-    "07": 1
+    "01": 6
+    "02": 6
+    "02b": 6
+    "03": 6
+    "04": 4
+    "05": 6
+    "06": 6
+    "07": 12
   step_threads:
-    "00a": 4
-    "01": 4
+    "00a": 12
+    "01": 2
     "02": 1
-    "06": 4
-    "08": 1
+    "06": 1
+    "08": 4
     "09": 1
     "10": 1
   stage_memory_mb:
-    "00a": workflow
-    "00b": workflow
-    "00c": workflow
-    "01": workflow
-    "02": workflow
-    "02b": workflow
-    "03": workflow
-    "04": workflow
-    "05": workflow
-    "06": workflow
-    "07": workflow
-    "08": workflow
-    "09": workflow
-    "10": workflow
+    "00a": 262144
+    "00b": 16384
+    "00c": 16384
+    "01": 40960
+    "02": 4096
+    "02b": 2048
+    "03": 4096
+    "04": 32768
+    "05": 16384
+    "06": 4096
+    "07": 8192
+    "08": 65536
+    "09": 16384
+    "10": 32768
 placement:
   kind: direct

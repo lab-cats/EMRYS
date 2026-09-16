@@ -88,8 +88,9 @@ no supplied terminal scientific/reporting evidence.
 
 Recorded from the operator's latest Viking/Quickstart findings and requirements.
 This separate matrix belongs to this backlog; it preserves the new observations
-without changing the original CV card statuses. Every row is **Open** and
-unprioritized. Earlier software acceptance does not close these findings.
+without changing the original CV card statuses. Findings were initially **Open**
+and unprioritized; the rows below track subsequent approved work. Earlier
+software acceptance does not close these findings.
 Reports below have not been independently reproduced as part of recording them;
 they are not established root causes or completed fixes. Proposed commands,
 flags and future directions remain identified as such. This records the findings
@@ -106,7 +107,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U03](#cv-u03-init-and-validate-summaries) | Init and Validate summaries | Open |
 | [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Open |
 | [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Open |
-| [CV-U06](#cv-u06-available-resources) | Workflow CPU ceiling still 4 | Open |
+| [CV-U06](#cv-u06-available-resources) | Restore historical workflow and stage resources | Verification pending |
 | [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Open |
 | [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Open |
 | [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Verification pending |
@@ -127,8 +128,8 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U24](#cv-u24-persistent-cli-defaults) | Save site and other repeated CLI values | Open |
 | [CV-U25](#cv-u25-repeated-fastq-hashing-during-init) | One full FASTQ hashing pass across preview and creation | Open |
 | [CV-U26](#cv-u26-manifests-inside-the-project) | Keep manifests inside their Project directory | Open |
-| [CV-U27](#cv-u27-tested-smoke-to-real-resource-guidance) | Tested workload profile, Doctor checks and exact submission | Open |
-| [CV-U28](#cv-u28-historical-stage-configuration-and-wall-time) | Restore benchmark-derived stage settings and wall-time performance | Open |
+| [CV-U27](#cv-u27-tested-smoke-to-real-resource-guidance) | Tested workload profile, Doctor checks and exact submission | Verification pending |
+| [CV-U28](#cv-u28-historical-stage-configuration-and-wall-time) | Restore benchmark-derived stage settings and wall-time performance | Verification pending |
 | [CV-U29](#cv-u29-early-inspect-and-dashboard-feedback) | Show useful information before monitoring fully populates | Open |
 | [CV-U30](#cv-u30-dashboard-color-and-pane-layout) | Restore dashboard colors and readable pane layout | Open |
 | [CV-U31](#cv-u31-dashboard-automatic-run-selection) | Select the current Run without parameters; record lost functionality | Open |
@@ -221,6 +222,14 @@ wall-time optimization and challenged the introduction of resource limits withou
 their instruction. Recovering historical per-stage settings and the reported
 eight-hour versus four-hour regression are recorded in CV-U28. Resource usage
 must also be visible again in the dashboard (CV-U33).
+
+**Approved resolution:** Use the recovered historical policy as the default:
+12 workflow cores and 524288 MiB, with concurrent sample/partition work and
+the original stage allowances. Viking placement requests 256 CPUs, exclusive
+allocation and 12 hours. Requested CPUs and workflow cores are separate limits;
+this restores the selected historical configuration rather than introducing
+automatic tuning. CV-U33 remains separately owned. See CV-U28 for provenance
+and verification scope.
 
 ### CV-U07 Projects directory
 
@@ -605,6 +614,14 @@ scheduler expert or authoring a resource configuration. No new resource values,
 workload limits or claims of profile testing were established during collection.
 Historical benchmark-derived settings are separately requested in CV-U28.
 
+**Approved implementation:** Synthetic and real-data Viking initialization now
+inherit the historical policy automatically. Doctor and Run use the existing
+shared admission and preview owners, and the Quickstart proceeds through
+`emrys doctor --repair` then `emrys run`. Existing Projects can create a named
+Viking profile and select it consistently for both commands. Explicit profiles
+and frozen Run policies are preserved. The documented historical workload is
+six EV/PUM1 libraries; this is not a newly measured workload-size guarantee.
+
 ### CV-U28 Historical stage configuration and wall time
 
 **Operator instruction:** “Stage thread caps and other configuration options are
@@ -622,11 +639,50 @@ configuration from the previous runs and benchmarking work, and retain that
 configuration. Preserve wall-time optimization as the objective. Replacing those
 settings with newly guessed caps would not address the requirement.
 
-**Evidence still needed:** This batch did not supply the exact historical Run
-IDs, benchmark artifacts, configuration values or a controlled comparison. The
-8-hour/4-hour figures and suspected cause remain the operator's report, not a
-newly verified causal finding. The CPU ceiling of 4 is retained in CV-U06; the
-broader issue here includes stage-specific caps and other settings.
+**Accepted decision:** The operator's observation that the historical policy
+performed better is sufficient to select it as the default. Another benchmark
+or controlled comparison is not a prerequisite for restoration. The reported
+8-hour/4-hour timing remains operator evidence, distinct from local software
+checks.
+
+**Historical recovery:** Review covered all 78 remote `perf` branch heads and
+their historical resource/configuration and benchmark paths. Seventy-two heads
+retained identical EMRYS resource blobs; six older NORAD heads retained the
+conservative example. The unqualified `configs/local_pilot_resources.yaml` has
+no tracked history. The `.example.yaml` was the conservative four-core policy;
+the desired policy was `configs/local_pilot_resources.csu_viking_ev_pum1.yaml`,
+introduced by `92863824`. It moved into the execution profile in `d6e54aff`;
+`5f42c8c4` retired the old filename without losing those computational values.
+The retained [Viking profile](../../configs/execution_profile.csu_viking_ev_pum1.yaml)
+preserves them. Later explicit one-thread declarations for 09/10 are retained;
+the retired, inactive reporting-memory map is not reintroduced.
+
+The 46 perf branches carrying the benchmark harness contained 11 harness
+versions; their fixed per-case budgets were not an alternative whole-Run policy.
+The older per-stage Slurm wrappers and the VM trial at `f054ddee` were separate
+execution contexts. The restoration uses the six-library Viking policy,
+including its per-stage memory and concurrency, not a mixture of those contexts.
+
+**Implementation and protection:** The packaged defaults match the retained
+profile exactly. Viking initialization and the placement example request 256
+CPUs, exclusive allocation and 12 hours. The existing admission, scheduler,
+preview, override and immutable-resume owners are reused without new product
+code paths, schemas, files or dependencies. The retained historical profile
+remains evidence; no history or evidence was deleted. Small symbolic-admission
+and hosted-E2E budgets are explicit fixtures rather than implicit product defaults.
+
+**Local verification:** 733 checks passed: 695 across `test_execution_profile`,
+`test_resource_policy`, `test_onboarding`, `test_doctor`,
+`test_submission_inspection`, `test_slurm_submission` and `test_real_synthetic_e2e`;
+38 materialization checks selected with `resource or slurm or standalone_report`.
+Ruff lint/format, documentation structure and `git diff --check` passed.
+These used this worktree's source and build-generated package metadata with
+existing cached dependencies; no dependencies were installed. Two
+`test_guided_project_preview_replays_exact_answers_without_new_prompts` cases
+were excluded after isolated subprocesses selected the machine's older installed
+checkout and failed on its missing `simple_term_menu`. Full standard CI,
+including those cases and real-tool hosted E2E, and the institutional walkthrough
+remain pending. No cluster job or new performance benchmark is claimed.
 
 ### CV-U29 Early Inspect and dashboard feedback
 
