@@ -50,7 +50,7 @@ The printed Run-inspection command checks the broader workflow evidence.
 An explicit Run selection also discovers its recorded application logs:
 
 ```bash
-emrys inspect RUN --project "$EMRYS_PROJECT_ROOT" --detail verbose
+emrys inspect RUN --project "$EMRYS_PROJECT_ROOT" --verbose
 emrys inspect RUN --project "$EMRYS_PROJECT_ROOT" --log-root /absolute/historical/log/root --watch
 ```
 
@@ -180,7 +180,7 @@ same text plain.
 An explicit Run's `r` refresh searches its selected application-log root again
 and removes associations no longer admitted. Independent Task streams remain
 available. Expected Task paths require an admitted start; they prove neither
-file existence nor worker liveness. Static verbose/debug inspection lists the
+file existence nor worker liveness. Static `--verbose` inspection lists the
 same exact paths. Use `--log-root` to select a historical custom application root.
 
 `--snapshot`, redirected output, or a noninteractive terminal produces one
@@ -484,7 +484,7 @@ For a ready Project with one Analysis and one Run:
 ```bash
 emrys validate
 emrys doctor
-emrys run --log-level verbose
+emrys run --verbose
 emrys inspect
 ```
 
@@ -494,20 +494,20 @@ execution profile for the intended host; see the
 and [configuration guide](../../configs/README.md).
 
 A direct Run asks `Execute this plan? [y/N]`: `y` executes and Enter declines.
-Preview without writing with `emrys run --log-level verbose </dev/null`;
+Preview without writing with `emrys run --verbose </dev/null`;
 automation executes with `emrys run --execute`. Full Runs generate reports
 unless `--no-report` is supplied. Use the [Slurm route](#slurm-setup-and-submission)
 for cluster submission.
 
 `emrys inspect` reads the sole Run or offers a terminal picker. To select one
 explicitly, use its two-word name, full ID, or unique ID prefix; EMRYS never
-assumes latest. `--detail verbose` adds Run/Attempt identities and admitted
+assumes latest. `--verbose` adds Run/Attempt identities and admitted
 terminal Task records with their original Attempt, recorded outcome, and exact
 stdout/stderr paths. Failed retries remain visible in Attempt-chain order per
 Task. Recorded success alone does not establish verified scientific completion.
 Missing, changed or malformed log evidence stays blocked; preserve it for
-diagnosis. `--detail debug` also adds authority hashes, receipts and task commands.
-Planning, execution, and Doctor instead use `--log-level verbose` or `debug`.
+diagnosis. `--verbose` also adds authority hashes, receipts and task commands.
+Planning, execution, Doctor, and static inspection all use `--verbose`.
 For failed or interrupted Runs, follow [resume and recovery](TROUBLESHOOTING.md#run-and-reporting-state).
 
 The **Scientific task observations** count only admitted evidence. `Started;
@@ -567,7 +567,7 @@ existing profile; direct execution requires a permitted compute host.
 1. On the cluster head node, select the exact completed Run from its Project:
 
    ```bash
-   emrys inspect RUN --detail debug
+   emrys inspect RUN --verbose
    ```
 
    Replace `RUN` with its name, full ID, or unique ID prefix. Continue after
@@ -714,7 +714,7 @@ available for investigating storage failures; their exact contract lives with
 Do not alter scheduler variables to imitate an allocation or erase existing
 qualification evidence to retry.
 
-For detailed submission diagnostics, use `--log-level debug`. Normal operator
+For detailed submission diagnostics, use `--verbose`. Normal operator
 instructions use the default output level. Scheduler job success alone does
 not establish valid Results; use `emrys inspect` and the retained reports.
 
@@ -812,8 +812,8 @@ After an error, retain diagnostics; do not change dependency locks or clear
 installation folders to force another attempt.
 
 Doctor prints its full invocation elapsed time and exit outcome, including time
-spent awaiting operator confirmation. Add `--log-level verbose` for precise
-phase times. For approved maintenance, the same phase measurements appear in
+spent awaiting operator confirmation. Add `--verbose` for precise phase times.
+For approved maintenance, the same phase measurements appear in
 the existing diagnostic JSONL as `doctor_phase_timing`; read-only diagnosis does
 not create a log. Compute observations stay distinct from head observations.
 `Slurm submission-to-return wait` includes waiting, launch, compute and return

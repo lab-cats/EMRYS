@@ -89,8 +89,9 @@ no supplied terminal scientific/reporting evidence.
 Recorded from the operator's latest Viking/Quickstart findings and requirements.
 This separate matrix belongs to this backlog; it preserves the new observations
 without changing the original CV card statuses. Findings were initially **Open**
-and unprioritized; the rows below track subsequent approved work. Earlier
-software acceptance does not close these findings.
+and unprioritized; the rows below track subsequent approved work and advance
+only with their own implementation and verification evidence. Earlier software
+acceptance does not close these findings.
 Reports below have not been independently reproduced as part of recording them;
 they are not established root causes or completed fixes. Proposed commands,
 flags and future directions remain identified as such. This records the findings
@@ -102,11 +103,11 @@ discussion. Open questions are not filled with inferred implementation decisions
 
 | ID | Finding | Status |
 | --- | --- | --- |
-| [CV-U01](#cv-u01-cli-color-and-readability) | CLI color, readability and Inspect interpretation | Open |
-| [CV-U02](#cv-u02-default-cli-verbosity) | Minimal default output, optional detail | Open |
-| [CV-U03](#cv-u03-init-and-validate-summaries) | Init and Validate summaries | Open |
-| [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Open |
-| [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Open |
+| [CV-U01](#cv-u01-cli-color-and-readability) | CLI color, readability and Inspect interpretation | Verification pending |
+| [CV-U02](#cv-u02-default-cli-verbosity) | Minimal default output, optional detail | Verification pending |
+| [CV-U03](#cv-u03-init-and-validate-summaries) | Init and Validate summaries | Verification pending |
+| [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Verification pending |
+| [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Verification pending |
 | [CV-U06](#cv-u06-available-resources) | Restore historical workflow and stage resources | Verification pending |
 | [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Open |
 | [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Verification pending |
@@ -151,6 +152,11 @@ interpret”. Readability includes understanding the displayed information, not
 only adding color or shortening the output. Delayed population is a separate
 finding in CV-U29; both issues affect Inspect's usefulness.
 
+**Implemented slice:** Init, Validate, Run and Inspect use the shared terminal
+presentation owner for headings and status emphasis. Plain, redirected, dumb
+terminal and `NO_COLOR` behavior remains readable. Inspect groups the Run summary
+and scientific milestones before blockers and the next supported action.
+
 ### CV-U02 Default CLI verbosity
 
 **Operator report:** “Overall cli output is far too verbose by default, there
@@ -160,8 +166,15 @@ the bare minimum, like init, validate, and doctor.”
 **Requested outcome:** Normal output contains the minimum information the
 operator needs. Detailed output remains available through an explicit verbose
 option. Adding color alone does not address the excessive amount of text.
-Command-specific expectations are recorded in CV-U03 and CV-U04. The exact
-verbose flag was not chosen in this discussion.
+Command-specific expectations are recorded in CV-U03 and CV-U04. The operator
+subsequently selected `--verbose` as the sole public detail switch. The former
+public detail and log-level selectors are retired; durable diagnostic records
+still retain their existing event detail fields.
+
+**Implemented slice:** Init, Validate, Doctor, Run, Resume, Report, Stop and
+static Inspect now expose the same Boolean `--verbose` contract. Normal output
+hides identities, paths, commands, successful transaction tables and per-Task
+detail while retaining progress, failures, blockers and supported next actions.
 
 ### CV-U03 Init and Validate summaries
 
@@ -173,6 +186,11 @@ specific error on failure.”
 high-value information. Validate gives a clear pass/fail result and the specific
 error when it fails. Routine detail belongs in the optional verbose output
 described in CV-U02. The user did not supply an exhaustive list of Init fields.
+
+**Implemented slice:** Init's normal summary reports its output directory,
+library count and IDs, Analysis/site, reference, partition count, comparison and
+target. Validate normally prints `PASS` or one `FAIL` line with the specific
+error; `--verbose` restores hashes, counts, paths, warnings and Analysis detail.
 
 ### CV-U04 Doctor presentation
 
@@ -192,6 +210,12 @@ output and runtime-work narration are optional verbose information, not the
 default stream. This request concerns presentation; it does not request removing
 the underlying checks or repairs.
 
+**Implemented slice:** Doctor keeps Project, Analysis, Inputs, Storage, Runtime
+and Execution category results plus execution requirements in normal output.
+Repair internals, package output paths, runtime narration, Slurm accounting and
+precise phase/invocation timing move behind `--verbose`; the shared named-phase
+spinner and elapsed timer remain visible during work.
+
 ### CV-U05 Doctor first-run expectations
 
 **Operator question:** “Why did we lose the message about doctor taking 5-15 mins
@@ -205,6 +229,11 @@ Doctor output. It is useful expectation-setting, distinct from verbose
 diagnostics. The reason the notice disappeared was not established in this
 discussion; the range is the user's latest requested guidance, not a new timing
 measurement made while recording these findings.
+
+**Implemented slice:** Every normal Doctor repair or verification plan now says
+`First Doctor setup can take 5–25 minutes.` before confirmation. Focused local
+fixtures cover both normal suppression and expanded verbose presentation. The
+five cards remain Verification pending for final CI and operator terminal review.
 
 ### CV-U06 Available resources
 
@@ -2196,8 +2225,8 @@ through `DASHBOARD-RETIRE-01` instead of independently renaming streams.
 **Owners/dependencies:** Application logging, submission, inspection/dashboard;
 CV-02/03/16/20.
 
-**Implemented Task-log slice:** Normal inspection counts admitted terminal
-Task attempts; verbose/debug output shows their recorded outcome, original
+**Implemented Task-log slice:** Static inspection admits terminal Task attempts;
+`--verbose` shows their count, recorded outcome, original
 Attempt, and content-bound record/stdout/stderr paths. Existing Task-tree
 admission supplies records without another log scan. Postentry observations
 must match an already admitted start reference and originating Attempt;
@@ -2211,7 +2240,7 @@ there are no new product files, schemas, commands or dependencies.
 **Verification:** Fixtures cover failed preentry/postentry records, recorded
 success without scientific verification, retry history, absent terminal records,
 malformed scope/start references, wrong-Attempt starts, and changed/truncated
-logs. Public normal/verbose/debug rendering uses one snapshot, escapes diagnostic
+logs. Public normal and `--verbose` rendering uses one snapshot, escapes diagnostic
 text, preserves evidence and retains Results/recovery refusal. Static checks
 pass; application fixtures passed the combined standard CI. CV-20 supplies
 request-bound startup/application/reporting association; the Run-selected slice
@@ -2220,7 +2249,7 @@ below adds historical discovery to static inspection and watch.
 **Started-Task stream slice:** The admitted start already binds the exact frozen
 Task dispatch. One pure Task-owned root builder replaces repeated construction
 in dispatch, directory materialization, terminal admission and debug output.
-One stream projection serves watch and verbose/debug inspection without new
+One stream projection serves watch and `--verbose` inspection without new
 reads, schemas or admission rules. It preserves terminal references, including
 preentry failure history, and derives expected paths only when both admitted
 start fields are present. Exact historical Attempt filtering and path

@@ -169,7 +169,7 @@ def test_noninteractive_multiple_runs_prints_readable_human_names(
         (tmp_path / "runs" / run_id).mkdir(parents=True, exist_ok=True)
 
     result = control.inspect_from_args(
-        argparse.Namespace(project=project, run=None, detail="normal")
+        argparse.Namespace(project=project, run=None, verbose=False)
     )
 
     assert result == 2

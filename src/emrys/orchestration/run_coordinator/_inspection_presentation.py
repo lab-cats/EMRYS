@@ -266,15 +266,17 @@ def run_application_lines(
     observation: _submission_inspection.RunApplicationObservation,
     *,
     detail: str = "normal",
+    include_watch_paths: bool = False,
 ) -> tuple[str, ...]:
     """Render diagnostic associations without deriving application ownership."""
     lines = [
-        f"Run diagnostic logs: {len(observation.logs)} association(s); scan {observation.status}.",
-        f"Application log search root: {observation.log_root}",
+        f"Run diagnostic logs: {len(observation.logs)} association(s); scan {observation.status}."
     ]
+    if detail != "normal" or include_watch_paths:
+        lines.append(f"Application log search root: {observation.log_root}")
     for item in observation.logs:
         outcome = application_outcome_lines(item)
-        if detail != "normal" or outcome:
+        if detail != "normal" or (include_watch_paths and outcome):
             lines.append(f"  {item.application_log}")
         if detail != "normal":
             lines.append(
@@ -652,7 +654,9 @@ def render_snapshot(
         lines.append(
             f"Run log associations as of: {snapshot.application_at or 'unavailable'}"
         )
-        lines.extend(run_application_lines(snapshot.run_applications))
+        lines.extend(
+            run_application_lines(snapshot.run_applications, include_watch_paths=True)
+        )
     observed = snapshot.observed
     lines.append(
         f"Run evidence as of: {snapshot.verified_at or 'unavailable'}; changes require r"

@@ -49,7 +49,6 @@ from emrys.libraries.application_logging import (
     AttemptIdentity,
     LogControlError,
     LogControls,
-    LogLevel,
     add_log_arguments,
     console_print,
     event,
@@ -121,7 +120,7 @@ class _DoctorTiming:
 
     def __init__(self) -> None:
         self.context = "head/local"
-        self.detail = LogLevel.NORMAL
+        self.detail = False
         self.phases: list[dict[str, object]] = []
         self.runtime_probes: list[tuple[str, dict[str, object]]] = []
         self.scheduler_timing: dict[str, object] | None = None
@@ -202,7 +201,7 @@ class _DoctorTiming:
         }
 
     def finish(self, elapsed: float | None, status: int | None) -> None:
-        if self.scheduler_timing is not None:
+        if self.detail and self.scheduler_timing is not None:
             observed = self.scheduler_timing
             _stderr(
                 f"Slurm accounting observation: {observed['state']}; "
@@ -226,7 +225,7 @@ class _DoctorTiming:
             diagnostic = timing.get("diagnostic") or observed.get("diagnostic")
             if diagnostic:
                 _stderr(f"Slurm timing limitation: {str(diagnostic)!a}")
-        if self.detail in {LogLevel.VERBOSE, LogLevel.DEBUG}:
+        if self.detail:
             for values in self.phases:
                 seconds = values["elapsed_seconds"]
                 duration = "unavailable" if seconds is None else f"{seconds:.6f}s"
@@ -234,12 +233,14 @@ class _DoctorTiming:
                     f"Doctor phase timing ({self.context}): {values['phase_name']}; "
                     f"{values['outcome']}; elapsed {duration}"
                 )
-        duration = "unavailable" if elapsed is None else f"{elapsed:.6f}s"
-        outcome = "interrupted or failed" if status is None else f"exit status {status}"
-        _stderr(
-            f"Doctor invocation timing ({self.context}, including operator confirmation time): "
-            f"elapsed {duration}; {outcome}"
-        )
+            duration = "unavailable" if elapsed is None else f"{elapsed:.6f}s"
+            outcome = (
+                "interrupted or failed" if status is None else f"exit status {status}"
+            )
+            _stderr(
+                f"Doctor invocation timing ({self.context}, including operator confirmation time): "
+                f"elapsed {duration}; {outcome}"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1341,7 +1342,7 @@ def _record_runtime_failures(
             )
 
 
-def _print_result(result: DoctorResult, detail: LogLevel) -> None:
+def _print_result(result: DoctorResult, verbose: bool) -> None:
     _stderr("EMRYS Doctor", style="bold blue")
     _stderr(f"  Project    PASS  {result.project.source_path.parent}", style="green")
     _stderr(f"  Analysis   PASS  {result.analysis.name}", style="green")
@@ -1359,7 +1360,7 @@ def _print_result(result: DoctorResult, detail: LogLevel) -> None:
             f"  {label:<10} {'PASS' if ready else requirement}",
             style="green" if ready else "red",
         )
-    if detail in {LogLevel.VERBOSE, LogLevel.DEBUG}:
+    if verbose:
         package = result.installed_package
         if package is not None:
             _stderr(f"Installed EMRYS: {package.root}")
@@ -1381,7 +1382,6 @@ def _print_result(result: DoctorResult, detail: LogLevel) -> None:
                         )
                     )
             _record_runtime_failures(result.inspection, phase="diagnosis")
-    if detail is LogLevel.DEBUG:
         for binding in result.bindings:
             _stderr(
                 f"Binding {binding.check_id}: {binding.path} -> {binding.resolved_path} sha256:{binding.sha256}"
@@ -1396,8 +1396,11 @@ def _print_result(result: DoctorResult, detail: LogLevel) -> None:
         _stderr(f"REMEDIATION: {remediation}", style="yellow")
 
 
-def _print_repair_plan(plan: _RepairPlan) -> None:
+def _print_repair_plan(plan: _RepairPlan, verbose: bool) -> None:
     _stderr(f"EMRYS Doctor {plan.operation} plan", style="bold blue")
+    _stderr("First Doctor setup can take 5–25 minutes.", style="yellow")
+    if not verbose:
+        return
     _stderr(f"  Project: {plan.project.source_path}")
     _stderr(f"  Runtime work: {plan.runtime_work}")
     if plan.execution is not None:
@@ -1521,8 +1524,7 @@ def _qualify_slurm(
             "--compute",
             "--qualification-binding",
             binding,
-            "--log-level",
-            controls.level.value,
+            *(("--verbose",) if controls.verbose else ()),
             "--log-root",
             str(controls.root),
         ),
@@ -1642,16 +1644,7 @@ def _execute_repair(
                 extra=event(
                     name,
                     fields={key: field(value) for key, value in values.items()},
-                    detail="durable_only"
-                    if name.startswith(
-                        (
-                            "package_manager_",
-                            "doctor_phase_",
-                            "doctor_scheduler_",
-                            "runtime_check_",
-                        )
-                    )
-                    else "normal",
+                    detail="durable_only",
                 ),
             )
         )
@@ -1683,7 +1676,8 @@ def _execute_repair(
     emit("repair_started", f"Project {plan.operation} started.", **started)
     claim: tuple[Path, os.stat_result, bytes] | None = None
     try:
-        _stderr(f"Runtime work: {plan.runtime_work}")
+        if controls.verbose:
+            _stderr(f"Runtime work: {plan.runtime_work}")
         if plan.runtime is not None:
             runtime_root = onboarding.project_runtime_directory(plan.project)
             if runtime_root != plan.runtime.profile.parent:
@@ -2001,6 +1995,7 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
 
 def _doctor_from_args(arguments: argparse.Namespace, timing: _DoctorTiming) -> int:
     progress = partial(phase_progress, on_complete=timing.observe)
+    timing.detail = arguments.verbose
     if arguments.execute and not arguments.repair:
         print("emrys: error: --execute requires --repair", file=sys.stderr)
         return 2
@@ -2042,10 +2037,10 @@ def _doctor_from_args(arguments: argparse.Namespace, timing: _DoctorTiming) -> i
                 "Compute input bindings require private Slurm delegation"
             )
         if result.installed_package is None:
-            _print_result(result, LogLevel.NORMAL)
+            _print_result(result, False)
             return 1
         controls = resolve_log_controls(
-            cli_level=arguments.log_level,
+            verbose=arguments.verbose,
             cli_root=arguments.log_root,
             default_root=result.project.source_path.parent / "logs/application",
         )
@@ -2058,8 +2053,7 @@ def _doctor_from_args(arguments: argparse.Namespace, timing: _DoctorTiming) -> i
     ) as exc:
         print(f"emrys: error: {exc}", file=sys.stderr)
         return 2
-    detail = controls.level
-    timing.detail = detail
+    detail = controls.verbose
     _print_result(result, detail)
     slurm = result.execution_profile is not None and isinstance(
         result.execution_profile.placement, SlurmPlacement
@@ -2084,7 +2078,7 @@ def _doctor_from_args(arguments: argparse.Namespace, timing: _DoctorTiming) -> i
     ) as exc:
         print(f"DOCTOR BLOCKED: {exc}", file=sys.stderr)
         return 1
-    _print_repair_plan(plan)
+    _print_repair_plan(plan, detail)
     if not arguments.execute:
         try:
             confirmed = _confirm_repair(plan)

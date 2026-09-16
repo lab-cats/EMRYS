@@ -13,6 +13,7 @@ import hashlib
 import uuid
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
+from functools import partial
 from pathlib import Path
 
 import yaml
@@ -42,7 +43,11 @@ from emrys.evidence.runtime_availability.inspector import (
     runtime_seal_bytes,
     shared_runtime_profile_bytes,
 )
-from emrys.libraries.application_logging import phase_progress
+from emrys.libraries.application_logging import (
+    add_verbose_argument,
+    console_print,
+    phase_progress,
+)
 from emrys.libraries.exclusive_publication import (
     acquire_lock,
     publish_exclusive,
@@ -551,6 +556,7 @@ _PROJECT_SUGGESTIONS = dict(
 
 def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
     add_site_argument(parser)
+    add_verbose_argument(parser)
     parser.add_argument(
         "project_name",
         metavar="PROJECT_NAME",
@@ -875,6 +881,8 @@ def _print_project_preview(
     members: Mapping[str, tuple[bytes, int]],
     answers: Mapping[str, object],
     arguments: argparse.Namespace,
+    *,
+    verbose: bool,
 ) -> None:
     """Review structure and scientific intent without hashing FASTQ contents."""
 
@@ -912,35 +920,49 @@ def _print_project_preview(
     except (AnalysisModuleLoadError, TypeError, ValueError) as exc:
         raise OnboardingError(f"scientific setup is invalid: {exc}") from exc
 
-    print("Review the study interpretation before creating the Project:")
-    print(f"  Project: {output}")
-    print(f"  Analysis: {answers['analysis_name']}")
-    print(f"  Site: {getattr(arguments, 'site', None) or 'none (direct placement)'}")
-    print("  Manifests: samples.tsv, partitions.tsv (inside this Project)")
-    print(f"  Reference FASTA: {answers['reference_fasta']}")
-    print(f"  Reference GTF: {answers['reference_gtf']}")
-    print("Sample assignments (pairing groups are explicitly supplied):")
-    for sample in samples:
-        print(
-            f"  {sample['sample_id']}: condition={sample['condition']}; "
-            f"pairing group={sample['replicate']}; strandedness={sample['strandedness']}"
-        )
-        print(f"    R1: {sample['r1_fastq']}")
-        print(f"    R2: {sample['r2_fastq']}")
-    for partition in partitions.rows:
-        print(
-            f"  Partition {partition['partition_id']}: {partition['selector_type']} "
-            f"{partition['selector_value']!r}"
-        )
-    print("Scientific settings:")
-    print(f"  target change: {policy['rna_ref']}>{policy['rna_alt']}")
-    settings = {
-        **definition["reference"]["star_index"],
-        **policy,
-    }
-    for name, value in settings.items():
-        if name not in {"rna_ref", "rna_alt"}:
-            print(f"  {name.replace('_', ' ')}: {'none' if value is None else value}")
+    present = partial(console_print, file=sys.stdout)
+    site = getattr(arguments, "site", None) or "direct"
+    libraries = ", ".join(str(row["sample_id"]) for row in samples)
+    present("Project preparation", style="bold blue")
+    print(
+        f"  Output directory: {output}",
+        f"  Libraries ({len(samples)}): {libraries}",
+        f"  Analysis: {answers['analysis_name']}; site: {site}",
+        f"  Reference: {answers['reference_fasta']}",
+        f"  Partitions: {len(partitions.rows)}",
+        f"  Comparison: {answers['control_condition']} -> "
+        f"{answers['treatment_condition']}; target {answers['target_change']}",
+        sep="\n",
+    )
+    if verbose:
+        present("Detailed study review", style="bold blue")
+        print("  Manifests: samples.tsv, partitions.tsv (inside this Project)")
+        print(f"  Reference FASTA: {answers['reference_fasta']}")
+        print(f"  Reference GTF: {answers['reference_gtf']}")
+        print("Sample assignments (pairing groups are explicitly supplied):")
+        for sample in samples:
+            print(
+                f"  {sample['sample_id']}: condition={sample['condition']}; "
+                f"pairing group={sample['replicate']}; strandedness={sample['strandedness']}"
+            )
+            print(f"    R1: {sample['r1_fastq']}")
+            print(f"    R2: {sample['r2_fastq']}")
+        for partition in partitions.rows:
+            print(
+                f"  Partition {partition['partition_id']}: {partition['selector_type']} "
+                f"{partition['selector_value']!r}"
+            )
+        settings = {
+            **definition["reference"]["star_index"],
+            **policy,
+        }
+        print("Scientific settings:")
+        print(f"  target change: {settings['rna_ref']}>{settings['rna_alt']}")
+        for name, value in settings.items():
+            if name not in {"rna_ref", "rna_alt"}:
+                label = name.replace("_", " ")
+                print(f"  {label}: {'none' if value is None else value}")
+
     replay = controlled_python_argv(
         sys.executable,
         "-m",
@@ -950,14 +972,16 @@ def _print_project_preview(
         *_project_replay_flags(arguments, answers),
         "--execute",
     )
-    print("After review, copy this command to create without repeating the questions.")
-    print("Creation will hash each FASTQ once and reject inputs changed during setup.")
-    print(f"cd {shlex.quote(str(output.parent))} && {shlex.join(replay)}")
+    if not getattr(arguments, "execute", False):
+        print("Create this Project without repeating the questions:")
+        print("Creation will hash each FASTQ once and reject changed inputs.")
+        print(f"cd {shlex.quote(str(output.parent))} && {shlex.join(replay)}")
 
 
 def init_project_from_args(arguments: argparse.Namespace) -> int:
     """Plan or create one validated Project root around existing inputs."""
 
+    present = partial(console_print, file=sys.stdout)
     try:
         output = _require_external_absent_output(
             Path.cwd() / arguments.project_name, source_root()
@@ -974,15 +998,16 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         answers["analysis_name"] = arguments.analysis_name
         answers["background_condition"] = arguments.background_condition
         project_bytes = _project_yaml(answers)
-        print(f"Project root: {output}")
-        print("Owned files: project.yaml, samples.tsv, partitions.tsv")
-        print("Owned directories: logs, runs, runtime")
-        print("FASTQs and references remain in place; setup copies no large inputs.")
         _print_project_preview(
-            output, project_bytes, manifest_members, answers, arguments
+            output,
+            project_bytes,
+            manifest_members,
+            answers,
+            arguments,
+            verbose=getattr(arguments, "verbose", False),
         )
         if not arguments.execute:
-            print("Dry-run complete; no files were written.")
+            present("Dry-run complete; no files were written.", style="yellow")
             return 0
         print(
             "Project creation reads and hashes each declared FASTQ once, then "
@@ -1018,7 +1043,7 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             before_completion=lambda _published: admission.require_inputs_unchanged(),
         )
         admission.require_inputs_unchanged()
-        print(f"Project ready: {output / 'project.yaml'}")
+        present(f"Project ready: {output / 'project.yaml'}", style="green")
         return 0
     except (
         OSError,
@@ -1026,7 +1051,7 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         orchestration_contracts.ContractValidationError,
         step08.ContractError,
     ) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        console_print(f"ERROR: {exc}", style="red", file=sys.stderr)
         return 2
 
 
@@ -1381,6 +1406,7 @@ def validate_project_admission(
 
 def configure_validation_parser(parser: argparse.ArgumentParser) -> None:
     add_project_argument(parser)
+    add_verbose_argument(parser)
     parser.set_defaults(_command_parser=parser)
 
 
@@ -1392,11 +1418,14 @@ def validate_from_args(arguments: argparse.Namespace) -> int:
         OnboardingError,
         orchestration_contracts.ContractValidationError,
     ) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        console_print(f"Project validation: FAIL — {exc}", style="red", file=sys.stderr)
         return 1
+    verbose = getattr(arguments, "verbose", False)
+    console_print("Project validation: PASS", style="green", file=sys.stdout)
+    if not verbose:
+        return 0
     project = result.project
     reference = project.analyses[0].workflow_inputs["reference"]
-    print("Project validation: PASS")
     print(f"  Project: {project.source_path}")
     print(f"  Project SHA-256: {project.source_sha256}")
     print(f"  Samples: {result.sample_count}")

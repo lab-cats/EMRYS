@@ -6,11 +6,9 @@ from pathlib import Path
 import pytest
 
 from emrys.libraries.application_logging.controls import (
-    EMRYS_LOG_LEVEL,
     EMRYS_LOG_ROOT,
     LogControlError,
     LogControls,
-    LogLevel,
     add_log_arguments,
     add_log_root_argument,
     resolve_log_controls,
@@ -29,22 +27,20 @@ def test_parser_is_side_effect_free_for_valid_and_help_responses(
 ) -> None:
     root = tmp_path / "logs"
     absent = parser().parse_args([])
-    selected = parser().parse_args(["--log-level", "debug", "--log-root", str(root)])
-    assert (absent.log_level, absent.log_root) == (None, None)
-    assert (selected.log_level, selected.log_root) == ("debug", str(root))
+    selected = parser().parse_args(["--verbose", "--log-root", str(root)])
+    assert (absent.verbose, absent.log_root) == (False, None)
+    assert (selected.verbose, selected.log_root) == (True, str(root))
     with pytest.raises(SystemExit) as raised:
         parser().parse_args(["--help"])
     assert raised.value.code == 0
-    assert "--log-level {normal,verbose,debug}" in capsys.readouterr().out
+    assert "--verbose" in capsys.readouterr().out
     assert not root.exists()
 
 
 @pytest.mark.parametrize(
     "arguments",
     [
-        ["--log-level", "quiet"],
         ["--log-root", ""],
-        ["--log-level", "normal", "--log-level", "debug"],
         ["--log-root", "/one", "--log-root", "/two"],
     ],
 )
@@ -59,13 +55,12 @@ def test_resolution_precedence_default_and_scheduler_transport(
 ) -> None:
     default_root = tmp_path / "repository/logs/application"
     environment = {
-        EMRYS_LOG_LEVEL: "verbose",
         EMRYS_LOG_ROOT: str(tmp_path / "environment"),
         "SECRET": "ignored",
     }
     cli = resolve_log_controls(
         default_root=default_root,
-        cli_level="debug",
+        verbose=True,
         cli_root=tmp_path / "cli",
         environment=environment,
     )
@@ -79,51 +74,32 @@ def test_resolution_precedence_default_and_scheduler_transport(
         default_root=tmp_path / "workspace" / "logs" / "application",
     )
 
-    assert cli == LogControls(
-        LogLevel.DEBUG, tmp_path / "cli", "command_line", "command_line"
-    )
-    assert env == LogControls(
-        LogLevel.VERBOSE, tmp_path / "environment", "environment", "environment"
-    )
+    assert cli == LogControls(True, tmp_path / "cli", "command_line")
+    assert env == LogControls(False, tmp_path / "environment", "environment")
     assert default.root == default_root
-    assert default.level is LogLevel.NORMAL
+    assert not default.verbose
     assert scoped_default.root == tmp_path / "workspace" / "logs" / "application"
     assert scoped_default.root_source == "default"
-    assert cli.scheduler_environment() == {
-        EMRYS_LOG_LEVEL: "debug",
-        EMRYS_LOG_ROOT: str(tmp_path / "cli"),
-    }
     assert list(unrelated.iterdir()) == []
     with pytest.raises(LogControlError):
         resolve_log_controls(default_root=object(), environment={})  # type: ignore[arg-type]
     for invalid in (
-        (LogLevel.NORMAL, tmp_path / "logs", "invalid", "default"),
-        (LogLevel.NORMAL, tmp_path / "logs", "default", "invalid"),
-        ("normal", tmp_path / "logs", "default", "default"),
-        (LogLevel.NORMAL, "/logs", "default", "default"),
+        (False, tmp_path / "logs", "invalid"),
+        ("normal", tmp_path / "logs", "default"),
+        (False, "/logs", "default"),
     ):
-        level, root, level_source, root_source = invalid
+        verbose, root, root_source = invalid
         with pytest.raises(LogControlError):
-            LogControls(level, root, level_source, root_source)  # type: ignore[arg-type]
+            LogControls(verbose, root, root_source)  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize(
-    ("level", "root"),
-    [
-        ("", "/logs"),
-        ("trace", "/logs"),
-        ("normal", ""),
-        ("normal", "relative"),
-        ("normal", "/logs\x1b"),
-    ],
-)
+@pytest.mark.parametrize("root", ("", "relative", "/logs\x1b"))
 def test_resolution_rejects_invalid_controls_without_writes(
-    level: str, root: str, tmp_path: Path
+    root: str, tmp_path: Path
 ) -> None:
     with pytest.raises(LogControlError):
         resolve_log_controls(
             default_root=tmp_path / "logs",
-            cli_level=level,
             cli_root=root,
             environment={},
         )
@@ -138,7 +114,6 @@ def test_read_only_root_selector_shares_precedence_without_console_controls(
     assert vars(selected.parse_args([])) == {"log_root": None}
     root = tmp_path / "absent logs"
     args = selected.parse_args(["--log-root", str(root)])
-    monkeypatch.setenv(EMRYS_LOG_LEVEL, "invalid and irrelevant to reading")
     monkeypatch.setenv(EMRYS_LOG_ROOT, str(tmp_path / "environment"))
     assert resolve_log_root(cli_root=args.log_root, default_root=tmp_path) == (
         root,
@@ -160,11 +135,5 @@ def test_read_only_root_selector_shares_precedence_without_console_controls(
 
 
 def test_combined_control_error_precedence_is_preserved(tmp_path: Path) -> None:
-    with pytest.raises(LogControlError, match="log level"):
-        resolve_log_controls(
-            default_root=tmp_path, cli_level="bad", cli_root="relative"
-        )
     with pytest.raises(LogControlError, match="log root"):
-        resolve_log_controls(
-            default_root=Path("relative"), cli_level="bad", cli_root=tmp_path
-        )
+        resolve_log_controls(default_root=Path("relative"), cli_root=tmp_path)

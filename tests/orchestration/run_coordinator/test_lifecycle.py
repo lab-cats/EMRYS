@@ -2124,27 +2124,33 @@ def test_terminal_task_observation_does_not_admit_unverified_results(
     parser = argparse.ArgumentParser()
     control.configure_inspect_parser(parser)
     capsys.readouterr()
-    for detail in ("normal", "verbose", "debug"):
+    for detail in ("normal", "verbose"):
         assert (
             control.inspect_from_args(
-                parser.parse_args([plan.run_root.name, "--detail", detail])
+                parser.parse_args(
+                    [
+                        plan.run_root.name,
+                        *(["--verbose"] if detail == "verbose" else []),
+                    ]
+                )
             )
             == 0
         )
         output = capsys.readouterr().out
-        assert "Recorded Task attempts:" in output
-        assert (
-            "Recorded outcomes do not establish verified scientific completion."
-            in output
-        )
         assert "Scientific Results: blocked" in output
         assert "Recovery available: no" in output
         if detail == "normal":
-            assert "Use --detail verbose" in output
+            assert "Recorded Task attempts:" not in output
             assert "Recorded Task outcomes and logs:" not in output
-        elif malformed_start:
-            assert f"    record: {plan.task_attempt_path}" not in output
         else:
+            assert "Recorded Task attempts:" in output
+            assert (
+                "Recorded outcomes do not establish verified scientific completion."
+                in output
+            )
+        if detail == "verbose" and malformed_start:
+            assert f"    record: {plan.task_attempt_path}" not in output
+        elif detail == "verbose":
             assert (
                 f"recorded {recorded_status}; Attempt {terminal.record['workflow_attempt_id']}"
                 in output
@@ -2163,7 +2169,7 @@ def test_terminal_task_observation_does_not_admit_unverified_results(
             if recorded_status == "failed":
                 assert "fixture postentry failure\\x1b[31m" in output
         assert "\x1b" not in output
-    assert snapshots == [plan.run_root] * 3
+    assert snapshots == [plan.run_root] * 2
     assert {
         path: path.read_bytes()
         for path in built.built.run_root.rglob("*")
@@ -2775,38 +2781,34 @@ def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
                 "_resolve_run_argument",
                 lambda _args: (built.request.request_source_path, root),
             )
-            for detail in ("normal", "verbose", "debug"):
+            for verbose in (False, True):
                 capsys.readouterr()
                 assert (
                     control.inspect_from_args(
-                        argparse.Namespace(run=root.name, detail=detail)
+                        argparse.Namespace(run=root.name, verbose=verbose)
                     )
                     == 0
                 )
                 output = capsys.readouterr().out
-                assert output.count("Scientific task observations:") == 1
+                assert ("Scientific task observations:" in output) is verbose
                 observation = (
                     "Started; completion unverified"
                     if state.attempt_outcome == "running"
                     else "Verification not admitted"
                 )
-                assert f"  {observation}: 1" in output
+                assert (f"  {observation}: 1" in output) is verbose
                 assert f"Scientific Results: {state.results_status}" in output
                 assert f"Run lock: {state.lock_observation}" in output
                 assert "Recovery available: no" in output
                 for path in expected_paths:
-                    assert (str(path) in output) is (detail != "normal")
-                if detail != "normal":
+                    assert (str(path) in output) is verbose
+                if verbose:
                     assert "paths do not establish existence or liveness" in output
+                    assert f"; start={root / started.start_reference['path']}" in output
                 if state.attempt_outcome == "blocked":
                     assert "Do not resume." in output
                     assert "RESULTS BLOCKER:" in output
-                if detail == "debug":
-                    started = next(
-                        item for item in state.tasks if item.start_reference is not None
-                    )
-                    assert f"; start={root / started.start_reference['path']}" in output
-        assert calls == [root] * 3
+        assert calls == [root] * 2
         assert {
             path: path.read_bytes() for path in root.rglob("*") if path.is_file()
         } == before
@@ -2914,7 +2916,7 @@ def test_live_lock_observation_preserves_admission_and_files(
                 "_resolve_run_argument",
                 lambda _arguments: (built.request.request_source_path, root),
             )
-            for detail in ("normal", "verbose"):
+            for verbose in (False, True):
                 capsys.readouterr()
                 previous_reads = len(lock_reads)
                 assert (
@@ -2922,7 +2924,7 @@ def test_live_lock_observation_preserves_admission_and_files(
                         argparse.Namespace(
                             project=built.request.request_source_path,
                             run=root.name,
-                            detail=detail,
+                            verbose=verbose,
                         )
                     )
                     == 0

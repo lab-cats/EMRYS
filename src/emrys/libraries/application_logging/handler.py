@@ -31,7 +31,6 @@ APPLICATION_LOG_SCHEMA_VERSION = "1.0.0"
 _SCOPES = frozenset(
     {"run", "sample", "cohort", "reference", "review", "validation", "maintenance"}
 )
-_DETAIL_RANK = {"normal": 0, "verbose": 1, "debug": 2}
 _RESERVED_EVENTS = frozenset(
     {
         "attempt_opened",
@@ -178,8 +177,10 @@ class AttemptLog:
             opening_fields = {
                 "entrypoint": field(identity.entrypoint),
                 "execution_attempt_id": field(identity.execution_attempt_id),
-                "log_level": field(controls.level.value),
-                "log_level_source": field(controls.level_source),
+                "log_level": field("verbose" if controls.verbose else "normal"),
+                "log_level_source": field(
+                    "command_line" if controls.verbose else "default"
+                ),
                 "log_root_source": field(controls.root_source),
                 "log_path": field(str(self.path), console=True),
                 "scope": field(f"{identity.scope_kind}:{identity.scope_id}"),
@@ -190,6 +191,7 @@ class AttemptLog:
                 "Application logging attempt opened.",
                 component=component,
                 phase="initialization",
+                detail="verbose",
                 fields=opening_fields,
                 allowed={"open"},
             )
@@ -212,10 +214,11 @@ class AttemptLog:
         try:
             with self._file.package_output() as output:
                 with suppress(Exception):
-                    console_print(
-                        f"Package output: {self.path.parent / 'package-output.log'}",
-                        file=self._stderr,
-                    )
+                    if self._controls.verbose:
+                        console_print(
+                            f"Package output: {self.path.parent / 'package-output.log'}",
+                            file=self._stderr,
+                        )
                 yield output
         except ApplicationLogStorageError as exc:
             raise ApplicationLogError(
@@ -466,7 +469,7 @@ class AttemptLog:
             "emrys_detail",
             "debug" if record.levelno <= logging.DEBUG else "normal",
         )
-        if detail not in {*_DETAIL_RANK, "durable_only"}:
+        if detail not in {"normal", "verbose", "debug", "durable_only"}:
             raise ApplicationLogError(
                 "Unknown console detail", stage="admission", path=self.path
             )
@@ -542,7 +545,7 @@ class AttemptLog:
         if detail == "durable_only":
             self._durable_only_count += 1
             return
-        if _DETAIL_RANK[detail] > _DETAIL_RANK[self._controls.level.value]:
+        if not self._controls.verbose and detail != "normal":
             return
         rendered_fields = " ".join(
             f"{name}={json.dumps(value, ensure_ascii=False, separators=(',', ':'))}"

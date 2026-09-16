@@ -30,8 +30,8 @@ from emrys.libraries.application_logging import (
     AttemptLog,
     LogControlError,
     LogControls,
-    LogLevel,
     add_log_arguments,
+    add_verbose_argument,
     console_print,
     event,
     field,
@@ -755,9 +755,7 @@ def _next_supported_action(observed: inspection.RunInspection) -> str:
         return "Preserve this Run; review the latest Attempt receipt. Do not generate reports."
     if observed.results_status == "complete":
         if observed.reporting_status == "not applicable":
-            return (
-                "Inspect this Run's verified scientific artifacts with --detail debug."
-            )
+            return "Inspect this Run's verified scientific artifacts with --verbose."
         if observed.reporting_status == "complete":
             return "Review the verified Results and report paths."
         return f"Generate reports with {_run_followup('report', observed.run_root, observed.run_id, '--execute')}."
@@ -812,7 +810,7 @@ def _resolve_controls(arguments: argparse.Namespace, workspace: Path) -> LogCont
         raise ControlError("Workspace must not be the filesystem root")
     try:
         return resolve_log_controls(
-            cli_level=getattr(arguments, "log_level", None),
+            verbose=getattr(arguments, "verbose", False),
             cli_root=getattr(arguments, "log_root", None),
             default_root=root / "logs" / "application",
         )
@@ -876,14 +874,14 @@ def _delegate_argv(
         (
             "--profile",
             str(profile.source_path),
-            "--log-level",
-            controls.level.value,
             "--log-root",
             str(controls.root),
             *resource_override_argv(overrides),
-            "--execute",
         )
     )
+    if controls.verbose:
+        argv.append("--verbose")
+    argv.append("--execute")
     if getattr(arguments, "no_report", False):
         argv.append("--no-report")
     return tuple(argv)
@@ -998,11 +996,10 @@ def _schedule(
         console_print(f"Run: {inspection.human_run_name(arguments.run)}")
     for line in profile.submission_summary():
         console_print(line)
-    if controls.level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
+    if controls.verbose:
         console_print(f"Execution profile: {profile.source_path}")
         console_print(f"Scheduler stdout: {submission.stdout_pattern}")
         console_print(f"Scheduler stderr: {submission.stderr_pattern}")
-    if controls.level is LogLevel.DEBUG:
         console_print("Scheduler command: " + shlex.join(submission.argv))
     if not arguments.execute and not _confirm_execution():
         _print_no_write("scheduler or workspace")
@@ -1198,7 +1195,7 @@ def _execute_plan(
         )
     )
     if build_at_execution:
-        _print_plan(plan, level=controls.level, report_enabled=report_enabled)
+        _print_plan(plan, verbose=controls.verbose, report_enabled=report_enabled)
     receipt_ready = False
 
     def observe_application_event(event_name: str) -> None:
@@ -1379,14 +1376,15 @@ def _reporting_applicable(plan: AttemptPlan) -> bool:
 
 
 def _print_plan(
-    plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = True
+    plan: AttemptPlan, *, verbose: bool, report_enabled: bool = True
 ) -> None:
     reused = plan.task_count - plan.new_task_count
     resources = plan.resources
     project_label = plan.run.analysis.source_path.parent.name
     console_print(f"Project: {project_label!a}", style="bold")
     console_print(f"Analysis: {plan.run.analysis.name!a}", style="blue")
-    console_print(f"Run: {inspection.human_run_name(plan.run.run_id)}")
+    run_name = inspection.human_run_name(plan.run.run_id)
+    console_print(f"Run: {run_name}", style="bold blue")
     full_analysis = _reporting_applicable(plan)
     if full_analysis:
         boundary = "complete analysis"
@@ -1400,40 +1398,34 @@ def _print_plan(
         reporting = "automatic after scientific work"
     else:
         reporting = "disabled for this execution"
-    console_print(f"Scientific boundary: {boundary}")
+    console_print(f"Scientific boundary: {boundary}", style="bold")
     if (
         processing_source := plan.run.execution_plan.record["identity"].get(
             "processing_source"
         )
     ) is not None:
-        console_print(
-            f"Processing source: {inspection.human_run_name(processing_source['source_run_id'])}",
-        )
+        source_id = processing_source["source_run_id"]
+        console_print(f"Processing source: {inspection.human_run_name(source_id)}")
     console_print(f"Work: {plan.new_task_count} pending, {reused} reusable")
     console_print(f"Reporting: {reporting}")
-    if level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
-        console_print(f"Run ID: {plan.run.run_id}")
-        if processing_source is not None:
-            console_print(
-                f"Processing source Run ID: {processing_source['source_run_id']}",
-            )
-        console_print(
+    if verbose:
+        details = [
+            f"Run ID: {plan.run.run_id}",
             f"Analysis revision: {plan.run.analysis.revision.analysis_revision_id}",
-        )
-        console_print(
             f"Execution Plan ID: {plan.run.execution_plan.execution_plan_id}",
-        )
-        console_print(f"Run root: {plan.run_root}")
-        console_print(
+            f"Run root: {plan.run_root}",
             f"Resources: {resources.workflow_cores} cores, {resources.workflow_memory_mb} MiB",
-        )
+        ]
+        if processing_source is not None:
+            details.insert(1, f"Processing source Run ID: {source_id}")
+        for line in details:
+            console_print(line)
         console_print("Step thread allocations:")
         for step_id, threads in resources.step_threads:
             console_print(f"  Step {step_id}: {threads}")
         console_print("Stage concurrency:")
         for step_id, concurrency in resources.stage_concurrency:
             console_print(f"  Step {step_id}: {concurrency}")
-    if level is LogLevel.DEBUG:
         console_print(
             "Snakemake command: " + shlex.join(plan.attempt_record["snakemake_argv"]),
         )
@@ -1478,7 +1470,7 @@ def _finish_control(
         plan = build_plan()
         _print_plan(
             plan,
-            level=controls.level,
+            verbose=controls.verbose,
             report_enabled=report_enabled,
         )
         if not _confirm_execution():
@@ -1581,6 +1573,7 @@ def configure_inspect_parser(
             else "Run name or ID prefix."
         ),
     )
+    add_verbose_argument(parser)
     add_log_root_argument(parser)
     if not watch_command:
         parser.add_argument(
@@ -1627,12 +1620,6 @@ def configure_inspect_parser(
         "--submission",
         metavar="REQUEST",
         help="Inspect one exact request directory name or absolute path and query its scheduler state; excludes a Run selector.",
-    )
-    parser.add_argument(
-        "--detail",
-        choices=("normal", "verbose", "debug"),
-        default="normal",
-        help="Select static inspection detail; --watch has overview, details and evidence/log views.",
     )
 
 
@@ -1995,7 +1982,7 @@ def stop_from_args(arguments: argparse.Namespace) -> int:
         context = plan.request.context
         assert context is not None
         controls = resolve_log_controls(
-            cli_level=arguments.log_level,
+            verbose=arguments.verbose,
             cli_root=arguments.log_root,
             default_root=Path(str(context["application_log_root"])),
         )
@@ -2367,7 +2354,7 @@ def inspect_from_args(
                 _project_path, run_root, log_root
             )
         )
-        detail = getattr(arguments, "detail", "normal")
+        detail = "verbose" if getattr(arguments, "verbose", False) else "normal"
         milestones = _inspection_presentation.milestone_progress(
             observed.tasks,
             processing_source_state=(
@@ -2393,7 +2380,8 @@ def inspect_from_args(
         slurm_submission.SlurmSubmissionError,
     ) as exc:
         return _control_failure(exc)
-    print(f"Run: {inspection.human_run_name(run_root.name)}")
+    present = partial(console_print, file=sys.stdout)
+    present(f"Run: {inspection.human_run_name(run_root.name)}", style="bold blue")
     if applications is not None:
         for line in _inspection_presentation.run_application_lines(
             applications, detail=detail
@@ -2424,13 +2412,13 @@ def inspect_from_args(
             f"{inspection.human_run_name(observed.processing_source_run_id)} "
             f"({source_state})"
         )
-    print("Scientific milestones:")
+    present("Scientific milestones:", style="bold blue")
     for label, state, verified, total in milestones:
         print(f"  {label}: {state}")
         if detail != "normal":
             if observed.processing_source_run_id is None or total:
                 print(f"    Verified tasks: {verified}/{total}")
-    if observed.tasks:
+    if detail != "normal" and observed.tasks:
         print("Scientific task observations:")
         for label, count in Counter(
             _inspection_presentation.task_observation(task) for task in observed.tasks
@@ -2439,16 +2427,15 @@ def inspect_from_args(
     terminal_attempts = tuple(
         terminal for task in observed.tasks for terminal in task.terminal_attempts
     )
-    print(f"Recorded Task attempts: {len(terminal_attempts)}")
-    if terminal_attempts:
+    if detail != "normal":
+        print(f"Recorded Task attempts: {len(terminal_attempts)}")
+    if detail != "normal" and terminal_attempts:
         print("Recorded outcomes do not establish verified scientific completion.")
-        if detail == "normal":
-            print(
-                "Use --detail verbose for recorded outcomes and content-bound log paths."
-            )
     print(f"Scientific Results: {observed.results_status}")
     print(f"Reporting admission: {observed.reporting_status}")
-    if observed.reporting_status != "not applicable":
+    if observed.reporting_status != "not applicable" and (
+        detail != "normal" or observed.reporting_status != "complete"
+    ):
         print("Reporting transactions:")
         for kind, records in observed.reporting_completion_records.items():
             state = _inspection_presentation.reporting_observation(records)
@@ -2496,7 +2483,7 @@ def inspect_from_args(
             )
             for source in streams:
                 _print_safe(f"  {source.label}: {source.path}")
-    if detail == "debug":
+    if detail != "normal":
         authority = observed.authority
         print("Run authority records:")
         for label, name, record in (
@@ -2574,7 +2561,10 @@ def inspect_from_args(
         for blocker in blockers:
             _print_safe(f"{blocker_label}: {blocker}")
     print(f"Recovery available: {'yes' if observed.recovery_available else 'no'}")
-    _print_safe(f"Next supported action: {_next_supported_action(observed)}")
+    present(
+        f"Next supported action: {_next_supported_action(observed)}",
+        style="bold",
+    )
     for line in result_lines:
         _print_safe(line)
     return 0

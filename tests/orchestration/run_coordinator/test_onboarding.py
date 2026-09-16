@@ -144,6 +144,15 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     preview = capsys.readouterr()
     assert "Dry-run complete" in preview.out
     assert "Reading and hashing Project inputs" not in preview.err
+    assert f"Output directory: {output}" in preview.out
+    assert "Libraries (4):" in preview.out
+    assert f"Analysis: {arguments.analysis_name}; site: viking" in preview.out
+    assert "Partitions: 1" in preview.out
+    assert (
+        f"Comparison: {arguments.control_condition} -> "
+        f"{arguments.treatment_condition}; target {arguments.target_change}"
+    ) in preview.out
+    assert "Detailed study review" not in preview.out
     phases = (
         "Reading and hashing Project inputs",
         "Checking reference and partition compatibility",
@@ -323,7 +332,7 @@ def test_guided_project_preview_replays_exact_answers_without_new_prompts(
             )
         )
     arguments.sample_manifest.write_bytes(tsv_bytes(table.header, samples))
-    command = ["init", arguments.project_name]
+    command = ["init", arguments.project_name, "--verbose"]
     for name, value in vars(arguments).items():
         if name not in {"project_name", "execute"} and value is not None:
             command.extend((f"--{name.replace('_', '-')}", str(value)))
@@ -342,7 +351,7 @@ def test_guided_project_preview_replays_exact_answers_without_new_prompts(
     assert (
         f"background condition: {arguments.background_condition or 'none'}" in preview
     )
-    assert f"Site: {site or 'none (direct placement)'}" in preview
+    assert f"Analysis: {arguments.analysis_name}; site: {site or 'direct'}" in preview
     for sample in samples:
         assert (
             f"{sample['sample_id']}: condition={sample['condition']}; "
@@ -1530,12 +1539,27 @@ def test_project_validation_summary_is_analysis_module_neutral(
         fasta_contigs=(("chr1", 1),),
         transcript_count=1,
         sample_count=1,
-        gtf_warnings=(),
+        gtf_warnings=("fixture normalization warning",),
     )
     monkeypatch.setattr(onboarding, "validate_project", lambda _path: result)
 
-    assert onboarding.validate_from_args(argparse.Namespace(project=project_path)) == 0
-    assert "collaborator: 1 samples, 1 partitions" in capsys.readouterr().out
+    assert (
+        onboarding.validate_from_args(
+            argparse.Namespace(project=project_path, verbose=False)
+        )
+        == 0
+    )
+    normal = capsys.readouterr().out
+    assert normal.splitlines() == ["Project validation: PASS"]
+    assert (
+        onboarding.validate_from_args(
+            argparse.Namespace(project=project_path, verbose=True)
+        )
+        == 0
+    )
+    verbose = capsys.readouterr().out
+    assert "collaborator: 1 samples, 1 partitions" in verbose
+    assert "fixture normalization warning" in verbose
 
 
 def test_project_validation_reports_invalid_project(
@@ -1547,7 +1571,10 @@ def test_project_validation_reports_invalid_project(
     assert (
         onboarding.validate_from_args(argparse.Namespace(project=missing_request)) == 1
     )
-    assert "ERROR:" in capsys.readouterr().err
+    assert (
+        "Project validation: FAIL — Project definition is unavailable"
+        in capsys.readouterr().err
+    )
 
 
 @pytest.mark.parametrize("invocation_directory", ("checkout", "projects_parent"))

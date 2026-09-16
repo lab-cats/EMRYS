@@ -615,7 +615,7 @@ def test_watch_handoff_uses_exact_selection_and_fresh_ordinary_parser_defaults(
         if command == "resume":
             assert selected.no_report is False
         assert selected.execute is False
-        assert selected.log_level is None and selected.log_root is None
+        assert selected.verbose is False and selected.log_root is None
         assert not hasattr(selected, "watch") and not hasattr(selected, "actions")
         return 17
 
