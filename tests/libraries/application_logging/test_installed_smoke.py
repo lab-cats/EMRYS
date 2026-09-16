@@ -47,7 +47,6 @@ def test_clean_installed_scheduler_delegate_owns_one_attempt_and_separates_strea
             for name, value in os.environ.items()
             if not name.startswith(("EMRYS_LOG_", "SLURM_"))
         },
-        "EMRYS_LOG_LEVEL": "normal",
         "EMRYS_LOG_ROOT": str(log_root),
         "SLURM_JOB_ID": "42",
     }
@@ -79,7 +78,7 @@ def test_clean_installed_scheduler_delegate_owns_one_attempt_and_separates_strea
         "complete",
     ]
     expected_opening = {
-        "log_level_source": "environment",
+        "log_level_source": "default",
         "log_root_source": "environment",
         "slurm_job_id": "42",
     }

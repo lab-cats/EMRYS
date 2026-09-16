@@ -30,7 +30,6 @@ from emrys.evidence.storage_inventory.qualification import QualifiedStorage
 from emrys.libraries.application_logging import (
     ApplicationLogError,
     LogControls,
-    LogLevel,
     helpers as log_helpers,
 )
 from emrys.orchestration.run_coordinator import doctor
@@ -158,9 +157,8 @@ def _runtime(plan: doctor._RepairPlan) -> doctor._ManagedRuntimePlan:
 
 def _controls(project: ProjectAdmission) -> LogControls:
     return LogControls(
-        LogLevel.NORMAL,
+        False,
         project.source_path.parent / "logs/application",
-        "default",
         "default",
     )
 
@@ -600,7 +598,7 @@ def test_existing_invalid_storage_evidence_is_not_assumed_to_be_fresh_setup(
         "Direct storage qualification receipt is not valid UTF-8 JSON" in blocker
         for blocker in result.blockers
     )
-    doctor._print_result(result, LogLevel.NORMAL)
+    doctor._print_result(result, False)
     output = capsys.readouterr().err
     assert "Storage    NOT QUALIFIED" in output
     assert "Storage    NOT PREPARED" not in output
@@ -843,11 +841,15 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
         "open_attempt_log",
         lambda **_kwargs: pytest.fail("diagnosis opened an application log"),
     )
-    for level in ("normal", "verbose", "debug"):
+    for level in ("normal", "verbose"):
         assert (
             doctor.doctor_from_args(
                 _arguments(
-                    ["--project", str(project.source_path), "--log-level", level]
+                    [
+                        "--project",
+                        str(project.source_path),
+                        *(["--verbose"] if level == "verbose" else []),
+                    ]
                 )
             )
             == 1
@@ -963,7 +965,7 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
         argparse.Namespace(
             project=project.source_path,
             analysis=None,
-            log_level=None,
+            verbose=False,
             log_root=None,
             repair=repair,
             execute=execute,
@@ -974,33 +976,21 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
     assert _snapshot(tmp_path) == before
     output = capsys.readouterr()
     assert output.out == ""
-    assert (
-        "Doctor invocation timing (head/local, including operator confirmation time):"
-        in output.err
-    )
-    assert f"exit status {expected_status}" in output.err
+    assert "Doctor invocation timing" not in output.err
     assert "Doctor phase timing" not in output.err
     if repair:
         assert f"EMRYS Doctor {operation} plan" in output.err
-        assert f"Runtime work: {runtime_work}" in output.err
-        assert (
-            "Package-manager output records which packages are reused, installed, or changed."
-            in output.err
-        ) == runtime_required
-        assert "first setup" not in output.err
-        assert "Execution placement: Direct" in output.err
-        assert "Workflow CPU ceiling: 4;" in output.err
+        assert "First Doctor setup can take 5–25 minutes." in output.err
+        assert f"Runtime work: {runtime_work}" not in output.err
+        assert "Package-manager output records" not in output.err
+        assert "Execution placement: Direct" not in output.err
+        assert "Workflow CPU ceiling: 4;" not in output.err
         assert f"Apply this {operation} plan? [y/N]" in output.err
         assert f"{operation.capitalize()} preview complete" in output.err
-        assert (
-            "Checks repeat because inputs, packages, and node visibility can change."
-            in output.err
-        )
-        assert (
-            "Checking/updating native tools and R" in output.err
-        ) == runtime_required
-        assert ("Checking/restoring R packages" in output.err) == runtime_required
-        assert ("Maintenance claim:" in output.err) == runtime_required
+        assert "Checks repeat because inputs" not in output.err
+        assert "Checking/updating native tools and R" not in output.err
+        assert "Checking/restoring R packages" not in output.err
+        assert "Maintenance claim:" not in output.err
 
 
 def test_invocation_timing_includes_confirmation_and_preserves_read_only_preview(
@@ -1045,8 +1035,7 @@ def test_invocation_timing_includes_confirmation_and_preserves_read_only_preview
                     "--project",
                     str(project.source_path),
                     "--repair",
-                    "--log-level",
-                    "verbose",
+                    "--verbose",
                 ]
             )
         )
@@ -1092,6 +1081,7 @@ def test_scheduler_timing_observation_is_optional_buffered_and_escaped(
         job_name="emrys-local-pilot",
     )
     timing = doctor._DoctorTiming()
+    timing.detail = True
     elapsed = 0.0
     monkeypatch.setattr(log_helpers, "time", SimpleNamespace(monotonic=lambda: elapsed))
     queries = []
@@ -1228,7 +1218,7 @@ def test_failed_diagnosis_timing_cannot_replace_error_or_interrupt(
         monkeypatch.setattr(doctor._DoctorTiming, "observe", failed_telemetry)
     elif fault == "finish":
         monkeypatch.setattr(doctor._DoctorTiming, "finish", failed_telemetry)
-    arguments = _arguments(["--project", str(source)])
+    arguments = _arguments(["--project", str(source), "--verbose"])
     before = _snapshot(tmp_path)
     if interrupted:
         with pytest.raises(KeyboardInterrupt) as failure:
@@ -1268,7 +1258,7 @@ def test_diagnosis_resolves_shared_log_controls_without_opening_a_log(
         argparse.Namespace(
             project=project.source_path,
             analysis=None,
-            log_level="verbose",
+            verbose=True,
             log_root=tmp_path / "selected-logs",
             repair=False,
             execute=False,
@@ -1276,7 +1266,7 @@ def test_diagnosis_resolves_shared_log_controls_without_opening_a_log(
     )
 
     assert status == 0
-    assert observed[0]["cli_level"] == "verbose"
+    assert observed[0]["verbose"] is True
     assert observed[0]["cli_root"] == tmp_path / "selected-logs"
 
 
@@ -1518,10 +1508,7 @@ def test_storage_only_repair_preserves_ready_site_runtime_and_skips_managers(
     assert "terminal" in records
     _log_path, events = _repair_log(project)
     output = capsys.readouterr().err
-    assert (
-        "Runtime work: Selected runtime passed current checks; no package-manager work is needed."
-        in output
-    )
+    assert "Runtime work:" not in output
     started = next(
         item["fields"] for item in events if item["event"] == "repair_started"
     )
@@ -2003,12 +1990,8 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
         if retained_inventory
         else "Prepare a managed runtime inventory; package managers check any retained tools and caches."
     )
-    assert f"Runtime work: {summary}" in output
-    assert (
-        "Package-manager output records which packages are reused, installed, or changed."
-        in output
-    )
-    assert "first setup" not in output
+    assert f"Runtime work: {summary}" not in output
+    assert "Package-manager output records" not in output
     assert "Checking/updating native tools and R" in output
     assert "Checking/restoring R packages" in output
     _log_path, events = _repair_log(project)
@@ -2618,7 +2601,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     monkeypatch.setattr(qualification, "qualify_head", finalize)
     monkeypatch.setattr(doctor, "diagnose_project", diagnose)
     arguments = _arguments(
-        ["--project", str(project.source_path), "--repair", "--execute"]
+        ["--project", str(project.source_path), "--repair", "--execute", "--verbose"]
         + (["--profile", selector] if selector is not None else [])
     )
     records: list[str] = []
@@ -3021,7 +3004,7 @@ def test_malformed_project_is_a_usage_error(
         argparse.Namespace(
             project=project.source_path,
             analysis=None,
-            log_level=None,
+            verbose=False,
             log_root=None,
             repair=False,
             execute=False,

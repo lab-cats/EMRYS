@@ -3,8 +3,8 @@
 from .controls import (
     LogControlError,
     LogControls,
-    LogLevel,
     add_log_arguments,
+    add_verbose_argument,
     resolve_log_controls,
 )
 from .handler import (
@@ -22,8 +22,8 @@ __all__ = [
     "AttemptLog",
     "LogControlError",
     "LogControls",
-    "LogLevel",
     "add_log_arguments",
+    "add_verbose_argument",
     "console_print",
     "event",
     "field",

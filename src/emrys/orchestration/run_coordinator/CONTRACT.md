@@ -124,7 +124,7 @@ These descriptions add no probes, inferred cache admission or skipped checks.
 
 Doctor reports invocation timing separately from admission. The total spans
 entry through return/exception and explicitly includes operator confirmation
-time; verbose/debug output shows precise phase elapsed seconds. An
+time; `--verbose` shows precise phase elapsed seconds. An
 invocation-local collector receives best-effort observations from the shared
 progress owner without removing or reusing any input checks. Approved maintenance
 buffers all phases until controlling work and the claim-release decision finish,
@@ -210,7 +210,7 @@ aborts. Head-side discovery and requalification write `runtime_check_failed`
 events to the existing maintenance log; normal output names failed checks and
 that exact log path. Automatic compute failures write JSON-escaped details to
 the parent's scheduler stderr even when the failure prevents qualification
-binding. Read-only diagnosis creates no log; verbose/debug output includes the
+binding. Read-only diagnosis creates no log; `--verbose` includes the
 same detail. Diagnostic persistence remains best-effort and cannot admit a
 failed inventory or change qualification exits. The existing required Snakemake
 check also performs bounded empty-workflow startup in private disposable scratch,
@@ -423,7 +423,7 @@ Legacy overview/detail navigation uses `1`/`o`, `2`/`d` and Tab; arrows, `j`/`k`
 Page Up/Down and Home/`g` scroll. `3`/`v` selects dated evidence/logs and `[`/`]`
 cycles streams. Action keys cannot replace navigation keys. `NO_COLOR` suppresses
 status colors. `--snapshot`, noninteractive or dumb terminals emit one plain,
-dated snapshot; `--detail` remains the static-inspection selector. Ordinary
+dated snapshot; `--verbose` expands static inspection. Ordinary
 watch creates no operational action, persistent cache or additional log.
 
 Interactive `--watch --actions` offers `p` for a Run's ordinary resume plan and
@@ -874,7 +874,7 @@ existing record and exact log-content checks; a postentry observation must also
 match the already admitted start reference and its originating Attempt. Failed
 preentry records keep the existing later-start ordering guard. Missing, changed
 or malformed records/logs are excluded, with their existing blockers preserved.
-Normal output counts these recorded attempts. Verbose/debug output shows their
+Normal output stays at the Run summary. `--verbose` shows recorded attempts,
 recorded outcome, original Attempt, record path and content-bound stdout/stderr
 paths, with escaped diagnostics. A recorded `succeeded` outcome alone cannot
 admit verified scientific completion, Results or recovery. The projection adds
@@ -890,10 +890,11 @@ regeneration cannot invalidate science and creates neither a Run nor an
 Attempt. Result locations are shown only from a fully revalidated report
 receipt; incomplete, failed, blocked, or dry-run state prints none.
 
-Normal inspection also shows each reporting transaction's admitted evidence:
+Verbose inspection shows each reporting transaction's admitted evidence; normal
+inspection also shows it when the overall reporting state is incomplete:
 `No admitted start`, `Started; completion unverified`, or `Verified complete`.
-The same table appears once at every detail level. A start records transaction
-entry, not a currently live reporter; reporting begins after the scientific
+The table appears once when shown. A start records transaction entry, not a
+currently live reporter; reporting begins after the scientific
 Attempt releases its Run lock. Output presence cannot replace the completion
 record. Incomplete/invalid reporting retains its admission blockers, while
 scientific Attempt/Results observations remain separate.

@@ -11,7 +11,7 @@ inputs, outputs, locks, rollback, and recovery belong in that owner's
    A quiet command alone is not a reason to kill an active job.
 2. From the Project, run `emrys inspect RUN`, replacing `RUN` with its two-word
    name, full ID, or unique ID prefix. Omit it for the sole Run or terminal
-   picker; EMRYS never assumes latest. Add `--detail verbose` or `debug` for evidence.
+   picker; EMRYS never assumes latest. Add `--verbose` for evidence.
 3. Preserve the complete Run, Project definition, manifests, receipts, locks,
    task/reporting ledgers, logs, native artifacts, partials, backups, and recovery
    markers. Verify the installed package identity and runtime against admitted records.
@@ -147,14 +147,14 @@ digest, and phase. For automatic compute qualification, use the exact job's
 stderr path printed at submission; those checks retain their details there
 without a second maintenance log. Package installation success does not imply
 runtime qualification. Preserve these logs before retrying. For a new read-only
-diagnosis, `emrys doctor --log-level verbose` shows individual failed checks;
+diagnosis, `emrys doctor --verbose` shows individual failed checks;
 it observes the current environment and cannot reconstruct an older failure.
 
 ### Watching Doctor's installation log
 
 Doctor shows installation stages and elapsed time. Package-manager output is
 saved in `package-output.log`, beside the maintenance JSONL; it does not stream
-to Doctor's terminal, even with `--log-level verbose` or `debug`.
+to Doctor's terminal, even with `--verbose`.
 
 To watch those details while installation continues, leave Doctor running and
 open a second terminal on the same host: the Viking head node for the
@@ -193,7 +193,7 @@ review. Repeating `--execute` is not recovery or cleanup.
 
 **Rejected allocation or scratch.** Replace profile placeholders with authorized
 partition/account/QoS/node values and preview the submission with
-`--log-level debug </dev/null`. If CPU or memory is inadequate, revise the profile
+`--verbose </dev/null`. If CPU or memory is inadequate, revise the profile
 and create a new Run when its immutable resource envelope changes; do not lower
 owner requirements silently. `scratch_parent` must be an existing approved
 writable compute path with enough capacity; there is no silent `/tmp` fallback.

@@ -32,10 +32,11 @@ open or append to the operation log.
   binary payloads, FASTQ/BAM/VCF content, large tables, and report bytes are not
   copied into it; their roles, paths, hashes, and available sizes/counts may be
   recorded.
-- Adopted commands accept `--log-level normal|verbose|debug` and
-  `--log-root PATH`; `EMRYS_LOG_LEVEL` and `EMRYS_LOG_ROOT` are the environment
-  forms. Precedence is command line, environment, then default, resolved once
-  by the outer operation. `normal` is the default; there is no `quiet` level.
+- Adopted commands accept `--verbose` and `--log-root PATH`. `--verbose` is the
+  sole public detail switch; omission selects normal output. `EMRYS_LOG_ROOT`
+  remains the environment form of the path selector. Command-line path,
+  environment path, then the Project default are resolved once by the outer
+  operation.
 - Invalid, empty, or conflicting controls fail before log, lock, scratch,
   output, or compute side effects while preserving established parse exits.
 - The default root is `<project-root>/logs/application`. Until an adopter has
@@ -44,15 +45,14 @@ open or append to the operation log.
   absolute.
   Stop defaults to the exact submitted request's retained application-log root;
   explicit command-line and environment controls retain their precedence.
-- A valid dry-run creates no log. Levels change console output only, never probes,
+- A valid dry-run creates no log. The switch changes console output only, never probes,
   child flags, computation, artifacts, validation, locking, publication,
   rollback, cleanup, or exits.
 
 | Level | Console projection | Durable log |
 | --- | --- | --- |
-| `normal` | Run identity, work/reporting summary, meaningful phases, verified Results, warnings, errors, log path, and bounded failure summary | complete observed event set |
-| `verbose` | `normal` plus Run root, resources/allocation, profile, scheduler streams, and resolved operational paths | same event semantics |
-| `debug` | `verbose` plus exact safe engine, scheduler, and task commands, allowed environment context, timing, and recovery identities | same event semantics |
+| `normal` | Run identity, work/reporting summary, meaningful phases, verified Results, warnings, errors, failure log path, and bounded failure summary | complete observed event set |
+| `verbose` | `normal` plus Run root, resources/allocation, profile, scheduler streams, resolved operational paths, exact safe commands, timing, and recovery identities | same event semantics |
 
 Rich styles human terminal output only. Status remains understandable from its
 text labels. Redirected output, `NO_COLOR`, and dumb terminals have no color or
@@ -61,8 +61,8 @@ invent a completion percentage or a guaranteed remaining duration.
 
 A repair that invokes package managers creates one exclusive, mode-0600
 `package-output.log` beside its maintenance JSONL. It retains both child streams
-as bytes. Normal terminal output shows stages and the log path; the printed file remains available
-for detailed diagnostics at every output level. Package output is not copied into
+as bytes. Normal terminal output shows stages; `--verbose` names the path, and
+the file remains available for detailed diagnostics. Package output is not copied into
 structured events. A failed or interrupted repair preserves this log.
 
 The runner preserves task stdout and stderr as exact bytes in separate task
@@ -169,8 +169,9 @@ unavailable) and `outcome`. Initial no-write inspection and later phases are
 buffered until controlling work and the claim-release decision finish. A single
 flush before the existing terminal event follows the log's degradation boundary;
 it stops after a failed sink and creates no second log.
-Complete invocation time is printed after return/exception, including operator
-confirmation time, and is not appended to an already closed terminal log.
+With `--verbose`, complete invocation time is printed after return/exception,
+including operator confirmation time, and is not appended to an already closed
+terminal log.
 These measurements cannot substitute for readiness or change receipt authority.
 The same flush may emit durable-only `runtime_check_passed` packets collected
 at actual Doctor inspection/discovery returns. They use the existing runtime

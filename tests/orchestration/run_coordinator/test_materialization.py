@@ -52,7 +52,6 @@ from emrys.libraries.source_authority import controlled_python_argv
 from emrys.libraries.application_logging import (
     ApplicationLogError,
     LogControls,
-    LogLevel,
 )
 from emrys.libraries.application_logging.storage import (
     ApplicationLogFile,
@@ -138,7 +137,7 @@ class _TerminalOutput:
 
 def _command_arguments(project: Path, **options) -> argparse.Namespace:
     return argparse.Namespace(
-        project=project, profile=None, log_level=None, log_root=None, **options
+        project=project, profile=None, verbose=False, log_root=None, **options
     )
 
 
@@ -151,7 +150,7 @@ def _log_events(path: Path) -> list[str]:
 
 
 def _application_controls(root: Path) -> LogControls:
-    return LogControls(LogLevel.NORMAL, root, "default", "default")
+    return LogControls(False, root, "default")
 
 
 def _terminal_input(monkeypatch, response, before_read=lambda: None) -> None:
@@ -2108,7 +2107,7 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     arguments = argparse.Namespace(
         project=plan.run.analysis.source_path,
         run=None,
-        detail="normal",
+        verbose=False,
     )
     inspection_bytes = {
         path: path.read_bytes() for path in plan.run_root.rglob("*") if path.is_file()
@@ -2121,14 +2120,13 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert "Analysis ID:" not in normal
     assert "Execution Plan ID:" not in normal
     assert "Run root:" not in normal
-    assert normal.count("Scientific task observations:") == 1
-    assert f"  No admitted start: {len(observed.tasks)}" in normal
+    assert "Scientific task observations:" not in normal
     assert normal.count("Reporting transactions:") == 1
     assert "Reporting admission: incomplete" in normal
     assert "run_summary: No admitted start" in normal
     assert "html_report: No admitted start" in normal
 
-    arguments.detail = "verbose"
+    arguments.verbose = True
     assert control.inspect_from_args(arguments) == 0
     verbose = capsys.readouterr().out
     assert f"Run ID: {plan.run.run_id}" in verbose
@@ -2167,7 +2165,7 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     )
     monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: started)
     for detail in ("normal", "verbose"):
-        arguments.detail = detail
+        arguments.verbose = detail == "verbose"
         assert control.inspect_from_args(arguments) == 0
         started_output = capsys.readouterr().out
         assert started_output.count("Reporting transactions:") == 1
@@ -2185,21 +2183,20 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
         path: path.read_bytes() for path in plan.run_root.rglob("*") if path.is_file()
     } == inspection_bytes
 
-    arguments.detail = "debug"
     monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: observed)
     assert control.inspect_from_args(arguments) == 0
-    debug = capsys.readouterr().out
-    assert "Run authority records:" in debug
-    assert f"path={plan.run_root / 'contract/execution-plan.json'}" in debug
-    assert f"SHA-256={plan.run.execution_plan.record_sha256}" in debug
-    assert "Effective plan: backend=local; engine=snakemake" in debug
-    assert "Attempt receipt:" not in debug
-    assert "Engine command:" not in debug
-    assert debug.count("Scientific task observations:") == 1
+    detailed = capsys.readouterr().out
+    assert "Run authority records:" in detailed
+    assert f"path={plan.run_root / 'contract/execution-plan.json'}" in detailed
+    assert f"SHA-256={plan.run.execution_plan.record_sha256}" in detailed
+    assert "Effective plan: backend=local; engine=snakemake" in detailed
+    assert "Attempt receipt:" not in detailed
+    assert "Engine command:" not in detailed
+    assert detailed.count("Scientific task observations:") == 1
     for task in observed.tasks:
         assert (
             f"TASK {task.expected.machine_key}/{task.expected.scope_id}: No admitted start"
-            in debug
+            in detailed
         )
 
     escaped = replace(
@@ -2207,7 +2204,7 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
         run_root=Path("/tmp/café\\display\n\x1b[31m-run"),
     )
     monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: escaped)
-    arguments.detail = "verbose"
+    arguments.verbose = True
     assert control.inspect_from_args(arguments) == 0
     escaped_output = capsys.readouterr().out
     assert "\x1b" not in escaped_output
@@ -2993,7 +2990,7 @@ def test_public_run_dry_run_is_no_write(
 
     projections = {}
     workspace = arguments.project.parent
-    for level in ("normal", "verbose", "debug"):
+    for level in ("normal", "verbose"):
         monkeypatch.setattr(
             control.sys,
             "stdin",
@@ -3002,7 +2999,7 @@ def test_public_run_dry_run_is_no_write(
                 terminal=level == "normal",
             ),
         )
-        arguments.log_level = level
+        arguments.verbose = level == "verbose"
         assert control.run_from_args(arguments) == 0
         captured = capsys.readouterr()
         assert captured.out == ""
@@ -3042,12 +3039,8 @@ def test_public_run_dry_run_is_no_write(
     assert "Resources: 1 cores, 1024 MiB" in verbose
     assert "Step thread allocations:" in verbose
     assert "Stage concurrency:" in verbose
-    assert "Snakemake command:" not in verbose
-
-    debug = projections["debug"]
-    assert set(verbose.splitlines()) <= set(debug.splitlines())
-    assert "Snakemake command:" in debug
-    assert "TASK " in debug
+    assert "Snakemake command:" in verbose
+    assert "TASK " in verbose
     assert case.executed == []
     arguments.profile = "missing"
     assert control.run_from_args(arguments) == 2
@@ -3148,7 +3141,7 @@ def test_interactive_resume_uses_the_same_no_write_gate(
         project=plan.run.analysis.source_path,
         run=plan.run.run_id,
         profile="resume-ci",
-        log_level=None,
+        verbose=False,
         log_root=None,
         execute=False,
     )
@@ -3471,7 +3464,7 @@ def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Names
         project=project,
         analysis="sensitivity",
         profile=str(_slurm_profile(tmp_path)),
-        log_level=None,
+        verbose=False,
         log_root=None,
         execute=execute,
     )
@@ -3557,7 +3550,7 @@ def test_public_inspect_retains_submission_observations_before_any_run(
     assert "Retained submissions:" not in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("level", ("normal", "verbose", "debug"))
+@pytest.mark.parametrize("level", ("normal", "verbose"))
 def test_public_stop_preview_is_read_only_and_names_exact_target(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -3588,8 +3581,7 @@ def test_public_stop_preview_is_read_only_and_names_exact_target(
                     str(fixture.project),
                     "--submission",
                     fixture.root.name,
-                    "--log-level",
-                    level,
+                    *(["--verbose"] if level == "verbose" else []),
                 ]
             )
         )
@@ -4244,7 +4236,7 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
         project=first.run.analysis.source_path,
         run=first.run.run_id,
         profile=str(_slurm_profile(tmp_path, cpus_per_task=cpus_per_task)),
-        log_level=None,
+        verbose=False,
         log_root=None,
         execute=True,
     )
@@ -4362,8 +4354,8 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
 
     projections = {}
     workspace = arguments.project.parent
-    for level in ("normal", "verbose", "debug"):
-        arguments.log_level = level
+    for level in ("normal", "verbose"):
+        arguments.verbose = level == "verbose"
         assert control.run_from_args(arguments) == 0
         captured = capsys.readouterr()
         assert captured.out == ""
@@ -4406,11 +4398,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
         f"Scheduler stderr: {workspace}/logs/emrys-local-pilot-{token}-%j.err"
         in verbose
     )
-    assert "Scheduler command:" not in verbose
-
-    debug = projections["debug"]
-    assert set(verbose.splitlines()) <= set(debug.splitlines())
-    assert "Scheduler command:" in debug
+    assert "Scheduler command:" in verbose
 
 
 @pytest.mark.parametrize("execute", (False, True))
@@ -4660,7 +4648,7 @@ def test_public_slurm_errors_keep_control_exit_and_never_retry(
         project=project,
         run=run_id,
         profile=str(_slurm_profile(root)),
-        log_level=None,
+        verbose=False,
         log_root=None,
         execute=True,
     )
@@ -5145,7 +5133,7 @@ def test_standalone_report_logging_boundary(
         project=project,
         run=run_root.name,
         execute=execute_requested,
-        log_level=None,
+        verbose=False,
         log_root=None,
     )
     monkeypatch.setattr(reporting_operation, "run_reporting", report)
@@ -5445,7 +5433,7 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
         "Generate reports with emrys report stimulating-beagle --execute."
     )
     assert action(reporting="not applicable") == (
-        "Inspect this Run's verified scientific artifacts with --detail debug."
+        "Inspect this Run's verified scientific artifacts with --verbose."
     )
 
 
@@ -5723,7 +5711,7 @@ def _public_native_cancellation_child(root: Path) -> None:
             profile=None,
             allocated_cores=1,
             execute=True,
-            log_level="normal",
+            verbose=False,
             log_root=workspace / "logs/application",
         )
         assert control.run_from_args(arguments) == 1
@@ -6057,8 +6045,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
                 run_id,
                 "--project",
                 str(request),
-                "--detail",
-                "normal" if phase == "before producer" else "verbose",
+                *(["--verbose"] if phase != "before producer" else []),
             ),
             cwd=tmp_path,
             stdin=subprocess.DEVNULL,
@@ -6161,7 +6148,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     inspect_arguments = argparse.Namespace(
         project=request,
         run=run_id,
-        detail="normal",
+        verbose=False,
     )
     assert control.inspect_from_args(inspect_arguments) == 0
     inspect_output = capsys.readouterr().out
@@ -6172,9 +6159,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert "Attempt outcome: succeeded" in inspect_output
     assert "Scientific Results: complete" in inspect_output
     assert "Reporting admission: complete" in inspect_output
-    assert inspect_output.count("Reporting transactions:") == 1
-    assert "run_summary: Verified complete" in inspect_output
-    assert "html_report: Verified complete" in inspect_output
+    assert "Reporting transactions:" not in inspect_output
     assert (
         "Next supported action: Review the verified Results and report paths."
         in inspect_output
@@ -6186,7 +6171,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert "Analysis ID:" not in inspect_output
     assert "Execution Plan ID:" not in inspect_output
     assert "Engine command:" not in inspect_output
-    inspect_arguments.detail = "verbose"
+    inspect_arguments.verbose = True
     assert control.inspect_from_args(inspect_arguments) == 0
     verbose_output = capsys.readouterr().out
     assert all(str(path) in verbose_output for path in application_paths)
@@ -6203,22 +6188,18 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     )
     assert "Attempt ID:" in verbose_output
     assert verbose_output.count("Reporting transactions:") == 1
-    assert "Engine command:" not in verbose_output
-    inspect_arguments.detail = "debug"
-    assert control.inspect_from_args(inspect_arguments) == 0
-    debug_output = capsys.readouterr().out
-    assert "Engine command:" in debug_output
-    assert "Attempt receipt:" in debug_output
-    assert "Run authority records:" in debug_output
+    assert "Engine command:" in verbose_output
+    assert "Attempt receipt:" in verbose_output
+    assert "Run authority records:" in verbose_output
     assert (
-        f"SHA-256={completed.authority.analysis_revision.record_sha256}" in debug_output
+        f"SHA-256={completed.authority.analysis_revision.record_sha256}" in verbose_output
     )
-    assert f"SHA-256={completed.authority.execution_plan.record_sha256}" in debug_output
-    assert f"SHA-256={completed.authority.run_binding.record_sha256}" in debug_output
-    assert "Effective plan: backend=local; engine=snakemake" in debug_output
-    assert "TASK " in debug_output
-    assert "OUTPUT " in debug_output
-    assert "size=" in debug_output and "SHA-256=" in debug_output
+    assert f"SHA-256={completed.authority.execution_plan.record_sha256}" in verbose_output
+    assert f"SHA-256={completed.authority.run_binding.record_sha256}" in verbose_output
+    assert "Effective plan: backend=local; engine=snakemake" in verbose_output
+    assert "TASK " in verbose_output
+    assert "OUTPUT " in verbose_output
+    assert "size=" in verbose_output and "SHA-256=" in verbose_output
     first_output = next(
         output
         for inspected in completed.tasks
@@ -6228,9 +6209,9 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert (
         f"OUTPUT {first_output['role']}: path={first_output['path']}; "
         f"size={first_output['size_bytes']}; SHA-256={first_output['sha256']}"
-        in debug_output
+        in verbose_output
     )
-    assert "stdout.log" in debug_output and "stderr.log" in debug_output
+    assert "stdout.log" in verbose_output and "stderr.log" in verbose_output
     assert _verified_snapshot(run_root) == after
     assert expected_results in inspect_output
 
@@ -6479,7 +6460,7 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
             argparse.Namespace(
                 project=project,
                 run=target_root.name,
-                detail="verbose",
+                verbose=True,
             )
         )
         == 0
@@ -6685,7 +6666,7 @@ def test_public_run_diagnostic_log_discovery_uses_exact_root_without_changing_au
             str(log_root if selector == "environment" else tmp_path / "ignored"),
         )
     application = control.open_attempt_log(
-        controls=LogControls(LogLevel.NORMAL, log_root, "default", "command_line"),
+        controls=LogControls(False, log_root, "command_line"),
         identity=control.AttemptIdentity(
             "run", root.name, "application-" + "e" * 32, "emrys-report"
         ),
@@ -6734,12 +6715,18 @@ def test_public_run_diagnostic_log_discovery_uses_exact_root_without_changing_au
         argv.extend(["--log-root", str(log_root)])
     for detail in ("normal", "verbose"):
         assert (
-            control.inspect_from_args(parser.parse_args([*argv, "--detail", detail]))
+            control.inspect_from_args(
+                parser.parse_args(
+                    [*argv, *(["--verbose"] if detail == "verbose" else [])]
+                )
+            )
             == 0
         )
         text = capsys.readouterr().out
         assert "Run diagnostic logs: 1 association(s); scan complete." in text
-        assert f"Application log search root: {log_root}" in text
+        assert (f"Application log search root: {log_root}" in text) is (
+            detail == "verbose"
+        )
         assert (str(application.path) in text) is (detail == "verbose")
         assert (
             "Scientific Results: incomplete" in text

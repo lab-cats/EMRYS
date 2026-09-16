@@ -1374,8 +1374,7 @@ def run_driver(
             "run",
             "--project",
             str(projects["direct"]),
-            "--log-level",
-            "verbose",
+            "--verbose",
         )
         before_plan = _execution_state(paths.direct_workspace)
         planned = transcripts.run("run-plan", direct, cwd=repo)
@@ -1393,8 +1392,7 @@ def run_driver(
         str(projects["slurm"]),
         "--profile",
         "ci",
-        "--log-level",
-        "verbose",
+        "--verbose",
     )
     before_plan = _execution_state(paths.slurm_workspace)
     scheduler_plan = transcripts.run("slurm-plan", scheduled, cwd=repo)
@@ -1481,8 +1479,7 @@ def run_driver(
                 direct_run_root.name,
                 "--project",
                 str(projects["direct"]),
-                "--log-level",
-                "verbose",
+                "--verbose",
                 "--execute",
             ),
             cwd=repo,
@@ -1497,8 +1494,7 @@ def run_driver(
                 str(projects["slurm"]),
                 "--profile",
                 "ci",
-                "--log-level",
-                "verbose",
+                "--verbose",
                 "--execute",
             ),
             cwd=repo,

@@ -255,12 +255,13 @@ def run_application_lines(
 ) -> tuple[str, ...]:
     """Render diagnostic associations without deriving application ownership."""
     lines = [
-        f"Run diagnostic logs: {len(observation.logs)} association(s); scan {observation.status}.",
-        f"Application log search root: {observation.log_root}",
+        f"Run diagnostic logs: {len(observation.logs)} association(s); scan {observation.status}."
     ]
+    if detail != "normal":
+        lines.append(f"Application log search root: {observation.log_root}")
     for item in observation.logs:
         outcome = application_outcome_lines(item)
-        if detail != "normal" or outcome:
+        if detail != "normal":
             lines.append(f"  {item.application_log}")
         if detail != "normal":
             lines.append(

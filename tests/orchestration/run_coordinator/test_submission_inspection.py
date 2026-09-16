@@ -16,7 +16,6 @@ from emrys.contracts.orchestration import api as contracts
 from emrys.libraries.application_logging import (
     AttemptIdentity,
     LogControls,
-    LogLevel,
     event,
     field,
     open_attempt_log,
@@ -48,9 +47,8 @@ def _current_writer(request, *, scheduler=False):
     context, command = request.context, request.context["command"]
     return open_attempt_log(
         controls=LogControls(
-            LogLevel.NORMAL,
+            False,
             Path(context["application_log_root"]),
-            "default",
             "command_line",
         ),
         identity=AttemptIdentity(

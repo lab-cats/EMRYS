@@ -33,7 +33,11 @@ from emrys.evidence.runtime_availability.inspector import (
     runtime_seal_bytes,
     shared_runtime_profile_bytes,
 )
-from emrys.libraries.application_logging import phase_progress
+from emrys.libraries.application_logging import (
+    add_verbose_argument,
+    console_print,
+    phase_progress,
+)
 from emrys.libraries.exclusive_publication import (
     acquire_lock,
     publish_exclusive,
@@ -543,6 +547,7 @@ _PROJECT_SUGGESTIONS = dict(
 
 def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
     add_site_argument(parser)
+    add_verbose_argument(parser)
     parser.add_argument(
         "project_name",
         metavar="PROJECT_NAME",
@@ -662,50 +667,49 @@ def _print_project_preview(
     project: ProjectAdmission,
     answers: Mapping[str, object],
     site: str | None,
+    *,
+    verbose: bool,
 ) -> None:
     """Review named init's admitted built-in Analysis and replay its answers."""
-
-    analysis = project.select_analysis()
-    source = analysis.workflow_inputs
 
     def location(label: str, snapshot: Mapping[str, object]) -> None:
         print(f"  {label}: {snapshot['path']!r}; SHA-256: {snapshot['sha256']}")
 
-    print("Review the study interpretation before creating the Project:")
-    print(f"  Analysis: {analysis.name}")
-    print(f"  Site: {site or 'none (direct placement)'}")
-    for name in ("samples", "partitions"):
-        location(f"{name} manifest", source[name]["manifest"])
-    for name in ("fasta", "gtf"):
-        location(f"reference {name}", source["reference"][name])
-    print("Sample assignments (pairing groups are explicitly supplied):")
-    for sample in source["samples"]["rows"]:
-        print(
-            f"  {sample['sample_id']}: condition={sample['condition']}; "
-            f"pairing group={sample['replicate']}; strandedness={sample['strandedness']}"
-        )
-        for mate in ("r1_fastq", "r2_fastq"):
-            location(mate, sample[mate])
-    for partition in source["partitions"]["rows"]:
-        print(
-            f"  Partition {partition['partition_id']}: {partition['selector_type']} "
-            f"{partition['selector_value']!r}"
-        )
-        if partition["selector_file"] is not None:
+    if verbose:
+        source = project.select_analysis().workflow_inputs
+        console_print("Detailed study review", style="bold blue", file=sys.stdout)
+        for name in ("samples", "partitions"):
+            location(f"{name} manifest", source[name]["manifest"])
+        for name in ("fasta", "gtf"):
+            location(f"reference {name}", source["reference"][name])
+        print("Sample assignments (pairing groups are explicitly supplied):")
+        for sample in source["samples"]["rows"]:
             print(
-                f"    format={partition['selector_format']}; "
-                f"compression={partition['selector_compression']}; "
-                f"SHA-256: {partition['selector_file']['sha256']}"
+                f"  {sample['sample_id']}: condition={sample['condition']}; "
+                f"pairing group={sample['replicate']}; strandedness={sample['strandedness']}"
             )
-    settings = {
-        **source["reference"]["star_index"],
-        **source["analysis"]["policy"]["configuration"],
-    }
-    print("Scientific settings:")
-    print(f"  target change: {settings['rna_ref']}>{settings['rna_alt']}")
-    for name, value in settings.items():
-        if name not in {"rna_ref", "rna_alt"}:
-            print(f"  {name.replace('_', ' ')}: {'none' if value is None else value}")
+            for mate in ("r1_fastq", "r2_fastq"):
+                location(mate, sample[mate])
+        for partition in source["partitions"]["rows"]:
+            print(
+                f"  Partition {partition['partition_id']}: {partition['selector_type']} "
+                f"{partition['selector_value']!r}"
+            )
+            if partition["selector_file"] is not None:
+                print(
+                    f"    format={partition['selector_format']}; "
+                    f"compression={partition['selector_compression']}; "
+                    f"SHA-256: {partition['selector_file']['sha256']}"
+                )
+        settings = {
+            **source["reference"]["star_index"],
+            **source["analysis"]["policy"]["configuration"],
+        }
+        print("Scientific settings:")
+        print(f"  target change: {settings['rna_ref']}>{settings['rna_alt']}")
+        for name, value in settings.items():
+            if name not in {"rna_ref", "rna_alt"}:
+                print(f"  {name.replace('_', ' ')}: {'none' if value is None else value}")
     flags = command_flags(
         *(
             (name.replace("_", "-"), value)
@@ -722,8 +726,7 @@ def _print_project_preview(
         *flags,
         "--execute",
     )
-    print("After review, copy this command to create without repeating the questions.")
-    print("This Python environment will recheck inputs; preview does not freeze them.")
+    print("Create this Project without repeating the questions:")
     parent = shlex.quote(str(project.source_path.parent.parent))
     print(f"cd {parent} && {shlex.join(replay)}")
 
@@ -757,12 +760,24 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             )
         with phase_progress("Checking reference and partition compatibility"):
             validate_project_admission(preview)
-        print(f"Project root: {output}")
-        print("Owned directories: logs, runs, runtime")
-        print("Referenced inputs remain in place; setup copies no input files.")
+        analysis = preview.select_analysis()
+        source = analysis.workflow_inputs
+        samples = source["samples"]["rows"]
+        console_print("Project preparation", style="bold blue", file=sys.stdout)
+        print(f"  Output directory: {output}")
+        print(f"  Libraries ({len(samples)}): {', '.join(str(row['sample_id']) for row in samples)}")
+        print(f"  Analysis: {analysis.name}; site: {getattr(arguments, 'site', None) or 'direct'}")
+        print(f"  Reference: {source['reference']['fasta']['path']}")
+        print(f"  Partitions: {len(source['partitions']['rows'])}")
+        print(f"  Comparison: {answers['control_condition']} -> {answers['treatment_condition']}; target {answers['target_change']}")
         if not arguments.execute:
-            _print_project_preview(preview, answers, getattr(arguments, "site", None))
-            print("Dry-run complete; no files were written.")
+            _print_project_preview(
+                preview,
+                answers,
+                getattr(arguments, "site", None),
+                verbose=getattr(arguments, "verbose", False),
+            )
+            console_print("Dry-run complete; no files were written.", style="yellow", file=sys.stdout)
             return 0
         publish_create_absent_tree(
             output,
@@ -778,7 +793,7 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         )
         with phase_progress("Verifying the published Project"):
             validate_project(output / "project.yaml")
-        print(f"Project ready: {output / 'project.yaml'}")
+        console_print(f"Project ready: {output / 'project.yaml'}", style="green", file=sys.stdout)
         return 0
     except (
         OSError,
@@ -786,7 +801,7 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         orchestration_contracts.ContractValidationError,
         step08.ContractError,
     ) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        console_print(f"ERROR: {exc}", style="red", file=sys.stderr)
         return 2
 
 
@@ -1141,6 +1156,7 @@ def validate_project_admission(
 
 def configure_validation_parser(parser: argparse.ArgumentParser) -> None:
     add_project_argument(parser)
+    add_verbose_argument(parser)
     parser.set_defaults(_command_parser=parser)
 
 
@@ -1152,11 +1168,17 @@ def validate_from_args(arguments: argparse.Namespace) -> int:
         OnboardingError,
         orchestration_contracts.ContractValidationError,
     ) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        console_print(
+            f"Project validation: FAIL — {exc}", style="red", file=sys.stderr
+        )
         return 1
     project = result.project
     reference = project.analyses[0].workflow_inputs["reference"]
-    print("Project validation: PASS")
+    verbose = getattr(arguments, "verbose", False)
+    warning = f" — {len(result.gtf_warnings)} warning(s); use --verbose for details" if result.gtf_warnings and not verbose else ""
+    console_print(f"Project validation: PASS{warning}", style="yellow" if warning else "green", file=sys.stdout)
+    if not verbose:
+        return 0
     print(f"  Project: {project.source_path}")
     print(f"  Project SHA-256: {project.source_sha256}")
     print(f"  Samples: {result.sample_count}")
