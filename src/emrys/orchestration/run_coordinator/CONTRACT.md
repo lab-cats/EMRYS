@@ -58,10 +58,14 @@ presentation only; the content-derived Run ID remains authority.
 into an absent child of the current canonical writable/searchable directory.
 Both Project initialization routes accept `--site viking`; the existing default
 profile then contains the built-in Viking placement rather than direct placement.
-It validates referenced inputs without copying them, creates Project-owned
+Named initialization creates Project-owned `samples.tsv` and `partitions.tsv`;
+FASTQs, references and region files remain at their declared locations. Guided
+setup discovers recognized FASTQ pairs and asks for all biological assignments
+and regions. Advanced callers may instead supply both existing manifests; their
+validated, path-normalized content is copied into the new Project. It creates
 `runs/`, `logs/`, `runtime/`, and `runtime/profiles/` with mode `0700`, and
 publishes `project.yaml` last. Failure preserves the partial root and never
-overwrites or adopts it. Success re-admits the published tree's exact types,
+overwrites or adopts it. Publication checks the exact prepared member types,
 modes, sizes, and bytes.
 
 `emrys validate` re-admits every selected Analysis and its reference,
@@ -87,19 +91,23 @@ the confirmed execution profile and admitted Project/package/runtime binding;
 newly changed but individually admissible inputs cannot turn this invocation
 into successful verification.
 
-Named Project initialization displays input hashing, compatibility checking,
-and post-publication verification through the existing elapsed-time presenter.
-It explains the complete input reads before they begin. Preview runs only the
-first two phases and writes nothing; creation retains all three checks in their
-existing order. Progress adds no percentage estimate, persistent state, or
+Named Project preview validates input-list structure, path availability,
+scientific assignments and settings without hashing FASTQ contents. Creation
+then displays one input hashing phase and compatibility checking through the
+existing elapsed-time presenter. Each FASTQ is content-hashed once. Admission
+retains its device, inode, size and nanosecond modification time; those facts
+must remain unchanged before `project.yaml` is published and immediately after
+publication. The exact prepared Project and manifest bytes are verified during
+publication, so the post-publication path no longer performs a second full
+Project admission. Progress adds no percentage estimate, persistent state, or
 authority to remove a partial or published Project after interruption.
 
-Named initialization's no-write preview shows the admitted built-in Analysis,
-explicit sample/mate and biological assignments, input/region identities, and
+Named initialization's no-write preview shows the built-in Analysis,
+explicit sample/mate and biological assignments, input/region paths, and
 normalized scientific choices. Its quoted replay command selects the same Python
 interpreter and exact Projects parent and supplies every collected answer.
-The later creation re-admits current inputs; the preview is not a frozen-input
-promise. Existing `--execute` behavior remains unchanged. Unsupported Project
+Creation performs the one content admission; preview is not a frozen-input
+promise. Publication still requires explicit `--execute`. Unsupported Project
 schema diagnostics retain their original detail and identify guided current
 setup; no legacy field translation or YAML-only import is performed.
 

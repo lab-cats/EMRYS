@@ -121,7 +121,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Open |
 | [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Open |
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Open |
-| [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Open |
+| [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
 | [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Open |
 | [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Open |
 | [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Open |
@@ -246,6 +246,16 @@ requirement supersedes earlier guidance to place it outside the repository;
 recording it here does not change the existing CV-14 card's status. Each Project's
 own manifests must also be inside that Project, as detailed in CV-U26.
 
+**Selected implementation:** Track `Projects/README.md` and `.gitkeep` in the
+repository and ignore all Project children. Quickstart, Runbook and reconnect
+instructions enter this supplied parent; no `mkdir` step remains. Existing
+Projects are neither moved nor rewritten, and the existing absent-child,
+canonical-parent and symlink refusals remain the creation authority.
+
+**Verification limit:** Repository-ignore, documentation-link and onboarding
+checks cover the hosted layout. A fresh Viking clone and operator walkthrough
+remain required; this card stays Open until that evidence is supplied.
+
 ### CV-U08 Quickstart scope and language
 
 **Operator instruction:** “Quickstart is still too verbose; advanced info needs
@@ -274,18 +284,24 @@ These details are retained in CV-U22 and CV-U24–CV-U28. They are parts of one
 complete smoke-to-real journey, not optional expert prerequisites that can be
 omitted from the novice path.
 
-**Delivered documentation slice:** Quickstart now gives one paste-ready
-synthetic path, explains its purpose before the command, supplies the built-in
-Viking placement values, and keeps routine setup, submission, completion and
-report opening in the guide. Detailed Doctor status, Task interpretation and
-region-format material moved to the Runbook and configuration guide.
+**Delivered implementation and documentation:** Quickstart now gives one
+paste-ready synthetic path followed by one guided six-library EV/PUM1 path. The
+guided initializer discovers paired FASTQs, records the six explicit biological
+assignments, creates both manifests inside the Project, checks preview inputs
+without full FASTQ hashing, and prints one replay command that hashes each FASTQ
+once during creation. New Viking Projects inherit the recovered EV/PUM1
+placement, workflow, stage-thread, concurrency and memory policy; the operator
+does not author a resource profile. Quickstart supplies the sample assignments,
+regions, STAR parameters, analysis thresholds and resource values inline while
+moving detailed Doctor, recovery and format material to their existing owners.
 
-**Remaining outcome:** The own-data continuation still exposes separate runtime
-reuse and resource-profile procedures, creates manifests outside the Project,
-and cannot supply tested PUM1 workload settings. Compatible automatic reuse,
-one-pass setup, Project-contained manifests and benchmark-derived settings
-remain owned by CV-U22 and CV-U25–CV-U28. CV-U08 therefore remains **Open**;
-this documentation slice supplies no new Viking execution or workload evidence.
+**Remaining outcome:** The smoke Project's compatible runtime is not yet
+discovered and selected automatically; the novice path still links to the
+separate reuse procedure and repeats `--site viking`. Those gaps remain owned by
+CV-U22 and CV-U24. Full standard CI, a fresh Viking installation and a novice
+smoke-to-EV/PUM1 walkthrough also remain pending. CV-U08 therefore remains
+**Open**. The historical policy and retained study evidence support the selected
+values but are not a new whole-Run cluster execution or performance measurement.
 
 ### CV-U09 Synthetic-project explanation
 
@@ -444,6 +460,20 @@ list-generation command more thoroughly. The exact offending command was not
 provided in this findings batch; whether the interactive route is missing or
 simply absent from the guide was not established.
 
+**Selected implementation:** Named `emrys init PROJECT_NAME` now discovers
+recognized FASTQ pairs from one operator-selected directory, displays the
+samples, asks for condition, pairing group and strandedness, and guides either
+one regions file or a space-separated selector list. The same initializer asks
+the existing reference and scientific questions, validates the complete study
+interpretation, and prints one safely quoted creation command carrying every
+answer. The specialist manifest helper remains available for advanced structural
+drafting; ordinary Quickstart no longer exposes its long flag sequence.
+
+**Verification limit:** Direct fixtures cover guided answers, generated replay,
+biological pairing, selector forms and create-absent refusal. CI and a novice
+Viking walkthrough remain required; this card stays Open until that evidence is
+supplied.
+
 ### CV-U19 Long-term interactive CLI
 
 **Operator direction:** “Eventually the whole setup and even run process should
@@ -470,19 +500,30 @@ values with unexplained placeholders or leave the user to infer them. This
 records the requirement; no new site settings or dataset-specific values were
 selected during this discussion.
 
-**Delivered documentation slice:** Quickstart now states the built-in Viking
-smoke placement inline: account `viking-users`, partition `long`, QoS `normal`,
-four CPUs, eight hours, site-default memory, nonexclusive placement,
-scheduler-selected node and private `/tmp` scratch. It distinguishes those
-supplied values from own-data file paths and scientific choices, which are
-clearly marked as replacements rather than unexplained placeholders.
+**Implemented values:** Quickstart now states the selected Viking placement:
+account `viking-users`, partition `long`, QoS `normal`, one exclusive node,
+256 CPUs, 12 hours, site-default allocation memory, scheduler-selected node and
+private `/tmp` scratch. It identifies the retained six-library EV/PUM1 policy's
+12 workflow cores and 512-GiB workflow memory; the packaged policy owns the full
+stage thread, concurrency and memory map.
 
-**Remaining outcome:** No tested full PUM1 workload profile, benchmark-derived
-stage settings, or automatic STAR-parameter selection is currently established.
-Those gaps remain with CV-U21, CV-U27 and CV-U28 and cannot be filled by guessing
-values in documentation. CV-U20 remains **Open** until the resulting concrete
-PUM1 values can be included directly in the maintained journey. This slice adds
-no institutional execution, performance or scientific evidence.
+The guided EV/PUM1 continuation supplies all known study values inline: the six
+`ABE_EV_2`/`ABE_PUM1_2`, `ABE_EV_3`/`ABE_PUM1_3`, and
+`ABE_EV4`/`ABE_PUM1_4` assignments; pairing groups 2, 3 and 4; reverse
+strandedness; primary-contig selectors 1–22, X, Y and MT; the delivered Novogene
+reference decision; `sjdbOverhang=149` for the declared 150-base reads;
+`genomeSAindexNbases=14`; EV/PUM1 conditions; A>G; and thresholds 1, 50, 0.05,
+1.2, 0.005 and 0.01. Only the absolute FASTQ, FASTA and GTF locations remain
+operator-supplied because they depend on where the delivered files exist on
+Viking. The guide no longer sends this operator elsewhere to obtain a known
+PUM1 value.
+
+**Verification limit:** The values reconcile to retained configuration,
+scientific decisions, validation evidence and the restored packaged resource
+policy. Focused local checks and the repository documentation gate remain to be
+run on the combined branch. A fresh Viking novice walkthrough and full standard
+CI remain pending; no new cluster execution, performance benchmark, scientific
+review or biological validation is claimed. CV-U20 is **Verification pending**.
 
 ### CV-U21 Technical parameter assistance
 
@@ -584,6 +625,21 @@ target and the operator's proposed flow, not proof that a particular reuse metho
 is safe. The three-pass count and I/O impact were supplied as findings; no new
 read-count or timing measurements were made during this recording task.
 
+**Selected implementation:** No-write preview validates manifest structure,
+scientific assignments, selectors and path availability without hashing FASTQ
+contents. Creation admits and hashes each FASTQ once, retains its device, inode,
+size and nanosecond modification time, and reuses the admitted Project through
+compatibility checking and create-absent publication. The existing publication
+owner verifies exact prepared manifest, profile and Project bytes. Observable
+input identity must remain unchanged immediately before `project.yaml` is
+published and again on return; the former second full Project admission is
+retired.
+
+**Verification limit:** A focused invocation-counter fixture requires zero
+FASTQ hashes for preview and exactly one per FASTQ for creation, with a separate
+mutation-boundary refusal. Comparable large-input timing and a Viking exercise
+remain required; this card stays Open until that evidence is supplied.
+
 ### CV-U26 Manifests inside the Project
 
 **Operator instruction:** “There should be a single directory per project, that
@@ -595,6 +651,18 @@ a separate sibling directory for those manifests. This is distinct from the
 Projects-home location in CV-U07: the home is inside the parent repository, and
 each Project contains its own manifests. The exact internal subdirectory names
 and any treatment of existing Projects were not specified.
+
+**Selected implementation:** New named Projects publish `samples.tsv` and
+`partitions.tsv` beside `project.yaml` and reference them by relative path.
+Guided setup generates both in memory; advanced setup copies validated,
+path-normalized content from a supplied manifest pair. FASTQs, references and
+regions files remain external durable inputs. Existing Projects continue to use
+their current manifest locations and receive no automatic migration.
+
+**Verification limit:** Hosted onboarding and validation fixtures cover exact
+manifest bytes, relative Project references, external input preservation and
+existing-Project compatibility. Institutional operator acceptance remains
+required; this card stays Open until that evidence is supplied.
 
 ### CV-U27 Tested smoke-to-real resource guidance
 
@@ -1483,26 +1551,28 @@ pass locally; application execution requires CI. Operator acceptance is pending.
 ### CV-14 Project directory layout
 
 **Finding:** The walkthrough placed a Project at the source checkout root and
-later needed a separate Projects directory (E04, E07). **Acceptance:** Give the
-novice a clear durable Projects home outside source checkouts and a supported
+later needed a separate Projects directory (E04, E07). The later CV-U07 operator
+decision places that home at tracked `Projects/` inside the checkout.
+**Acceptance:** Give the novice that ready-to-use Projects home and a supported
 destination selection. Respect existing directories and symlink/path rules;
 do not automatically move old Projects or break runtime/input references.
-Cover invocation from a checkout and from the Projects parent.
+Cover invocation from the checkout and from the Projects parent.
 **Owners/dependencies:** Onboarding, quickstart; CV-06/08.
 
-**Selected implementation:** The quickstart and Runbook use one chosen durable
-Projects parent, separate from the checkout, for synthetic and own-data setup
-and reconnection. Existing `init NAME` selects its parent through the current
-directory; synthetic initialization retains absolute `--output-dir` selection.
-Both reuse existing canonical-parent/absent-child admission. Existing Projects
-remain at their original paths. The shell variable is a walkthrough convenience,
-not a new application registry or path contract; no product change is needed.
+**Selected implementation:** The repository tracks `Projects/README.md` and a
+`.gitkeep`, while ignore rules exclude Project children. Quickstart and Runbook
+enter that parent for synthetic and own-data setup and reconnection; no manual
+directory creation is required. Existing `init NAME` still selects its parent
+through the current directory, and synthetic initialization retains absolute
+`--output-dir` selection. Both reuse canonical-parent/absent-child admission.
+Existing Projects remain at their original paths; no Project registry or move
+operation is added.
 
-**Verification:** Existing public onboarding tests exercise synthetic creation
-from the checkout and Projects parent, and own-data creation beneath the chosen
-parent. They preserve no-write preview, input references and bytes, no copied
-reads, and existing-destination refusal. Focused execution and documentation
-checks run in the locked CI environment; operator walkthrough remains pending.
+**Verification:** Public onboarding tests exercise synthetic and own-data
+creation beneath the tracked Projects parent. They preserve no-write preview,
+external input references and bytes, ignored Project children, and
+existing-destination refusal. Focused execution and documentation checks run in
+the locked CI environment; operator walkthrough remains pending.
 
 ### CV-15 Cross-node active Run status
 

@@ -19,6 +19,9 @@ Analysis fields. The [runtime procedure](../../../../docs/operations/RUNBOOK.md#
 explains discovery and managed/site setup. The [reuse procedure](../../../../docs/operations/RUNBOOK.md#reusable-processing)
 explains how a new downstream Run uses a compatible processing Run without
 changing it. Synthetic dataset choices belong in the [quickstart](../../../../quickstart.md).
+The ordinary named initializer guides FASTQ pairing, biological assignments and
+regions, then owns the resulting manifests inside the Project. The separate
+manifest drafting command remains an advanced structural helper.
 
 ## Internal boundary
 

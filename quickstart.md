@@ -1,7 +1,7 @@
-# EMRYS quickstart: synthetic Project to Results
+# EMRYS quickstart: Viking smoke test to EV/PUM1 Results
 
 This guide takes a CSU Viking user from a fresh installation to two reports
-for a small supplied study, then through creating a study with your own data.
+for a small supplied study, then through the original six-library EV/PUM1 study.
 **Run every command on the Viking head node.** EMRYS supplies the Viking
 settings, prepares its tools and storage, and submits compute work through Slurm.
 
@@ -24,17 +24,15 @@ and the standard Bash, Git and curl commands. If an installation command says
 one is unavailable or access is denied, keep the error and ask CSU computing
 support to resolve that prerequisite.
 
-This guide keeps software in `$HOME/EMRYS` and studies beneath
-`$HOME/emrys-projects`. The software directory and each new Project child
-(`emrys-smoke` or `my-study`) must be absent; do not create them yourself.
-The Projects parent may already exist. Use durable storage outside the software
-checkout. Existing Projects keep their original locations and references;
-these instructions do not require moving them.
+This guide keeps software in `$HOME/EMRYS` and new studies beneath its tracked
+`Projects/` directory. The clone already contains that parent; do not create it
+or a new Project child yourself. Existing Projects keep their original locations
+and references; these instructions do not move them.
 
-**Steps 1–5 are ready to paste unchanged.** Step 7 uses your own study files;
-replace the marked example paths and sample details before running it. Paste
-blocks in order. Stop at an error and retain its output and any printed log
-path. Do not delete partial setup or results to retry.
+**Steps 1–5 are ready to paste unchanged.** Step 7 asks for the locations of
+the delivered EV/PUM1 FASTQs, reference and annotation; every other known value
+is given in that step. Paste blocks in order. Stop at an error and retain its
+output and any printed log path. Do not delete partial setup or results to retry.
 Keep quotation marks when pasting commands. `$HOME` means your Viking home
 directory; the `EMRYS_...` variables below remember locations for later commands.
 A backslash (`\`) at the end of a line continues the same command on the next
@@ -79,21 +77,20 @@ instructions below restore this environment after reconnecting.
 
 ## 2. Create the supplied study
 
-### Choose a Projects home
+### Enter the Projects home
 
-Use this Projects home on Viking:
+Enter the Projects directory supplied by the repository:
 
 ```bash
-mkdir -p "$HOME/emrys-projects" &&
-cd "$HOME/emrys-projects" &&
+cd "$EMRYS_SOURCE_ROOT/Projects" &&
 export EMRYS_PROJECTS_ROOT="$(pwd -P)"
 ```
 
-The variable records the physical path from `pwd -P`. Keep this location outside
-the software checkout and accessible from the compute nodes. Initialization
-requires a real existing parent and an absent Project child, and refuses
-symlink aliases supplied as destination paths. Stop if entering the parent
-fails; do not continue from the previous directory.
+The variable records the physical path from `pwd -P`. Project children are
+ignored by Git, while `Projects/README.md` explains what belongs here.
+Initialization requires an absent child and refuses a symlink destination.
+Stop if entering the supplied parent fails; do not continue from the previous
+directory.
 
 ### Create the synthetic Project
 
@@ -216,157 +213,81 @@ files and backups for diagnosis. Do not delete or force a retry. The
 [recovery guide](docs/operations/TROUBLESHOOTING.md#run-and-reporting-state)
 explains each state and how to select one Run when several exist.
 
-## 7. Create a Project for your own data
+## 7. Create the original EV/PUM1 Project
 
-Stay on the **Viking head node**, with the EMRYS Python environment from step 1
-activated. Use a new Project so the supplied study and its results remain intact.
-You can reuse the installed EMRYS command; each Project has its own runtime
-inventory and preparation records.
+Stay on the **Viking head node**, with the environment from step 1 active. Keep
+the delivered FASTQs, their checksums, the delivered Novogene reference FASTA
+and its matching GTF available at their existing locations. The FASTA directory
+must be writable so EMRYS can create or check its `.fai` and `.dict` sidecars.
 
-### Gather the study inputs and scientific choices
+### Create the Project and its input lists
 
-Before using your own data, have its files and scientific assignments ready:
-
-- **Paired-end reads:** one R1 FASTQ and one R2 FASTQ for each library, together
-  with the sequencing provider's checksums. R1 and R2 are the two reads from
-  one library; they are not the control/treatment pairing used in the analysis.
-- **Experimental assignments:** a unique sample ID, condition, pairing group,
-  and library strandedness for every library. The built-in Analysis needs at
-  least two pairing groups, each containing exactly one control and one
-  treatment. The same group name joins the intended control and treatment;
-  filenames and row order cannot establish that relationship. Do not count
-  technical sequencing lanes as independent biological replicates.
-- **Reference:** an uncompressed genome FASTA and matching gene-annotation GTF,
-  with their source and release recorded. EMRYS creates or checks `.fai` and
-  `.dict` index files beside the FASTA, so that directory must be writable.
-  Arrange a study copy if the shared reference belongs to another team.
-- **Regions and analysis settings:** explicit chromosome/region selectors or an
-  existing file of nonoverlapping regions, STAR index parameters appropriate to
-  the reads and reference, the control and treatment labels, the nucleotide
-  change to test, and the study's thresholds.
-  The example values offered during setup are suggestions, not validated
-  settings for every study.
-
-Use the library preparation information for strandedness; `unknown` records
-missing information and is not a claim that the library is unstranded. Regions
-must use the same chromosome names as the FASTA. The
-[region file formats](configs/README.md#partition-manifest) explain coordinates
-if you are creating a new regions file.
-
-EMRYS does not download study data or decide experimental pairing. Keep the
-input files, their checksums and their declared locations for the life of the
-Run. Success with the tiny supplied study does not establish that a full
-dataset will fit the same allocation.
-
-### Create the input lists
-
-The helper below writes two **manifests**: `samples.tsv` lists libraries and
-their assignments; `partitions.tsv` declares the selected regions. These are
-ordinary text tables with tab-separated columns.
-
-Replace the paths and example library names with your own. The helper recognizes
-R1/R2 filenames ending in `_R1`/`_R2` or `_1`/`_2`, with `.fastq` or `.fq` and
-optional `.gz`. Each `--sample` line gives the sample ID, condition, pairing
-group and strandedness in that order. Add both FASTQs and one assignment for
-every further library. Replace `unknown` when strandedness is known.
-
-The block below is a **template, not a command to paste unchanged**. Replace
-the `REPLACE_WITH_...` paths, example FASTQ names, sample assignments and
-regions-file choice with your study's existing files and agreed design before
-running it. Choose a new manifest directory beneath an existing writable
-parent; do not create that final directory yourself. Current EMRYS creates
-these manifests outside the Project. The input FASTQs and regions file must
-already exist.
+EMRYS discovers paired FASTQs and creates `samples.tsv` and `partitions.tsv`
+inside the new Project. FASTQ names must end in `_R1`/`_R2` or `_1`/`_2`, then
+`.fastq`, `.fq`, or either extension plus `.gz`.
 
 ```bash
-EMRYS_READS="/REPLACE_WITH_READS_DIRECTORY"
-EMRYS_REGIONS="/REPLACE_WITH_REGIONS_FILE.bed"
-EMRYS_MANIFEST_ROOT="/REPLACE_WITH_DURABLE_PARENT/my-study-manifests"
-emrys init manifests --output-dir "$EMRYS_MANIFEST_ROOT" \
-  --fastq "$EMRYS_READS/control_1_R1.fastq.gz" "$EMRYS_READS/control_1_R2.fastq.gz" \
-          "$EMRYS_READS/treatment_1_R1.fastq.gz" "$EMRYS_READS/treatment_1_R2.fastq.gz" \
-          "$EMRYS_READS/control_2_R1.fastq.gz" "$EMRYS_READS/control_2_R2.fastq.gz" \
-          "$EMRYS_READS/treatment_2_R1.fastq.gz" "$EMRYS_READS/treatment_2_R2.fastq.gz" \
-  --sample control_1 control pair_1 unknown \
-  --sample treatment_1 treatment pair_1 unknown \
-  --sample control_2 control pair_2 unknown \
-  --sample treatment_2 treatment pair_2 unknown \
-  --regions-file study "$EMRYS_REGIONS" --execute
-```
-
-If you have explicit chromosome or interval selectors instead of a regions
-file, replace `--regions-file study "$EMRYS_REGIONS"` with `--region
-PARTITION_ID SELECTOR` for each region. This does not automatically select the
-whole genome. See the [partition manifest guide](configs/README.md#partition-manifest)
-for selector formats; Project creation checks them against the reference.
-
-Review the resulting `samples.tsv` and `partitions.tsv` with your study
-assignments before continuing. A successful file check cannot establish that
-the pairing or biological labels are correct.
-
-### Answer the scientific setup questions once
-
-Replace both `REPLACE_WITH_...` paths below with your existing reference and
-annotation files. Set the actual reference paths, then enter the durable directory
-where your new `my-study` Project should be created. Its `my-study` child must
-not exist. Use the [Projects home](#choose-a-projects-home) selected above.
-The ordinary `init NAME` command creates beneath the current directory;
-the synthetic route's `--output-dir` selects an absolute destination instead.
-
-```bash
-EMRYS_REFERENCE_FASTA="/REPLACE_WITH_REFERENCE_FASTA.fa"
-EMRYS_REFERENCE_GTF="/REPLACE_WITH_REFERENCE_GTF.gtf"
 cd "$EMRYS_PROJECTS_ROOT" &&
-emrys init my-study --site viking \
-  --sample-manifest "$EMRYS_MANIFEST_ROOT/samples.tsv" \
-  --partition-manifest "$EMRYS_MANIFEST_ROOT/partitions.tsv" \
-  --reference-fasta "$EMRYS_REFERENCE_FASTA" \
-  --reference-gtf "$EMRYS_REFERENCE_GTF"
+emrys init pum1-study --site viking
 ```
 
-The input paths are already supplied, so the terminal asks the following
-scientific questions. Type each agreed value and press Enter. Where a value
-appears in brackets, Enter accepts it. This command validates the answers and
-prints a review without creating the Project. Review the explicit sample/mate
-assignments, biological pairing groups, strandedness, reference and region
-identities, scientific settings, and selected site. Then copy the printed
-creation command. It carries every answer into the same Python environment;
-you do not need to repeat the questionnaire. It also rechecks the inputs,
-because a preview does not freeze external files.
+Enter the absolute FASTQ directory, delivered reference FASTA and matching GTF
+when asked. These paths depend on where the files are stored on Viking and are
+the only values this guide cannot supply. Confirm that all six FASTQ pairs were
+found, then assign them exactly as follows:
 
-Preparation reads and hashes the complete declared inputs and checks reference
-and region compatibility. Large inputs can take several minutes. The terminal
-shows the current phase and elapsed time, then rechecks the published Project
-before printing `Project ready:`. Elapsed time is not a completion estimate.
-If interrupted, retain any published or partial Project directory and the
-diagnostic; do not delete it to retry the same name.
+| Sample | Condition | Pairing group | Strandedness |
+| --- | --- | --- | --- |
+| `ABE_EV_2` | `EV` | `2` | `reverse` |
+| `ABE_PUM1_2` | `PUM1` | `2` | `reverse` |
+| `ABE_EV_3` | `EV` | `3` | `reverse` |
+| `ABE_PUM1_3` | `PUM1` | `3` | `reverse` |
+| `ABE_EV4` | `EV` | `4` | `reverse` |
+| `ABE_PUM1_4` | `PUM1` | `4` | `reverse` |
 
-| Prompt | What to enter |
+Leave the regions-file prompt empty. At the selector prompt, enter this complete
+space-separated list; the names must match the delivered reference:
+
+```text
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y MT
+```
+
+The original study has 150-base reads. Enter the remaining values exactly as
+shown:
+
+| Prompt | EV/PUM1 value |
 | --- | --- |
-| `sjdb overhang` | Study-specific STAR setting for read length; the Viking smoke preset does not select it for your data. |
-| `genome sa index nbases` | Study-specific STAR index setting for reference size; the Viking smoke preset does not select it for your data. |
-| `control condition` | The exact control label in your sample assignments; `control` in the example above. |
-| `treatment condition` | The exact treatment label; `treatment` in the example above. |
-| `target change` | Two different bases separated by `>`, such as `A>G`, according to the study question. |
-| `min sample dp [1]` | Minimum usable read depth in every paired sample for a site to be tested. This cutoff is inclusive. |
-| `mean dp threshold [50]` | The candidate's mean depth across paired control and treatment samples must be greater than this value. |
-| `fdr threshold [0.05]` | The cutoff for p-values adjusted for testing many candidates. A candidate's adjusted value must be below it. |
-| `common or threshold [1.2]` | The odds-ratio cutoff, greater than 1. An increase requires an odds ratio above it; a decrease requires an odds ratio below its reciprocal. |
-| `absolute difference threshold [0.005]` | The minimum change in the mean fraction of reads carrying the tested alternate base, alongside the odds-ratio cutoff. Enter a fraction: `0.005` is half a percentage point. |
-| `background max fraction [0.01]` | Press Enter for this walkthrough. No background cohort was selected, so this setting is unused. |
+| `sjdb overhang` | `149` |
+| `genome sa index nbases` | `14` |
+| `control condition` | `EV` |
+| `treatment condition` | `PUM1` |
+| `target change` | `A>G` |
+| `min sample dp [1]` | Press Enter for `1` |
+| `mean dp threshold [50]` | Press Enter for `50` |
+| `fdr threshold [0.05]` | Press Enter for `0.05` |
+| `common or threshold [1.2]` | Press Enter for `1.2` |
+| `absolute difference threshold [0.005]` | Press Enter for `0.005` |
+| `background max fraction [0.01]` | Press Enter for `0.01`; no background cohort is selected, so it is unused |
 
-After `Project ready:`, enter the new Project and validate it:
+The first pass validates paths, assignments, selectors and settings without
+hashing every FASTQ. Review the displayed interpretation, then paste the exact
+creation command printed by EMRYS. That command carries every answer forward,
+hashes each FASTQ once and refuses changed inputs. Keep any partial Project and
+the printed diagnostic if creation stops.
+
+After `Project ready:`, validate the new Project:
 
 ```bash
-export EMRYS_PROJECT_ROOT="$(pwd -P)/my-study"
+export EMRYS_PROJECT_ROOT="$EMRYS_PROJECTS_ROOT/pum1-study"
 cd "$EMRYS_PROJECT_ROOT" &&
 emrys validate
 ```
 
-Continue only after `Project validation: PASS`. Setup references the original
-inputs rather than copying them into the Project.
+Continue only after `Project validation: PASS`. The Project references the
+original FASTQs and reference files and owns its generated manifests beside
+`project.yaml`.
 
-### Prepare, run and open your study's reports
+### Prepare, run and open the EV/PUM1 reports
 
 On the head node, prepare this Project. To reuse another Project's managed tools,
 first follow [sealed runtime reuse](docs/operations/RUNBOOK.md#reuse-a-sealed-managed-runtime)
@@ -416,10 +337,10 @@ step 4 appear. Inspection prints both
 report paths. Copy this Run's complete `results` directory to your computer
 and open its Scientific and Evidence reports using the instructions in step 5.
 
-Your study need not produce the synthetic fixture's candidate counts. Review
-its results with the study's scientist or analyst. Keep the original Project,
-inputs, runtime, complete Run and logs at their original locations so the work
-remains inspectable and recoverable.
+The EV/PUM1 study need not produce the synthetic fixture's candidate counts.
+Its output is a set of computational candidates, not validated editing sites.
+Keep the original Project, inputs, runtime, complete Run and logs at their
+original locations so the work remains inspectable and recoverable.
 
 ## Returning to the Project in a new terminal
 
@@ -431,16 +352,15 @@ export PATH="$HOME/.local/bin:$HOME/.pixi/bin:$PATH"
 cd "$HOME/EMRYS" &&
 export EMRYS_SOURCE_ROOT="$(pwd -P)" &&
 source "$EMRYS_SOURCE_ROOT/.venv/bin/activate" &&
-cd "$HOME/emrys-projects" &&
+cd "$EMRYS_SOURCE_ROOT/Projects" &&
 export EMRYS_PROJECTS_ROOT="$(pwd -P)" &&
 cd "$EMRYS_PROJECTS_ROOT/emrys-smoke" &&
 export EMRYS_PROJECT_ROOT="$(pwd -P)" &&
 emrys inspect
 ```
 
-If you chose a different Projects parent, replace `$HOME/emrys-projects` with
-its actual path. For your own study, replace the final Project `cd` line with
-`cd "$EMRYS_PROJECTS_ROOT/my-study"`. For an existing Project elsewhere, use
+For the EV/PUM1 study, replace the final Project `cd` line with
+`cd "$EMRYS_PROJECTS_ROOT/pum1-study"`. For an existing Project elsewhere, use
 `cd "/full/path/to/existing-project"` instead; keep it at its original location.
 Reconnecting does not require reinstalling EMRYS, recreating the Project or
 resubmitting work. From another directory, select it explicitly with

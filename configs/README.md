@@ -14,7 +14,11 @@ This guide defines Project inputs and execution settings. Use the
 | Other `.example.*` files | Specialist formats owned by the component that consumes them. |
 
 The parent of `project.yaml` is the Project root. EMRYS manages its `logs/`,
-`runtime/`, and `runs/`; FASTQs, references, and manifests stay where declared.
+`runtime/`, and `runs/`. Guided initialization also creates `samples.tsv` and
+`partitions.tsv` in that root. FASTQs, references, and regions files stay where
+declared. Existing current-schema Projects may continue to reference manifests
+at their established paths; new named initialization copies validated manifest
+content into its Project.
 
 Paths declared by `project.yaml` and its sample manifest, including FASTQ
 entries, resolve from the Project root. A partition `regions_file` entry resolves
@@ -144,8 +148,9 @@ declares them so. Retain provider checksums: file binding does not prove provena
 | `selector_type` | `region` for a bcftools `-r` expression or `regions_file` for an admitted `-R` file. |
 | `selector_value` | A FASTA/FAI contig or interval, or a literal regions-file path. |
 
-The [quickstart's manifest helper](../quickstart.md#create-the-input-lists)
-accepts repeated `--region PARTITION_ID SELECTOR` and
+The [quickstart's guided Project creation](../quickstart.md#create-the-project-and-its-input-lists)
+asks for these selectors. Its advanced command form accepts repeated
+`--region PARTITION_ID SELECTOR` and
 `--regions-file PARTITION_ID PATH` options. They can be combined; partition IDs
 must be unique across both forms. A selector such as `1` selects that entire
 contig without a regions file. Reference compatibility is checked during

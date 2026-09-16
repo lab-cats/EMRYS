@@ -278,13 +278,14 @@ Confirm that the host's memory, disk space and permitted running time suit the s
 the tiny synthetic exercise is not a full-study capacity estimate.
 
 Use Bash with Git and curl available, permission and network access for package
-downloads, and separate writable source and durable Project locations. Install
-the tools and locked command with [the procedure above](#install-a-chosen-release-or-commit).
-Keep that environment active. Select a durable parent using
-[Choose a Projects home](../../quickstart.md#choose-a-projects-home), then use
-an absent child for the supplied study:
+downloads, and a writable durable checkout. Install the tools and locked command
+with [the procedure above](#install-a-chosen-release-or-commit). Keep that
+environment active. Enter the repository-supplied Projects home, then use an
+absent child for the supplied study:
 
 ```bash
+cd "$EMRYS_SOURCE_ROOT/Projects"
+export EMRYS_PROJECTS_ROOT="$(pwd -P)"
 export EMRYS_PROJECT_ROOT="${EMRYS_PROJECTS_ROOT:?Choose a Projects home first}/emrys-smoke"
 emrys init synthetic --output-dir "$EMRYS_PROJECT_ROOT" --execute
 cd "$EMRYS_PROJECT_ROOT"
@@ -339,16 +340,27 @@ Follow the [quickstart's own-data continuation](../../quickstart.md#7-create-a-p
 for the complete Viking sequence: prepare study inputs, create the Project,
 run Doctor, submit the study, inspect it and open the reports.
 The ordinary `emrys init NAME` creates beneath the current directory, so first
-enter the chosen physical Projects parent. Synthetic `--output-dir` may select
-an external absolute destination while your terminal is in the checkout.
+enter the repository-supplied `Projects/` parent. Synthetic `--output-dir` may
+select an external absolute destination when an advanced workflow requires it.
 These routes share the same absent-child and canonical-parent checks; neither
 moves or adopts an existing Project. Use `--project /absolute/Project/project.yaml`
 with Project-aware commands when working from another directory.
 
+Interactive named initialization discovers recognized FASTQ pairs in one
+directory, asks for their biological assignments and the study regions, and
+publishes `samples.tsv` and `partitions.tsv` inside the Project. Its preview
+checks paths and scientific structure without hashing FASTQ contents. The
+printed creation command carries every answer; creation hashes each FASTQ once
+and rejects an input whose filesystem identity changes through publication.
+Existing advanced manifests may be supplied together with `--sample-manifest`
+and `--partition-manifest`; EMRYS copies normalized manifest content into the
+new Project. Existing Projects remain supported at their current paths.
+
 For studies with additional input requirements:
 
-- For arbitrary FASTQ names, write the [sample manifest](../../configs/README.md#sample-manifest)
-  and [partition manifest](../../configs/README.md#partition-manifest) directly.
+- For arbitrary FASTQ names, prepare the [sample manifest](../../configs/README.md#sample-manifest)
+  and [partition manifest](../../configs/README.md#partition-manifest) directly,
+  then supply both advanced inputs during initialization.
   `samples.example.tsv` demonstrates ingestion fields; it is not a complete
   paired-CMH Project manifest.
 - For a background cohort, include its samples in the manifest and pass

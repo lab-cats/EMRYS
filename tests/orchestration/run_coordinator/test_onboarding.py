@@ -19,6 +19,7 @@ import pytest
 import yaml
 
 from emrys import __main__ as cli
+from emrys.contracts.orchestration import api as contracts
 from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability.inspector import RuntimeInspection
 from emrys.libraries.validation.tsv import tsv_bytes
@@ -28,6 +29,7 @@ from emrys.orchestration.run_coordinator import (
     control,
     doctor,
     execution_profile,
+    normalization,
     onboarding,
     synthetic_fixture,
 )
@@ -126,6 +128,7 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     output = projects / "my-study"
     monkeypatch.chdir(projects)
     arguments = _project_arguments(tmp_path, output, execute=False)
+    arguments.sample_manifest = tmp_path / "source/samples.tsv"
     arguments.site = "viking"
     input_files = _tree_bytes(tmp_path / "source")
     manifest_bytes = arguments.sample_manifest.read_bytes()
@@ -139,25 +142,22 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     assert list(projects.iterdir()) == []
     preview = capsys.readouterr()
     assert "Dry-run complete" in preview.out
-    explanation = "Project preparation reads and hashes all declared inputs"
+    assert "Reading and hashing Project inputs" not in preview.err
     phases = (
         "Reading and hashing Project inputs",
         "Checking reference and partition compatibility",
     )
-    assert preview.err.index(explanation) < preview.err.index(phases[0])
-    assert preview.err.index(phases[0]) < preview.err.index(phases[1])
-    for phase in phases:
-        assert re.search(rf"{phase}: complete \(\d+m \d{{2}}s\)", preview.err)
-    assert "Verifying the published Project" not in preview.err
 
     assert cli.main([*command, "--execute"]) == 0
     created = capsys.readouterr()
     assert "Project ready:" in created.out
-    for phase in (*phases, "Verifying the published Project"):
+    for phase in phases:
         assert re.search(rf"{phase}: complete \(\d+m \d{{2}}s\)", created.err)
     assert set(_tree_bytes(output)) == {
+        "partitions.tsv",
         "project.yaml",
         "runtime/profiles/default.yaml",
+        "samples.tsv",
     }
     assert (output / "runtime/profiles/default.yaml").read_bytes() == (
         execution_profile.project_default_profile_bytes("viking")
@@ -169,9 +169,10 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     )
     definition = yaml.safe_load((output / "project.yaml").read_text(encoding="utf-8"))
     assert definition["schema_version"] == "emrys.project.v1"
-    assert definition["dataset"]["samples"] == str(arguments.sample_manifest.resolve())
-    assert definition["analyses"][arguments.analysis_name]["partitions"] == str(
-        arguments.partition_manifest.resolve()
+    assert definition["dataset"]["samples"] == "samples.tsv"
+    assert (
+        definition["analyses"][arguments.analysis_name]["partitions"]
+        == "partitions.tsv"
     )
     assert definition["reference"]["fasta"] == str(arguments.reference_fasta)
     assert definition["reference"]["gtf"] == str(arguments.reference_gtf)
@@ -180,6 +181,89 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     assert onboarding.validate_project(output / "project.yaml").sample_count == 4
     assert _tree_bytes(tmp_path / "source") == input_files
     assert arguments.sample_manifest.read_bytes() == manifest_bytes
+
+
+def test_project_preview_skips_fastq_hashing_and_creation_hashes_each_fastq_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "my-study"
+    monkeypatch.chdir(tmp_path)
+    arguments = _project_arguments(tmp_path, output, execute=False)
+    _, _, rows = step08.validate_sample_manifest(arguments.sample_manifest)
+    fastqs = {Path(row[mate]) for row in rows for mate in ("r1_fastq", "r2_fastq")}
+    counts = {path: 0 for path in fastqs}
+    real_hash = normalization.sha256_with_identity
+
+    def count_hash(
+        path: Path, label: str, **kwargs: object
+    ) -> tuple[str, os.stat_result]:
+        admitted = Path(path)
+        if admitted in counts:
+            counts[admitted] += 1
+        return real_hash(path, label, **kwargs)
+
+    monkeypatch.setattr(normalization, "sha256_with_identity", count_hash)
+
+    assert onboarding.init_project_from_args(arguments) == 0
+    assert set(counts.values()) == {0}
+    arguments.execute = True
+    assert onboarding.init_project_from_args(arguments) == 0
+    assert set(counts.values()) == {1}
+
+
+def test_guided_project_creation_writes_its_manifests_inside_the_project(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Terminal(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    output = tmp_path / "guided-study"
+    arguments = _project_arguments(tmp_path, output, execute=True)
+    reads = tmp_path / "source" / "reads"
+    arguments.sample_manifest = None
+    arguments.partition_manifest = None
+    arguments.fastq = []
+    arguments.sample = []
+    arguments.regions_file = []
+    arguments.region = []
+    terminal = Terminal(
+        "\n".join(
+            (
+                str(reads),
+                "EV",
+                "pair_1",
+                "unstranded",
+                "EV",
+                "pair_2",
+                "unstranded",
+                "PUM1",
+                "pair_1",
+                "unstranded",
+                "PUM1",
+                "pair_2",
+                "unstranded",
+                "",
+                "chrSynthetic",
+                "",
+            )
+        )
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(onboarding.sys, "stdin", terminal)
+    monkeypatch.setattr(onboarding.sys, "stderr", Terminal())
+
+    assert onboarding.init_project_from_args(arguments) == 0
+    assert (output / "samples.tsv").is_file()
+    assert (output / "partitions.tsv").is_file()
+    definition = yaml.safe_load((output / "project.yaml").read_text(encoding="utf-8"))
+    assert definition["dataset"]["samples"] == "samples.tsv"
+    assert (
+        definition["analyses"][arguments.analysis_name]["partitions"]
+        == "partitions.tsv"
+    )
 
 
 @pytest.mark.parametrize("site", (None, "viking"))
@@ -264,18 +348,10 @@ def test_guided_project_preview_replays_exact_answers_without_new_prompts(
             f"pairing group={sample['replicate']}; strandedness={sample['strandedness']}"
         ) in preview
         for mate in ("r1_fastq", "r2_fastq"):
-            assert repr(sample[mate]) in preview
-    for path in (
-        arguments.sample_manifest,
-        arguments.partition_manifest,
-        arguments.reference_fasta,
-        arguments.reference_gtf,
-    ):
-        assert repr(str(path)) in preview
-        assert hashlib.sha256(path.read_bytes()).hexdigest() in preview
-    if site is not None:
-        assert "format=bed; compression=plain" in preview
-        assert hashlib.sha256(regions.read_bytes()).hexdigest() in preview
+            assert sample[mate] in preview
+    for path in (arguments.reference_fasta, arguments.reference_gtf):
+        assert str(path) in preview
+    assert "SHA-256" not in preview
     replay = next(line for line in preview.splitlines() if line.startswith("cd "))
     tokens = shlex.split(replay)
     assert tokens[:4] == ["cd", str(projects), "&&", sys.executable]
@@ -297,13 +373,13 @@ def test_guided_project_preview_replays_exact_answers_without_new_prompts(
     expected = yaml.safe_load(
         (study / "source/project.yaml").read_text(encoding="utf-8")
     )
-    expected["dataset"]["samples"] = str(arguments.sample_manifest)
+    expected["dataset"]["samples"] = "samples.tsv"
     expected["reference"].update(
         fasta=str(arguments.reference_fasta), gtf=str(arguments.reference_gtf)
     )
     analysis = expected["analyses"].pop("primary")
     analysis.update(
-        partitions=str(arguments.partition_manifest),
+        partitions="partitions.tsv",
         target_change="C>T",
         mean_dp_threshold=71.5,
         background_condition=arguments.background_condition,
@@ -334,15 +410,13 @@ def test_guided_project_preview_replays_exact_answers_without_new_prompts(
 
 @pytest.mark.parametrize("error", (onboarding.OnboardingError, KeyboardInterrupt))
 @pytest.mark.parametrize(
-    ("boundary", "phase", "published"),
+    ("boundary", "phase"),
     (
-        ("_admit_project_data", "Reading and hashing Project inputs", False),
+        ("_admit_project_data", "Reading and hashing Project inputs"),
         (
             "validate_project_admission",
             "Checking reference and partition compatibility",
-            False,
         ),
-        ("validate_project", "Verifying the published Project", True),
     ),
 )
 def test_init_progress_preserves_failed_or_interrupted_validation(
@@ -352,14 +426,13 @@ def test_init_progress_preserves_failed_or_interrupted_validation(
     error: type[BaseException],
     boundary: str,
     phase: str,
-    published: bool,
 ) -> None:
     output = tmp_path / "my-study"
     monkeypatch.chdir(tmp_path)
     arguments = _project_arguments(tmp_path, output, execute=True)
     before = _tree_bytes(tmp_path)
 
-    def fail(*_args: object) -> None:
+    def fail(*_args: object, **_kwargs: object) -> None:
         raise error("injected validation failure")
 
     monkeypatch.setattr(onboarding, boundary, fail)
@@ -371,14 +444,32 @@ def test_init_progress_preserves_failed_or_interrupted_validation(
 
     after = _tree_bytes(tmp_path)
     assert all(after[path] == data for path, data in before.items())
-    assert (output / "project.yaml").is_file() is published
-    if not published:
-        assert after == before
-        assert not output.exists()
+    assert after == before
+    assert not output.exists()
     captured = capsys.readouterr()
     assert f"{phase}: interrupted or failed" in captured.err
     assert f"{phase}: complete" not in captured.err
     assert "Project ready:" not in captured.out
+
+
+def test_init_rejects_input_changed_during_publication_before_project_completion(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "my-study"
+    monkeypatch.chdir(tmp_path)
+    arguments = _project_arguments(tmp_path, output, execute=True)
+
+    def changed(_admission: object) -> None:
+        raise contracts.ContractValidationError("Project input changed after admission")
+
+    monkeypatch.setattr(
+        normalization.ProjectAdmission, "require_inputs_unchanged", changed
+    )
+
+    assert onboarding.init_project_from_args(arguments) == 2
+    assert output.is_dir()
+    assert not (output / "project.yaml").exists()
 
 
 def test_init_project_refuses_predecessor_without_changing_it(
@@ -401,9 +492,7 @@ def test_init_project_requires_every_noninteractive_answer(
 ) -> None:
     assert cli.main(["init", "experiment"]) == 2
     error = capsys.readouterr().err
-    assert "missing Project setup answers" in error
-    assert "--sample-manifest" in error
-    assert "--background-max-fraction" in error
+    assert "input-list creation needs --fastq paths" in error
 
 
 def test_init_project_prompts_and_requires_explicit_suggestion_acceptance(
