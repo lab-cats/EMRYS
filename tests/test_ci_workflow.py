@@ -360,7 +360,18 @@ def test_managed_runtime_userspace_matrix_proves_the_same_lock() -> None:
     assert 'pixi list --locked --manifest-path "${PIXI_MANIFEST}"' in verify["run"]
 
 
-def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
+def test_managed_golden_path_uses_only_the_public_direct_journey(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from emrys.orchestration.run_coordinator.execution_profile import (
+        load_execution_profile,
+        project_default_profile_bytes,
+    )
+    from emrys.orchestration.run_coordinator.resource_policy import (
+        AllocationCapacity,
+        resolve_resource_policy,
+    )
+
     job = _workflow_jobs()["managed-golden-path"]
     assert job["runs-on"] == "ubuntu-24.04"
     assert job["timeout-minutes"] == 180
@@ -388,6 +399,24 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
     assert prepare["run"].index('cd "${clean_clone}"') < prepare["run"].index(
         '"${emrys[@]}" init synthetic'
     )
+    fixture_setup = (
+        prepare["run"]
+        .split('"${clean_clone}/.venv/bin/python" - "${project_root}" <<\'PY\'\n', 1)[1]
+        .split("\nPY", 1)[0]
+    )
+    profile = tmp_path / "runtime/profiles/default.yaml"
+    profile.parent.mkdir(parents=True)
+    profile.write_bytes(project_default_profile_bytes())
+    monkeypatch.setattr(sys, "argv", ["fixture-profile", str(tmp_path)])
+    exec(compile(fixture_setup, str(WORKFLOW_PATH), "exec"), {})
+    admitted = load_execution_profile(profile)
+    resources = resolve_resource_policy(
+        admitted.resource_policy, AllocationCapacity(4, 16384, "hosted fixture")
+    )
+    assert admitted.computational_resources_explicit
+    assert admitted.placement.document() == {"kind": "direct"}
+    assert resources.workflow_cores == 4
+    assert resources.workflow_memory_mb == 16384
     assert cache["uses"] == ("actions/cache@caa296126883cff596d87d8935842f9db880ef25")
     assert cache["with"]["path"] == (
         "${{ runner.temp }}/emrys-managed-golden/project/runtime/managed/renv/cache"
@@ -421,6 +450,12 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
     borrowing = reuse["run"]
     assert 'emrys=("${clean_clone}/.venv/bin/emrys")' in borrowing
     assert 'init synthetic \\\n  --output-dir "${borrower_root}" --execute' in borrowing
+    fixture_copy = (
+        'cp "${donor_root}/runtime/profiles/default.yaml" \\\n'
+        '  "${borrower_root}/runtime/profiles/default.yaml"'
+    )
+    assert borrowing.index("init synthetic") < borrowing.index(fixture_copy)
+    assert borrowing.index(fixture_copy) < borrowing.index("runtime discover")
     assert 'inspect --project "${borrower_root}"' in borrowing
     preview = '--from-project "${donor_root}" \\\n'
     selection = '--from-project "${donor_root}" --execute'
