@@ -421,10 +421,20 @@ snapshot with an incomplete stream read prints its diagnostics and exits 1.
 
 Legacy overview/detail navigation uses `1`/`o`, `2`/`d` and Tab; arrows, `j`/`k`,
 Page Up/Down and Home/`g` scroll. `3`/`v` selects dated evidence/logs and `[`/`]`
-cycles streams. Action keys cannot replace navigation keys. `NO_COLOR` suppresses
-status colors. `--snapshot`, noninteractive or dumb terminals emit one plain,
+cycles streams. Both interactive entry points request mouse reports and discard
+them, so mouse wheels and buttons do not navigate the dashboard. Terminal or
+multiplexer bindings that translate a wheel into keyboard arrows are
+indistinguishable from permitted arrow-key input and remain outside this
+contract. Action keys cannot replace navigation keys. The installed evidence
+view colors literal severity/workflow prefixes without changing its sanitized
+text; `NO_COLOR` suppresses all optional colors. `--snapshot`, noninteractive or dumb terminals emit one plain,
 dated snapshot; `--detail` remains the static-inspection selector. Ordinary
 watch creates no operational action, persistent cache or additional log.
+
+`r` is a read-only recheck of the fixed selection. It refreshes scheduler and
+diagnostic observations, rechecks request or Run-log association where
+applicable, and fully verifies selected Run evidence. It never selects another
+job or invokes an operational action.
 
 Interactive `--watch --actions` offers `p` for a Run's ordinary resume plan and
 confirmation, `b` for its report preview, or `s` for an exact request's stop

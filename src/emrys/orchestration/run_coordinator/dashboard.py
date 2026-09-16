@@ -2223,7 +2223,7 @@ def render_footer(screen, row, width, attrs, refresh_seconds, last_sync, stream_
         else "%ss ago" % max(0, int(time.monotonic() - last_sync))
     )
     footer = (
-        "[Up/Down/PgUp/PgDn] scroll work  [Tab] switch  [r] refresh  [q] quit | NFS-light %ss (%s)"
+        "[Up/Down/PgUp/PgDn] scroll  [Tab] switch  [r] recheck job/logs  [q] quit | NFS-light %ss (%s)"
         % (refresh_seconds, age)
     )
     safe_add(screen, row, 1, footer, attrs["dim"], width - 2)
@@ -2275,16 +2275,20 @@ def render(
             scrollable=scrollable,
         )
 
-    top_h = min(8, max(6, height // 6)) if details else 6
+    top_lines = (
+        job_lines(slurm, identity, width - 6, attrs)
+        if details
+        else overview_lines(slurm, identity, model, width - 6)
+    )
+    # Include both borders so every identity/resource field remains visible.
+    top_h = len(top_lines) + 2
     panel(
         1,
         1,
         top_h,
         width - 2,
         "JOB, RESOURCES & RUN IDENTITY" if details else "RUN OVERVIEW",
-        job_lines(slurm, identity, width - 6, attrs)
-        if details
-        else overview_lines(slurm, identity, model, width - 6),
+        top_lines,
     )
     main_y = 1 + top_h
     footer_y = height - 1 - (stream_status is not None)
@@ -2444,6 +2448,12 @@ def dashboard(screen, args):
     screen.keypad(True)
     screen.timeout(250)
     render.attrs = init_colors()
+    mouse_enabled = False
+    try:
+        curses.mousemask(curses.ALL_MOUSE_EVENTS)
+        mouse_enabled = True
+    except curses.error:
+        pass
 
     out_cache = StreamCache(args.out)
     err_cache = StreamCache(args.err)
@@ -2500,6 +2510,8 @@ def dashboard(screen, args):
                 stream_status,
             )
             key = screen.getch()
+            if key == curses.KEY_MOUSE:
+                continue
             if key in (ord("q"), ord("Q")):
                 return
             if key in (ord("1"), ord("o"), ord("O")):
@@ -2526,6 +2538,11 @@ def dashboard(screen, args):
                 # Keep the completion summary visible until the operator exits.
                 pass
     finally:
+        if mouse_enabled:
+            try:
+                curses.mousemask(0)
+            except curses.error:
+                pass
         out_cache.close()
         err_cache.close()
 

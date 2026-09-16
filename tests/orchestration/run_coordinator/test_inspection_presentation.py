@@ -594,6 +594,43 @@ def test_watch_scroll_rows_include_older_lines_from_the_complete_retained_tail(
     assert plain_rows[-8] == "retained-line-292"
 
 
+def test_watch_log_styles_preserve_every_literal_line(tmp_path):
+    source = view.StreamSource("fixture", tmp_path / "fixture.log", tmp_path)
+    snapshot = view.WatchSnapshot(
+        None,
+        scheduler={"state": "RUNNING"},
+        scheduler_at=NOW,
+        tail=view.StreamTail(
+            source,
+            "INFO: preparing\nWARNING: delayed\nERROR: failed\nFinished job 7.\nunaltered text",
+            diagnostic="Current diagnostic bytes; content not verified",
+            observed_at=NOW,
+        ),
+    )
+    styled = view.render_watch_text(snapshot, now=NOW)
+    assert styled.plain == view.render_snapshot(snapshot, now=NOW)
+    styled_fragments = {
+        styled.plain[span.start : span.end]: str(span.style) for span in styled.spans
+    }
+    assert styled_fragments["INFO: preparing"] == "cyan"
+    assert styled_fragments["WARNING: delayed"] == "yellow"
+    assert styled_fragments["ERROR: failed"] == "red"
+    assert styled_fragments["Finished job 7."] == "green"
+    assert "unaltered text" not in styled_fragments
+
+
+def test_watch_key_reader_discards_sgr_mouse_reports_and_preserves_arrows():
+    reader, writer = os.pipe()
+    try:
+        os.write(writer, b"\x1b[<64;10;4M")
+        assert view._read_watch_key(reader) is None
+        os.write(writer, b"\x1b[B")
+        assert view._read_watch_key(reader) == b"\x1b[B"
+    finally:
+        os.close(reader)
+        os.close(writer)
+
+
 def test_worker_coalesces_verification_and_close_does_not_wait_for_reader(tmp_path):
     entered = threading.Event()
     release = threading.Event()
@@ -828,6 +865,7 @@ raise SystemExit(result)
                 output += chunk
         assert marker.exists(), output
         assert caption in rendered_text(), output
+        assert b"recheck selection/evidence (read-only)" in rendered_text(), output
         assert (b"resume plan/confirm" in rendered_text()) is (
             mode not in {"readonly", "stop"}
         )
@@ -838,7 +876,7 @@ raise SystemExit(result)
             master,
             b"pobsq"
             if mode == "readonly"
-            else b"o2\t1\x1b[B\x1b[A\x1b[6~\x1b[5~gq"
+            else b"3\x1b[<64;10;4Mo2\t1\x1b[B\x1b[A\x1b[6~\x1b[5~gq"
             if mode == "quit-enabled"
             else selected_key * 2,
         )
@@ -863,6 +901,8 @@ raise SystemExit(result)
             except OSError:
                 break
         assert b"\x1b[?1049l" in output
+        assert view._MOUSE_TRACKING_ON.encode() in output
+        assert view._MOUSE_TRACKING_OFF.encode() in output
         assert output.count(b"REVIEW CALLED") == reviewed
         if mode == "restore-failure":
             assert b"terminal restoration failed" in output
