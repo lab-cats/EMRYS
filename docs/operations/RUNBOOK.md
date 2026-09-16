@@ -114,7 +114,7 @@ never admits a Project or Run from text printed in a log.
 | `3` / `v` | Dated Run evidence and selected diagnostic log. |
 | `[` / `]` | Previous/next log; opens the evidence/log view. |
 | Arrows / `j` / `k`, Page Up/Down, Home / `g` | Scroll or return to the top. |
-| `r` | Refresh diagnostics, recheck association, and fully verify the selected Run. |
+| `r` | Read-only recheck of the fixed selection: refresh diagnostics, recheck association, and fully verify its Run evidence. |
 | `q` | Quit and restore the terminal. |
 
 Overview/details preserve pipeline progress, stage explanations and resources,
@@ -140,6 +140,14 @@ streams are identified, previous generations are cleared, and terminal controls
 are sanitized. A stalled read preserves its earlier date and cannot prevent
 quitting after the view opens. Initial selection remains synchronous. Memory
 for the parsed workflow trace grows with retained diagnostic history.
+
+Both interactive entry points capture and ignore mouse reports; use the
+documented keyboard controls to navigate. A tmux binding can instead translate
+wheel movement into arrow keys before EMRYS receives it. EMRYS cannot distinguish
+those translated keys from physical arrow-key input; adjust that tmux binding if
+wheel movement still scrolls. Log colors distinguish literal severity and common
+workflow prefixes without hiding or reinterpreting lines; `NO_COLOR` makes the
+same text plain.
 
 An explicit Run's `r` refresh searches its selected application-log root again
 and removes associations no longer admitted. Independent Task streams remain

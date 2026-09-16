@@ -36,6 +36,8 @@ _MILESTONE_STEPS = (
 _TAIL_BYTES = 64 * 1024
 _TAIL_LINES = 256
 _REFRESH_SECONDS = 30
+_MOUSE_TRACKING_ON = "\x1b[?1000h\x1b[?1006h"
+_MOUSE_TRACKING_OFF = "\x1b[?1000l\x1b[?1006l"
 
 
 class PresentationError(RuntimeError):
@@ -751,12 +753,13 @@ def render_dashboard(
         "normal": "",
         "dim": "dim",
         "border": "dim cyan",
-        "label": "bold",
-        "value": "",
+        "label": "bold cyan",
+        "value": "bold",
         "title": "bold cyan",
-        "panel_title": "bold cyan",
+        "panel_title": "bold magenta",
         "green": "green",
         "green_bold": "bold green",
+        "cyan_bold": "bold cyan",
         "yellow": "yellow",
         "yellow_bold": "bold yellow",
         "red": "red",
@@ -787,6 +790,38 @@ def render_dashboard(
         scroll,
     )
     return canvas.text()
+
+
+def render_watch_text(snapshot, *, now):
+    """Color dated evidence and log severity without interpreting or hiding text."""
+    from rich.text import Text
+
+    result = Text(render_snapshot(snapshot, now=now))
+    for pattern, style in (
+        (r"(?m)^EMRYS inspection — read-only$", "bold cyan"),
+        (r"(?m)^(?:Scheduler:|Run evidence as of:|Stream:).*$", "bold cyan"),
+        (r"(?im)^(?:error|fatal|exception|traceback|failed).*$", "red"),
+        (r"(?im)^(?:warning|warn).*$", "yellow"),
+        (r"(?im)^(?:finished job|complete|succeeded|done).*$", "green"),
+        (r"(?im)^(?:info|rule |localrule |checkpoint ).*$", "cyan"),
+    ):
+        result.highlight_regex(pattern, style)
+    return result
+
+
+def _read_watch_key(descriptor: int) -> bytes | None:
+    """Read one navigation key and consume SGR mouse reports without acting."""
+    key = os.read(descriptor, 1)
+    if key != b"\x1b":
+        return key
+    while len(key) < 64 and select.select([descriptor], [], [], 0.01)[0]:
+        key += os.read(descriptor, 1)
+        if key.startswith(b"\x1b[<"):
+            if key[-1:] in b"Mm":
+                return None
+        elif key[-1:] in b"ABCDHF~":
+            break
+    return key
 
 
 def require_action_terminal() -> None:
@@ -918,8 +953,12 @@ def watch(
     reviews = {key: callback for key, _label, callback in review_actions}
     deadline = time.monotonic() + refresh_seconds
     worker.request(verify=True, stream_index=stream_index)
+    mouse_tracking = False
     try:
         tty.setcbreak(descriptor)
+        sys.stdout.write(_MOUSE_TRACKING_ON)
+        sys.stdout.flush()
+        mouse_tracking = True
         with Live(
             console=console,
             screen=True,
@@ -937,12 +976,9 @@ def watch(
                     worker.request(verify=False, stream_index=stream_index)
                     deadline = now + refresh_seconds
                 snapshot = worker.snapshot
-                text = render_snapshot(snapshot, now=datetime.now(UTC))
-                controls = "1/o overview | 2/d details | Tab switch | 3/v evidence/logs | [/] stream\nq quit | r verify/associate again | arrows/j/k scroll | PgUp/PgDn | Home/g"
-                controls += f"\nDiagnostic trace as of {snapshot.trace_at or 'unavailable'}; log identity/progress are unverified"
-                controls += (
-                    f"\nScheduler as of {snapshot.scheduler_at or 'unavailable'}"
-                )
+                text = render_watch_text(snapshot, now=datetime.now(UTC))
+                controls = "Views: 1/o overview | 2/d details | 3/v evidence/logs | Tab switch | [/] stream | Scroll: arrows/j/k PgUp/PgDn Home/g | r recheck selection/evidence (read-only) | q quit"
+                controls += f"\nDiagnostic trace: {snapshot.trace_at or 'unavailable'} (unverified log identity/progress) | Scheduler: {snapshot.scheduler_at or 'unavailable'}"
                 if reviews:
                     controls += "\nLeave view: " + " | ".join(
                         f"{key.decode('ascii')} {label}"
@@ -952,7 +988,7 @@ def watch(
                     controls += (
                         "\nRefresh in progress; displayed observations are dated"
                     )
-                controls_text = Text(controls)
+                controls_text = Text(controls, style="dim")
                 layout["controls"].size = min(
                     console.size.height - 1,
                     max(
@@ -970,7 +1006,7 @@ def watch(
                 if selected_view == "evidence":
                     rows = text.split("\n")
                     scroll = min(scroll, max(0, len(rows) - 1))
-                    layout["body"].update(Text("\n".join(rows[scroll:])))
+                    layout["body"].update(Text("\n").join(rows[scroll:]))
                 else:
                     layout["body"].update(
                         render_dashboard(
@@ -987,15 +1023,9 @@ def watch(
                 layout["controls"].update(controls_text)
                 live.update(layout, refresh=True)
                 if select.select([descriptor], [], [], 1)[0]:
-                    key = os.read(descriptor, 1)
-                    if key == b"\x1b":
-                        while (
-                            len(key) < 8
-                            and select.select([descriptor], [], [], 0.01)[0]
-                        ):
-                            key += os.read(descriptor, 1)
-                            if key[-1:] in b"ABCDHF~":
-                                break
+                    key = _read_watch_key(descriptor)
+                    if key is None:
+                        continue
                     if key in (b"q", b"Q", b"\x04", b""):
                         return 0
                     selected_review = reviews.get(key.lower())
@@ -1057,6 +1087,9 @@ def watch(
     except KeyboardInterrupt:
         return 0
     finally:
+        if mouse_tracking:
+            sys.stdout.write(_MOUSE_TRACKING_OFF)
+            sys.stdout.flush()
         trace_closed.set()
         worker.close()
         for cache in tuple(stream_caches.values()):

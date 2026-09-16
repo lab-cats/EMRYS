@@ -1685,6 +1685,17 @@ def test_dashboard_drawing_and_rendering_support_wide_compact_and_small_screens(
     compact = _FakeScreen(height=30, width=100)
     for selected in ("overview", "details"):
         dashboard.render(compact, JOB_ID, _slurm(), identity, model, 30, 0, selected, 0)
+    compact_text = "\n".join(write[2] for write in compact.writes)
+    for label in (
+        "State:",
+        "Slurm placement:",
+        "Batch per-task maxima:",
+        "Batch CPU / sample:",
+        "Run:",
+        "Code / attempt:",
+        "Run root:",
+    ):
+        assert label in compact_text
     small = _FakeScreen(height=10, width=60)
     dashboard.render(small, JOB_ID, _slurm(), identity, model, 30, 0, "overview", 0)
     assert any("too small" in write[2] for write in small.writes)
@@ -2116,6 +2127,23 @@ def test_standalone_pending_refresh_dates_retained_history(
         for cache in caches:
             if cache._reader is not None:
                 cache._reader.join(2)
+
+
+def test_standalone_dashboard_ignores_mouse_and_restores_tracking(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stdout, stderr = _make_logs(tmp_path / "logs")
+    masks, rendered = [], []
+    monkeypatch.setattr(dashboard, "init_colors", dict)
+    monkeypatch.setattr(dashboard.curses, "curs_set", lambda *_args: None)
+    monkeypatch.setattr(dashboard.curses, "mousemask", lambda mask: masks.append(mask))
+    monkeypatch.setattr(dashboard, "render", lambda *_args: rendered.append(True))
+    args = SimpleNamespace(
+        job_id=JOB_ID, out=str(stdout), err=str(stderr), refresh=30, offline=True
+    )
+    dashboard.dashboard(_FakeScreen(keys=[dashboard.curses.KEY_MOUSE, ord("q")]), args)
+    assert len(rendered) == 2
+    assert masks == [dashboard.curses.ALL_MOUSE_EVENTS, 0]
 
 
 @pytest.mark.parametrize("usage", ["complete", "unavailable"])

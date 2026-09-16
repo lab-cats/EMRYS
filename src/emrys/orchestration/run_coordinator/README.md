@@ -77,6 +77,13 @@ the terminal and discard queued keys before fresh admission; report/stop remain
 previews. Run handoffs use the default profile. Launch a new declared Analysis
 with `emrys run --project PROJECT --analysis NAME`.
 
+Both terminal entry points reserve mouse input without attaching an action to
+it; scrolling remains on the arrow, `j`/`k`, Page Up/Down and Home/`g` keys.
+The installed evidence/log view colors literal severity and workflow prefixes
+without filtering or reinterpreting the sanitized diagnostic text. `NO_COLOR`
+keeps the same content plain. The `r` key performs a read-only recheck of the
+fixed selection and its dated evidence; it does not execute a Run action.
+
 Full diagnostic history supports reconnecting and live progress; it remains
 separate from scientific evidence, which is reverified explicitly. Every read
 pins file/directory identity; rotation/truncation/replacement clears prior
