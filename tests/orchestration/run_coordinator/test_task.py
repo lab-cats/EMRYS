@@ -1417,6 +1417,8 @@ def _task_subreaper_real_child(root: Path, mode: str, threads: str) -> None:
             str(source),
             "--output-dir",
             str(output),
+            "--native-memory-mb",
+            "800",
             "--threads",
             threads,
             "--samtools-bin",

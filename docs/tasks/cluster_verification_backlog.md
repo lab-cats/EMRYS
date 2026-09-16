@@ -663,6 +663,30 @@ The older per-stage Slurm wrappers and the VM trial at `f054ddee` were separate
 execution contexts. The restoration uses the six-library Viking policy,
 including its per-stage memory and concurrency, not a mixture of those contexts.
 
+**Approved native-memory follow-up:** Increasing an admitted stage allowance
+now raises STAR index/sort limits, samtools fallback-sort buffers, and
+Picard/GATK heaps. The existing
+[command-construction owner](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+derives the native budget once; worker owners translate it to tool units.
+The operator approved up to 40 net added product lines across seven existing
+files, with focused tests and documentation and no new product file or
+dependency. Existing argument validation is reused; redundant local thread
+plumbing is removed. No second resource policy, schema, recovery state, or
+scientific setting is introduced. This follow-up leaves `workflow_memory_mb`
+for the operator's separate change. Native-limit wiring does not establish
+measured speedup or institutional memory qualification.
+
+**Native-memory local protection:** All six worker fixtures passed, including
+larger native limits and invalid-budget refusal; 31 planning/identity/resume
+checks and 22 shell-interface checks passed. Twelve selected task-boundary
+checks passed; three more reached isolated Python subprocesses that loaded the
+machine's older installed checkout and failed on missing `simple_term_menu`.
+They require the normal hosted environment. Shell fixtures used the existing
+Python launcher in place of this worktree's absent `.venv`; no dependency was
+installed. Ruff, shell syntax, documentation structure and whitespace checks
+passed. The product delta is 26 net lines in seven existing files; native-tool
+execution and full regression checks remain with hosted CI.
+
 **Implementation and protection:** The packaged defaults match the retained
 profile exactly. Viking initialization and the placement example request 256
 CPUs, exclusive allocation and 12 hours. The existing admission, scheduler,

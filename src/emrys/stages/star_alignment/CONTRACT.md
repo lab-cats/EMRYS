@@ -67,6 +67,11 @@ alignments.
 [`step_01_star_align.sh`](step_01_star_align.sh) is an internal worker of the
 [Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
+The required internal `--native-memory-mb` argument supplies STAR
+`--limitBAMsortRAM`, converted from MiB to bytes. The
+[Run planner](../../orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+derives this positive budget from the admitted stage allowance.
+
 The worker receives one staging output directory and explicit STAR inputs.
 It requests `BAM SortedByCoordinate` and the canonical sample read group, then
 requires all five declared outputs to be nonempty. For two `.gz` mates it

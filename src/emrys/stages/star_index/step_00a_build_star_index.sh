@@ -15,6 +15,7 @@ Usage: src/emrys/stages/star_index/step_00a_build_star_index.sh \
   --threads THREADS \
   --sjdb-overhang SJDB_OVERHANG \
   --genome-sa-index-nbases GENOME_SA_INDEX_NBASES \
+  --native-memory-mb NATIVE_MEMORY_MB \
   --star-bin STAR_BIN
 
 Internal worker: requires an existing EMRYS_TASK_WORK_DIR supplied by the runner.
@@ -29,10 +30,11 @@ source "$script_dir/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$script_dir/../../libraries/file_checks.sh"
 
-declare_required_arguments reference_fasta reference_gtf index_dir threads sjdb_overhang genome_sa_index_nbases star_bin
+declare_required_arguments reference_fasta reference_gtf index_dir threads sjdb_overhang genome_sa_index_nbases star_bin native_memory_mb
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --native-memory-mb) assign_option_value "$1" "${2:-}" native_memory_mb; shift 2 ;;
         --reference-fasta) assign_option_value "$1" "${2:-}" reference_fasta; shift 2 ;;
         --reference-gtf) assign_option_value "$1" "${2:-}" reference_gtf; shift 2 ;;
         --index-dir) assign_option_value "$1" "${2:-}" index_dir; shift 2 ;;
@@ -46,6 +48,7 @@ while [[ $# -gt 0 ]]; do
 done
 require_arguments
 require_task_work_dir
+validate_positive_integer "--native-memory-mb" "$native_memory_mb"
 
 validate_nonempty_file "Reference FASTA" "$reference_fasta"
 validate_nonempty_file "Reference GTF" "$reference_gtf"
@@ -74,6 +77,7 @@ validate_index_members() {
 }
 
 "$star_bin" --runThreadN "$threads" --runMode genomeGenerate \
+    --limitGenomeGenerateRAM "$((native_memory_mb * 1024 * 1024))" \
     --genomeDir "$index_dir" --genomeFastaFiles "$reference_fasta" \
     --sjdbGTFfile "$reference_gtf" --sjdbOverhang "$sjdb_overhang" \
     --genomeSAindexNbases "$genome_sa_index_nbases"

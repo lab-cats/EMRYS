@@ -61,6 +61,13 @@ marks transaction completion. They are not an atomic two-file filesystem write.
 [`step_02_sort_index_bam.sh`](step_02_sort_index_bam.sh) is an internal worker of the
 [Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
+The required internal `--native-memory-mb` argument supplies the unsorted-input
+fallback with samtools `sort -m`, in MiB per declared sorting thread, rounded
+down. A zero per-thread budget fails; already canonical BAMs retain the
+existing no-sort, hard-link path. The
+[Run planner](../../orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+derives this positive budget from the admitted stage allowance.
+
 The worker skips sorting when the input header declares `SO:coordinate`;
 otherwise it sorts with samtools in runner scratch. It reuses the input inode
 only when the single read group and every alignment tag already satisfy the

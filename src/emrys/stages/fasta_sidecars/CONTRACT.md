@@ -53,6 +53,11 @@ not by the mere existence of the target paths.
 [`step_00c_prepare_gatk_reference.sh`](step_00c_prepare_gatk_reference.sh) is an internal worker of the
 [Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
+The required internal `--native-memory-mb` argument supplies Java
+`-Xmx<N>m` through GATK `--java-options` for `CreateSequenceDictionary`. The
+[Run planner](../../orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+derives this positive budget from the admitted stage allowance.
+
 The worker runs samtools `faidx` and GATK `CreateSequenceDictionary`, writing
 `--reference-fai-output` and `--reference-dict-output` staging files. A FASTA
 symlink in runner scratch accommodates samtools' output naming without writing
