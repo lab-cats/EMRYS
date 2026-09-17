@@ -105,9 +105,10 @@ Any separately selected empty-header correction is a distinct behavior decision.
 
 CV-U06/CV-U28 restore the historical EV/PUM1 per-stage allowances in the
 [default profile][default-profile], replacing the whole-workflow memory claims
-that serialized tasks. The [Viking example][viking-profile] retains the original
-policy: 256 requested CPUs and 12 workflow cores. The operator accepted this
-historical policy as the default; the measurements below concern further tuning,
+that serialized tasks. CV-U06 subsequently replaces the fixed workflow/STAR
+limits in the [Viking example][viking-profile] with allocation-based values and
+requests all CPUs and RAM on one exclusive node. Other stage settings retain
+the accepted historical policy; the measurements below concern further tuning,
 not a prerequisite for its restoration. Requested capacity remains distinct
 from measured utilization.
 

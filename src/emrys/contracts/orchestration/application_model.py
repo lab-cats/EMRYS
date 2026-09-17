@@ -794,9 +794,11 @@ def resolve_computational_resources(
     *,
     limit_source: str = "observed allocation",
 ) -> dict[str, Any]:
-    """Check labelled bounds and project memory only when a numeric bound exists."""
+    """Resolve allocation-relative limits without changing the Run declaration."""
     cores = declaration["workflow_cores"]
     memory = declaration["workflow_memory_mb"]
+    if cores == "allocation" and allocation_cores is not None:
+        cores = allocation_cores
     if memory == "allocation" and allocation_memory is not None:
         memory = allocation_memory
     if allocation_cores is not None and cores > allocation_cores:
@@ -812,10 +814,18 @@ def resolve_computational_resources(
         step: memory if value == "workflow" and memory != "allocation" else value
         for step, value in declaration["stage_memory_mb"].items()
     }
+    step_threads = {
+        step: cores if value == "workflow" and isinstance(cores, int) else value
+        for step, value in declaration["step_threads"].items()
+    }
     for step, stage_mb in stage_memory.items():
         concurrency = declaration["stage_concurrency"].get(step, 1)
-        threads = declaration["step_threads"].get(step, 1)
-        if concurrency * threads > cores:
+        threads = step_threads.get(step, 1)
+        if (threads == "workflow" and concurrency > 1) or (
+            isinstance(threads, int)
+            and isinstance(cores, int)
+            and concurrency * threads > cores
+        ):
             raise ContractValidationError(
                 f"Stage {step} concurrency x threads exceeds workflow cores: "
                 f"{concurrency} x {threads} > {cores}"
@@ -836,11 +846,13 @@ def resolve_computational_resources(
                 f"{concurrency} x {stage_mb} > "
                 + (f"{memory} MiB" if isinstance(memory, int) else "workflow")
             )
-    if allocation_memory is None:
+    if allocation_memory is None and allocation_cores is None:
         return dict(declaration)
     return {
         **declaration,
+        "workflow_cores": cores,
         "workflow_memory_mb": memory,
+        "step_threads": step_threads,
         "stage_memory_mb": stage_memory,
     }
 

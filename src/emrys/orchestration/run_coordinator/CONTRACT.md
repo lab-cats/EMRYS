@@ -638,12 +638,23 @@ already-complete reports require no new submission profile. Automatic reporting 
 in the Run's existing allocation. Initial Viking selection changes placement
 only, not the scientific resource policy or Run identity.
 
-Packaged resources restore the historical six-library EV/PUM1 policy: 12 workflow
-cores, 524288 MiB and the retained per-stage concurrency, thread and memory
-allowances. Initial Viking placement requests 256 CPUs on one exclusive node
-for 12 hours, with site-default allocation memory. Workflow budgets and scheduler
-requests remain separate; actual allocation admission still verifies capacity.
+Packaged workflow CPU and memory limits use `allocation`; STAR indexing threads
+and memory use `workflow`. Other stages retain the historical EV/PUM1 allowances.
+Initial Viking placement uses `cpus_per_task: node`, `exclusive: true`, and
+`memory_mb: 0`: one node/task, no fixed `--cpus-per-task`, `--exclusive`, and
+`--mem=0`, for 12 hours. `node` requires exclusivity. Positive numeric placement
+values retain their meaning; omitted memory remains unknown at submission.
 Existing explicit Project overrides and immutable Run policies are preserved.
+
+CPU observation uses `SLURM_CPUS_PER_TASK` when explicit, otherwise
+`SLURM_CPUS_ON_NODE`, bounded by process affinity and cgroup quotas. A zero
+`SLURM_MEM_PER_NODE` means all process-visible node memory, bounded by host RAM
+and the current cgroup and ancestor limits on standard Linux cgroup mounts.
+The Run retains its symbolic CPU/thread/memory declaration; each Attempt records
+the allocation and resolved numeric settings. Snakemake and tool construction
+consume the same resolution. `step_threads: workflow` claims the full workflow
+CPU budget for one task; repeated-stage concurrency must be 1 for that stage.
+The existing native-memory headroom applies after stage-memory resolution.
 
 One pure formatter on the admitted execution profile supplies Doctor and
 Run/resume/report submission summaries. It shows requested nodes and exclusivity,
@@ -663,7 +674,7 @@ computation and task roster remain Run authority.
 Profile admission rejects provably impossible declared relationships before
 allocation: stage concurrency times threads cannot exceed workflow cores;
 known stage memory totals cannot exceed known workflow memory; multiple
-concurrent tasks cannot each claim the entire workflow memory budget. The
+concurrent tasks cannot each claim the entire workflow CPU or memory budget. The
 existing computational-resource owner enforces these same predicates during
 actual allocation resolution. Explicit CLI corrections apply before relationship
 checks. `allocation` and `workflow` aliases remain symbolic in retained policy;

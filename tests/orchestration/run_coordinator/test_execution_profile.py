@@ -67,7 +67,7 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
     default.write_bytes(execution_profile.PROJECT_DEFAULT_PROFILE_BYTES)
     profile = load_execution_profile(config_path=default)
     assert isinstance(profile.placement, DirectPlacement)
-    assert profile.resource_policy.declaration.workflow_cores == 12
+    assert profile.resource_policy.declaration.workflow_cores == "allocation"
     assert profile.source_path == default
     assert not profile.computational_resources_explicit
     assert profile.document()["placement"] == {"kind": "direct"}
@@ -79,8 +79,8 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
         "account": "viking-users",
         "partition": "long",
         "qos": "normal",
-        "cpus_per_task": 256,
-        "memory_mb": None,
+        "cpus_per_task": "node",
+        "memory_mb": 0,
         "time": "12:00:00",
         "exclusive": True,
         "nodelist": None,
@@ -93,20 +93,17 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
         REPO_ROOT / "configs/execution_profile.csu_viking_ev_pum1.yaml"
     )
     retained_policy = retained.resource_policy.document()
-    assert retained_policy["workflow_memory_mb"] == 524288
-    assert viking.resource_policy.document() == {
-        **retained_policy,
-        "workflow_memory_mb": "allocation",
-    }
+    assert viking.resource_policy.document() == retained_policy
     for memory_mb in (262144, 524287, 524288, 1048576):
         resolved = resolve_resource_policy(
             viking.resource_policy, AllocationCapacity(256, memory_mb, "fixture")
         )
-        assert resolved.workflow_cores == 12
+        assert resolved.workflow_cores == resolved.threads_for("00a") == 256
         assert resolved.workflow_memory_mb == memory_mb
+        assert dict(resolved.stage_memory_mb)["00a"] == memory_mb
     for capacity, message in (
-        ((11, 524288), "Workflow cores exceed observed allocation"),
-        ((256, 262143), "Stage 00a concurrency x memory exceeds workflow memory"),
+        ((11, 524288), "Stage 01 concurrency x threads exceeds workflow cores"),
+        ((256, 245759), "Stage 01 concurrency x memory exceeds workflow memory"),
     ):
         with pytest.raises(ResourceConfigError, match=message):
             resolve_resource_policy(
@@ -115,16 +112,23 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
     submission = slurm_submission.plan_submission(
         viking, emrys_argv=("emrys", "run"), log_dir=tmp_path / "logs"
     )
-    assert {"--cpus-per-task=256", "--exclusive", "--time=12:00:00"}.issubset(
-        submission.argv
-    )
+    assert {
+        "--nodes=1",
+        "--ntasks=1",
+        "--mem=0",
+        "--exclusive",
+        "--time=12:00:00",
+    }.issubset(submission.argv)
+    assert not any(value.startswith("--cpus-per-task=") for value in submission.argv)
     summary = "\n".join(viking.submission_summary())
     assert (
-        "Workflow CPU ceiling: 12; memory ceiling: "
+        "Workflow CPU ceiling: allocation capacity (unknown until execution); memory ceiling: "
         "allocation capacity (unknown until execution)" in summary
     )
-    assert "Stage thread caps: 00a=12, 01=2, 02=1, 06=1, 08=4" in summary
+    assert "Stage thread caps: 00a=workflow, 01=2, 02=1, 06=1, 08=4" in summary
     assert "Repeated-stage concurrency caps: 01=6" in summary
+    assert "all node CPUs" in summary
+    assert "all node memory (unknown until execution)" in summary
 
 
 def test_default_project_profile_rejects_retired_adjacent_configuration(
@@ -141,6 +145,19 @@ def test_default_project_profile_rejects_retired_adjacent_configuration(
     assert execution_profile.project_execution_profile_path(project, "default") == (
         tmp_path / "runtime/profiles/default.yaml"
     )
+
+
+def test_whole_node_cpu_request_requires_exclusive_placement(tmp_path: Path) -> None:
+    selected = tmp_path / "profile.yaml"
+    selected.write_bytes(
+        execution_profile.project_default_profile_bytes("viking").replace(
+            b"exclusive: true", b"exclusive: false"
+        )
+    )
+    with pytest.raises(
+        ExecutionProfileError, match="Whole-node CPUs require exclusive"
+    ):
+        load_execution_profile(config_path=selected).validate_reservation()
 
 
 def test_selected_resource_fragment_then_explicit_overrides(tmp_path: Path) -> None:
@@ -645,14 +662,19 @@ def test_profile_yaml_is_closed_without_environment_references(
 @pytest.mark.parametrize(
     ("relative_path", "workflow_cores", "cpus_per_task", "exclusive"),
     (
-        ("configs/execution_profile.example.yaml", 12, 256, True),
-        ("configs/execution_profile.csu_viking_ev_pum1.yaml", 12, 256, True),
+        ("configs/execution_profile.example.yaml", "allocation", "node", True),
+        (
+            "configs/execution_profile.csu_viking_ev_pum1.yaml",
+            "allocation",
+            "node",
+            True,
+        ),
     ),
 )
 def test_tracked_execution_profile_examples_are_admissible(
     relative_path: str,
-    workflow_cores: int,
-    cpus_per_task: int,
+    workflow_cores: str,
+    cpus_per_task: str,
     exclusive: bool,
 ) -> None:
     profile = load_execution_profile(config_path=REPO_ROOT / relative_path)
@@ -661,7 +683,7 @@ def test_tracked_execution_profile_examples_are_admissible(
     assert profile.resource_policy.declaration.workflow_cores == workflow_cores
     assert profile.placement.cpus_per_task == cpus_per_task
     assert profile.placement.exclusive is exclusive
-    assert profile.placement.memory_mb is None
+    assert profile.placement.memory_mb == 0
 
 
 def test_exact_module_realization_is_typed(tmp_path: Path) -> None:

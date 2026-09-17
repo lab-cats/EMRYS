@@ -1,10 +1,10 @@
 schema_version: emrys.execution-profile.v1
 
-# Retained six-library EV/PUM1 computational policy.
+# EV/PUM1 stage policy with allocation-wide workflow and STAR indexing resources.
 resources:
   schema_version: emrys.local-pilot-resources.v1
-  workflow_cores: 12
-  workflow_memory_mb: 524288
+  workflow_cores: allocation
+  workflow_memory_mb: allocation
   stage_concurrency:
     "01": 6
     "02": 6
@@ -15,7 +15,7 @@ resources:
     "06": 6
     "07": 12
   step_threads:
-    "00a": 12
+    "00a": workflow
     "01": 2
     "02": 1
     "06": 1
@@ -23,7 +23,7 @@ resources:
     "09": 1
     "10": 1
   stage_memory_mb:
-    "00a": 262144
+    "00a": workflow
     "00b": 16384
     "00c": 16384
     "01": 40960
@@ -39,14 +39,14 @@ resources:
     "10": 32768
 
 # The 12-hour walltime is conservative operator headroom, not a benchmark.
-# Viking supplies memory through the exclusive node allocation.
+# memory_mb: 0 explicitly requests all node memory; exclusive alone does not.
 placement:
   kind: slurm
   account: replace-with-site-account
   partition: replace-with-site-partition
   qos: null
-  cpus_per_task: 256
-  memory_mb: null
+  cpus_per_task: node
+  memory_mb: 0
   time: "12:00:00"
   exclusive: true
   nodelist: null

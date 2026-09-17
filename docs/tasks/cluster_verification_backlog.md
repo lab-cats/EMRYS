@@ -310,17 +310,45 @@ their instruction. Recovering historical per-stage settings and the reported
 eight-hour versus four-hour regression are recorded in CV-U28. Resource usage
 must also be visible again in the dashboard (CV-U33).
 
-**Approved resolution:** Use the recovered historical policy as the default:
+**Historical restoration:** The initial implementation restored:
 12 workflow cores and 524288 MiB, with concurrent sample/partition work and
 the original stage allowances. Viking placement requests 256 CPUs, exclusive
 allocation and 12 hours. Requested CPUs and workflow cores are separate limits;
-this restores the selected historical configuration rather than introducing
-automatic tuning. CV-U33 remains separately owned. See CV-U28 for provenance
-and verification scope.
+this restored the selected historical configuration but left CV-U06's request
+to use all available resources incomplete. CV-U33 remains separately owned.
+See CV-U28 for historical provenance and verification scope.
 
-The packaged defaults and affected admission paths passed the integrated standard
-CI. Institutional execution and any new wall-time measurement remain pending,
-so CV-U06 is **Verification pending**.
+**Full-allocation implementation:** Workflow cores and memory now resolve from
+the allocation. STAR indexing takes the full workflow CPU/memory allowance;
+its native memory limit retains 20% overhead headroom. Viking requests all CPUs
+and RAM on one exclusive node without assuming a 256-CPU node size. The same
+symbolic thread control is available to other supported stages with concurrency
+1; their historical defaults remain explicit. This provides allocation-wide
+capacity, not a claim of full utilization by every algorithm or measured speedup.
+
+The existing resource resolver owns profile admission, reservation checks,
+Attempt resolution and retained-policy validation. Shared schema definitions
+replace duplicate CPU/memory value validation, and redundant parsing is removed.
+No new scheduler, dependency, product file, or mutable state is introduced.
+Existing numeric policies remain valid and existing Runs retain their declaration.
+The [profile guide](../../configs/README.md#profile-document) documents values;
+the preceding migration procedure creates a new profile for existing Projects.
+
+**Local verification:** 848 focused profile/resource/Doctor/onboarding/Slurm,
+submission-inspection, application-contract and E2E-harness checks passed; the
+two separately selected onboarding subprocess cases also passed. The final
+Doctor/capacity run passed 154 cases, including nested cgroup v1/v2 limits, and
+all four STAR producer fixtures passed. Generated-command and resource/resume
+materialization checks passed 53 cases, with one Linux-only containment case
+skipped on macOS. These counts describe overlapping targeted selections.
+One broader resume-execution fixture failed before any Task ran: its isolated
+interpreter loaded the older `/Users/elisteiger/dev/norad` installation and
+could not import `coolname_hash`. That fixture remains for hosted CI; no
+dependency was installed to bypass the environment mismatch. Checks used this
+worktree's source, build-generated metadata and existing cached dependencies.
+Ruff, documentation structure and whitespace checks passed. The historical
+restoration's CI result does not cover this follow-up. Hosted CI and institutional
+execution remain pending; CV-U06 remains **Verification pending**.
 
 ### CV-U07 Projects directory
 
@@ -828,10 +856,10 @@ selected during this discussion.
 
 **Implemented values:** Quickstart now states the selected Viking placement:
 account `viking-users`, partition `long`, QoS `normal`, one exclusive node,
-256 CPUs, 12 hours, site-default allocation memory, scheduler-selected node and
-private `/tmp` scratch. It identifies the retained six-library EV/PUM1 policy's
-12 workflow cores and 512-GiB workflow memory; the packaged policy owns the full
-stage thread, concurrency and memory map.
+all node CPUs/RAM, 12 hours, scheduler-selected node and private `/tmp` scratch.
+The workflow and STAR indexing use allocation-based limits; other stages retain
+the six-library EV/PUM1 settings. The packaged policy owns the full stage thread,
+concurrency and memory map.
 
 The guided EV/PUM1 continuation supplies all known study values inline: the six
 `ABE_EV_2`/`ABE_PUM1_2`, `ABE_EV_3`/`ABE_PUM1_3`, and
@@ -1178,8 +1206,11 @@ no tracked history. The `.example.yaml` was the conservative four-core policy;
 the desired policy was `configs/local_pilot_resources.csu_viking_ev_pum1.yaml`,
 introduced by `92863824`. It moved into the execution profile in `d6e54aff`;
 `5f42c8c4` retired the old filename without losing those computational values.
-The retained [Viking profile](../../configs/execution_profile.csu_viking_ev_pum1.yaml)
-preserves them. Later explicit one-thread declarations for 09/10 are retained;
+The current [Viking profile](../../configs/execution_profile.csu_viking_ev_pum1.yaml)
+now applies CV-U06's allocation-based workflow/STAR limits; the original policy
+used 12 workflow cores, 524288 MiB workflow memory, 12 STAR-index threads and
+262144 MiB STAR-index memory, with 256 CPUs requested outside the workflow.
+Other recovered stage values and later one-thread declarations for 09/10 remain;
 the retired, inactive reporting-memory map is not reintroduced.
 
 The 46 perf branches carrying the benchmark harness contained 11 harness
@@ -1212,12 +1243,13 @@ installed. Ruff, shell syntax, documentation structure and whitespace checks
 passed. The product delta is 26 net lines in seven existing files; native-tool
 execution and full regression checks remain with hosted CI.
 
-**Implementation and protection:** The packaged defaults match the retained
-profile exactly. Viking initialization and the placement example request 256
-CPUs, exclusive allocation and 12 hours. The existing admission, scheduler,
+**Historical restoration and protection:** At restoration, the packaged defaults
+matched the retained profile exactly, and Viking requested 256 CPUs, exclusive
+allocation and 12 hours. CV-U06 records the subsequent full-allocation change.
+The existing admission, scheduler,
 preview, override and immutable-resume owners are reused without new product
 code paths, schemas, files or dependencies. The retained historical profile
-remains evidence; no history or evidence was deleted. Small symbolic-admission
+provided the historical evidence described above. Small symbolic-admission
 and hosted-E2E budgets are explicit fixtures rather than implicit product defaults.
 
 **Local verification:** 733 checks passed: 695 across `test_execution_profile`,

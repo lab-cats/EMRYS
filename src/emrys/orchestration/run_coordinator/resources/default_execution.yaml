@@ -1,7 +1,7 @@
 schema_version: emrys.execution-profile.v1
 resources:
   schema_version: emrys.local-pilot-resources.v1
-  workflow_cores: 12
+  workflow_cores: allocation
   workflow_memory_mb: allocation
   stage_concurrency:
     "01": 6
@@ -13,7 +13,7 @@ resources:
     "06": 6
     "07": 12
   step_threads:
-    "00a": 12
+    "00a": workflow
     "01": 2
     "02": 1
     "06": 1
@@ -21,7 +21,7 @@ resources:
     "09": 1
     "10": 1
   stage_memory_mb:
-    "00a": 262144
+    "00a": workflow
     "00b": 16384
     "00c": 16384
     "01": 40960

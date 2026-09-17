@@ -35,6 +35,52 @@ from tests.tools.real_synthetic_e2e import (
 DEFAULT_SHA256 = "d" * 64
 
 
+@pytest.mark.parametrize("cores", (8, 96, 256))
+def test_allocation_cpu_policy_resolves_threads_and_survives_readmission(
+    cores: int,
+) -> None:
+    document = _document()
+    document["workflow_cores"] = "allocation"
+    document["step_threads"]["00a"] = "workflow"
+    policy = _policy(document)
+    resolved = resolve_resource_policy(policy, _allocation(cores=cores))
+    assert resolved.workflow_cores == resolved.threads_for("00a") == cores
+    assert resolved.declaration.workflow_cores == "allocation"
+    assert dict(resolved.declaration.step_threads)["00a"] == "workflow"
+    assert admit_resource_policy_record(resolved.policy_record()) == resolved
+    resumed = resolve_resource_policy(
+        resume_resource_policy(policy), _allocation(cores=32)
+    )
+    assert resumed.workflow_cores == resumed.threads_for("00a") == 32
+    assert resumed.policy.document() == policy.document()
+
+
+def test_workflow_threads_follow_explicit_cpu_budget_and_reject_oversubscription() -> (
+    None
+):
+    document = _document()
+    document["step_threads"]["00a"] = "workflow"
+    resolved = resolve_resource_policy(_policy(document), _allocation(cores=96))
+    assert resolved.workflow_cores == resolved.threads_for("00a") == 4
+    document["step_threads"]["01"] = "workflow"
+    document["stage_concurrency"]["01"] = 2
+    with pytest.raises(ResourceConfigError, match="concurrency x threads"):
+        _policy(document)
+
+
+def test_integral_yaml_numbers_remain_canonical_integer_tool_limits() -> None:
+    document = _document()
+    document["workflow_cores"] = 4.0
+    document["workflow_memory_mb"] = 16384.0
+    document["step_threads"]["00a"] = 4.0
+    document["stage_memory_mb"]["00a"] = 8192.0
+    resolved = resolve_resource_policy(_policy(document), _allocation())
+    assert type(resolved.workflow_cores) is int
+    assert type(resolved.workflow_memory_mb) is int
+    assert type(resolved.threads_for("00a")) is int
+    assert type(dict(resolved.stage_memory_mb)["00a"]) is int
+
+
 def _policy(
     document: dict[str, Any] | None = None,
     *,
@@ -286,7 +332,7 @@ def test_numeric_stage_memory_stays_unresolved_until_allocation_is_known() -> No
     ("mutate", "message"),
     (
         (lambda record: record.__setitem__("unknown", 1), "Additional properties"),
-        (lambda record: record.__setitem__("workflow_cores", 0), "less than"),
+        (lambda record: record.__setitem__("workflow_cores", 0), "workflow_cores"),
         (
             lambda record: record["step_threads"].__setitem__("11", 1),
             "Additional properties",
@@ -357,3 +403,20 @@ def test_resource_override_arguments_round_trip_exact_delegate_argv() -> None:
         parser.parse_args(["--workflow-cores", "0"])
     with pytest.raises(SystemExit):
         parser.parse_args(["--reporting-memory-mb", "html_report=1000"])
+
+
+def test_symbolic_resource_overrides_round_trip_delegate_argv() -> None:
+    expected = ResourceOverrides(
+        workflow_cores="allocation",
+        workflow_memory_mb="allocation",
+        step_threads=(("00a", "workflow"),),
+        stage_memory_mb=(("00a", "workflow"),),
+    )
+    parser = argparse.ArgumentParser()
+    add_resource_override_arguments(parser)
+    assert (
+        overrides_from_args(parser.parse_args(resource_override_argv(expected)))
+        == expected
+    )
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--stage-concurrency", "01=workflow"])

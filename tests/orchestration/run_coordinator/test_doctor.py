@@ -655,7 +655,7 @@ def test_doctor_refuses_incompatible_reservation_before_planning_runtime_repair(
     profile = project.source_path.parent / "runtime/profiles/default.yaml"
     profile.write_bytes(
         project_default_profile_bytes("viking").replace(
-            b"cpus_per_task: 256", b"cpus_per_task: 3"
+            b"cpus_per_task: node", b"cpus_per_task: 3"
         )
     )
     monkeypatch.setattr(
@@ -675,7 +675,7 @@ def test_doctor_refuses_incompatible_reservation_before_planning_runtime_repair(
     )
 
     assert (
-        "DOCTOR BLOCKED: Workflow cores exceed Slurm reservation: 12 > 3"
+        "DOCTOR BLOCKED: Stage 01 concurrency x threads exceeds workflow cores: 6 x 2 > 3"
         in capsys.readouterr().err
     )
     assert _snapshot(tmp_path) == before
@@ -984,7 +984,7 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
         assert f"Runtime work: {runtime_work}" not in output.err
         assert "Package-manager output records" not in output.err
         assert "Execution placement: Direct" not in output.err
-        assert "Workflow CPU ceiling: 12;" not in output.err
+        assert "Workflow CPU ceiling:" not in output.err
         assert f"Apply this {operation} plan? [y/N]" in output.err
         assert f"{operation.capitalize()} preview complete" in output.err
         assert "Checks repeat because inputs" not in output.err

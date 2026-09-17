@@ -172,14 +172,11 @@
       },
       "additionalProperties": false
     },
-    "stage_memory_map": {
+    "workflow_value_map": {
       "type": "object",
       "patternProperties": {
         "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
-          "oneOf": [
-            { "type": "integer", "minimum": 1 },
-            { "const": "workflow" }
-          ]
+          "$ref": "urn:emrys:schema:orchestration:resource-config:v1#/$defs/workflow_value"
         }
       },
       "additionalProperties": false
@@ -189,16 +186,15 @@
       "additionalProperties": false,
       "required": ["workflow_cores", "workflow_memory_mb", "stage_concurrency", "step_threads", "stage_memory_mb"],
       "properties": {
-        "workflow_cores": { "type": "integer", "minimum": 1 },
+        "workflow_cores": {
+          "$ref": "urn:emrys:schema:orchestration:resource-config:v1#/$defs/allocation_value"
+        },
         "workflow_memory_mb": {
-          "oneOf": [
-            { "type": "integer", "minimum": 1 },
-            { "const": "allocation" }
-          ]
+          "$ref": "urn:emrys:schema:orchestration:resource-config:v1#/$defs/allocation_value"
         },
         "stage_concurrency": { "$ref": "#/$defs/positive_integer_map" },
-        "step_threads": { "$ref": "#/$defs/positive_integer_map" },
-        "stage_memory_mb": { "$ref": "#/$defs/stage_memory_map" }
+        "step_threads": { "$ref": "#/$defs/workflow_value_map" },
+        "stage_memory_mb": { "$ref": "#/$defs/workflow_value_map" }
       }
     },
     "execution_plan_identity": {

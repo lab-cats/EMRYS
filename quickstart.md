@@ -126,11 +126,11 @@ settings are supplied; there is no configuration file to edit. `--execute`
 creates the Project; `validate` only checks it. Creation will not overwrite an
 existing destination. Preserve any partial directory if creation fails.
 
-The saved Viking settings request one exclusive node with 256 CPUs for 12 hours,
-using account `viking-users`, partition `long`, QoS `normal`, site-default memory
-and private temporary storage under `/tmp`. Slurm chooses the node.
-EMRYS uses the historical EV/PUM1 policy: 12 workflow cores, 512 GiB and the
-restored stage-specific thread, concurrency and memory allowances. The
+The saved Viking settings request all CPUs and RAM on one exclusive node for
+12 hours, using account `viking-users`, partition `long`, QoS `normal` and private
+temporary storage under `/tmp`. Slurm chooses the node. The workflow and STAR
+indexing use the granted, process-accessible capacity; other stages retain their
+historical thread, concurrency and memory settings. The
 saved `viking` choice supplies the placement automatically; you do not
 configure Slurm or write a resource profile. The same default applies to
 real-data Projects.

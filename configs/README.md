@@ -201,7 +201,7 @@ From an existing Project, preview placement and resource choices with
 the Project. A name identifies `runtime/profiles/NAME.yaml`. Existing files,
 including `default.yaml`, are preserved.
 
-New Viking Projects already select the historical EV/PUM1 policy. For an
+New Viking Projects already select the whole-node placement. For an
 existing Project with an older placement, create a named Viking profile:
 
 ```bash
@@ -242,12 +242,33 @@ observed or free memory. An omitted memory request remains unknown even when
 exclusivity is requested. Placement-only resume compares its retained Run policy;
 actual allocation checks still run after the scheduler starts the job.
 
-The default policy restores the historical six-library EV/PUM1 settings:
-12 workflow cores, 524288 MiB (512 GiB) and explicit stage allowances. Viking
-requests 256 CPUs, exclusive placement and 12 hours; allocation memory comes
-from the site. Doctor and Run show these separate allocation and workflow limits.
-Existing explicit profiles remain unchanged, and resume preserves the
-predecessor Run's policy.
+The default workflow uses all process-accessible CPUs and RAM granted to the
+allocation. STAR indexing uses that entire workflow allowance, with its native
+RAM limit retaining 20% headroom for overhead. Other stages retain the recovered
+EV/PUM1 thread, concurrency and memory settings; these can be explicitly changed
+within the workflow capacity. Single-threaded tools do not gain parallelism from
+a larger allocation. Viking requests one exclusive node, all node RAM and 12 hours.
+Doctor and Run show the requested policy, then the actual numeric limits inside
+the allocation. Existing explicit profiles and immutable Run policies are preserved.
+
+For an existing Project, create and select a new profile to replace old explicit
+workflow/STAR caps. From that Project directory, preview, then create it:
+
+```bash
+emrys profile create full-node --site viking \
+  --workflow-cores allocation --workflow-memory-mb allocation \
+  --step-threads 00a=workflow --stage-memory-mb 00a=workflow
+emrys profile create full-node --site viking \
+  --workflow-cores allocation --workflow-memory-mb allocation \
+  --step-threads 00a=workflow --stage-memory-mb 00a=workflow --execute
+emrys doctor --profile full-node
+emrys run --profile full-node
+```
+
+Review the account, partition and other site fields in the preview. This creates
+`runtime/profiles/full-node.yaml`; it preserves `default.yaml` and existing Runs.
+A resumed Run retains its previous resource declaration. Use a new Run for the
+new computational policy.
 
 ### Profile document
 
@@ -256,10 +277,10 @@ placement (where to run):
 
 | Under `resources` | Meaning |
 |---|---|
-| `workflow_cores` | Total CPU budget for the workflow. |
+| `workflow_cores` | Total CPU budget; `allocation` uses the process-accessible allocated CPUs. |
 | `workflow_memory_mb` | Total memory budget in MiB; `allocation` uses the available allocation. |
 | `stage_concurrency` | Maximum simultaneous tasks for each repeatable stage. |
-| `step_threads` | Threads per task for stages that support threaded tools. |
+| `step_threads` | Threads per task for supported stages; `workflow` uses the full workflow CPU budget and requires stage concurrency 1. |
 | `stage_memory_mb` | Memory budget per stage task in MiB; `workflow` uses the workflow budget. |
 
 For Steps `00a`, `00c`, `01`, `02`, `04`, and `05`, the resolved stage budget
@@ -287,7 +308,8 @@ For a site administrator configuring Slurm, these fields are under `placement`:
 
 | Field | Value |
 | --- | --- |
-| `memory_mb` | A positive integer in MiB. `null` omits the memory request and leaves it to site policy; establish adequate site memory before using it. |
+| `cpus_per_task` | A positive integer, or `node` with `exclusive: true` to request every CPU on one node without fixing its size. |
+| `memory_mb` | Positive MiB, `0` for all node memory (`--mem=0`), or `null` to leave the request to site policy. Exclusivity alone does not request all RAM. |
 | `time` | The wall-time limit; use a quoted `"HH:MM:SS"` value, such as `"08:00:00"`. |
 | `modules` without module setup | `mode: none`, `init: ""`, and `load: []`. |
 | `modules` with module setup | `mode: exact`, an absolute path to the real, nonsymlink initialization file in `init`, and a nonempty list of exact module names in `load`. |
