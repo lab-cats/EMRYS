@@ -627,9 +627,7 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
         str(item["machine_key"]): str(item["step_id"])
         for item in plan.run.analysis.profile["owner_tasks"]
     }
-    records_by_step = {
-        owners[str(record["machine_key"])]: record for record in records
-    }
+    records_by_step = {owners[str(record["machine_key"])]: record for record in records}
     step09 = records_by_step["09"]
     assert {item["role"] for item in step09["inputs"]} == {
         "sample_manifest",
@@ -4031,9 +4029,7 @@ def test_public_watch_selected_request_is_one_read_only_nonterminal_snapshot(
     def forbidden(*args, **kwargs):
         pytest.fail("watch must not enter workflow, create a log, or choose a Run")
 
-    monkeypatch.setattr(
-        control.slurm_submission, "observe_submission_request", observe
-    )
+    monkeypatch.setattr(control.slurm_submission, "observe_submission_request", observe)
     monkeypatch.setattr(control, "_resolve_run_argument", forbidden)
     monkeypatch.setattr(control, "open_attempt_log", forbidden)
     monkeypatch.setattr(control._inspection_presentation, "RefreshWorker", forbidden)
@@ -4092,7 +4088,9 @@ def test_public_watch_run_uses_existing_selection_and_one_scientific_snapshot(
     before = _file_snapshot(project.parent)
     argv = ["--project", str(project), "--watch", *([root.name] if explicit else [])]
     assert (
-        control.inspect_from_args(_parsed_arguments(control.configure_inspect_parser, argv))
+        control.inspect_from_args(
+            _parsed_arguments(control.configure_inspect_parser, argv)
+        )
         == 0
     )
     assert calls == [root]

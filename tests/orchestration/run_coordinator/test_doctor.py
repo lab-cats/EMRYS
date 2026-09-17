@@ -3126,9 +3126,7 @@ def test_dependent_project_requires_the_source_projects_replacement(
         "load_runtime_profile_contract",
         lambda *_args: (profile_bytes, ()),
     )
-    _patch_linux(
-        monkeypatch, lambda _name: pytest.fail("dependent admitted repair")
-    )
+    _patch_linux(monkeypatch, lambda _name: pytest.fail("dependent admitted repair"))
 
     with pytest.raises(doctor.DoctorRepairError) as failure:
         doctor._build_repair_plan(_result(project, ready=False, inspection=inspection))

@@ -113,9 +113,13 @@ def reduce_navigation(
                     state,
                     search_input=None,
                     search_error=error,
-                    search_query=candidate if candidate and not error else state.search_query,
+                    search_query=candidate
+                    if candidate and not error
+                    else state.search_query,
                     match_line=match if not error else None,
-                    scroll=min(match, max_scroll) if match is not None else state.scroll,
+                    scroll=min(match, max_scroll)
+                    if match is not None
+                    else state.scroll,
                     follow=False if match is not None else state.follow,
                 ),
                 None,
@@ -125,7 +129,9 @@ def reduce_navigation(
         if key in (b"\x7f", b"\b"):
             return replace(state, search_input=state.search_input[:-1]), None
         if len(key) == 1 and 32 <= key[0] <= 126:
-            return replace(state, search_input=state.search_input + key.decode("ascii")), None
+            return replace(
+                state, search_input=state.search_input + key.decode("ascii")
+            ), None
         return state, None
     if key in (b"q", b"Q", b"\x04", b""):
         return state, "quit"
@@ -145,15 +151,27 @@ def reduce_navigation(
             if key == b"N"
             else tuple(line for line in matches if line > anchor)
         )
-        match = candidates[0] if candidates else (matches[-1] if key == b"N" else matches[0])
-        return replace(state, match_line=match, scroll=min(match, max_scroll), follow=False, count=""), None
+        match = (
+            candidates[0]
+            if candidates
+            else (matches[-1] if key == b"N" else matches[0])
+        )
+        return replace(
+            state,
+            match_line=match,
+            scroll=min(match, max_scroll),
+            follow=False,
+            count="",
+        ), None
     if key in _VIEW_KEYS or key == b"\t":
         view = (
             ("details" if state.view == "overview" else "overview")
             if key == b"\t"
             else _VIEW_KEYS[key]
         )
-        return replace(state, view=view, scroll=0, follow=view == "evidence", count=""), None
+        return replace(
+            state, view=view, scroll=0, follow=view == "evidence", count=""
+        ), None
     if key in (b"r", b"R", b"[", b"]"):
         if key in (b"[", b"]"):
             state = replace(
@@ -172,7 +190,9 @@ def reduce_navigation(
         if state.count:
             delta = (1 if delta > 0 else -1) * int(state.count)
         scroll = max(0, state.scroll + delta)
-        return replace(state, scroll=scroll, follow=scroll >= max_scroll, count=""), None
+        return replace(
+            state, scroll=scroll, follow=scroll >= max_scroll, count=""
+        ), None
     if key in _TOP_KEYS:
         return replace(state, scroll=0, follow=max_scroll == 0, count=""), None
     if key in _BOTTOM_KEYS:
@@ -350,9 +370,7 @@ class StreamTail:
 def read_tail(source: StreamSource, previous: StreamTail | None = None) -> StreamTail:
     """Project the shared stream owner as one bounded selected tail."""
     state = (
-        previous.state
-        if previous is not None and previous.source == source
-        else None
+        previous.state if previous is not None and previous.source == source else None
     )
     cache = dashboard.StreamCache(
         source.path,
@@ -1210,15 +1228,11 @@ def watch(
                         snapshot, now=datetime.now(UTC), query=navigation.search_query
                     )
                     if render_error:
-                        navigation = replace(
-                            navigation, search_error=render_error
-                        )
+                        navigation = replace(navigation, search_error=render_error)
                     body_height = max(1, console.size.height - layout["controls"].size)
                     max_scroll = max(0, len(rows) - body_height)
                     navigation = fit_navigation(navigation, max_scroll, matches)
-                    layout["body"].update(
-                        Text("\n").join(rows[navigation.scroll :])
-                    )
+                    layout["body"].update(Text("\n").join(rows[navigation.scroll :]))
                 else:
                     layout["body"].update(
                         render_dashboard(

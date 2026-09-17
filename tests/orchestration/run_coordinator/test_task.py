@@ -480,7 +480,9 @@ def _validate_verified(
 
 def _step00c_plan(
     tmp_path: Path,
-) -> tuple[workflow_fixture.WorkflowFixture, task.TaskPlan, dict[str, Any], dict[str, Any]]:
+) -> tuple[
+    workflow_fixture.WorkflowFixture, task.TaskPlan, dict[str, Any], dict[str, Any]
+]:
     built = workflow_fixture.build(tmp_path)
     workflow_fixture.materialize_active_run_lock(built)
     machine_key = "emrys.stage.construct_FASTA_sidecars.v1"

@@ -1163,8 +1163,6 @@ def test_manifest_init_pairs_by_the_admitted_file_not_a_symlink_alias(
     assert rows[0]["r2_fastq"] == str(canonical[1])
 
 
-
-
 def test_synthetic_init_is_dry_run_first_and_refuses_predecessor(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

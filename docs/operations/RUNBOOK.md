@@ -614,7 +614,7 @@ emrys runtime discover --project /absolute/dependent/project.yaml --from-project
 
 Review the replacement and answer `y`; noninteractive automation adds
 `--execute` to that command. Preserve previous generations and any partial or
-locked publication for [recovery](TROUBLESHOOTING.md#runtime-and-dependencies).
+locked publication for [recovery](TROUBLESHOOTING.md#project-and-runtime-checks).
 
 ## Dependency maintenance
 

@@ -428,6 +428,7 @@ class StreamCache:
             text = "\n".join(text.split("\n")[-self.tail_lines :])
         return text
 
+
 def sanitize_text(value):
     """Remove terminal control sequences while preserving tabs and newlines."""
     value = ANSI_OSC_RE.sub("", value)
@@ -1390,8 +1391,10 @@ def render_view(view):
         if overflow:
             if panel.scrollable:
                 end = min(len(panel.lines), start + visible_height)
-                arrows = ("^" if start else "-") + "/" + (
-                    "v" if end < len(panel.lines) else "-"
+                arrows = (
+                    ("^" if start else "-")
+                    + "/"
+                    + ("v" if end < len(panel.lines) else "-")
                 )
                 message = "[%s Up/Down] Current Work lines %d-%d of %d" % (
                     arrows,
