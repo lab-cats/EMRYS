@@ -258,8 +258,12 @@ def test_symbolic_declaration_is_allocation_independent_and_persistable() -> Non
     }
     assert dict(first.step_threads) == {
         "00a": 4,
+        "00c": 1,
         "01": 4,
         "02": 1,
+        "02b": 1,
+        "04": 1,
+        "05": 1,
         "06": 4,
         "08": 1,
         "09": 1,
