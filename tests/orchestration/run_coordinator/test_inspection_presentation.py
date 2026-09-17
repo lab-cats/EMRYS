@@ -1304,8 +1304,15 @@ def test_dashboard_pipeline_separates_columns_from_semantic_state() -> None:
         "normal",
         "value",
         "dim",
-        "green",
+        "dim",
     ]
+    assert row[-1] == ("PENDING", "dim")
+    alignment = next(
+        item
+        for item in rows[1:]
+        if isinstance(item, list) and item[0][0].strip() == "01"
+    )
+    assert alignment[-1] == ("WAITING", "yellow")
 
 
 def test_action_keys_cannot_override_legacy_navigation(tmp_path, monkeypatch):
