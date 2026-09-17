@@ -140,6 +140,7 @@ def test_setup_prompts_for_and_publishes_closed_cli_defaults(
     (root / "src/emrys").mkdir(parents=True)
     (root / "pyproject.toml").write_text("[project]\nname='emrys'\n")
     for key in ("EMRYS_PROJECTS_ROOT", "EMRYS_SITE", "EMRYS_LOG_ROOT"):
+        monkeypatch.setenv(key, "")  # Track restoration even when initially absent.
         monkeypatch.delenv(key, raising=False)
     stderr = Terminal()
     monkeypatch.chdir(projects)
@@ -236,6 +237,7 @@ def test_setup_is_dry_run_first_and_preserves_an_existing_file(
     (root / "src/emrys").mkdir(parents=True)
     (root / "pyproject.toml").write_text("[project]\nname='emrys'\n")
     for key in ("EMRYS_PROJECTS_ROOT", "EMRYS_SITE", "EMRYS_LOG_ROOT"):
+        monkeypatch.setenv(key, "")  # Track restoration even when initially absent.
         monkeypatch.delenv(key, raising=False)
     monkeypatch.chdir(root)
 
