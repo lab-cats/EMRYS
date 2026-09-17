@@ -14,7 +14,7 @@ from markdown_it import MarkdownIt
 CANONICAL_DOCUMENTS = {
     "AGENTS.md": "# EMRYS safety guard",
     "README.md": "# EMRYS: Epic Molecular Read Yield System",
-    "quickstart.md": "# EMRYS quickstart: synthetic Project to Results",
+    "quickstart.md": "# EMRYS quickstart: Viking data to Results",
     "configs/README.md": "# Configuration and input guide",
     "docs/README.md": "# Documentation",
     "docs/architecture/README.md": "# Architecture index",
