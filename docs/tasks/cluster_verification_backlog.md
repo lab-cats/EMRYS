@@ -894,7 +894,7 @@ values with unexplained placeholders or leave the user to infer them. This
 records the requirement; no new site settings or dataset-specific values were
 selected during this discussion.
 
-**Implemented values:** Quickstart now states the selected Viking placement:
+**Implemented values:** The Viking profile now selects:
 account `viking-users`, partition `long`, QoS `normal`, one exclusive node,
 all node CPUs/RAM, 12 hours, scheduler-selected node and private `/tmp` scratch.
 The workflow and STAR indexing use allocation-based limits; other stages retain
