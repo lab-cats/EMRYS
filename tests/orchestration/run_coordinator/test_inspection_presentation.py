@@ -1019,13 +1019,14 @@ calls = 0
 def refresh(snapshot, **_kwargs):
     global calls
     calls += 1
+    observed_at = datetime(2026, 9, 17, 2, 0, calls, tzinfo=UTC)
     return replace(
         snapshot,
         streams=(source,),
         tail=view.read_tail(source, snapshot.tail),
         scheduler={'state': 'RUNNING'},
-        scheduler_at=datetime.now(UTC),
-        trace_at=datetime.now(UTC),
+        scheduler_at=observed_at,
+        trace_at=observed_at,
         next_action=f'refresh-{calls}',
     )
 view.refresh_snapshot = refresh
@@ -1069,10 +1070,10 @@ raise SystemExit(view.watch(
                 )
                 if all(needle in plain for needle in needles):
                     return output, plain
-        pytest.fail((needles, output[-3000:]))
+        pytest.fail(f"missing {needles!r} in {output[-3000:]!r}")
 
     try:
-        _initial, plain = read_until(b"FOLLOWING", b"line-100", b"refresh-1")
+        _initial, plain = read_until(b"FOLLOWING", b"line-100", b"2026-09-17 02:00:01")
         assert b"line-001" not in plain
 
         os.write(master, b"10k")
@@ -1081,7 +1082,7 @@ raise SystemExit(view.watch(
         with log.open("a", encoding="utf-8") as stream:
             stream.write("line-101\n")
         os.write(master, b"r")
-        _refresh, plain = read_until(b"PAUSED", b"refresh-2")
+        _refresh, plain = read_until(b"PAUSED", b"2026-09-17 02:00:02")
         assert b"line-101" not in plain
 
         os.write(master, b"G")
