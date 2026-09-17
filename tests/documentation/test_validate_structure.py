@@ -17,7 +17,7 @@ VALIDATOR = REPO_ROOT / "scripts" / "documentation" / "validate_structure.py"
 CANONICAL_H1S = {
     "AGENTS.md": "# EMRYS safety guard",
     "README.md": "# EMRYS: Epic Molecular Read Yield System",
-    "quickstart.md": "# EMRYS quickstart: synthetic Project to Results",
+    "quickstart.md": "# EMRYS quickstart: Viking data to Results",
     "configs/README.md": "# Configuration and input guide",
     "docs/README.md": "# Documentation",
     "docs/architecture/README.md": "# Architecture index",

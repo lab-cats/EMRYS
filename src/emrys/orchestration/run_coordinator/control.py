@@ -32,7 +32,9 @@ from emrys.libraries.application_logging import (
     LogControls,
     add_log_arguments,
     add_verbose_argument,
+    console_field,
     console_print,
+    console_status,
     event,
     field,
     open_attempt_log,
@@ -987,16 +989,17 @@ def _schedule(
         log_dir=_absolute(workspace) / "logs",
         request_token=request_token,
     )
-    console_print(f"Project: {workspace.name!a}", style="bold")
+    console_field("Project", ascii(workspace.name), value_style="bold")
     if command == "run":
         analysis = getattr(arguments, "analysis", None)
-        console_print(
-            f"Analysis: {analysis!a}"
+        console_field(
+            "Analysis",
+            ascii(analysis)
             if analysis is not None
-            else "Analysis: selected from the Project on the compute node"
+            else "selected from the Project on the compute node",
         )
     else:
-        console_print(f"Run: {inspection.human_run_name(arguments.run)}")
+        console_field("Run", inspection.human_run_name(arguments.run))
     for line in _submission_summary(profile, controls.verbose):
         console_print(line)
     if controls.verbose:
@@ -1089,7 +1092,7 @@ def _schedule(
         raise ControlError(
             f"Could not prepare submission request {request_root}; sbatch was not invoked: {exc}"
         ) from exc
-    console_print(f"Submission request: {request_root}")
+    console_field("Submission request", request_root)
     job_id = slurm_submission.submit(
         submission, record_path=request_root / "sbatch.stdout"
     )
@@ -1097,8 +1100,17 @@ def _schedule(
     print(f"JOB_NAME={submission.job_name}")
     print(f"OUT={str(submission.stdout_pattern).replace('%j', job_id)}")
     print(f"ERR={str(submission.stderr_pattern).replace('%j', job_id)}")
-    print(f"Submitted Slurm job {job_id}; completion is not yet verified.")
-    print(f"Watch progress: emrys watch {job_id}")
+    console_print(
+        f"Submitted Slurm job {job_id}; completion is not yet verified.",
+        style="bold yellow",
+        file=sys.stdout,
+    )
+    console_field(
+        "Watch progress",
+        f"emrys watch {job_id}",
+        value_style="bold cyan",
+        file=sys.stdout,
+    )
     return 0
 
 
@@ -1350,23 +1362,29 @@ def _execute_plan(
             )
 
     if status == "succeeded":
-        console_print(f"Evidence: {outcome.receipt_path}")
+        console_field("Evidence", outcome.receipt_path)
         if not _reporting_applicable(plan):
             observe_reporting(
                 "reporting_not_applicable",
                 "Reporting is not applicable to this partial scientific Run.",
             )
             close_log_best_effort()
-            console_print("Reporting: not applicable (partial scientific Run)")
-            console_print("Run complete: requested scientific work is verified.")
+            console_field("Reporting", "not applicable (partial scientific Run)")
+            console_print(
+                "Run complete: requested scientific work is verified.",
+                style="bold green",
+            )
             return 0
         if not report_enabled:
             observe_reporting(
                 "reporting_skipped", "Reporting was disabled for this execution."
             )
             close_log_best_effort()
-            console_print("Reporting: skipped (--no-report)")
-            console_print("Scientific work complete; reporting was skipped.")
+            console_field("Reporting", "skipped (--no-report)")
+            console_print(
+                "Scientific work complete; reporting was skipped.",
+                style="bold yellow",
+            )
             return 0
         observe_reporting("reporting_started", "Generating downstream reports.")
         try:
@@ -1402,7 +1420,10 @@ def _execute_plan(
         )
         for line in result_lines:
             console_print(line)
-        console_print("Run complete: scientific Results and reports are verified.")
+        console_print(
+            "Run complete: scientific Results and reports are verified.",
+            style="bold green",
+        )
         return 0
     close_log_best_effort()
     print_failure(
@@ -1435,10 +1456,9 @@ def _print_plan(
 ) -> None:
     reused = plan.task_count - plan.new_task_count
     resources = plan.resources
-    console_print(
-        f"Run: {inspection.human_run_name(plan.run.run_id)}", style="bold blue"
-    )
-    console_print(f"Location: {plan.run_root}")
+    field = console_field
+    field("Run", inspection.human_run_name(plan.run.run_id), value_style="bold blue")
+    field("Location", plan.run_root)
     full_analysis = _reporting_applicable(plan)
     if full_analysis:
         boundary = "complete analysis"
@@ -1455,8 +1475,8 @@ def _print_plan(
     processing_source = plan.run.execution_plan.record["identity"].get(
         "processing_source"
     )
-    console_print(f"Work: {plan.new_task_count} pending, {reused} reusable")
-    console_print(f"Reporting: {reporting}")
+    field("Work", f"{plan.new_task_count} pending, {reused} reusable")
+    field("Reporting", reporting)
     if verbose:
         details = [
             f"Project: {plan.run.analysis.source_path.parent.name!a}",
@@ -2442,14 +2462,17 @@ def inspect_from_args(
     ) as exc:
         return _control_failure(exc)
     present = partial(console_print, file=sys.stdout)
-    present(f"Run: {inspection.human_run_name(run_root.name)}", style="bold blue")
+    present_field = partial(console_field, file=sys.stdout)
+    present_status = partial(console_status, file=sys.stdout)
+    run_name = inspection.human_run_name(run_root.name)
+    present_field("Run", run_name, value_style="bold blue")
     if completion := _inspection_presentation.completion_line(observed):
         present(completion, style="bold green")
-    present(f"Run admission: {observed.integrity}", style="bold")
+    present_status("Run admission", observed.integrity)
     latest = observed.latest_attempt
-    present(f"Attempt outcome: {observed.attempt_outcome}", style="bold")
-    present(f"Scientific Results: {observed.results_status}", style="bold")
-    present(f"Reporting admission: {observed.reporting_status}", style="bold")
+    present_status("Attempt outcome", observed.attempt_outcome)
+    present_status("Scientific Results", observed.results_status)
+    present_status("Reporting admission", observed.reporting_status)
     if verbose or observed.lock_observation != "no lock":
         print(f"Run lock: {observed.lock_observation}")
     if latest is not None and observed.lock_observation in {
@@ -2615,9 +2638,10 @@ def inspect_from_args(
             _print_safe(f"{blocker_label}: {blocker}")
     if verbose or observed.recovery_available:
         print(f"Recovery available: {'yes' if observed.recovery_available else 'no'}")
-    present(
-        f"Next supported action: {_next_supported_action(observed)}",
-        style="bold cyan",
+    present_field(
+        "Next supported action",
+        _next_supported_action(observed),
+        value_style="bold",
     )
     for line in result_lines:
         _print_safe(line)

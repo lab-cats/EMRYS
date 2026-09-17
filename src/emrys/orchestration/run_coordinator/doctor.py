@@ -50,6 +50,7 @@ from emrys.libraries.application_logging import (
     LogControlError,
     LogControls,
     add_log_arguments,
+    console_field,
     console_print,
     event,
     field,
@@ -121,6 +122,7 @@ class _DoctorTiming:
     def __init__(self) -> None:
         self.context = "head/local"
         self.detail = False
+        self.summary = False
         self.phases: list[dict[str, object]] = []
         self.runtime_probes: list[tuple[str, dict[str, object]]] = []
         self.scheduler_timing: dict[str, object] | None = None
@@ -201,6 +203,25 @@ class _DoctorTiming:
         }
 
     def finish(self, elapsed: float | None, status: int | None) -> None:
+        if self.summary:
+            slowest = max(
+                (
+                    values
+                    for values in self.phases
+                    if isinstance(values["elapsed_seconds"], (int, float))
+                ),
+                key=lambda values: float(values["elapsed_seconds"]),
+                default=None,
+            )
+            total = "unavailable" if elapsed is None else f"{elapsed:.3f}s"
+            detail = f"{total} including confirmation"
+            if slowest is not None:
+                detail += (
+                    f"; slowest phase: {slowest['phase_name']} "
+                    f"({float(slowest['elapsed_seconds']):.3f}s)"
+                )
+            outcome = "interrupted or failed" if status is None else f"exit {status}"
+            console_field("Doctor elapsed", f"{detail}; {outcome}", value_style="bold")
         if self.detail and self.scheduler_timing is not None:
             observed = self.scheduler_timing
             _stderr(
@@ -1995,6 +2016,7 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
 def _doctor_from_args(arguments: argparse.Namespace, timing: _DoctorTiming) -> int:
     progress = partial(phase_progress, on_complete=timing.observe)
     timing.detail = arguments.verbose
+    timing.summary = arguments.repair
     if arguments.execute and not arguments.repair:
         print("emrys: error: --execute requires --repair", file=sys.stderr)
         return 2

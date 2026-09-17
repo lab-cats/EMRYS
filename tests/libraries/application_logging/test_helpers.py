@@ -19,7 +19,9 @@ import pytest
 from emrys.libraries.application_logging import helpers
 from emrys.libraries.application_logging.helpers import (
     LogValueError,
+    console_field,
     console_print,
+    console_status,
     field,
     phase_progress,
     render_failure_summary,
@@ -49,6 +51,30 @@ def test_terminal_output_preserves_literal_text_and_plain_redirects(
     disabled = Terminal()
     console_print(label, style="bold green", file=disabled)
     assert disabled.getvalue() == plain.getvalue()
+
+
+def test_fields_separate_labels_from_values_and_keep_plain_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Terminal(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    monkeypatch.setenv("TERM", "xterm-256color")
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    terminal = Terminal()
+    console_field("Project", "study[red]", file=terminal)
+    console_status("Readiness", "READY", file=terminal)
+    rendered = terminal.getvalue()
+    assert "\x1b[" in rendered
+    assert "Project" in rendered and "study[red]" in rendered
+    assert "Readiness" in rendered and "READY" in rendered
+    assert rendered.count("\x1b[") >= 4
+
+    plain = io.StringIO()
+    console_field("Project", "study[red]", file=plain)
+    console_status("Readiness", "READY", file=plain)
+    assert plain.getvalue() == "Project: study[red]\nReadiness: READY\n"
 
 
 def test_phase_progress_reports_actual_completion_and_failure_without_percent(

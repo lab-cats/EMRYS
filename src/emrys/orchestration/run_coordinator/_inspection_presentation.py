@@ -839,13 +839,27 @@ def render_watch_text(snapshot, *, now):
     from rich.text import Text
 
     result = Text(render_snapshot(snapshot, now=now))
+    prefix = r"(?:\[[^\]\n]{1,80}\]\s*|20\d\d-\d\d-\d\d(?:T|\s)\S+\s+)*"
     for pattern, style in (
         (r"(?m)^EMRYS inspection — read-only$", "bold cyan"),
         (r"(?m)^(?:Scheduler:|Run evidence as of:|Stream:).*$", "bold cyan"),
-        (r"(?im)^(?:error|fatal|exception|traceback|failed).*$", "red"),
-        (r"(?im)^(?:warning|warn).*$", "yellow"),
-        (r"(?im)^(?:finished job|complete|succeeded|done).*$", "green"),
-        (r"(?im)^(?:info|rule |localrule |checkpoint ).*$", "cyan"),
+        (
+            rf"(?im)^{prefix}(?:error|fatal|exception|traceback|failed)\b.*$",
+            "red",
+        ),
+        (rf"(?im)^{prefix}(?:warning|warn)\b.*$", "yellow"),
+        (
+            rf"(?im)^{prefix}(?:finished job|run complete|project ready|"
+            r"emrys is ready|complete|succeeded|done)\b.*$",
+            "green",
+        ),
+        (rf"(?im)^{prefix}(?:info|debug|rule |localrule |checkpoint ).*$", "cyan"),
+        (r"""(?im)^.*"(?:level|severity)"\s*:\s*"(?:error|fatal)".*$""", "red"),
+        (
+            r"""(?im)^.*"(?:level|severity)"\s*:\s*"(?:warning|warn)".*$""",
+            "yellow",
+        ),
+        (r"""(?im)^.*"(?:level|severity)"\s*:\s*"(?:info|debug)".*$""", "cyan"),
     ):
         result.highlight_regex(pattern, style)
     return result

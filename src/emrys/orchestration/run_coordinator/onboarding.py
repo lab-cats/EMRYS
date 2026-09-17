@@ -46,7 +46,9 @@ from emrys.evidence.runtime_availability.inspector import (
 )
 from emrys.libraries.application_logging import (
     add_verbose_argument,
+    console_field,
     console_print,
+    console_status,
     phase_progress,
 )
 from emrys.libraries.exclusive_publication import (
@@ -1128,18 +1130,19 @@ def _print_project_preview(
         raise OnboardingError(f"scientific setup is invalid: {exc}") from exc
 
     present = partial(console_print, file=sys.stdout)
+    present_field = partial(console_field, file=sys.stdout, indent="  ")
     site = getattr(arguments, "site", None) or "direct"
     libraries = ", ".join(str(row["sample_id"]) for row in samples)
     present("Project preparation", style="bold blue")
-    print(
-        f"  Output directory: {output}",
-        f"  Libraries ({len(samples)}): {libraries}",
-        f"  Analysis: {answers['analysis_name']}; site: {site}",
-        f"  Reference: {answers['reference_fasta']}",
-        f"  Partitions: {len(partitions.rows)}",
-        f"  Comparison: {answers['control_condition']} -> "
-        f"{answers['treatment_condition']}; target {answers['target_change']}",
-        sep="\n",
+    present_field("Output directory", output)
+    present_field(f"Libraries ({len(samples)})", libraries)
+    present_field("Analysis", f"{answers['analysis_name']}; site: {site}")
+    present_field("Reference", answers["reference_fasta"])
+    present_field("Partitions", len(partitions.rows))
+    present_field(
+        "Comparison",
+        f"{answers['control_condition']} -> {answers['treatment_condition']}; "
+        f"target {answers['target_change']}",
     )
     if verbose:
         present("Detailed study review", style="bold blue")
@@ -1189,7 +1192,6 @@ def _print_project_preview(
 def init_project_from_args(arguments: argparse.Namespace) -> int:
     """Plan or create one validated Project root around existing inputs."""
 
-    present = partial(console_print, file=sys.stdout)
     try:
         output = _require_external_absent_output(
             Path.cwd() / arguments.project_name, source_root()
@@ -1254,7 +1256,12 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             before_completion=lambda _published: admission.require_inputs_unchanged(),
         )
         admission.require_inputs_unchanged()
-        present(f"Project ready: {output / 'project.yaml'}", style="green")
+        console_field(
+            "Project ready",
+            output / "project.yaml",
+            value_style="bold green",
+            file=sys.stdout,
+        )
         return 0
     except (
         OSError,
@@ -1629,10 +1636,15 @@ def validate_from_args(arguments: argparse.Namespace) -> int:
         OnboardingError,
         orchestration_contracts.ContractValidationError,
     ) as exc:
-        console_print(f"Project validation: FAIL — {exc}", style="red", file=sys.stderr)
+        console_field(
+            "Project validation",
+            f"FAIL — {exc}",
+            value_style="bold red",
+            file=sys.stderr,
+        )
         return 1
     verbose = getattr(arguments, "verbose", False)
-    console_print("Project validation: PASS", style="green", file=sys.stdout)
+    console_status("Project validation", "PASS", file=sys.stdout)
     if not verbose:
         return 0
     project = result.project
@@ -2065,11 +2077,7 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
             if verbose:
                 print(f"Source seal: {selected.seal_path}")
         status = "READY" if inspection.required_ready else "NOT READY"
-        console_print(
-            f"Runtime discovery: {status}",
-            style=f"bold {'green' if inspection.required_ready else 'red'}",
-            file=sys.stdout,
-        )
+        console_status("Runtime discovery", status, file=sys.stdout)
         if verbose:
             print("Runtime checks:")
             print(f"  emrys: PASS ({__version__})")
@@ -2085,7 +2093,12 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
             return 0
         if donor is None:
             publish_runtime_profile(inspection)
-        print(f"Runtime inventory admitted: {inspection.profile_path}")
+        console_field(
+            "Runtime inventory admitted",
+            inspection.profile_path,
+            value_style="bold green",
+            file=sys.stdout,
+        )
         return 0
     except RuntimeDiscoveryError as exc:
         print(f"NOT READY: {exc}", file=sys.stderr)

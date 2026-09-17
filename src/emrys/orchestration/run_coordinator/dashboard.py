@@ -1561,7 +1561,15 @@ def pipeline_lines(model, now, width, include_summary=True, terminal_state=None)
     lines = []
     if include_summary:
         lines.extend([(progress_line(model, width, terminal_state), "cyan"), ""])
-    lines.append("STEP    STAGE                       DONE     ELAPSED      STATE")
+    lines.append(
+        [
+            ("STEP    ", "label"),
+            ("STAGE                       ", "label"),
+            ("DONE     ", "label"),
+            ("ELAPSED      ", "label"),
+            ("STATE", "label"),
+        ]
+    )
     active_counts = Counter(info["stage"] for info in model["active"].values())
     for key, title, _, _, _, _ in STAGES:
         expected = model.get("expected", {}).get(key)
@@ -1592,18 +1600,16 @@ def pipeline_lines(model, now, width, include_summary=True, terminal_state=None)
             stop = model["finished"].get(key) if state == "DONE" else now
             elapsed = duration((stop or now) - start)
         lines.append(
-            (
-                "%-7s %-27s %2d/%-4s  %-12s %s"
-                % (
-                    key,
-                    title,
-                    done,
-                    "?" if expected is None else expected,
-                    elapsed,
-                    state,
+            [
+                ("%-7s " % key, "cyan_bold"),
+                ("%-27s " % title, "normal"),
+                (
+                    "%2d/%-4s  " % (done, "?" if expected is None else expected),
+                    "value",
                 ),
-                style,
-            )
+                ("%-12s " % elapsed, "dim"),
+                (state, style),
+            ]
         )
     return lines
 
@@ -2497,6 +2503,8 @@ def snapshot(job_id, slurm, identity, model):
     print("Run: %s" % identity.get("run_id", "-"))
     print("Configuration: %s" % configuration_text(identity))
     for line in pipeline_lines(model, now, 80, terminal_state=terminal_state):
+        if isinstance(line, list):
+            line = "".join(segment[0] for segment in line)
         print(line[0] if isinstance(line, tuple) else line)
 
 

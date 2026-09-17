@@ -636,7 +636,12 @@ def test_watch_log_styles_preserve_every_literal_line(tmp_path):
         scheduler_at=NOW,
         tail=view.StreamTail(
             source,
-            "INFO: preparing\nWARNING: delayed\nERROR: failed\nFinished job 7.\nunaltered text",
+            "INFO: preparing\n"
+            "[2026-09-16 12:00:00] WARNING: delayed\n"
+            "2026-09-16T12:00:01Z ERROR: failed\n"
+            '{"timestamp":"2026-09-16T12:00:02Z","level":"INFO","message":"checking"}\n'
+            "Finished job 7.\n"
+            "unaltered text",
             diagnostic="Current diagnostic bytes; content not verified",
             observed_at=NOW,
         ),
@@ -647,8 +652,14 @@ def test_watch_log_styles_preserve_every_literal_line(tmp_path):
         styled.plain[span.start : span.end]: str(span.style) for span in styled.spans
     }
     assert styled_fragments["INFO: preparing"] == "cyan"
-    assert styled_fragments["WARNING: delayed"] == "yellow"
-    assert styled_fragments["ERROR: failed"] == "red"
+    assert styled_fragments["[2026-09-16 12:00:00] WARNING: delayed"] == "yellow"
+    assert styled_fragments["2026-09-16T12:00:01Z ERROR: failed"] == "red"
+    assert (
+        styled_fragments[
+            '{"timestamp":"2026-09-16T12:00:02Z","level":"INFO","message":"checking"}'
+        ]
+        == "cyan"
+    )
     assert styled_fragments["Finished job 7."] == "green"
     assert "unaltered text" not in styled_fragments
 
@@ -1276,6 +1287,25 @@ def test_parity_views_preserve_panels_styles_and_literal_log_text(
         )
         assert len(text.plain.splitlines()) == height
         assert all(len(line) <= width for line in text.plain.splitlines())
+
+
+def test_dashboard_pipeline_separates_columns_from_semantic_state() -> None:
+    model = view.dashboard.parse_workflow(_legacy_trace())
+    rows = view.dashboard.pipeline_lines(model, NOW.timestamp(), 100, False)
+    assert [style for _text, style in rows[0]] == ["label"] * 5
+    row = next(
+        item
+        for item in rows[1:]
+        if isinstance(item, list) and item[0][0].strip() == "00a"
+    )
+    assert "".join(text for text, _style in row).startswith("00a     STAR index")
+    assert [style for _text, style in row] == [
+        "cyan_bold",
+        "normal",
+        "value",
+        "dim",
+        "green",
+    ]
 
 
 def test_action_keys_cannot_override_legacy_navigation(tmp_path, monkeypatch):

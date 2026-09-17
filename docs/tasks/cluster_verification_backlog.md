@@ -113,20 +113,20 @@ discussion. Open questions are not filled with inferred implementation decisions
 
 | ID | Finding | Status |
 | --- | --- | --- |
-| [CV-U01](#cv-u01-cli-color-and-readability) | CLI color, readability and Inspect interpretation | Open |
+| [CV-U01](#cv-u01-cli-color-and-readability) | CLI color, readability and Inspect interpretation | Verification pending |
 | [CV-U02](#cv-u02-default-cli-verbosity) | Minimal default output, optional detail | Verification pending |
 | [CV-U03](#cv-u03-init-and-validate-summaries) | Init and Validate summaries | Verification pending |
 | [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Open |
 | [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Verification pending |
 | [CV-U06](#cv-u06-available-resources) | Use all allocated workflow CPUs and memory | Verification pending |
 | [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Verification pending |
-| [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Open |
-| [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Open |
+| [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Verification pending |
+| [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Verification pending |
 | [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Completed |
-| [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Open |
+| [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Verification pending |
 | [CV-U12](#cv-u12-duplicate-submission-warning) | Warn before accidental duplicate submission | Verification pending |
 | [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Verification pending |
-| [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Open |
+| [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Verification pending |
 | [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Verification pending |
 | [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Open |
 | [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Verification pending |
@@ -142,7 +142,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U27](#cv-u27-tested-smoke-to-real-resource-guidance) | Tested workload profile, Doctor checks and exact submission | Verification pending |
 | [CV-U28](#cv-u28-historical-stage-configuration-and-wall-time) | Restore benchmark-derived stage settings and wall-time performance | Verification pending |
 | [CV-U29](#cv-u29-early-inspect-and-dashboard-feedback) | Show useful information before monitoring fully populates | Verification pending |
-| [CV-U30](#cv-u30-dashboard-color-and-pane-layout) | Restore dashboard colors and readable pane layout | Open |
+| [CV-U30](#cv-u30-dashboard-color-and-pane-layout) | Restore dashboard colors and readable pane layout | Verification pending |
 | [CV-U31](#cv-u31-dashboard-automatic-run-selection) | Select the current Run without parameters; record lost functionality | Verification pending |
 | [CV-U32](#cv-u32-dashboard-independent-of-working-directory) | Open the dashboard from outside the Project directory | Verification pending |
 | [CV-U33](#cv-u33-dashboard-resource-usage) | Restore resource-usage display and preserve the wall-time objective | Verification pending |
@@ -174,6 +174,15 @@ prompts need clearer semantic color. In Inspect, `Run complete` remained too har
 to find. Dashboard log coloring is retained separately in CV-U14/CV-U30. These
 are terminal observations, not evidence that redirected, `NO_COLOR`, or dumb
 terminal behavior should become color-dependent. CV-U01 returns to **Open**.
+
+**Approved hierarchy refinement:** The shared presentation owner now renders
+field names separately from values and gives ready, complete, warning and failed
+outcomes distinct semantic emphasis. Init preview, Validate, Runtime discovery,
+Run and Inspect use that owner; guided prompts separately emphasize their labels
+and dim `Press ENTER for ...` defaults. Exact readable plain output is preserved.
+This addresses the reported indeterminate color blocks rather than treating the
+finding as an absence of ANSI output. Viking visual acceptance remains pending,
+so CV-U01 is **Verification pending**.
 
 ### CV-U02 Default CLI verbosity
 
@@ -450,6 +459,17 @@ Those are negative novice-acceptance results, so CV-U08 is **Open** rather than
 Verification pending. The reported full-hour experience is not yet attributed
 to setup, queueing, smoke execution, runtime checks or real analysis.
 
+**Approved direct-to-data revision:** The real six-library EV/PUM1 journey is
+now the numbered default. The synthetic exercise is a clearly optional site
+confidence check with its time tradeoff stated before its commands. Every
+`emrys` command has its own copyable block and adjacent purpose, expected result
+and stop condition. The guide explains that the reference FASTA and GTF are
+external study inputs, what to do when they are unavailable, why the regions
+prompt may be empty, and how the selector list relates to the reference. It also
+bridges the preview to its generated creation command and reserves `Project
+ready` for successful publication. A fresh novice Viking walkthrough remains
+pending, so CV-U08 is **Verification pending**.
+
 Local integration checks pass 631 tests across every test file changed by this
 tranche, with one Linux-only materialization test skipped on macOS. Six isolated
 child-interpreter cases were deselected because the borrowed installed checkout
@@ -486,6 +506,12 @@ must be presented as an optional environment/site exercise, with the time and
 confidence tradeoff stated plainly, rather than a mandatory prerequisite to the
 real-data path. CV-U09 returns to **Open** for that revised journey and novice
 acceptance.
+
+**Approved optional-path revision:** Quickstart now places the synthetic E2E
+after the ordinary real-data journey and labels it optional. It states both the
+extra confidence it supplies and the setup/queue/run time it adds. Skipping it
+does not skip Doctor or real-input admission. CV-U09 is **Verification pending**
+for novice acceptance.
 
 ### CV-U10 Unnecessary Quickstart command
 
@@ -544,6 +570,13 @@ large generated creation command. The no-write preview must say explicitly that
 the Project does not yet exist, identify one unmistakable next action, and reserve
 `Project ready` for successful publication. CV-U11 returns to **Open**; CV-U18
 owns the guided product interaction.
+
+**Approved command-handoff revision:** Distinct `emrys` invocations are now
+separate blocks with local explanations. The questionnaire section says that
+preview creates no Project, identifies the generated command as the next action,
+and tells the operator to paste the complete command. Successful creation is the
+only point labelled `Project ready`. CV-U11 is **Verification pending** for a
+novice Viking walkthrough.
 
 ### CV-U12 Duplicate submission warning
 
@@ -646,6 +679,12 @@ text and retained bytes must remain unchanged, while severity and known workflow
 prefixes gain useful optional styling. Timestamped or otherwise prefixed lines
 must not silently evade the styling rules. Plain/redirected output and
 `NO_COLOR` remain readable. This confirms CV-U14 remains **Open**.
+
+**Approved prefix-aware refinement:** The installed dashboard now styles known
+severity and workflow prefixes even when a timestamp or retained stream prefix
+precedes them, and recognizes structured `level`/`severity` fields. Styling does
+not rewrite literal log text. Viking/tmux visual acceptance remains pending, so
+CV-U14 is **Verification pending**.
 
 ### CV-U15 Dashboard action language
 
@@ -1323,6 +1362,13 @@ as monocolored on Viking. Colored headings alone do not satisfy the requirement;
 status, severity, progress and log events need restrained semantic styling with
 a readable plain/`NO_COLOR` rendering. This is negative visual acceptance for
 CV-U30 and the log-specific CV-U14, not a new palette selection.
+
+**Approved table-hierarchy refinement:** Pipeline rows now style step, stage,
+count, elapsed and state as separate fields instead of painting each row one
+semantic color. State remains the primary success/warning/failure signal, while
+headers and identifiers remain distinguishable. This supplements the existing
+pane layout without changing its plain rendering. Viking visual acceptance
+remains pending, so CV-U30 is **Verification pending**.
 
 ### CV-U31 Dashboard automatic Run selection
 
@@ -3128,6 +3174,14 @@ synthetic E2E optional shortens the novice route but is not evidence that Doctor
 itself became faster. The repeated preview/execute work in `runtime discover`
 is owned by CV-08; any consolidation must preserve its mutation-boundary checks.
 CV-26 remains **Open**.
+
+**Approved attribution refinement:** A repair invocation now ends with one
+concise default `Doctor elapsed` field naming total elapsed time, the slowest
+phase and outcome; `--verbose` retains every phase duration. No admission check,
+fresh read, probe or mutation-boundary verification was removed. Making the
+synthetic E2E optional shortens the novice route but is not Doctor performance
+evidence. CV-26 remains **Open** pending comparable phase-resolved Viking
+measurements and a measured optimization.
 
 ## P3 outcome
 
