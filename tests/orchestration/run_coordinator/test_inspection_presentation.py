@@ -1298,9 +1298,7 @@ def test_dashboard_pipeline_separates_columns_from_semantic_state() -> None:
         for item in rows[1:]
         if isinstance(item, list) and item[0][0].strip() == "00a"
     )
-    assert "".join(text for text, _style in row).startswith(
-        "00a     STAR index"
-    )
+    assert "".join(text for text, _style in row).startswith("00a     STAR index")
     assert [style for _text, style in row] == [
         "cyan_bold",
         "normal",

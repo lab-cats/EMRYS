@@ -1053,8 +1053,7 @@ def test_invocation_timing_includes_confirmation_and_preserves_read_only_preview
     )
     assert (
         "Doctor elapsed: 8.750s including confirmation; slowest phase: "
-        "Inspecting the Project and runtime (1.250s); exit 1"
-        in output
+        "Inspecting the Project and runtime (1.250s); exit 1" in output
     )
     assert _snapshot(tmp_path) == before
 

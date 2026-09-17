@@ -854,12 +854,12 @@ def render_watch_text(snapshot, *, now):
             "green",
         ),
         (rf"(?im)^{prefix}(?:info|debug|rule |localrule |checkpoint ).*$", "cyan"),
-        (r'''(?im)^.*"(?:level|severity)"\s*:\s*"(?:error|fatal)".*$''', "red"),
+        (r"""(?im)^.*"(?:level|severity)"\s*:\s*"(?:error|fatal)".*$""", "red"),
         (
-            r'''(?im)^.*"(?:level|severity)"\s*:\s*"(?:warning|warn)".*$''',
+            r"""(?im)^.*"(?:level|severity)"\s*:\s*"(?:warning|warn)".*$""",
             "yellow",
         ),
-        (r'''(?im)^.*"(?:level|severity)"\s*:\s*"(?:info|debug)".*$''', "cyan"),
+        (r"""(?im)^.*"(?:level|severity)"\s*:\s*"(?:info|debug)".*$""", "cyan"),
     ):
         result.highlight_regex(pattern, style)
     return result
