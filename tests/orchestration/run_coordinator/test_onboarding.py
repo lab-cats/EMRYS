@@ -155,10 +155,9 @@ def _project_arguments(
     )
 
 
-def test_setup_prompts_for_and_publishes_closed_cli_defaults(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def _setup_checkout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[Path, Path]:
     root = tmp_path / "checkout"
     projects = root / "Projects"
     projects.mkdir(parents=True)
@@ -166,8 +165,15 @@ def test_setup_prompts_for_and_publishes_closed_cli_defaults(
     (root / "src/emrys").mkdir(parents=True)
     (root / "pyproject.toml").write_text("[project]\nname='emrys'\n")
     for key in ("EMRYS_PROJECTS_ROOT", "EMRYS_SITE", "EMRYS_LOG_ROOT"):
-        monkeypatch.setenv(key, "")  # Track restoration even when initially absent.
         monkeypatch.delenv(key, raising=False)
+    return root, projects
+
+
+def test_setup_prompts_for_and_publishes_closed_cli_defaults(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root, projects = _setup_checkout(tmp_path, monkeypatch)
     stderr = _Terminal()
     monkeypatch.chdir(projects)
     monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("\n\n\n"))
@@ -256,15 +262,7 @@ def test_setup_is_dry_run_first_and_preserves_an_existing_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    root = tmp_path / "checkout"
-    projects = root / "Projects"
-    projects.mkdir(parents=True)
-    (root / ".git").mkdir()
-    (root / "src/emrys").mkdir(parents=True)
-    (root / "pyproject.toml").write_text("[project]\nname='emrys'\n")
-    for key in ("EMRYS_PROJECTS_ROOT", "EMRYS_SITE", "EMRYS_LOG_ROOT"):
-        monkeypatch.setenv(key, "")  # Track restoration even when initially absent.
-        monkeypatch.delenv(key, raising=False)
+    root, projects = _setup_checkout(tmp_path, monkeypatch)
     monkeypatch.chdir(root)
 
     log_root = root / "central logs"
@@ -2408,14 +2406,9 @@ def _reuse_projects(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     return donor, borrower, seal, inspection
 
 
-def test_runtime_reuse_previews_then_seals_and_selects_without_installation(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
+def _record_runtime_reuse_probes(monkeypatch: pytest.MonkeyPatch):
     from emrys.evidence.runtime_availability import inspector
 
-    donor, borrower, seal, original = _reuse_projects(tmp_path, monkeypatch)
     calls = []
     observe = inspector.run_checks
 
@@ -2424,6 +2417,16 @@ def test_runtime_reuse_previews_then_seals_and_selects_without_installation(
         return observe(checks, environment=environment)
 
     monkeypatch.setattr(inspector, "run_checks", fresh)
+    return inspector, calls
+
+
+def test_runtime_reuse_previews_then_seals_and_selects_without_installation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    donor, borrower, seal, original = _reuse_projects(tmp_path, monkeypatch)
+    inspector, calls = _record_runtime_reuse_probes(monkeypatch)
     before = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
     arguments = argparse.Namespace(project=borrower, from_project=donor, execute=False)
     assert onboarding.discover_runtime_from_args(arguments) == 0
@@ -2457,17 +2460,8 @@ def test_runtime_reuse_interactive_confirmation_reuses_preview_probe(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from emrys.evidence.runtime_availability import inspector
-
     donor, borrower, _seal, _original = _reuse_projects(tmp_path, monkeypatch)
-    calls = []
-    observe = inspector.run_checks
-
-    def fresh(checks, *, environment):
-        calls.append(tuple(checks))
-        return observe(checks, environment=environment)
-
-    monkeypatch.setattr(inspector, "run_checks", fresh)
+    _inspector, calls = _record_runtime_reuse_probes(monkeypatch)
     output, errors = _Terminal(), _Terminal()
     monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("y\n"))
     monkeypatch.setattr(onboarding.sys, "stdout", output)

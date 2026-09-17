@@ -40,6 +40,22 @@ def _accounting_replies(monkeypatch, *replies: str) -> list[list[str]]:
     return calls
 
 
+def _blocked_stream_reader(monkeypatch: pytest.MonkeyPatch):
+    entered, release = threading.Event(), threading.Event()
+    read_stream = dashboard._read_stream
+    calls = []
+
+    def blocked(*arguments):
+        calls.append(arguments[0])
+        entered.set()
+        assert release.wait(5)
+        return read_stream(*arguments)
+
+    monkeypatch.setattr(dashboard, "_read_stream", blocked)
+    monkeypatch.setattr(dashboard, "_STREAM_WAIT_SECONDS", 0.01)
+    return entered, release, calls
+
+
 @pytest.mark.parametrize("matching_token", [True, False])
 def test_request_specific_scheduler_stream_pair_admission(
     tmp_path: Path, matching_token: bool
@@ -710,18 +726,7 @@ def test_stream_cache_bounds_wait_and_keeps_one_stalled_reader(
     previous_date = cache.observed_at
     with path.open("ab") as stream:
         stream.write(b"new history\n")
-    entered, release = threading.Event(), threading.Event()
-    read_stream = dashboard._read_stream
-    calls = []
-
-    def blocked(*arguments):
-        calls.append(arguments[0])
-        entered.set()
-        assert release.wait(5)
-        return read_stream(*arguments)
-
-    monkeypatch.setattr(dashboard, "_read_stream", blocked)
-    monkeypatch.setattr(dashboard, "_STREAM_WAIT_SECONDS", 0.01)
+    entered, release, calls = _blocked_stream_reader(monkeypatch)
     started = time.monotonic()
     try:
         assert not cache.sync() and entered.wait(1)
@@ -744,18 +749,7 @@ def test_stream_cache_close_never_waits_or_starts_another_reader(
 ) -> None:
     path = tmp_path / "stream.log"
     path.write_bytes(b"history")
-    entered, release = threading.Event(), threading.Event()
-    read_stream = dashboard._read_stream
-    calls = []
-
-    def blocked(*arguments):
-        calls.append(arguments[0])
-        entered.set()
-        assert release.wait(5)
-        return read_stream(*arguments)
-
-    monkeypatch.setattr(dashboard, "_read_stream", blocked)
-    monkeypatch.setattr(dashboard, "_STREAM_WAIT_SECONDS", 0.01)
+    entered, release, calls = _blocked_stream_reader(monkeypatch)
     cache = dashboard.StreamCache(path)
     try:
         assert not cache.sync() and entered.wait(1)

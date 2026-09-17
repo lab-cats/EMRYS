@@ -478,14 +478,9 @@ def _validate_verified(
     return task.validate_verified_task(Path(built.plan.verified_task_path), **arguments)
 
 
-def _step00c_with_existing_sidecars(
+def _step00c_plan(
     tmp_path: Path,
-) -> tuple[
-    workflow_fixture.WorkflowFixture,
-    task.TaskPlan,
-    dict[str, Any],
-    tuple[Path, Path],
-]:
+) -> tuple[workflow_fixture.WorkflowFixture, task.TaskPlan, dict[str, Any], dict[str, Any]]:
     built = workflow_fixture.build(tmp_path)
     workflow_fixture.materialize_active_run_lock(built)
     machine_key = "emrys.stage.construct_FASTA_sidecars.v1"
@@ -495,6 +490,18 @@ def _step00c_with_existing_sidecars(
     plan = _load_task(
         built.workflow_attempt_path, machine_key=machine_key, scope_id=scope_id
     )
+    return built, plan, manifest, record
+
+
+def _step00c_with_existing_sidecars(
+    tmp_path: Path,
+) -> tuple[
+    workflow_fixture.WorkflowFixture,
+    task.TaskPlan,
+    dict[str, Any],
+    tuple[Path, Path],
+]:
+    built, plan, _manifest, record = _step00c_plan(tmp_path)
     outputs = tuple(Path(item["path"]) for item in record["outputs"])
     assert len(outputs) == 2
     publication = task._NativePublication(plan)
@@ -2871,15 +2878,7 @@ def test_symlinked_output_and_contract_ancestors_fail_closed(tmp_path: Path) -> 
 def test_step00c_symlinked_stationary_reference_blocks_before_producer(
     tmp_path: Path,
 ) -> None:
-    built = workflow_fixture.build(tmp_path / "workflow-fixture")
-    workflow_fixture.materialize_active_run_lock(built)
-    machine_key = "emrys.stage.construct_FASTA_sidecars.v1"
-    scope_id = str(built.execution["reference"]["reference_id"])
-    manifest = orchestration_contracts.load_json_object(built.workflow_attempt_path)
-    record = manifest["tasks"][machine_key][scope_id]
-    plan = _load_task(
-        built.workflow_attempt_path, machine_key=machine_key, scope_id=scope_id
-    )
+    built, plan, manifest, record = _step00c_plan(tmp_path / "workflow-fixture")
     fasta = Path(str(built.execution["reference"]["fasta"]["path"]))
     original_parent = fasta.parent
     real_parent = original_parent.with_name("reference-real")
@@ -2914,15 +2913,7 @@ def test_step00c_symlinked_stationary_reference_blocks_before_producer(
 def test_step00c_parent_permission_drift_blocks_before_task_start(
     tmp_path: Path,
 ) -> None:
-    built = workflow_fixture.build(tmp_path / "workflow-fixture")
-    workflow_fixture.materialize_active_run_lock(built)
-    machine_key = "emrys.stage.construct_FASTA_sidecars.v1"
-    scope_id = str(built.execution["reference"]["reference_id"])
-    manifest = orchestration_contracts.load_json_object(built.workflow_attempt_path)
-    record = manifest["tasks"][machine_key][scope_id]
-    plan = _load_task(
-        built.workflow_attempt_path, machine_key=machine_key, scope_id=scope_id
-    )
+    built, plan, _manifest, _record = _step00c_plan(tmp_path / "workflow-fixture")
     parent = Path(str(built.execution["reference"]["fasta"]["path"])).parent
     calls: list[tuple[str, ...]] = []
 

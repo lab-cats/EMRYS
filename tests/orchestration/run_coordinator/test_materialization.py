@@ -627,9 +627,10 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
         str(item["machine_key"]): str(item["step_id"])
         for item in plan.run.analysis.profile["owner_tasks"]
     }
-    step09 = next(
-        record for record in records if owners[str(record["machine_key"])] == "09"
-    )
+    records_by_step = {
+        owners[str(record["machine_key"])]: record for record in records
+    }
+    step09 = records_by_step["09"]
     assert {item["role"] for item in step09["inputs"]} == {
         "sample_manifest",
         "partition_manifest",
@@ -684,12 +685,7 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
             == artifact_path(record, suffix).parents[parent_index]
         )
 
-    step06 = next(
-        record
-        for record in records
-        if record["machine_key"]
-        == "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1"
-    )
+    step06 = records_by_step["06"]
     step06_prefix = controlled_python_argv(
         sys.executable,
         "-m",
@@ -712,12 +708,7 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
         )
         assert producer_argument(step06, flag) == Path(output["working_path"]).parent
 
-    step07 = next(
-        record
-        for record in records
-        if record["machine_key"]
-        == "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1"
-    )
+    step07 = records_by_step["07"]
     assert (
         step07["validator_argv"][step07["validator_argv"].index("--scope-id") + 1]
         == step07["scope"]["scope_id"]
@@ -755,36 +746,19 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
         "--rerun-incomplete",
         "--cleanup-metadata",
     }.intersection(plan.attempt_record["snakemake_argv"])
-    step00a = next(
-        record
-        for record in records
-        if record["machine_key"] == "emrys.stage.construct_STAR_index.v1"
-    )
+    step00a = records_by_step["00a"]
     assert "--genome-sa-index-nbases" in step00a["producer_argv"]
     assert "--expected-genome-sa-index-nbases" in step00a["validator_argv"]
-    step00b = next(
-        record
-        for record in records
-        if record["machine_key"] == "emrys.stage.convert_GTF_to_BED12.v1"
-    )
+    step00b = records_by_step["00b"]
     assert producer_argument(step00b, "--bed") == Path(
         step00b["outputs"][0]["working_path"]
     )
-    step01 = next(
-        record
-        for record in records
-        if record["machine_key"] == "emrys.stage.align_RNA_reads_with_STAR.v1"
-    )
+    step01 = records_by_step["01"]
     assert "--gunzip-bin" in step01["producer_argv"]
     assert step01["producer_argv"][
         step01["producer_argv"].index("--gunzip-bin") + 1
     ] == str(tmp_path / "tool")
-    step08 = next(
-        record
-        for record in records
-        if record["machine_key"]
-        == "emrys.stage.preprocess_and_annotate_cohort_candidates.v1"
-    )
+    step08 = records_by_step["08"]
     producer = step08["producer_argv"]
     assert producer[:4] == [
         str(tmp_path / "tool"),
@@ -810,12 +784,7 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
             item for item in step08["outputs"] if item["path"].endswith(suffix)
         )
         assert producer_argument(step08, flag) == Path(output["working_path"])
-    step09 = next(
-        record
-        for record in records
-        if record["machine_key"]
-        == "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1"
-    )
+    step09 = records_by_step["09"]
     producer_argv = tuple(step09["producer_argv"])
     assert any(
         item.endswith("step_09_cmh_editing_site_calling.R") for item in producer_argv
@@ -836,12 +805,7 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
     assert producer_argument(step09, "--all-sites-output") == Path(
         step09["outputs"][0]["working_path"]
     )
-    step10 = next(
-        record
-        for record in records
-        if record["machine_key"]
-        == "emrys.analysis.project_candidate_scientific_context.v1"
-    )
+    step10 = records_by_step["10"]
     assert "scientific_context_projection.sh" in " ".join(step10["producer_argv"])
     assert "--motif-catalog" in step10["producer_argv"]
     assert "scientific-context-projection" in step10["validator_argv"]
