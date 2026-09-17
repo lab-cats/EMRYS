@@ -18,6 +18,8 @@ from types import SimpleNamespace
 
 import pytest
 import yaml
+from rich.ansi import AnsiDecoder
+from rich.text import Text
 
 from emrys import __main__ as cli
 from emrys.contracts.orchestration import api as contracts
@@ -35,6 +37,10 @@ from emrys.orchestration.run_coordinator import (
     synthetic_fixture,
 )
 from tests.orchestration.run_coordinator.fixture import build
+
+
+def _decoded_terminal(value: str) -> Text:
+    return AnsiDecoder().decode_line(value)
 
 
 def _namespace(
@@ -147,9 +153,10 @@ def test_setup_prompts_for_and_publishes_closed_cli_defaults(
         f"EMRYS_ENV_VERSION=1\nEMRYS_PROJECTS_ROOT={projects}\nEMRYS_SITE=viking\n"
     )
     assert stat.S_IMODE(saved.stat().st_mode) == 0o600
-    assert "Projects home" in stderr.getvalue()
-    assert "site (Press ENTER for viking)" in stderr.getvalue()
-    assert "log root (optional)" in stderr.getvalue()
+    rendered = _decoded_terminal(stderr.getvalue()).plain
+    assert "Projects home" in rendered
+    assert "site (Press ENTER for viking)" in rendered
+    assert "log root (optional)" in rendered
     loaded: dict[str, str] = {}
     assert onboarding.load_saved_cli_environment(projects, loaded) == saved
     assert loaded == {
@@ -682,7 +689,13 @@ def test_init_prompt_colors_label_and_dims_explicit_default(
     assert onboarding._prompt("min sample dp", "1") == "1"
     rendered = terminal_output.getvalue()
     assert "\x1b[" in rendered
-    assert "min sample dp" in rendered and "Press ENTER for 1" in rendered
+    decoded = _decoded_terminal(rendered)
+    assert decoded.plain == "min sample dp (Press ENTER for 1): "
+    styles = {
+        decoded.plain[span.start : span.end]: str(span.style) for span in decoded.spans
+    }
+    assert styles["min sample dp"] == "bold color(6)"
+    assert styles[" (Press ENTER for 1)"] == "dim"
 
 
 def test_init_project_rejects_eof_instead_of_accepting_a_suggestion(
@@ -723,7 +736,7 @@ def test_init_project_suggests_star_values_from_declared_inputs(
 
     assert answers["sjdb_overhang"] == 3
     assert answers["genome_sa_index_nbases"] == 1
-    rendered = terminal_output.getvalue()
+    rendered = _decoded_terminal(terminal_output.getvalue()).plain
     assert "first complete record in each declared FASTQ" in rendered
     assert "maximum 4 bases" in rendered
     assert "12-base reference" in rendered
