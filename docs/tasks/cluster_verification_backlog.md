@@ -131,7 +131,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Verification pending |
 | [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Verification pending |
 | [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Verification pending |
-| [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Open |
+| [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Deferred |
 | [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
 | [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Verification pending |
 | [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Verification pending |
@@ -870,7 +870,8 @@ plan was selected here.
 input and scientific-question flow recorded under CV-U18, while the specialist
 manifest command remains available. Doctor, Run and the complete setup journey
 have not moved to the requested default interactive interface, and no advanced
-mode transition has been selected. CV-U19 remains Open.
+mode transition has been selected. The operator explicitly deferred this
+long-term interface direction until later; CV-U19 is **Deferred**.
 
 ### CV-U20 Complete Viking values in Quickstart
 
