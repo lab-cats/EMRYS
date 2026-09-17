@@ -436,13 +436,14 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
         definition["analyses"][arguments.analysis_name]["partitions"]
         == "partitions.tsv"
     )
-    prompts = _decoded_terminal(terminal_output.getvalue()).plain
+    prompts = terminal_output.getvalue()
+    plain_prompts = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", prompts)
     assert prompts.index("reference fasta") < prompts.index("FASTQ directory")
     assert (
         "Choose a regions file, or press Enter to type FASTA names/regions." in prompts
     )
     assert f"FASTA names/regions from {Path(reference_fasta).name}" in prompts
-    assert "Accepted FASTA names (1): chrSynthetic" in prompts
+    assert "Accepted FASTA names (1): chrSynthetic" in plain_prompts
 
 
 def test_guided_project_rejects_selector_absent_from_supplied_fasta(
