@@ -1002,9 +1002,7 @@ def _guided_manifest_members(
             arguments.regions_file = regions_files
         else:
             if reference_contigs is None:
-                reference_contigs = _reference_contigs(
-                    Path(arguments.reference_fasta)
-                )
+                reference_contigs = _reference_contigs(Path(arguments.reference_fasta))
             names = [name for name, _length in reference_contigs]
             shown = names[:24]
             suffix = f"; plus {len(names) - len(shown)} more" if len(names) > 24 else ""
@@ -1045,9 +1043,7 @@ def _copied_manifest_members(
             "--sample-manifest and --partition-manifest must be supplied together"
         )
     if sample_value is None:
-        return _guided_manifest_members(
-            arguments, reference_contigs=reference_contigs
-        )
+        return _guided_manifest_members(arguments, reference_contigs=reference_contigs)
     if any(
         getattr(arguments, name, ())
         for name in ("fastq", "sample", "regions_file", "region")

@@ -664,6 +664,35 @@ def test_watch_log_styles_preserve_every_literal_line(tmp_path):
     assert "unaltered text" not in styled_fragments
 
 
+def test_watch_log_rows_are_tail_relative_and_search_literal_text(tmp_path):
+    source = view.StreamSource("fixture", tmp_path / "fixture.log", tmp_path)
+    snapshot = view.WatchSnapshot(
+        None,
+        tail=view.StreamTail(
+            source,
+            "INFO first\nERROR retained match\nINFO last",
+            diagnostic="Current diagnostic bytes; content not verified",
+            observed_at=NOW,
+        ),
+    )
+
+    rows, matches, error = view._render_log_rows(snapshot, now=NOW, query=r"ERROR|last")
+
+    assert error == ""
+    assert [row.plain for row in rows[-3:]] == [
+        "  1 INFO first",
+        "  2 ERROR retained match",
+        "  3 INFO last",
+    ]
+    assert matches == (len(rows) - 2, len(rows) - 1)
+    assert (
+        sum("on yellow" in str(span.style) for row in rows for span in row.spans) == 2
+    )
+    _rows, invalid_matches, error = view._render_log_rows(snapshot, now=NOW, query="[")
+    assert invalid_matches == ()
+    assert error.startswith("Invalid search pattern:")
+
+
 def test_watch_key_reader_discards_sgr_mouse_reports_and_preserves_arrows():
     reader, writer = os.pipe()
     try:
@@ -958,6 +987,112 @@ raise SystemExit(result)
         if reviewed:
             assert (b"REVIEW CALLED " + mode.encode()) in output
             assert output.index(b"\x1b[?1049l") < output.index(b"REVIEW CALLED")
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+        os.close(master)
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("rich") is None,
+    reason="Interactive rendering requires the existing Rich dependency",
+)
+def test_interactive_log_navigation_follows_pauses_counts_and_searches(tmp_path):
+    log = tmp_path / "stream.log"
+    log.write_text(
+        "\n".join(
+            "ERROR target" if number == 75 else f"line-{number:03d}"
+            for number in range(1, 101)
+        )
+        + "\n"
+    )
+    code = """
+import sys
+from dataclasses import replace
+from datetime import UTC, datetime
+from pathlib import Path
+from emrys.orchestration.run_coordinator import _inspection_presentation as view
+root = Path(sys.argv[1])
+source = view.StreamSource('fixture', root / 'stream.log', root)
+calls = 0
+def refresh(snapshot, **_kwargs):
+    global calls
+    calls += 1
+    return replace(
+        snapshot,
+        streams=(source,),
+        tail=view.read_tail(source, snapshot.tail),
+        scheduler={'state': 'RUNNING'},
+        scheduler_at=datetime.now(UTC),
+        trace_at=datetime.now(UTC),
+        next_action=f'refresh-{calls}',
+    )
+view.refresh_snapshot = refresh
+raise SystemExit(view.watch(
+    root / 'project.yaml',
+    run_root=root / 'run',
+    inspect_run=lambda _root: None,
+    next_action=lambda _observed: '',
+))
+"""
+    master, slave = pty.openpty()
+    fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
+    environment = dict(
+        os.environ,
+        TERM="xterm-256color",
+        COLUMNS="100",
+        LINES="24",
+        PYTHONDONTWRITEBYTECODE="1",
+        PYTHONPATH=str(Path(__file__).resolve().parents[3] / "src"),
+    )
+    process = subprocess.Popen(
+        [sys.executable, "-B", "-c", code, str(tmp_path)],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        env=environment,
+    )
+    os.close(slave)
+
+    def read_until(*needles, timeout=5):
+        output = b""
+        deadline = time.monotonic() + timeout
+        while process.poll() is None and time.monotonic() < deadline:
+            if select.select([master], [], [], 0.05)[0]:
+                try:
+                    output += os.read(master, 65536)
+                except OSError:
+                    break
+                plain = b" ".join(
+                    re.sub(rb"\x1b\[[0-?]*[ -/]*[@-~]", b"", output).split()
+                )
+                if all(needle in plain for needle in needles):
+                    return output, plain
+        pytest.fail((needles, output[-3000:]))
+
+    try:
+        _initial, plain = read_until(b"FOLLOWING", b"line-100", b"refresh-1")
+        assert b"line-001" not in plain
+
+        os.write(master, b"10k")
+        _paused, _plain = read_until(b"PAUSED", b"Count: 10")
+
+        with log.open("a", encoding="utf-8") as stream:
+            stream.write("line-101\n")
+        os.write(master, b"r")
+        _refresh, plain = read_until(b"PAUSED", b"refresh-2")
+        assert b"line-101" not in plain
+
+        os.write(master, b"G")
+        _bottom, _plain = read_until(b"FOLLOWING", b"line-101")
+
+        os.write(master, b"/ERROR\r")
+        searched, _plain = read_until(b"PAUSED", b"ERROR target", b"Search: /ERROR")
+        assert b"\x1b[" in searched
+
+        os.write(master, b"q")
+        assert process.wait(timeout=2) == 0
     finally:
         if process.poll() is None:
             process.kill()

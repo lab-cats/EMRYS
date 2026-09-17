@@ -128,7 +128,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Verification pending |
 | [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Verification pending |
 | [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Verification pending |
-| [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Open |
+| [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Verification pending |
 | [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Verification pending |
 | [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Verification pending |
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Open |
@@ -711,7 +711,19 @@ numbers are also requested. Because the current view retains a bounded tail,
 absolute-file versus tail-relative numbering must be stated rather than guessed.
 These are desired interactions, not authority to weaken bounded reads, stream
 identity, sanitization, or changed-generation handling. These additional
-interactions remain Open.
+interactions remained Open at the time of the finding.
+
+**Implemented expanded navigation:** Selecting an installed evidence/log stream
+now starts at the latest retained line and follows new text while at the bottom.
+Upward movement visibly changes the state to `PAUSED`; reaching the bottom or
+pressing `G` resumes `FOLLOWING`. Counts apply to `j`/`k`; `/pattern` searches the
+sanitized retained tail, highlights matches, and `n`/`N` moves forward/backward.
+One-based displayed line numbers are explicitly tail-relative. Stream changes
+reset search and resume follow. The existing 64-KiB/256-line read bound, identity
+pinning, sanitization, rotation/truncation handling and ignored mouse reports are
+unchanged. The standalone dashboard has no selectable evidence/log view and
+retains its existing bounded keyboard scrolling. CV-U16 is **Verification
+pending** for hosted CI and Viking/tmux terminal acceptance.
 
 ### CV-U17 Completion communication
 

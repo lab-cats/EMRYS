@@ -100,6 +100,13 @@ without filtering or reinterpreting the sanitized diagnostic text. `NO_COLOR`
 keeps the same content plain. The `r` key performs a read-only recheck of the
 fixed selection and its dated evidence; it does not execute a Run action.
 
+The installed evidence/log view opens at the newest retained line and follows
+new text while it remains at the bottom. Upward movement pauses follow visibly;
+`G` returns to the bottom and resumes it. Counts apply to `j`/`k`; `/` accepts a
+regular-expression search, and `n`/`N` moves forward/backward through highlighted
+matches. Displayed line numbers are one-based and relative to the bounded tail,
+not absolute file positions. Changing streams resets search and resumes follow.
+
 Full diagnostic history supports reconnecting and live progress; it remains
 separate from scientific evidence, which is reverified explicitly. Every read
 pins file/directory identity; rotation/truncation/replacement clears prior

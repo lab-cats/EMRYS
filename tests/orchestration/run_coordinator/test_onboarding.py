@@ -434,7 +434,7 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
         definition["analyses"][arguments.analysis_name]["partitions"]
         == "partitions.tsv"
     )
-    prompts = _decoded_terminal(terminal_output.getvalue()).plain
+    prompts = terminal_output.getvalue()
     assert prompts.index("reference fasta") < prompts.index("FASTQ directory")
     assert (
         "Choose a regions file, or press Enter to type FASTA names/regions." in prompts
@@ -469,7 +469,9 @@ def test_guided_project_rejects_selector_absent_from_supplied_fasta(
     monkeypatch.setattr(onboarding.sys, "stdin", Terminal("\nnot-a-contig\n"))
     monkeypatch.setattr(onboarding.sys, "stderr", Terminal())
 
-    with pytest.raises(onboarding.OnboardingError, match="absent from FASTA"):
+    with pytest.raises(
+        onboarding.OnboardingError, match="absent from the reference FASTA"
+    ):
         onboarding._guided_manifest_members(
             arguments, reference_contigs=(("chrSynthetic", 12),)
         )
@@ -2413,9 +2415,7 @@ def test_runtime_discovery_cli_is_dry_run_then_create_absent(
         "_plan_runtime_discovery",
         lambda **_kwargs: onboarding._RuntimeDiscoveryPlan(
             inspection,
-            lambda: (
-                onboarding.publish_runtime_profile(inspection) or inspection
-            ),
+            lambda: onboarding.publish_runtime_profile(inspection) or inspection,
         ),
     )
     arguments = argparse.Namespace(project=project, execute=False, verbose=False)
@@ -2595,9 +2595,10 @@ def test_runtime_reuse_interactive_confirmation_reuses_preview_probe(
     assert (borrower.parent / "runtime/runtime.tsv").is_file()
     assert "Runtime discovery" in _decoded_terminal(output.getvalue()).plain
     assert "Runtime inventory admitted" in _decoded_terminal(output.getvalue()).plain
-    assert "Admit this runtime inventory? [y/N]" in _decoded_terminal(
-        errors.getvalue()
-    ).plain
+    assert (
+        "Admit this runtime inventory? [y/N]"
+        in _decoded_terminal(errors.getvalue()).plain
+    )
 
 
 def test_runtime_reuse_confirmation_rejects_content_changed_after_preview(

@@ -240,6 +240,12 @@ plausible, choose the intended one from the picker. Press `r` to recheck the
 fixed selection and its evidence; press `q` to leave. Leaving the dashboard
 does not stop the job.
 
+The evidence/log view starts at the newest retained line and follows new text.
+Use `k` or Up to move back, which visibly pauses following; press `G` to return
+to the bottom. Counts such as `99k`/`99j` move several lines. Type `/pattern`
+and Enter to search the retained tail, then `n`/`N` for the next/previous match.
+Its line numbers are relative to the retained tail rather than the whole file.
+
 A queued job may not have created its Run yet. **No Run shown is not a reason to
 submit again.** Keep the job number and request record, wait and watch again.
 
