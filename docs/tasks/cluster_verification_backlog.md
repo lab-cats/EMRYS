@@ -32,10 +32,11 @@ jobs, with four configured skips, at
 This includes the public Doctor and selected-request accounting cases below.
 
 PR [#266](https://github.com/lab-cats/EMRYS/pull/266) implementation checkpoint
-`feff802057f035c8e18893ef37c4f8e69a05ac2d` contains the later approved CLI,
+`08d790a8e22edc609be0d4994fe757bbaec65ead` contains the later approved CLI,
 onboarding, resource-policy, monitoring, dashboard, runtime-reuse and timeout
-slices recorded below. Its
-[standard CI](https://github.com/lab-cats/EMRYS/actions/runs/35174741384)
+slices recorded below, including the allocation-aware all-stage policy merged
+from PR [#271](https://github.com/lab-cats/EMRYS/pull/271). Its
+[standard CI](https://github.com/lab-cats/EMRYS/actions/runs/35232897882)
 passed all 14 active jobs; four configured manual/nightly lanes were skipped.
 This is hosted software evidence. It is not a fresh Viking installation, an
 institutional scheduler/filesystem exercise, a novice walkthrough, a new
@@ -376,7 +377,7 @@ dependency was installed to bypass the environment mismatch. Checks used this
 worktree's source, build-generated metadata and existing cached dependencies.
 Ruff, documentation structure and whitespace checks passed. The historical
 restoration's CI result does not cover this follow-up. Current hosted results are
-attached to [PR #271](https://github.com/lab-cats/EMRYS/pull/271). Institutional
+recorded at the combined PR #266 implementation checkpoint above. Institutional
 execution remains pending; CV-U06 remains **Verification pending**.
 
 **All-stage follow-up verification:** 335 targeted resource, profile,
@@ -384,14 +385,15 @@ application-contract, materialization and orientation checks passed; 543
 capacity, Slurm, Doctor and onboarding checks passed. All six affected shell
 worker fixtures passed, including STAR sort threads above six, Java processor
 counts and samtools additional-worker accounting. Ruff, documentation structure
-and whitespace checks passed. Isolated subprocess/runtime lanes remain for
-hosted CI: the available local isolated interpreter selects an older checkout
-and lacks its optional CLI dependencies. No dependencies or cluster jobs were
-installed or started. The follow-up replaces the existing resolver and schema
-mechanics rather than adding a scheduler; the complete PR has no new product
-files and stays within the approved 250-net-line product allowance. These are
-implementation and local-fixture results, not Viking utilization or speedup
-proof. Current hosted status remains attached to PR #271.
+and whitespace checks passed. The available local isolated interpreter selects
+an older checkout and lacks its optional CLI dependencies, so no dependency was
+installed merely to run those lanes locally. The combined implementation
+checkpoint's standard CI passed the isolated subprocess/runtime lanes and the
+managed golden path. No cluster jobs were started. The follow-up replaces the
+existing resolver and schema mechanics rather than adding a scheduler; the
+complete PR has no new product files and stays within the approved 250-net-line
+product allowance. These are implementation, local-fixture and hosted software
+results, not Viking utilization or speedup proof.
 
 ### CV-U07 Projects directory
 
