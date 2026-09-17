@@ -436,7 +436,7 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
         definition["analyses"][arguments.analysis_name]["partitions"]
         == "partitions.tsv"
     )
-    prompts = terminal_output.getvalue()
+    prompts = _decoded_terminal(terminal_output.getvalue()).plain
     assert prompts.index("reference fasta") < prompts.index("FASTQ directory")
     assert (
         "Choose a regions file, or press Enter to type FASTA names/regions." in prompts

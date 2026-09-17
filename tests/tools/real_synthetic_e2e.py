@@ -404,8 +404,12 @@ def symbolic_resource_document() -> dict[str, Any]:
         "stage_concurrency": {step_id: 1 for step_id in REPEATABLE_STAGE_IDS},
         "step_threads": {
             "00a": 4,
+            "00c": 1,
             "01": 4,
             "02": 1,
+            "02b": 1,
+            "04": 1,
+            "05": 1,
             "06": 4,
             "08": 1,
             "09": 1,

@@ -1024,17 +1024,18 @@ def refresh(snapshot, **_kwargs):
         streams=(source,),
         tail=view.read_tail(source, snapshot.tail),
         scheduler={'state': 'RUNNING'},
-        scheduler_at=datetime.now(UTC),
+        scheduler_at=datetime(2026, 1, 1, 0, 0, calls, tzinfo=UTC),
         trace_at=datetime.now(UTC),
-        next_action=f'refresh-{calls}',
     )
 view.refresh_snapshot = refresh
-raise SystemExit(view.watch(
+result = view.watch(
     root / 'project.yaml',
     run_root=root / 'run',
     inspect_run=lambda _root: None,
     next_action=lambda _observed: '',
-))
+)
+print('WATCH EXITED', flush=True)
+raise SystemExit(result)
 """
     master, slave = pty.openpty()
     fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
@@ -1058,7 +1059,7 @@ raise SystemExit(view.watch(
     def read_until(*needles, timeout=5):
         output = b""
         deadline = time.monotonic() + timeout
-        while process.poll() is None and time.monotonic() < deadline:
+        while time.monotonic() < deadline:
             if select.select([master], [], [], 0.05)[0]:
                 try:
                     output += os.read(master, 65536)
@@ -1069,10 +1070,12 @@ raise SystemExit(view.watch(
                 )
                 if all(needle in plain for needle in needles):
                     return output, plain
-        pytest.fail((needles, output[-3000:]))
+            if process.poll() is not None:
+                break
+        pytest.fail(f"Missing {needles!r}; terminal output: {output[-3000:]!r}")
 
     try:
-        _initial, plain = read_until(b"FOLLOWING", b"line-100", b"refresh-1")
+        _initial, plain = read_until(b"FOLLOWING", b"line-100", b"00:00:01+00:00")
         assert b"line-001" not in plain
 
         os.write(master, b"10k")
@@ -1081,7 +1084,7 @@ raise SystemExit(view.watch(
         with log.open("a", encoding="utf-8") as stream:
             stream.write("line-101\n")
         os.write(master, b"r")
-        _refresh, plain = read_until(b"PAUSED", b"refresh-2")
+        _refresh, plain = read_until(b"PAUSED", b"00:00:02+00:00")
         assert b"line-101" not in plain
 
         os.write(master, b"G")
@@ -1092,6 +1095,7 @@ raise SystemExit(view.watch(
         assert b"\x1b[" in searched
 
         os.write(master, b"q")
+        read_until(b"WATCH EXITED")
         assert process.wait(timeout=2) == 0
     finally:
         if process.poll() is None:
