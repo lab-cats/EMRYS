@@ -108,8 +108,11 @@ publication emits `Project ready:`.
 
 `emrys validate` re-admits every selected Analysis and its reference,
 annotation, sample, and partition compatibility. It invokes no external tool
-and writes nothing. Runtime discovery is also dry-run-first; publication writes
-one create-absent `<project-root>/runtime/runtime.tsv`. Doctor diagnosis and
+and writes nothing. Runtime discovery is also preview-first: an interactive
+confirmation publishes the already inspected in-memory plan after targeted
+freshness checks, while `--execute` is the noninteractive equivalent. Enter or
+`n` writes nothing. Publication writes one create-absent
+`<project-root>/runtime/runtime.tsv`. Doctor diagnosis and
 repair follow the durable boundaries in
 [`execution-evidence-and-reporting.md`](../../../../docs/design/decisions/execution-evidence-and-reporting.md):
 diagnosis is read-only, while confirmed repair mutates only declared
@@ -246,12 +249,13 @@ cross-Project sharing; an immutable expected-content seal and fresh borrower
 qualification remain necessary.
 
 Explicit `runtime discover --from-project SOURCE` supplies that sharing route.
-Preview probes and prepares an expected-content seal without publication;
-`--execute` claims the source, rechecks its inventory/content, exclusively
+One invocation probes and prepares an expected-content seal, displays the
+preview, and either declines without writing or confirms publication. Confirmed
+publication claims the source, rechecks its inventory and content, exclusively
 publishes its initial `runtime/shared.json`, releases the exact claim, freshly
-checks the dependent selection and exclusively publishes its inventory. Failure
-preserves surviving claims and seals; dependent publication failure cannot undo
-a source seal. Verification-only operations remain available.
+checks the dependent selection and exclusively publishes its inventory.
+`--execute` skips only the interactive question. Failure preserves surviving
+claims and seals; dependent publication failure cannot undo a source seal.
 Runtime discovery normally reports only `READY`/`NOT READY` and its no-write or
 admitted outcome. `--verbose` adds every observed check and a shared source
 seal when applicable. Optional color emphasizes readiness but never changes

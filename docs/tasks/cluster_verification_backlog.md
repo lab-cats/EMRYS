@@ -116,7 +116,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U01](#cv-u01-cli-color-and-readability) | CLI color, readability and Inspect interpretation | Verification pending |
 | [CV-U02](#cv-u02-default-cli-verbosity) | Minimal default output, optional detail | Verification pending |
 | [CV-U03](#cv-u03-init-and-validate-summaries) | Init and Validate summaries | Verification pending |
-| [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Open |
+| [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Verification pending |
 | [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Verification pending |
 | [CV-U06](#cv-u06-available-resources) | Use all allocated workflow CPUs and memory | Verification pending |
 | [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Verification pending |
@@ -128,12 +128,12 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Verification pending |
 | [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Verification pending |
 | [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Verification pending |
-| [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Open |
+| [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Verification pending |
 | [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Verification pending |
 | [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Verification pending |
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Open |
-| [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Open |
-| [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Open |
+| [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
+| [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Verification pending |
 | [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Verification pending |
 | [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Verification pending |
 | [CV-U24](#cv-u24-persistent-cli-defaults) | Save site and other repeated CLI values | Verification pending |
@@ -274,7 +274,15 @@ line and the next Slurm diagnostic were joined as
 named phase unreadable and is tracked as the otherwise-unowned rendering defect
 CV-UX-01 below. The operator also reported that Doctor repair takes too long;
 CV-26 owns phase attribution and performance rather than treating shorter output
-as a speedup. CV-U04 returns to **Open**.
+as a speedup. CV-U04 returned to **Open** at that point.
+
+**Reconciled correction:** CV-UX-01 now serializes ordinary and verbose Doctor
+diagnostics through the active Rich display, hides scheduler-record paths from
+normal output, and retains them under `--verbose`. Narrow color and `NO_COLOR`
+PTY fixtures cover the exact zero-duration collision, and the integrated standard
+CI passed. The broader category/progress contract above is therefore implemented;
+CV-U04 is **Verification pending** for a fresh Viking terminal walkthrough. This
+does not claim that Doctor is faster or require a cluster performance measurement.
 
 ### CV-U05 Doctor first-run expectations
 
@@ -757,7 +765,19 @@ numbers are also requested. Because the current view retains a bounded tail,
 absolute-file versus tail-relative numbering must be stated rather than guessed.
 These are desired interactions, not authority to weaken bounded reads, stream
 identity, sanitization, or changed-generation handling. These additional
-interactions remain Open.
+interactions remained Open at the time of the finding.
+
+**Implemented expanded navigation:** Selecting an installed evidence/log stream
+now starts at the latest retained line and follows new text while at the bottom.
+Upward movement visibly changes the state to `PAUSED`; reaching the bottom or
+pressing `G` resumes `FOLLOWING`. Counts apply to `j`/`k`; `/pattern` searches the
+sanitized retained tail, highlights matches, and `n`/`N` moves forward/backward.
+One-based displayed line numbers are explicitly tail-relative. Stream changes
+reset search and resume follow. The existing 64-KiB/256-line read bound, identity
+pinning, sanitization, rotation/truncation handling and ignored mouse reports are
+unchanged. The standalone dashboard has no selectable evidence/log view and
+retains its existing bounded keyboard scrolling. CV-U16 is **Verification
+pending** for hosted CI and Viking/tmux terminal acceptance.
 
 ### CV-U17 Completion communication
 
@@ -961,10 +981,17 @@ EMRYS may derive the STAR index and BED12 data and create or check reference
 sidecars such as `.fai` and `.dict`, but those derived artifacts are not a
 substitute for the matching FASTA/GTF pair. If either source file is missing,
 the novice path must stop and say to obtain the correct matching reference and
-annotation rather than guess or continue. Quickstart currently names the paths
-but does not explain this ownership or missing-input action adequately. It must
-also tie selector names to the selected FASTA's actual contigs. CV-U20 returns
-to **Open** pending a novice walkthrough of that complete explanation.
+annotation rather than guess or continue. Quickstart at that point named the
+paths but did not explain this ownership or missing-input action adequately, so
+CV-U20 returned to **Open**.
+
+**Reconciled correction:** The current Quickstart states that the FASTA and
+matching GTF are external inputs that EMRYS neither generates nor downloads,
+tells the operator to stop if either is absent, and explains that selectors must
+match the first words after `>` in the selected FASTA headers. It supplies the
+complete PUM1 selector list while explicitly refusing to guess when a delivery
+uses different names. The documented ownership and missing-input gap is fixed;
+CV-U20 is **Verification pending** for a novice Viking walkthrough.
 
 ### CV-U21 Technical parameter assistance
 
@@ -1003,7 +1030,16 @@ selectors: after the user supplies the reference FASTA, show or validate the
 contig names that the selector prompt can accept. This is technical assistance,
 not authority to choose biologically appropriate regions, a reference release,
 or an annotation on the user's behalf. Prompt ordering must make the selected
-FASTA available before this assistance is offered. CV-U21 remains **Open**.
+FASTA available before this assistance is offered.
+
+**Implemented extension:** Guided setup now parses the admitted FASTA once,
+shows its contig count and a bounded name list before the selector prompt, and
+immediately rejects an entered name or interval that the selected FASTA cannot
+accept. The same in-memory contig summary supplies STAR's reference-length
+suggestion rather than reopening the FASTA. Publication still freshly validates
+the reference, annotation and selectors at its separate mutation boundary. No
+biological selector or reference release is inferred. CV-U21 is **Verification
+pending** for hosted CI and a fresh operator walkthrough.
 
 ### CV-U22 Smoke-project tool reuse
 
@@ -1541,7 +1577,7 @@ while `--verbose` retains them. Real narrow-PTY checks cover color and
 `NO_COLOR`, diagnostic ordering, a line boundary before `Slurm submission
 records:`, and readable zero-duration timing. Focused progress, submission and
 Slurm Doctor suites passed 418 tests locally. CV-UX-01 is **Verification pending**
-for standard CI and Viking terminal acceptance.
+for Viking terminal acceptance; the integrated standard CI passed.
 
 ## P0 outcomes
 
@@ -2002,6 +2038,15 @@ runtime-content, namespace, source-generation or borrower-publication checks.
 This records the performance/interaction requirement and safe boundary, not an
 approved persistence design. A direct real-data path must also work when no
 optional smoke donor exists.
+
+**Implemented same-invocation flow:** Interactive discovery now displays one
+in-memory inspected plan and offers `Admit this runtime inventory? [y/N]`.
+Decline and noninteractive omission remain no-write; `--execute` remains the
+automation route. Confirmation reuses the previewed probes while rechecking the
+Project, destination, exact source inventory and runtime content at the mutation
+boundary. A newly published donor seal still receives its distinct post-seal
+probe before borrower publication. No retained plan, cache, schema or cleanup
+policy was added. Hosted CI and institutional reuse acceptance remain pending.
 
 ### CV-09 Qualification scope and placement
 

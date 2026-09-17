@@ -381,6 +381,8 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
     arguments.sample = []
     arguments.regions_file = []
     arguments.region = []
+    arguments.sjdb_overhang = None
+    arguments.genome_sa_index_nbases = None
     reference_fasta = arguments.reference_fasta
     reference_gtf = arguments.reference_gtf
     arguments.reference_fasta = None
@@ -406,6 +408,8 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
                 "",
                 "chrSynthetic",
                 "",
+                "",
+                "",
             )
         )
     )
@@ -413,8 +417,17 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
     monkeypatch.setattr(onboarding.sys, "stdin", terminal)
     terminal_output = Terminal()
     monkeypatch.setattr(onboarding.sys, "stderr", terminal_output)
+    reference_reads = []
+    read_reference = onboarding._reference_contigs
+
+    def count_reference(path: Path) -> tuple[tuple[str, int], ...]:
+        reference_reads.append(path)
+        return read_reference(path)
+
+    monkeypatch.setattr(onboarding, "_reference_contigs", count_reference)
 
     assert onboarding.init_project_from_args(arguments) == 0
+    assert reference_reads == [reference_fasta]
     assert (output / "samples.tsv").is_file()
     assert (output / "partitions.tsv").is_file()
     definition = yaml.safe_load((output / "project.yaml").read_text(encoding="utf-8"))
@@ -429,6 +442,41 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
         "Choose a regions file, or press Enter to type FASTA names/regions." in prompts
     )
     assert f"FASTA names/regions from {Path(reference_fasta).name}" in prompts
+    assert "Accepted FASTA names (1): chrSynthetic" in prompts
+
+
+def test_guided_project_rejects_selector_absent_from_supplied_fasta(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Terminal(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    arguments = _project_arguments(tmp_path, tmp_path / "guided", execute=False)
+    _table, _sample_ids, rows = step08.validate_sample_manifest(
+        arguments.sample_manifest
+    )
+    arguments.sample_manifest = None
+    arguments.partition_manifest = None
+    arguments.fastq = [
+        Path(row[mate]) for row in rows for mate in ("r1_fastq", "r2_fastq")
+    ]
+    arguments.sample = [
+        [row["sample_id"], row["condition"], row["replicate"], row["strandedness"]]
+        for row in rows
+    ]
+    arguments.regions_file = []
+    arguments.region = []
+    monkeypatch.setattr(onboarding.sys, "stdin", Terminal("\nnot-a-contig\n"))
+    monkeypatch.setattr(onboarding.sys, "stderr", Terminal())
+
+    with pytest.raises(
+        onboarding.OnboardingError, match="absent from the reference FASTA"
+    ):
+        onboarding._guided_manifest_members(
+            arguments, reference_contigs=(("chrSynthetic", 12),)
+        )
 
 
 @pytest.mark.parametrize("site", (None, "viking"))
@@ -2408,8 +2456,11 @@ def test_runtime_discovery_cli_is_dry_run_then_create_absent(
     )
     monkeypatch.setattr(
         onboarding,
-        "discover_runtime_profile",
-        lambda **_kwargs: inspection,
+        "_plan_runtime_discovery",
+        lambda **_kwargs: onboarding._RuntimeDiscoveryPlan(
+            inspection,
+            lambda: onboarding.publish_runtime_profile(inspection) or inspection,
+        ),
     )
     arguments = argparse.Namespace(project=project, execute=False, verbose=False)
 
@@ -2550,6 +2601,64 @@ def test_runtime_reuse_previews_then_seals_and_selects_without_installation(
     with pytest.raises(onboarding.OnboardingError, match="already exists"):
         onboarding.reuse_runtime_profile(project=borrower, donor=donor, execute=True)
     assert len(calls) == 4
+
+
+def test_runtime_reuse_interactive_confirmation_reuses_preview_probe(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from emrys.evidence.runtime_availability import inspector
+
+    class Terminal(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    donor, borrower, _seal, _original = _reuse_projects(tmp_path, monkeypatch)
+    calls = []
+    observe = inspector.run_checks
+
+    def fresh(checks, *, environment):
+        calls.append(tuple(checks))
+        return observe(checks, environment=environment)
+
+    monkeypatch.setattr(inspector, "run_checks", fresh)
+    output, errors = Terminal(), Terminal()
+    monkeypatch.setattr(onboarding.sys, "stdin", Terminal("y\n"))
+    monkeypatch.setattr(onboarding.sys, "stdout", output)
+    monkeypatch.setattr(onboarding.sys, "stderr", errors)
+    arguments = argparse.Namespace(
+        project=borrower,
+        from_project=donor,
+        execute=False,
+        replace=False,
+        verbose=False,
+    )
+
+    assert onboarding.discover_runtime_from_args(arguments) == 0
+    assert len(calls) == 2
+    assert (borrower.parent / "runtime/runtime.tsv").is_file()
+    assert "Runtime discovery" in _decoded_terminal(output.getvalue()).plain
+    assert "Runtime inventory admitted" in _decoded_terminal(output.getvalue()).plain
+    assert (
+        "Admit this runtime inventory? [y/N]"
+        in _decoded_terminal(errors.getvalue()).plain
+    )
+
+
+def test_runtime_reuse_confirmation_rejects_content_changed_after_preview(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    donor, borrower, seal, _original = _reuse_projects(tmp_path, monkeypatch)
+    plan = onboarding._plan_runtime_reuse(project=borrower, donor=donor)
+    (seal.parent / "managed/star").write_bytes(b"changed after preview\n")
+
+    with pytest.raises(onboarding.OnboardingError, match="changed after preview"):
+        plan.admit()
+
+    assert not seal.exists()
+    assert (seal.parent / "maintenance.lock").is_file()
+    assert not (borrower.parent / "runtime/runtime.tsv").exists()
 
 
 def test_runtime_reuse_explicitly_replaces_only_the_same_shared_source(

@@ -25,7 +25,7 @@ from types import SimpleNamespace
 
 import pytest
 import yaml
-from rich.text import Text
+from rich.ansi import AnsiDecoder
 
 from emrys import __main__ as cli
 import emrys.libraries.installed_package_identity as installed_package_identity
@@ -4497,6 +4497,8 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=False)
     token = "d" * 32
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("TERM", "xterm-256color")
     monkeypatch.setattr(control.uuid, "uuid4", lambda: SimpleNamespace(hex=token))
     monkeypatch.setattr(
         control.sys,
@@ -4527,11 +4529,12 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
         assert control.run_from_args(arguments) == 0
         captured = capsys.readouterr()
         assert captured.out == ""
-        projections[level] = Text.from_ansi(captured.err).plain
+        projections[level] = AnsiDecoder().decode_line(captured.err)
         assert ("Execute this plan?" in captured.err) is interactive
         assert not (workspace / "logs").exists()
 
-    normal = projections["normal"]
+    normal_output = projections["normal"]
+    normal = normal_output.plain
     assert "Execution placement: Slurm" in normal
     assert "Analysis: 'sensitivity'" in normal
     assert (
@@ -4552,8 +4555,16 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     assert "Scheduler stdout:" not in normal
     assert "Scheduler stderr:" not in normal
     assert "Scheduler command:" not in normal
+    styles = {
+        normal[span.start : span.end]: str(span.style) for span in normal_output.spans
+    }
+    assert styles["Analysis: "] == "bold color(6)"
+    analysis_value = normal.index("'sensitivity'")
+    assert not any(
+        span.start <= analysis_value < span.end for span in normal_output.spans
+    )
 
-    verbose = projections["verbose"]
+    verbose = projections["verbose"].plain
     assert set(normal.splitlines()) <= set(verbose.splitlines())
     assert all(
         line in verbose

@@ -424,8 +424,10 @@ def test_missing_or_invalid_counts_never_invent_completion(stats, capsys):
     assert dashboard.progress_values(model) == (31, None, None)
     assert "total and remaining unknown" in dashboard.progress_line(model, 100)
     assert not any(
-        isinstance(line, tuple) and line[0].endswith("DONE")
-        for line in dashboard.pipeline_lines(model, 10, 100)
+        line.endswith("DONE")
+        for line in _flatten_render_lines(
+            dashboard.pipeline_lines(model, 10, 100)
+        ).splitlines()
     )
     assert "unknown waiting" in _flatten_render_lines(
         dashboard.current_lines(model, {}, 10, 100)

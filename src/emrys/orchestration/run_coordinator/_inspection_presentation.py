@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import select
 import stat
 import sys
@@ -865,6 +866,32 @@ def render_watch_text(snapshot, *, now):
     return result
 
 
+def _render_log_rows(snapshot, *, now, query=""):
+    """Number and search only the sanitized, bounded stream tail."""
+    from rich.text import Text
+
+    rows = render_watch_text(snapshot, now=now).split("\n", allow_blank=True)
+    if snapshot.tail is None:
+        return rows, (), ""
+    tail_rows = snapshot.tail.text.split("\n")
+    first = max(0, len(rows) - len(tail_rows))
+    pattern = None
+    if query:
+        try:
+            pattern = re.compile(query)
+        except re.error as exc:
+            return rows, (), f"Invalid search pattern: {safe_text(exc)}"
+    matches = []
+    width = max(3, len(str(len(tail_rows))))
+    for tail_index, row_index in enumerate(range(first, len(rows)), start=1):
+        row = rows[row_index]
+        if pattern is not None and pattern.search(row.plain):
+            matches.append(row_index)
+            row.highlight_regex(pattern, "bold black on yellow")
+        rows[row_index] = Text(f"{tail_index:>{width}} ", style="dim") + row
+    return rows, tuple(matches), ""
+
+
 def _read_watch_key(descriptor: int) -> bytes | None:
     """Read one navigation key and consume SGR mouse reports without acting."""
     key = os.read(descriptor, 1)
@@ -1002,6 +1029,14 @@ def watch(
     worker = RefreshWorker(initial, refresh)
     stream_index = 0
     scroll = 0
+    max_scroll = 0
+    follow = True
+    count = ""
+    search_input = None
+    search_query = ""
+    search_error = ""
+    match_line = None
+    matches = ()
     selected_view = (
         "evidence" if run_root is not None and request is None else "overview"
     )
@@ -1032,9 +1067,25 @@ def watch(
                     worker.request(verify=False, stream_index=stream_index)
                     deadline = now + refresh_seconds
                 snapshot = worker.snapshot
-                text = render_watch_text(snapshot, now=datetime.now(UTC))
                 controls = "Views: 1/o overview | 2/d details | 3/v evidence/logs | Tab switch | [/] stream | Scroll: arrows/j/k PgUp/PgDn Home/g | r recheck selection/evidence (read-only) | q quit"
                 controls += f"\nDiagnostic trace: {snapshot.trace_at or 'unavailable'} (unverified log identity/progress) | Scheduler: {snapshot.scheduler_at or 'unavailable'}"
+                if selected_view == "evidence":
+                    state = "FOLLOWING" if follow else "PAUSED"
+                    search = (
+                        f"/{search_input}"
+                        if search_input is not None
+                        else f"/{search_query}"
+                        if search_query
+                        else "none"
+                    )
+                    controls += (
+                        f"\nLog: {state}; tail-relative lines; count+j/k; G bottom; "
+                        f"/ search; n/N matches | Search: {search}"
+                    )
+                    if count:
+                        controls += f" | Count: {count}"
+                    if search_error:
+                        controls += f" | {search_error}"
                 if reviews:
                     controls += "\nLeave view: " + " | ".join(
                         f"{key.decode('ascii')} {label}"
@@ -1045,6 +1096,8 @@ def watch(
                         "\nRefresh in progress; displayed observations are dated"
                     )
                 controls_text = Text(controls, style="dim")
+                controls_text.highlight_regex(r"\bFOLLOWING\b", "bold green")
+                controls_text.highlight_regex(r"\bPAUSED\b", "bold yellow")
                 layout["controls"].size = min(
                     console.size.height - 1,
                     max(
@@ -1060,8 +1113,16 @@ def watch(
                     ),
                 )
                 if selected_view == "evidence":
-                    rows = text.split("\n")
-                    scroll = min(scroll, max(0, len(rows) - 1))
+                    rows, matches, render_error = _render_log_rows(
+                        snapshot, now=datetime.now(UTC), query=search_query
+                    )
+                    if render_error:
+                        search_error = render_error
+                    body_height = max(1, console.size.height - layout["controls"].size)
+                    max_scroll = max(0, len(rows) - body_height)
+                    scroll = max_scroll if follow else min(scroll, max_scroll)
+                    if match_line not in matches:
+                        match_line = None
                     layout["body"].update(Text("\n").join(rows[scroll:]))
                 else:
                     layout["body"].update(
@@ -1082,11 +1143,69 @@ def watch(
                     key = _read_watch_key(descriptor)
                     if key is None:
                         continue
+                    if search_input is not None:
+                        if key in (b"\r", b"\n"):
+                            candidate = search_input or search_query
+                            _rows, found, error = _render_log_rows(
+                                snapshot,
+                                now=datetime.now(UTC),
+                                query=candidate,
+                            )
+                            search_input = None
+                            search_error = error
+                            if not error and candidate:
+                                search_query = candidate
+                                matches = found
+                                match_line = next(
+                                    (line for line in matches if line > scroll),
+                                    matches[0] if matches else None,
+                                )
+                                if match_line is not None:
+                                    scroll = min(match_line, max_scroll)
+                                    follow = False
+                        elif key in (b"\x1b", b"\x03"):
+                            search_input = None
+                        elif key in (b"\x7f", b"\b"):
+                            search_input = search_input[:-1]
+                        elif len(key) == 1 and 32 <= key[0] <= 126:
+                            search_input += key.decode("ascii")
+                        continue
                     if key in (b"q", b"Q", b"\x04", b""):
                         return 0
                     selected_review = reviews.get(key.lower())
                     if selected_review is not None:
                         break
+                    if key == b"/" and selected_view == "evidence":
+                        search_input, search_error = "", ""
+                        continue
+                    if (
+                        selected_view == "evidence"
+                        and len(key) == 1
+                        and key.isdigit()
+                        and (
+                            count
+                            or key not in (b"1", b"2", b"3")
+                            or select.select([descriptor], [], [], 0.15)[0]
+                        )
+                    ):
+                        count += key.decode("ascii")
+                        continue
+                    if selected_view == "evidence" and key in (b"n", b"N") and matches:
+                        anchor = scroll if match_line is None else match_line
+                        candidates = (
+                            tuple(line for line in matches if line < anchor)[::-1]
+                            if key == b"N"
+                            else tuple(line for line in matches if line > anchor)
+                        )
+                        match_line = (
+                            candidates[0]
+                            if candidates
+                            else (matches[-1] if key == b"N" else matches[0])
+                        )
+                        scroll = min(match_line, max_scroll)
+                        follow = False
+                        count = ""
+                        continue
                     if key in (
                         b"1",
                         b"o",
@@ -1111,10 +1230,14 @@ def watch(
                             )
                         )
                         scroll = 0
+                        follow = selected_view == "evidence"
+                        count = ""
                     if key in (b"r", b"R", b"[", b"]"):
                         if key in (b"[", b"]"):
                             stream_index += 1 if key == b"]" else -1
                             selected_view, scroll = "evidence", 0
+                            follow, search_query, search_error = True, "", ""
+                            match_line = None
                         worker.request(
                             verify=key in (b"r", b"R"), stream_index=stream_index
                         )
@@ -1137,9 +1260,16 @@ def watch(
                             if key in (b"j", b"J", b"\x1b[B")
                             else -1
                         )
+                        if count:
+                            delta = (1 if delta > 0 else -1) * int(count)
+                        count = ""
                         scroll = max(0, scroll + delta)
+                        follow = scroll >= max_scroll
                     if key in (b"g", b"\x1b[H", b"\x1bOH", b"\x1b[1~", b"\x1b[7~"):
                         scroll = 0
+                        follow, count = max_scroll == 0, ""
+                    if key in (b"G", b"\x1b[F", b"\x1bOF", b"\x1b[4~", b"\x1b[8~"):
+                        scroll, follow, count = max_scroll, True, ""
     except KeyboardInterrupt:
         return 0
     finally:
