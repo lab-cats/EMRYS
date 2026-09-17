@@ -10,10 +10,11 @@ the synthetic study and the subsequent six-library actual-data exercise.
 
 The [main findings matrix](backlog_matrix.md) owns the campaign outcome and
 its relationship to `SITE-PARITY-01`. It delegates the finite `CV-01` through
-`CV-27` cards, priorities, statuses, and acceptance to the
-[cluster verification backlog](cluster_verification_backlog.md). This charter
-owns scope, the evidence register, and campaign completion criteria; it is not
-a second card-status list.
+`CV-27`, `CV-U01` through `CV-U33`, and `CV-UX-01` cards, including their
+statuses and acceptance and their priorities where assigned, to the [cluster
+verification backlog](cluster_verification_backlog.md). This charter owns scope,
+the evidence register, and campaign completion criteria; it is not a second
+card-status list.
 
 ## Scope and authority
 
@@ -29,10 +30,12 @@ Priorities are the operator's P0 through P3 ordering. The duplicate question
 about Doctor starting over is consolidated into CV-05: a retry reused native
 installation and restored R quickly, while still repeating verification.
 The record retains that correction instead of treating every retry as a
-fresh installation. The three subsequently accepted additions are submission
-preview, resource-profile compatibility, and the unexplained initial runtime
-qualification failure. Earlier unranked onboarding/output observations are
-mapped to related cards in the backlog without inventing new priorities.
+fresh installation. Within the original `CV-01` through `CV-27` priority
+sequence, the three subsequently accepted additions are submission preview,
+resource-profile compatibility, and the unexplained initial runtime
+qualification failure. The later `CV-U` and `CV-UX` observations remain
+unprioritized unless a priority is explicitly assigned; their statuses and
+acceptance live in the delegated backlog.
 
 Proposed spellings such as `emrys stop JOB_ID`, cleanup commands, and a Run
 center remain design inputs. Select and record the smallest complete interface
@@ -123,6 +126,14 @@ local/CI checks, site observations, and remaining limits. A statement that
 code appears fixed is insufficient for Completed status. Record visual report
 review separately from receipt-based reporting completion. Numerical/scientific
 review and biological interpretation remain outside this software campaign.
+
+A read-only adversarial audit on **2026-09-17** found source, journey,
+documentation, and acceptance conflicts behind several `Verification pending`
+statuses. Passing hosted CI remains valid evidence for the behavior it exercised,
+but does not establish that the original outcome is fully implemented. The
+affected cards in the delegated backlog return to **Open** until the recorded
+gap is implemented or the original acceptance is explicitly revised; additional
+site evidence alone cannot close a source-completeness gap.
 
 Campaign closure requires:
 
