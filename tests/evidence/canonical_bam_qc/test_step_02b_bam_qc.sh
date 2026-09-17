@@ -80,6 +80,11 @@ printf 'BAM\n' >"$bam"
 printf 'BAI\n' >"${bam%.bam}.bai"
 command=(bash "$SCRIPT" --sample-id sample --bam "$bam" --output-dir "$tmp_dir/staged" --samtools-bin "$fake_bin/samtools")
 "${command[@]}"
+assert_contains "$samtools_log" $'flagstat\n-@\n0'
+: >"$samtools_log"
+"${command[@]}" --threads 16
+assert_contains "$samtools_log" $'flagstat\n-@\n15'
+assert_fails 'positive integer' "${command[@]}" --threads 0
 assert_contains "$tmp_dir/staged/sample.quickcheck.txt" 'PASS: samtools quickcheck completed with no errors.'
 assert_contains "$tmp_dir/staged/sample.flagstat.txt" '8 + 0 mapped'
 FAKE_QUICKCHECK_MODE=output_success "${command[@]}"

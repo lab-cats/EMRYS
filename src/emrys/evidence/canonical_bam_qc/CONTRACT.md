@@ -138,3 +138,7 @@ Repository tests protect this contract under the shared
 The index-correspondence gap and quickcheck mismatch remain as described
 above. Immutable Run task records supply wider input, tool, attempt, and
 output identity.
+
+The internal `--threads` allowance defaults to one for existing callers.
+Flagstat receives `threads - 1` additional reading workers; quickcheck and
+report schemas are unchanged.

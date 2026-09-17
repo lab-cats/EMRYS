@@ -634,6 +634,7 @@ def test_successor_run_proves_authority_and_optional_attempt_observations() -> N
         ),
         (("allocation", "cores"), 1, None, "Workflow cores exceed observed allocation"),
         (("effective", "stage_concurrency"), {}, "effective", "stage_concurrency"),
+        (("workload",), {"samples": 999, "partitions": 1}, None, "workload differs"),
     ),
 )
 def test_successor_run_rejects_invalid_resource_resolution(

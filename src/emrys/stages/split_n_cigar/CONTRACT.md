@@ -42,6 +42,11 @@ that CIGAR-N transformation semantics occurred.
 [`step_05_split_n_cigar_reads.sh`](step_05_split_n_cigar_reads.sh) is an internal worker of the
 [Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
+The internal `--threads` allowance (one when omitted) also supplies
+`-XX:ActiveProcessorCount` so Java helper pools see the task's CPU share.
+This does not parallelize the main scientific traversal. Samtools indexing
+receives `threads - 1` additional I/O workers.
+
 The required internal `--native-memory-mb` argument supplies Java
 `-Xmx<N>m` through GATK `--java-options`, alongside the existing temporary
 directory option. The

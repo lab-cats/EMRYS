@@ -118,7 +118,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U03](#cv-u03-init-and-validate-summaries) | Init and Validate summaries | Verification pending |
 | [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Verification pending |
 | [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Verification pending |
-| [CV-U06](#cv-u06-available-resources) | Restore historical workflow and stage resources | Verification pending |
+| [CV-U06](#cv-u06-available-resources) | Use all allocated workflow CPUs and memory | Verification pending |
 | [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Verification pending |
 | [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Verification pending |
 | [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Verification pending |
@@ -327,17 +327,71 @@ their instruction. Recovering historical per-stage settings and the reported
 eight-hour versus four-hour regression are recorded in CV-U28. Resource usage
 must also be visible again in the dashboard (CV-U33).
 
-**Approved resolution:** Use the recovered historical policy as the default:
+**Historical restoration:** The initial implementation restored:
 12 workflow cores and 524288 MiB, with concurrent sample/partition work and
 the original stage allowances. Viking placement requests 256 CPUs, exclusive
 allocation and 12 hours. Requested CPUs and workflow cores are separate limits;
-this restores the selected historical configuration rather than introducing
-automatic tuning. CV-U33 remains separately owned. See CV-U28 for provenance
-and verification scope.
+this restored the selected historical configuration but left CV-U06's request
+to use all available resources incomplete. CV-U33 remains separately owned.
+See CV-U28 for historical provenance and verification scope.
 
-The packaged defaults and affected admission paths passed the integrated standard
-CI. Institutional execution and any new wall-time measurement remain pending,
-so CV-U06 is **Verification pending**.
+**Allocation-aware implementation:** Workflow cores and memory resolve from the
+allocation. Repeated stages resolve concurrency from admitted sample/partition
+counts and CPU/memory capacity, share memory with recovered per-task minimums,
+and pass CPU shares to native tools that support them. Singleton memory follows
+the workflow; STAR indexing and Step 08 receive workflow CPU allowances. STAR
+alignment's sorting threads, samtools additional workers, and Java helper-pool
+CPU counts are now explicit. Steps 00b, 03, 07, 09 and 10 retain serial main
+algorithms (03/07 parallelize across samples/partitions). Every stage's policy
+and the limits of parallelism are in the
+[stage resource table](../../configs/README.md#profile-document).
+
+Viking requests all CPUs and RAM on one exclusive node without assuming a fixed
+node size. Resource shares do not prove full utilization, safe peak RSS for every
+dataset, or improved wall time. The
+[HPC resource research](../../configs/README.md#slurm-and-tool-resource-semantics)
+records primary-source behavior and the measurements needed for performance
+acceptance. Static Attempt shares do not expand as sibling tasks finish.
+
+The existing resource resolver owns profile admission, reservation checks,
+Attempt resolution and retained-policy validation. Shared schema definitions
+replace duplicate CPU/memory value validation, and redundant parsing is removed.
+No new scheduler, dependency, product file or mutable authority is introduced.
+The existing Attempt policy retains Analysis-derived workload counts.
+Existing numeric policies remain valid and existing Runs retain their declaration.
+The [profile guide](../../configs/README.md#profile-document) documents values;
+the preceding migration procedure creates a new profile for existing Projects.
+
+**Earlier STAR-index slice verification:** 848 focused profile/resource/Doctor/onboarding/Slurm,
+submission-inspection, application-contract and E2E-harness checks passed; the
+two separately selected onboarding subprocess cases also passed. The final
+Doctor/capacity run passed 154 cases, including nested cgroup v1/v2 limits, and
+all four STAR producer fixtures passed. Generated-command and resource/resume
+materialization checks passed 53 cases, with one Linux-only containment case
+skipped on macOS. These counts describe overlapping targeted selections.
+One broader resume-execution fixture failed before any Task ran: its isolated
+interpreter loaded the older `/Users/elisteiger/dev/norad` installation and
+could not import `coolname_hash`. That fixture remains for hosted CI; no
+dependency was installed to bypass the environment mismatch. Checks used this
+worktree's source, build-generated metadata and existing cached dependencies.
+Ruff, documentation structure and whitespace checks passed. The historical
+restoration's CI result does not cover this follow-up. Current hosted results are
+attached to [PR #271](https://github.com/lab-cats/EMRYS/pull/271). Institutional
+execution remains pending; CV-U06 remains **Verification pending**.
+
+**All-stage follow-up verification:** 335 targeted resource, profile,
+application-contract, materialization and orientation checks passed; 543
+capacity, Slurm, Doctor and onboarding checks passed. All six affected shell
+worker fixtures passed, including STAR sort threads above six, Java processor
+counts and samtools additional-worker accounting. Ruff, documentation structure
+and whitespace checks passed. Isolated subprocess/runtime lanes remain for
+hosted CI: the available local isolated interpreter selects an older checkout
+and lacks its optional CLI dependencies. No dependencies or cluster jobs were
+installed or started. The follow-up replaces the existing resolver and schema
+mechanics rather than adding a scheduler; the complete PR has no new product
+files and stays within the approved 250-net-line product allowance. These are
+implementation and local-fixture results, not Viking utilization or speedup
+proof. Current hosted status remains attached to PR #271.
 
 ### CV-U07 Projects directory
 
@@ -887,12 +941,12 @@ values with unexplained placeholders or leave the user to infer them. This
 records the requirement; no new site settings or dataset-specific values were
 selected during this discussion.
 
-**Implemented values:** Quickstart now states the selected Viking placement:
+**Implemented values:** The Viking profile now selects:
 account `viking-users`, partition `long`, QoS `normal`, one exclusive node,
-256 CPUs, 12 hours, site-default allocation memory, scheduler-selected node and
-private `/tmp` scratch. It identifies the retained six-library EV/PUM1 policy's
-12 workflow cores and 512-GiB workflow memory; the packaged policy owns the full
-stage thread, concurrency and memory map.
+all node CPUs/RAM, 12 hours, scheduler-selected node and private `/tmp` scratch.
+The workflow and STAR indexing use allocation-based limits; other stages retain
+the six-library EV/PUM1 settings. The packaged policy owns the full stage thread,
+concurrency and memory map.
 
 The guided EV/PUM1 continuation supplies all known study values inline: the six
 `ABE_EV_2`/`ABE_PUM1_2`, `ABE_EV_3`/`ABE_PUM1_3`, and
@@ -1256,8 +1310,11 @@ no tracked history. The `.example.yaml` was the conservative four-core policy;
 the desired policy was `configs/local_pilot_resources.csu_viking_ev_pum1.yaml`,
 introduced by `92863824`. It moved into the execution profile in `d6e54aff`;
 `5f42c8c4` retired the old filename without losing those computational values.
-The retained [Viking profile](../../configs/execution_profile.csu_viking_ev_pum1.yaml)
-preserves them. Later explicit one-thread declarations for 09/10 are retained;
+The current [Viking profile](../../configs/execution_profile.csu_viking_ev_pum1.yaml)
+now applies CV-U06's allocation-based workflow/STAR limits; the original policy
+used 12 workflow cores, 524288 MiB workflow memory, 12 STAR-index threads and
+262144 MiB STAR-index memory, with 256 CPUs requested outside the workflow.
+Other recovered stage values and later one-thread declarations for 09/10 remain;
 the retired, inactive reporting-memory map is not reintroduced.
 
 The 46 perf branches carrying the benchmark harness contained 11 harness
@@ -1290,12 +1347,13 @@ installed. Ruff, shell syntax, documentation structure and whitespace checks
 passed. The product delta is 26 net lines in seven existing files; native-tool
 execution and full regression checks remain with hosted CI.
 
-**Implementation and protection:** The packaged defaults match the retained
-profile exactly. Viking initialization and the placement example request 256
-CPUs, exclusive allocation and 12 hours. The existing admission, scheduler,
+**Historical restoration and protection:** At restoration, the packaged defaults
+matched the retained profile exactly, and Viking requested 256 CPUs, exclusive
+allocation and 12 hours. CV-U06 records the subsequent full-allocation change.
+The existing admission, scheduler,
 preview, override and immutable-resume owners are reused without new product
 code paths, schemas, files or dependencies. The retained historical profile
-remains evidence; no history or evidence was deleted. Small symbolic-admission
+provided the historical evidence described above. Small symbolic-admission
 and hosted-E2E budgets are explicit fixtures rather than implicit product defaults.
 
 **Local verification:** 733 checks passed: 695 across `test_execution_profile`,

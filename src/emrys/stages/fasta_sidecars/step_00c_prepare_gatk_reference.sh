@@ -14,6 +14,7 @@ Usage: src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh \
   --reference-dict-output REFERENCE_DICT_OUTPUT \
   --samtools-bin SAMTOOLS_BIN \
   --native-memory-mb NATIVE_MEMORY_MB \
+  --threads THREADS \
   --gatk-bin GATK_BIN \
   --java-bin JAVA_BIN
 
@@ -33,8 +34,10 @@ source "$script_dir/../../libraries/gatk_invocation.sh"
 
 declare_required_arguments reference_fasta reference_fai_output reference_dict_output java_bin gatk_bin samtools_bin native_memory_mb
 
+threads=1
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
         --native-memory-mb) assign_option_value "$1" "${2:-}" native_memory_mb; shift 2 ;;
         --reference-fasta) assign_option_value "$1" "${2:-}" reference_fasta; shift 2 ;;
         --reference-fai-output) assign_option_value "$1" "${2:-}" reference_fai_output; shift 2 ;;
@@ -47,6 +50,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 require_arguments
+validate_positive_integer "--threads" "$threads"
 require_task_work_dir
 validate_positive_integer "--native-memory-mb" "$native_memory_mb"
 
@@ -160,6 +164,6 @@ faidx_input="$EMRYS_TASK_WORK_DIR/faidx_input"
 ln -s "$reference_path" "$faidx_input"
 "$samtools_bin" faidx "$faidx_input"
 mv -- "$faidx_input.fai" "$reference_fai_output"
-invoke_gatk_with_selected_java "$java_bin" "$gatk_bin" --java-options "-Xmx${native_memory_mb}m" CreateSequenceDictionary \
+invoke_gatk_with_selected_java "$java_bin" "$gatk_bin" --java-options "-Xmx${native_memory_mb}m -XX:ActiveProcessorCount=${threads}" CreateSequenceDictionary \
     -R "$reference_fasta" -O "$reference_dict_output"
 validate_sidecar_agreement "$reference_fai_output" "$reference_dict_output"

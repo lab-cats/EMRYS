@@ -76,8 +76,8 @@ placement:
   account: viking-users
   partition: long
   qos: normal
-  cpus_per_task: 256
-  memory_mb: null
+  cpus_per_task: node
+  memory_mb: 0
   time: "12:00:00"
   exclusive: true
   nodelist: null
@@ -139,7 +139,7 @@ class SlurmPlacement:
     account: str | None
     partition: str | None
     qos: str | None
-    cpus_per_task: int
+    cpus_per_task: int | Literal["node"]
     memory_mb: int | None
     time: str
     exclusive: bool
@@ -188,12 +188,20 @@ class ExecutionProfile:
     def validate_reservation(self) -> None:
         """Reject known reservation conflicts without changing symbolic policy."""
         if isinstance(self.placement, SlurmPlacement):
+            if self.placement.cpus_per_task == "node" and not self.placement.exclusive:
+                raise ExecutionProfileError(
+                    "Whole-node CPUs require exclusive placement"
+                )
             try:
                 resolve_computational_resources(
                     self.resource_policy.declaration.identity_document(),
-                    self.placement.cpus_per_task,
-                    self.placement.memory_mb,
+                    None
+                    if self.placement.cpus_per_task == "node"
+                    else self.placement.cpus_per_task,
+                    self.placement.memory_mb or None,
                     limit_source="Slurm reservation",
+                    # A reservation must fit at least one automatic task.
+                    workload={"samples": 1, "partitions": 1},
                 )
             except orchestration_contracts.ContractValidationError as exc:
                 raise ExecutionProfileError(str(exc)) from exc
@@ -213,10 +221,12 @@ class ExecutionProfile:
                         if placement.exclusive
                         else "not requested; site policy applies"
                     ),
-                    f"Allocation request: {placement.cpus_per_task} CPUs, {placement.time}; memory: "
+                    f"Allocation request: {'all node' if placement.cpus_per_task == 'node' else placement.cpus_per_task} CPUs, {placement.time}; memory: "
                     + (
                         "site default (unknown)"
                         if placement.memory_mb is None
+                        else "all node memory (unknown until execution)"
+                        if placement.memory_mb == 0
                         else f"{placement.memory_mb} MiB"
                     ),
                     f"Account: {placement.account or 'site default'}; "
@@ -229,7 +239,13 @@ class ExecutionProfile:
             )
         lines.extend(
             (
-                f"Workflow CPU ceiling: {resources.workflow_cores}; memory ceiling: "
+                "Workflow CPU ceiling: "
+                + (
+                    "allocation capacity (unknown until execution)"
+                    if resources.workflow_cores == "allocation"
+                    else str(resources.workflow_cores)
+                )
+                + "; memory ceiling: "
                 + (
                     "allocation capacity (unknown until execution)"
                     if resources.workflow_memory_mb == "allocation"
@@ -242,10 +258,12 @@ class ExecutionProfile:
                 + ", ".join(
                     f"{step}={count}" for step, count in resources.stage_concurrency
                 ),
-                "Stage memory: workflow ceiling; explicit MiB caps: "
+                "Stage memory: workflow ceiling; explicit MiB limits/shares: "
                 + (
                     ", ".join(
-                        f"{step}={memory}"
+                        f"{step}=auto (minimum {memory['minimum_mb']} MiB)"
+                        if isinstance(memory, Mapping)
+                        else f"{step}={memory}"
                         for step, memory in resources.stage_memory_mb
                         if memory != "workflow"
                     )

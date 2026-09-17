@@ -228,6 +228,7 @@ def _readiness(
         if step_threads is None
         else step_threads
     )
+    resource_document["step_threads"].update({"00c": 1, "02b": 1, "04": 1, "05": 1})
     profile_document["resources"] = resource_document
     execution_profile_path.write_text(
         yaml.safe_dump(profile_document, sort_keys=False),
@@ -1933,11 +1934,25 @@ def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
 
 
 def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> None:
-    allocation = {"00a": 1, "01": 2, "02": 3, "06": 4, "08": 2}
+    allocation = {
+        "00a": 1,
+        "00c": 1,
+        "01": 2,
+        "02": 3,
+        "02b": 1,
+        "04": 1,
+        "05": 1,
+        "06": 4,
+        "08": 2,
+    }
     plan = _plan(tmp_path, workflow_cores=4, step_threads=allocation)
     records = _task_records(plan)
     threaded_owners = {
         "emrys.stage.construct_STAR_index.v1",
+        "emrys.stage.construct_FASTA_sidecars.v1",
+        "emrys.evidence.collect_canonical_BAM_QC_evidence.v1",
+        "emrys.stage.mark_BAM_duplicates_with_Picard.v1",
+        "emrys.stage.split_N_cigar_reads_with_GATK.v1",
         "emrys.stage.align_RNA_reads_with_STAR.v1",
         "emrys.stage.construct_canonical_BAM.v1",
         "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1",
@@ -1947,6 +1962,10 @@ def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> Non
     assert dict(plan.resources.step_threads) == {**allocation, "09": 1, "10": 1}
     owner_steps = {
         "emrys.stage.construct_STAR_index.v1": "00a",
+        "emrys.stage.construct_FASTA_sidecars.v1": "00c",
+        "emrys.evidence.collect_canonical_BAM_QC_evidence.v1": "02b",
+        "emrys.stage.mark_BAM_duplicates_with_Picard.v1": "04",
+        "emrys.stage.split_N_cigar_reads_with_GATK.v1": "05",
         "emrys.stage.align_RNA_reads_with_STAR.v1": "01",
         "emrys.stage.construct_canonical_BAM.v1": "02",
         "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1": "06",
@@ -1959,6 +1978,56 @@ def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> Non
             assert producer[producer.index("--threads") + 1] == str(allocation[step_id])
         else:
             assert "--threads" not in producer
+
+
+@pytest.mark.parametrize("cores,memory_mb", ((32, 262144), (96, 524288)))
+def test_full_node_policy_reaches_snakemake_and_all_stage_commands(
+    tmp_path: Path, cores: int, memory_mb: int
+) -> None:
+    readiness, _, _, workspace = _readiness(tmp_path)
+    resources = resolve_resource_policy(
+        load_execution_profile().resource_policy,
+        AllocationCapacity(cores, memory_mb, "Slurm fixture", "123"),
+        workload={
+            name: len(readiness.analysis.revision.record["identity"][name])
+            for name in ("samples", "partitions")
+        },
+    )
+    plan = build_attempt_plan(
+        _run_candidate(readiness, resources),
+        readiness,
+        workspace,
+        resources=resources,
+        operation="execute",
+    )
+    argv = plan.attempt_record["snakemake_argv"]
+    assert argv[argv.index("--cores") + 1] == str(cores)
+    assert f"mem_mb={memory_mb}" in argv
+    star = next(
+        record
+        for record in _task_records(plan)
+        if record["machine_key"] == "emrys.stage.construct_STAR_index.v1"
+    )
+    producer = star["producer_argv"]
+    assert producer[producer.index("--threads") + 1] == str(cores)
+    assert producer[producer.index("--native-memory-mb") + 1] == str(memory_mb * 4 // 5)
+    effective = _workflow(plan)["resource_policy"]["effective"]
+    assert effective["step_threads"]["00a"] == cores
+    assert effective["stage_memory_mb"]["00a"] == memory_mb
+    for record in _task_records(plan):
+        producer = record["producer_argv"]
+        if "--threads" in producer:
+            step = next(
+                row["step_id"]
+                for row in plan.run.execution_plan.record["identity"][
+                    "functional_specification"
+                ]["owner_tasks"]
+                if row["machine_key"] == record["machine_key"]
+            )
+            assert producer[producer.index("--threads") + 1] == str(
+                effective["step_threads"][step]
+            )
+    assert not (workspace / "runs").exists()
 
 
 @pytest.mark.parametrize(
@@ -2056,6 +2125,10 @@ def test_plan_records_stage_specific_concurrency(tmp_path: Path) -> None:
     effective = config["resource_policy"]["effective"]
     assert effective["step_threads"] == {
         "00a": 4,
+        "00c": 1,
+        "02b": 1,
+        "04": 1,
+        "05": 1,
         "01": 2,
         "02": 2,
         "06": 2,
@@ -5521,10 +5594,10 @@ def test_standalone_report_uses_project_slurm_placement(
     preview = capsys.readouterr().err
     assert "Execution placement: Slurm" in preview
     assert (
-        "Allocation request: 256 CPUs, 12:00:00; memory: site default (unknown)"
+        "Allocation request: all node CPUs, 12:00:00; memory: all node memory (unknown until execution)"
         in preview
     )
-    assert "Workflow CPU ceiling: 12;" not in preview
+    assert "Workflow CPU ceiling:" not in preview
 
     assert control.report_from_args(parser.parse_args([*argv, "--execute"])) == 0
     assert calls == [False] and len(submissions) == 1
@@ -5538,11 +5611,11 @@ def test_standalone_report_uses_project_slurm_placement(
         "--account=viking-users",
         "--partition=long",
         "--qos=normal",
-        "--cpus-per-task=256",
+        "--mem=0",
         "--time=12:00:00",
         "--exclusive",
     } <= set(submitted.argv)
-    assert not any(value.startswith("--mem=") for value in submitted.argv)
+    assert not any(value.startswith("--cpus-per-task=") for value in submitted.argv)
     assert (
         f" report {run_root.name} --project {project} --profile {profile} "
         in submitted.batch_script

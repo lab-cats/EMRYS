@@ -53,6 +53,10 @@ not by the mere existence of the target paths.
 [`step_00c_prepare_gatk_reference.sh`](step_00c_prepare_gatk_reference.sh) is an internal worker of the
 [Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
+The internal `--threads` allowance (one when omitted) also supplies
+`-XX:ActiveProcessorCount` so Java helper pools see the task's CPU share.
+This does not parallelize sequence-dictionary traversal or plain-FASTA indexing.
+
 The required internal `--native-memory-mb` argument supplies Java
 `-Xmx<N>m` through GATK `--java-options` for `CreateSequenceDictionary`. The
 [Run planner](../../orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)

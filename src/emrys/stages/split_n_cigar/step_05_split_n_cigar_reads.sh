@@ -14,6 +14,7 @@ Usage: src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh \
   --reference-fasta REFERENCE_FASTA \
   --output-dir OUTPUT_DIR \
   --native-memory-mb NATIVE_MEMORY_MB \
+  --threads THREADS \
   --gatk-bin GATK_BIN \
   --samtools-bin SAMTOOLS_BIN \
   --java-bin JAVA_BIN
@@ -34,8 +35,10 @@ source "$script_dir/../../libraries/gatk_invocation.sh"
 
 declare_required_arguments sample_id input_bam reference_fasta output_dir java_bin gatk_bin samtools_bin native_memory_mb
 
+threads=1
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
         --native-memory-mb) assign_option_value "$1" "${2:-}" native_memory_mb; shift 2 ;;
         --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
         --input-bam) assign_option_value "$1" "${2:-}" input_bam; shift 2 ;;
@@ -49,6 +52,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 require_arguments
+validate_positive_integer "--threads" "$threads"
 require_task_work_dir
 validate_positive_integer "--native-memory-mb" "$native_memory_mb"
 
@@ -116,8 +120,8 @@ invoke_gatk_with_selected_java "$java_bin" "$gatk_bin" --version 2>&1 ||
 
 output_bam="$output_dir/$sample_id.split_ncigar.bam"
 invoke_gatk_with_selected_java "$java_bin" "$gatk_bin" \
-    --java-options "-Xmx${native_memory_mb}m -Djava.io.tmpdir=$EMRYS_TASK_WORK_DIR" SplitNCigarReads \
+    --java-options "-Xmx${native_memory_mb}m -XX:ActiveProcessorCount=${threads} -Djava.io.tmpdir=$EMRYS_TASK_WORK_DIR" SplitNCigarReads \
     --tmp-dir "$EMRYS_TASK_WORK_DIR" -R "$reference_fasta" -I "$input_bam" -O "$output_bam"
 # GATK may also leave sample.split_ncigar.bai; samtools supplies the canonical suffix.
-"$samtools_bin" index "$output_bam"
+"$samtools_bin" index -@ "$((threads - 1))" "$output_bam"
 validate_bam_pair "$output_bam" "$output_bam.bai" "SplitNCigarReads"

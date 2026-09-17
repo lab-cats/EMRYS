@@ -654,8 +654,11 @@ def test_doctor_refuses_incompatible_reservation_before_planning_runtime_repair(
     _patch_foundations(monkeypatch, project)
     profile = project.source_path.parent / "runtime/profiles/default.yaml"
     profile.write_bytes(
-        project_default_profile_bytes("viking").replace(
-            b"cpus_per_task: 256", b"cpus_per_task: 3"
+        project_default_profile_bytes("viking")
+        .replace(b"cpus_per_task: node", b"cpus_per_task: 3")
+        .replace(
+            b"placement:",
+            b'resources:\n  schema_version: emrys.local-pilot-resources.v1\n  stage_concurrency: {"01": 6}\n  step_threads: {"01": 2}\nplacement:',
         )
     )
     monkeypatch.setattr(
@@ -675,7 +678,7 @@ def test_doctor_refuses_incompatible_reservation_before_planning_runtime_repair(
     )
 
     assert (
-        "DOCTOR BLOCKED: Workflow cores exceed Slurm reservation: 12 > 3"
+        "DOCTOR BLOCKED: Stage 01 concurrency x threads exceeds workflow cores: 6 x 2 > 3"
         in capsys.readouterr().err
     )
     assert _snapshot(tmp_path) == before
@@ -985,7 +988,7 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
         assert f"Runtime work: {runtime_work}" not in output.err
         assert "Package-manager output records" not in output.err
         assert "Execution placement: Direct" not in output.err
-        assert "Workflow CPU ceiling: 12;" not in output.err
+        assert "Workflow CPU ceiling:" not in output.err
         assert f"Apply this {operation} plan? [y/N]" in output.err
         assert f"{operation.capitalize()} preview complete" in output.err
         assert "Checks repeat because inputs" not in output.err

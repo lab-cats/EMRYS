@@ -309,7 +309,8 @@ continue with the [optional smoke test](../../quickstart.md#optional-smoke-test)
 
 Use this route on an approved non-Slurm compute host, never on a cluster login
 node. Managed setup requires x86-64 Linux, kernel 4.18 or newer and glibc 2.28
-or newer. The default profile needs at least 12 visible CPUs and 512 GiB.
+or newer. The default workflow uses process-visible capacity; its retained
+concurrent-stage allowances require at least 12 CPUs and 240 GiB.
 Confirm that the host's memory, disk space and permitted running time suit the study;
 the tiny synthetic exercise is not a full-study capacity estimate.
 
@@ -665,10 +666,11 @@ state stays `UNKNOWN` while the same sanitized diagnostic streams remain usable.
 
 Viking users select `--site viking` when creating either a synthetic or a
 real-data Project. EMRYS writes the Project's default execution profile with
-account `viking-users`, partition `long`, QoS `normal`, 256 CPUs, 12 hours,
-exclusive placement, site-default memory and private temporary files beneath
-`/tmp`. Packaged resources restore the historical six-library EV/PUM1 policy:
-12 workflow cores, 512 GiB and the retained stage-specific allowances. Both
+account `viking-users`, partition `long`, QoS `normal`, 12 hours, all CPUs and RAM
+on one exclusive node, and private temporary files beneath `/tmp`. The workflow
+and every stage resolve CPU, memory and concurrency limits from the allocation
+and admitted workload, using native tool controls where available. Serial phases
+remain serial; configured allowance is not measured utilization. Both
 synthetic and real-data initialization select these defaults automatically.
 Existing Projects can select them through
 [named profile creation](../../configs/README.md#create-a-named-profile-without-writing-yaml).

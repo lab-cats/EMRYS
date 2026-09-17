@@ -830,15 +830,14 @@ def plan_submission(
         argv.append(f"--partition={slurm_placement.partition}")
     if slurm_placement.qos is not None:
         argv.append(f"--qos={slurm_placement.qos}")
-    argv.extend(
-        (
-            "--nodes=1",
-            "--ntasks=1",
-            f"--cpus-per-task={slurm_placement.cpus_per_task}",
-        )
-    )
+    argv.extend(("--nodes=1", "--ntasks=1"))
+    if slurm_placement.cpus_per_task != "node":
+        argv.append(f"--cpus-per-task={slurm_placement.cpus_per_task}")
     if slurm_placement.memory_mb is not None:
-        argv.append(f"--mem={slurm_placement.memory_mb}M")
+        argv.append(
+            f"--mem={slurm_placement.memory_mb}"
+            + ("M" if slurm_placement.memory_mb else "")
+        )
     if slurm_placement.exclusive:
         argv.append("--exclusive")
     if slurm_placement.nodelist is not None:

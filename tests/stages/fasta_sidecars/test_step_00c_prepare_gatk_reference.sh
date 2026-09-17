@@ -7,7 +7,7 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 fake_bin="$tmp_dir/bin"
 mkdir -p "$fake_bin" "$tmp_dir/inputs" "$tmp_dir/staged" "$tmp_dir/work"
-export EMRYS_SHA256_PYTHON="$repo_root/.venv/bin/python"
+export EMRYS_SHA256_PYTHON="${EMRYS_SHA256_PYTHON:-$repo_root/.venv/bin/python}"
 export EMRYS_TASK_WORK_DIR="$tmp_dir/work" TMPDIR="$tmp_dir/work"
 export PATH="$fake_bin:$PATH"
 fail() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
@@ -42,7 +42,7 @@ printf 'gatk java on PATH=%s\\n' "\$(command -v java)" >> "$gatk_log"
 java -version >/dev/null 2>&1
 
 if [[ "\${1:-}" == "--java-options" ]]; then
-    [[ "\${2:-}" == -Xmx*m ]] || exit 64
+    [[ "\${2:-}" == -Xmx*m\ -XX:ActiveProcessorCount=* ]] || exit 64
     shift 2
 fi
 
@@ -180,8 +180,10 @@ command=(bash "$SCRIPT" --native-memory-mb 800 --reference-fasta "$reference_fas
 assert_contains "${gatk_log}" '-Xmx800m'
 : >"${gatk_log}"
 mkdir "$tmp_dir/work-larger"
-EMRYS_TASK_WORK_DIR="$tmp_dir/work-larger" "${command[@]}" --native-memory-mb 1600
+EMRYS_TASK_WORK_DIR="$tmp_dir/work-larger" "${command[@]}" --native-memory-mb 1600 --threads 16
 assert_contains "${gatk_log}" '-Xmx1600m'
+assert_contains "${gatk_log}" '-XX:ActiveProcessorCount=16'
+assert_fails 'positive integer' "${command[@]}" --threads 0
 assert_fails 'positive integer' "${command[@]}" --native-memory-mb 0
 assert_contains "$tmp_dir/staged/genome.fa.fai" $'chrA\t6'
 assert_contains "$tmp_dir/staged/genome.dict" $'@SQ\tSN:chrB\tLN:4'

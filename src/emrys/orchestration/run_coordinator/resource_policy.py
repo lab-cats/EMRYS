@@ -6,12 +6,15 @@ import argparse
 import copy
 from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, Literal
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
     resolve_computational_resources,
+    resource_workload,
 )
 
 SCHEMA_VERSION = "emrys.local-pilot-resources.v1"
@@ -33,10 +36,15 @@ STAGE_IDS = (
 )
 REPEATABLE_STAGE_IDS = ("01", "02", "02b", "03", "04", "05", "06", "07")
 THREAD_CAPABLE_STAGE_IDS = ("00a", "01", "02", "06", "08", "09", "10")
+_OPTIONAL_THREAD_STAGE_IDS = ("00c", "02b", "04", "05")
 _SCALAR_RESOURCE_CONTROLS = ("workflow_cores", "workflow_memory_mb")
 _KEYED_RESOURCE_CONTROLS = (
     ("stage_concurrency", REPEATABLE_STAGE_IDS, "STEP=COUNT"),
-    ("step_threads", THREAD_CAPABLE_STAGE_IDS, "STEP=THREADS"),
+    (
+        "step_threads",
+        THREAD_CAPABLE_STAGE_IDS + _OPTIONAL_THREAD_STAGE_IDS,
+        "STEP=THREADS",
+    ),
     ("stage_memory_mb", STAGE_IDS, "STEP=MIB"),
 )
 
@@ -92,11 +100,11 @@ class AllocationCapacity:
 class ResourceOverrides:
     """Explicit highest-precedence command-line resource values."""
 
-    workflow_cores: int | None = None
-    workflow_memory_mb: int | None = None
-    stage_concurrency: tuple[tuple[str, int], ...] = ()
-    step_threads: tuple[tuple[str, int], ...] = ()
-    stage_memory_mb: tuple[tuple[str, int], ...] = ()
+    workflow_cores: int | Literal["allocation"] | None = None
+    workflow_memory_mb: int | Literal["allocation"] | None = None
+    stage_concurrency: tuple[tuple[str, int | Literal["auto"]], ...] = ()
+    step_threads: tuple[tuple[str, int | Literal["workflow", "auto"]], ...] = ()
+    stage_memory_mb: tuple[tuple[str, int | Literal["workflow", "auto"]], ...] = ()
 
     def __post_init__(self) -> None:
         for field, allowed, _metavar in _KEYED_RESOURCE_CONTROLS:
@@ -113,14 +121,20 @@ class ResourceOverrides:
                     f"Unknown command-line {field} key: " + ", ".join(unknown)
                 )
             for key, value in values:
+                if value == "auto":
+                    continue
+                if field != "stage_concurrency" and value == "workflow":
+                    continue
                 if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                     raise ResourceConfigError(
                         f"Command-line {field}.{key} must be a positive integer"
                     )
         for field in _SCALAR_RESOURCE_CONTROLS:
             value = getattr(self, field)
-            if value is not None and (
-                isinstance(value, bool) or not isinstance(value, int) or value < 1
+            if (
+                value is not None
+                and value != "allocation"
+                and (isinstance(value, bool) or not isinstance(value, int) or value < 1)
             ):
                 raise ResourceConfigError(
                     f"Command-line {field} must be a positive integer"
@@ -142,11 +156,11 @@ class ResourceOverrides:
 class ComputationalResourceDeclaration:
     """Canonical pre-allocation computational policy for one immutable Run."""
 
-    workflow_cores: int
+    workflow_cores: int | Literal["allocation"]
     workflow_memory_mb: int | Literal["allocation"]
-    stage_concurrency: tuple[tuple[str, int], ...]
-    step_threads: tuple[tuple[str, int], ...]
-    stage_memory_mb: tuple[tuple[str, int | Literal["workflow"]], ...]
+    stage_concurrency: tuple[tuple[str, int | Literal["auto"]], ...]
+    step_threads: tuple[tuple[str, int | Literal["workflow", "auto"]], ...]
+    stage_memory_mb: tuple[tuple[str, int | str | Mapping[str, int]], ...]
 
     def identity_document(self) -> dict[str, Any]:
         """Return the Run-bound declaration without allocation or reporting policy."""
@@ -156,7 +170,10 @@ class ComputationalResourceDeclaration:
             "workflow_memory_mb": self.workflow_memory_mb,
             "stage_concurrency": dict(self.stage_concurrency),
             "step_threads": dict(self.step_threads),
-            "stage_memory_mb": dict(self.stage_memory_mb),
+            "stage_memory_mb": {
+                key: dict(value) if isinstance(value, Mapping) else value
+                for key, value in self.stage_memory_mb
+            },
         }
 
 
@@ -184,8 +201,12 @@ class AttemptResourceResolution:
     """Allocation observation and numeric computational resolution for one Attempt."""
 
     allocation: AllocationCapacity
+    workflow_cores: int
     workflow_memory_mb: int
+    stage_concurrency: tuple[tuple[str, int], ...]
+    step_threads: tuple[tuple[str, int], ...]
     stage_memory_mb: tuple[tuple[str, int], ...]
+    workload: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,7 +222,7 @@ class ResourcePlan:
 
     @property
     def workflow_cores(self) -> int:
-        return self.declaration.workflow_cores
+        return self.resolution.workflow_cores
 
     @property
     def workflow_memory_mb(self) -> int:
@@ -209,11 +230,11 @@ class ResourcePlan:
 
     @property
     def stage_concurrency(self) -> tuple[tuple[str, int], ...]:
-        return self.declaration.stage_concurrency
+        return self.resolution.stage_concurrency
 
     @property
     def step_threads(self) -> tuple[tuple[str, int], ...]:
-        return self.declaration.step_threads
+        return self.resolution.step_threads
 
     @property
     def stage_memory_mb(self) -> tuple[tuple[str, int], ...]:
@@ -247,6 +268,11 @@ class ResourcePlan:
         effective = self.effective_document()
         return {
             "symbolic": symbolic,
+            **(
+                {"workload": dict(self.resolution.workload)}
+                if self.resolution.workload
+                else {}
+            ),
             "symbolic_sha256": orchestration_contracts.canonical_sha256(symbolic),
             "effective": effective,
             "effective_sha256": orchestration_contracts.canonical_sha256(effective),
@@ -271,14 +297,12 @@ class ResourcePlan:
     def scheduler_limits(self) -> tuple[tuple[str, int], ...]:
         """Return deterministic Snakemake global resource limits."""
 
-        limits = {"mem_mb": self.workflow_memory_mb}
-        limits.update(
-            {
-                stage_slot_name(step_id): concurrency
-                for step_id, concurrency in self.stage_concurrency
-            }
+        return (
+            ("mem_mb", self.workflow_memory_mb),
+            *sorted(
+                (stage_slot_name(step), count) for step, count in self.stage_concurrency
+            ),
         )
-        return tuple(sorted(limits.items()))
 
 
 def stage_slot_name(step_id: str) -> str:
@@ -304,9 +328,14 @@ def _closed_map(
     document: Mapping[str, Any],
     field: str,
     required: tuple[str, ...],
+    optional: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     value = document.get(field)
-    if not isinstance(value, dict) or set(value) != set(required):
+    if (
+        not isinstance(value, dict)
+        or not set(required) <= set(value)
+        or set(value) - set(required + optional)
+    ):
         raise ResourceConfigError(
             f"Resolved {field} keys must be exactly: {', '.join(required)}"
         )
@@ -330,35 +359,41 @@ def admit_resource_policy(
     except orchestration_contracts.ContractValidationError as exc:
         raise ResourceConfigError(str(exc)) from exc
     stage_concurrency = _closed_map(value, "stage_concurrency", REPEATABLE_STAGE_IDS)
-    step_threads = _closed_map(value, "step_threads", THREAD_CAPABLE_STAGE_IDS)
+    step_threads = _closed_map(
+        value, "step_threads", THREAD_CAPABLE_STAGE_IDS, _OPTIONAL_THREAD_STAGE_IDS
+    )
     stage_memory = _closed_map(value, "stage_memory_mb", STAGE_IDS)
     _apply_overrides(value, overrides)
+
+    def canonical_number_or_symbol(raw: Any) -> Any:
+        # JSON Schema accepts integral floats; tool arguments require integers.
+        if isinstance(raw, Mapping):
+            return MappingProxyType({"minimum_mb": int(raw["minimum_mb"])})
+        return raw if isinstance(raw, str) else int(raw)
+
     try:
-        workflow_cores = int(value["workflow_cores"])
-        configured_workflow_memory = value["workflow_memory_mb"]
+        workflow_cores = canonical_number_or_symbol(value["workflow_cores"])
+        configured_workflow_memory = canonical_number_or_symbol(
+            value["workflow_memory_mb"]
+        )
     except KeyError as exc:
         raise ResourceConfigError(
             f"Resolved resource policy is missing {exc.args[0]}"
         ) from exc
-    declared_workflow_memory: int | Literal["allocation"] = (
-        "allocation"
-        if configured_workflow_memory == "allocation"
-        else int(configured_workflow_memory)
-    )
-    declared_stage_memory: dict[str, int | Literal["workflow"]] = {
-        step_id: "workflow" if value == "workflow" else int(value)
-        for step_id, value in stage_memory.items()
-    }
     declaration = ComputationalResourceDeclaration(
         workflow_cores=workflow_cores,
-        workflow_memory_mb=declared_workflow_memory,
+        workflow_memory_mb=configured_workflow_memory,
         stage_concurrency=tuple(
-            (key, int(stage_concurrency[key])) for key in REPEATABLE_STAGE_IDS
+            (key, canonical_number_or_symbol(stage_concurrency[key]))
+            for key in REPEATABLE_STAGE_IDS
         ),
         step_threads=tuple(
-            (key, int(step_threads[key])) for key in THREAD_CAPABLE_STAGE_IDS
+            (key, canonical_number_or_symbol(step_threads[key]))
+            for key in sorted(step_threads)
         ),
-        stage_memory_mb=tuple((key, declared_stage_memory[key]) for key in STAGE_IDS),
+        stage_memory_mb=tuple(
+            (key, canonical_number_or_symbol(stage_memory[key])) for key in STAGE_IDS
+        ),
     )
     try:
         resolve_computational_resources(declaration.identity_document())
@@ -378,22 +413,29 @@ def admit_resource_policy(
 def resolve_resource_policy(
     policy: ResourcePolicy,
     allocation: AllocationCapacity,
+    *,
+    workload: Mapping[str, int] | None = None,
 ) -> ResourcePlan:
     """Resolve one exact admitted policy against one Attempt allocation."""
 
     declaration = policy.declaration
     try:
         effective = resolve_computational_resources(
-            declaration.identity_document(), allocation.cores, allocation.memory_mb
+            declaration.identity_document(),
+            allocation.cores,
+            allocation.memory_mb,
+            workload=workload,
         )
     except orchestration_contracts.ContractValidationError as exc:
         raise ResourceConfigError(str(exc)) from exc
     resolution = AttemptResourceResolution(
         allocation=allocation,
+        workflow_cores=effective["workflow_cores"],
         workflow_memory_mb=effective["workflow_memory_mb"],
-        stage_memory_mb=tuple(
-            (key, effective["stage_memory_mb"][key]) for key in STAGE_IDS
-        ),
+        stage_concurrency=tuple(sorted(effective["stage_concurrency"].items())),
+        step_threads=tuple(sorted(effective["step_threads"].items())),
+        stage_memory_mb=tuple(sorted(effective["stage_memory_mb"].items())),
+        workload=tuple(sorted((workload or {}).items())),
     )
     return ResourcePlan(
         policy=policy,
@@ -463,7 +505,9 @@ def admit_resource_policy_record(record: Mapping[str, Any]) -> ResourcePlan:
         "symbolic",
         "symbolic_sha256",
     }
-    if set(record) != expected:
+    if set(record) - {"workload"} != expected or (
+        "workload" in record and record["workload"] is None
+    ):
         raise ResourceConfigError(
             "Persisted resource policy keys are malformed; expected "
             + ", ".join(sorted(expected))
@@ -511,7 +555,9 @@ def admit_resource_policy_record(record: Mapping[str, Any]) -> ResourcePlan:
         config_sha256=config_sha256,
         override_labels=override_labels,
     )
-    resolved = resolve_resource_policy(policy, capacity)
+    resolved = resolve_resource_policy(
+        policy, capacity, workload=record.get("workload")
+    )
     projected = resolved.effective_document()
     if projected != effective:
         raise ResourceConfigError(
@@ -520,7 +566,9 @@ def admit_resource_policy_record(record: Mapping[str, Any]) -> ResourcePlan:
     return resolved
 
 
-def _positive_integer(value: str) -> int:
+def _positive_integer(value: str, *, symbol: str = "") -> int | str:
+    if symbol and value == symbol:
+        return value
     try:
         parsed = int(value)
     except ValueError as exc:
@@ -530,11 +578,11 @@ def _positive_integer(value: str) -> int:
     return parsed
 
 
-def _assignment(value: str) -> tuple[str, int]:
+def _assignment(value: str, *, symbol: str = "") -> tuple[str, int | str]:
     key, separator, raw = value.partition("=")
     if not separator or not key:
         raise argparse.ArgumentTypeError("must use KEY=POSITIVE_INTEGER")
-    return key, _positive_integer(raw)
+    return key, "auto" if raw == "auto" else _positive_integer(raw, symbol=symbol)
 
 
 def add_resource_override_arguments(parser: argparse.ArgumentParser) -> None:
@@ -543,8 +591,8 @@ def add_resource_override_arguments(parser: argparse.ArgumentParser) -> None:
     for field in _SCALAR_RESOURCE_CONTROLS:
         parser.add_argument(
             "--" + field.replace("_", "-"),
-            type=_positive_integer,
-            help=f"Override {field} from YAML and packaged defaults.",
+            type=partial(_positive_integer, symbol="allocation"),
+            help=f"Override {field}: positive integer or allocation.",
         )
     for field, _allowed, metavar in _KEYED_RESOURCE_CONTROLS:
         parser.add_argument(
@@ -552,8 +600,10 @@ def add_resource_override_arguments(parser: argparse.ArgumentParser) -> None:
             action="append",
             default=[],
             metavar=metavar,
-            type=_assignment,
-            help=f"Repeatable {field.replace('_', ' ')} override.",
+            type=partial(
+                _assignment, symbol="" if field == "stage_concurrency" else "workflow"
+            ),
+            help=f"Repeatable {field.replace('_', ' ')} override; auto shares the workflow allowance.",
         )
 
 
@@ -598,6 +648,7 @@ __all__ = (
     "add_resource_override_arguments",
     "admit_resource_policy",
     "admit_resource_policy_record",
+    "resource_workload",
     "overrides_from_args",
     "resource_override_argv",
     "resolve_resource_policy",

@@ -61,6 +61,9 @@ marks transaction completion. They are not an atomic two-file filesystem write.
 [`step_02_sort_index_bam.sh`](step_02_sort_index_bam.sh) is an internal worker of the
 [Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
+`--threads` supplies the sorting worker count. Other samtools operations
+receive `threads - 1` additional I/O workers, including counts and indexing.
+
 The required internal `--native-memory-mb` argument supplies the unsorted-input
 fallback with samtools `sort -m`, in MiB per declared sorting thread, rounded
 down. A zero per-thread budget fails; already canonical BAMs retain the

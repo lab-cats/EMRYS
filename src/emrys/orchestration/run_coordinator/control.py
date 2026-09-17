@@ -87,6 +87,7 @@ from emrys.orchestration.run_coordinator.resource_policy import (
     overrides_from_args,
     resource_override_argv,
     resolve_resource_policy,
+    resource_workload,
     resume_resource_policy,
 )
 from emrys.orchestration.run_coordinator import slurm_submission
@@ -391,7 +392,11 @@ def _plan_run(
                 target_analysis=readiness.analysis.revision,
                 target_plan=run.execution_plan,
             )
-        resources = resolve_resource_policy(policy, capacity.observe_allocation())
+        resources = resolve_resource_policy(
+            policy,
+            capacity.observe_allocation(),
+            workload=resource_workload(readiness.analysis.revision),
+        )
         plan = build_attempt_plan(
             run,
             readiness,
@@ -673,7 +678,11 @@ def _plan_resume(
         ):
             raise ControlError("Current inputs resolve to a different Run")
         run = candidate
-        resources = resolve_resource_policy(policy, capacity.observe_allocation())
+        resources = resolve_resource_policy(
+            policy,
+            capacity.observe_allocation(),
+            workload=resource_workload(analysis.revision),
+        )
         plan = build_attempt_plan(
             run,
             readiness,

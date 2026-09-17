@@ -1030,12 +1030,14 @@ def refresh(snapshot, **_kwargs):
         next_action=f'refresh-{calls}',
     )
 view.refresh_snapshot = refresh
-raise SystemExit(view.watch(
+result = view.watch(
     root / 'project.yaml',
     run_root=root / 'run',
     inspect_run=lambda _root: None,
     next_action=lambda _observed: '',
-))
+)
+print('WATCH EXITED', flush=True)
+raise SystemExit(result)
 """
     master, slave = pty.openpty()
     fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
@@ -1059,7 +1061,7 @@ raise SystemExit(view.watch(
     def read_until(*needles, timeout=5):
         output = b""
         deadline = time.monotonic() + timeout
-        while process.poll() is None and time.monotonic() < deadline:
+        while time.monotonic() < deadline:
             if select.select([master], [], [], 0.05)[0]:
                 try:
                     output += os.read(master, 65536)
@@ -1070,6 +1072,8 @@ raise SystemExit(view.watch(
                 )
                 if all(needle in plain for needle in needles):
                     return output, plain
+            if process.poll() is not None:
+                break
         pytest.fail(f"missing {needles!r} in {output[-3000:]!r}")
 
     try:
@@ -1093,6 +1097,7 @@ raise SystemExit(view.watch(
         assert b"\x1b[" in searched
 
         os.write(master, b"q")
+        read_until(b"WATCH EXITED")
         assert process.wait(timeout=2) == 0
     finally:
         if process.poll() is None:

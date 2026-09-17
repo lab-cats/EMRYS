@@ -318,7 +318,11 @@ def configure_profile_create_parser(parser: argparse.ArgumentParser) -> None:
         else:
             parser.add_argument(
                 "--" + field.replace("_", "-"),
-                type=int if field in {"cpus_per_task", "memory_mb"} else str,
+                type=(lambda value: "node" if value == "node" else int(value))
+                if field == "cpus_per_task"
+                else int
+                if field == "memory_mb"
+                else str,
                 help="Explicit Slurm placement value; omission retains the selected site setting.",
             )
     parser.add_argument(

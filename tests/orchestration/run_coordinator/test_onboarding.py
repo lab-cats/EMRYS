@@ -140,6 +140,7 @@ def test_setup_prompts_for_and_publishes_closed_cli_defaults(
     (root / "src/emrys").mkdir(parents=True)
     (root / "pyproject.toml").write_text("[project]\nname='emrys'\n")
     for key in ("EMRYS_PROJECTS_ROOT", "EMRYS_SITE", "EMRYS_LOG_ROOT"):
+        monkeypatch.setenv(key, "")  # Track restoration even when initially absent.
         monkeypatch.delenv(key, raising=False)
     stderr = Terminal()
     monkeypatch.chdir(projects)
@@ -236,6 +237,7 @@ def test_setup_is_dry_run_first_and_preserves_an_existing_file(
     (root / "src/emrys").mkdir(parents=True)
     (root / "pyproject.toml").write_text("[project]\nname='emrys'\n")
     for key in ("EMRYS_PROJECTS_ROOT", "EMRYS_SITE", "EMRYS_LOG_ROOT"):
+        monkeypatch.setenv(key, "")  # Track restoration even when initially absent.
         monkeypatch.delenv(key, raising=False)
     monkeypatch.chdir(root)
 
@@ -2099,7 +2101,7 @@ def test_profile_creation_previews_exact_settings_without_scientific_reads(
     )
     assert profile.computational_resources_explicit is resources
     assert profile.resource_policy.declaration.workflow_cores == (
-        16 if resources else 12
+        16 if resources else "allocation"
     )
     assert profile.resource_policy.config_sha256 == (
         hashlib.sha256(selected.read_bytes()).hexdigest() if resources else None
@@ -2142,7 +2144,7 @@ def test_profile_creation_previews_exact_settings_without_scientific_reads(
         ["--placement", "direct", "--module-init", ""],
         ["--placement", "slurm"],
         ["--site", "viking", "--cpus-per-task", "0"],
-        ["--site", "viking", "--cpus-per-task", "3"],
+        ["--site", "viking", "--cpus-per-task", "3", "--step-threads", "00a=4"],
         ["--site", "viking", "--memory-mb", "4096", "--workflow-memory-mb", "8192"],
         ["--site", "viking", "--memory-mb", "4096", "--stage-memory-mb", "00a=8192"],
         ["--site", "viking", "--module", "compiler/1.2"],
@@ -2163,6 +2165,48 @@ def test_profile_creation_rejects_invalid_choices_without_writes(
         == 2
     )
     assert _tree_bytes(tmp_path) == before
+
+
+def test_profile_creation_authors_whole_node_and_symbolic_tool_limits(
+    tmp_path: Path,
+) -> None:
+    project = build(tmp_path)
+    original = (project.parent / "runtime/profiles/default.yaml").read_bytes()
+    assert (
+        cli.main(
+            [
+                "profile",
+                "create",
+                "full-node",
+                "--project",
+                str(project),
+                "--site",
+                "viking",
+                "--cpus-per-task",
+                "node",
+                "--memory-mb",
+                "0",
+                "--workflow-cores",
+                "allocation",
+                "--workflow-memory-mb",
+                "allocation",
+                "--step-threads",
+                "00a=workflow",
+                "--stage-memory-mb",
+                "00a=workflow",
+                "--execute",
+            ]
+        )
+        == 0
+    )
+    selected = execution_profile.load_execution_profile(
+        project.parent / "runtime/profiles/full-node.yaml"
+    )
+    assert selected.placement.cpus_per_task == "node"
+    assert selected.placement.memory_mb == 0
+    assert selected.resource_policy.declaration.workflow_cores == "allocation"
+    assert dict(selected.resource_policy.declaration.step_threads)["00a"] == "workflow"
+    assert (project.parent / "runtime/profiles/default.yaml").read_bytes() == original
 
 
 @pytest.mark.parametrize(

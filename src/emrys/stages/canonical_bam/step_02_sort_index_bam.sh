@@ -73,11 +73,11 @@ validate_bam_pair() {
     [[ "$rg_line" == *"PL:ILLUMINA"* ]] || die "$label @RG line is missing PL:ILLUMINA"
     grep -q '^@HD.*SO:coordinate' <<< "$header" || die "$label BAM header is not coordinate sorted"
 
-    total_records="$("$samtools_bin" view -c "$bam")"
+    total_records="$("$samtools_bin" view -@ "$((threads - 1))" -c "$bam")"
     [[ "$total_records" =~ ^[0-9]+$ ]] || die "$label total alignment count is not numeric: $total_records"
     [[ "$total_records" -gt 0 ]] || die "$label BAM contains no alignment records"
 
-    tagged_records="$("$samtools_bin" view -c -d "RG:$sample_id" "$bam")"
+    tagged_records="$("$samtools_bin" view -@ "$((threads - 1))" -c -d "RG:$sample_id" "$bam")"
     [[ "$tagged_records" =~ ^[0-9]+$ ]] || die "$label tagged alignment count is not numeric: $tagged_records"
     [[ "$tagged_records" -eq "$total_records" ]] || die "$label BAM has $tagged_records of $total_records records tagged RG:$sample_id"
 
@@ -100,9 +100,9 @@ input_has_canonical_bam_contract() {
     [[ "$rg_lines" == *"LB:$sample_id"* ]] || return 1
     [[ "$rg_lines" == *"PL:ILLUMINA"* ]] || return 1
 
-    total_records="$("$samtools_bin" view -c "$input_alignment")" || return 1
+    total_records="$("$samtools_bin" view -@ "$((threads - 1))" -c "$input_alignment")" || return 1
     [[ "$total_records" =~ ^[0-9]+$ && "$total_records" -gt 0 ]] || return 1
-    tagged_records="$("$samtools_bin" view -c -d "RG:$sample_id" "$input_alignment")" || return 1
+    tagged_records="$("$samtools_bin" view -@ "$((threads - 1))" -c -d "RG:$sample_id" "$input_alignment")" || return 1
     [[ "$tagged_records" =~ ^[0-9]+$ ]] || return 1
     [[ "$tagged_records" -eq "$total_records" ]]
 }
@@ -123,9 +123,9 @@ if ! grep -q '^@HD.*SO:coordinate' <<< "$input_header"; then
 fi
 # Keep the no-rewrite path for an already canonical BAM when hard links work.
 if ! { input_has_canonical_bam_contract "$input_header" && ln -- "$input_alignment" "$output_bam"; }; then
-    "$samtools_bin" addreplacerg -@ "$threads" -m overwrite_all -w \
+    "$samtools_bin" addreplacerg -@ "$((threads - 1))" -m overwrite_all -w \
         -r "ID:$sample_id" -r "SM:$sample_id" -r "LB:$sample_id" -r PL:ILLUMINA \
         -o "$output_bam" "$canonical_source"
 fi
-"$samtools_bin" index "$output_bam"
+"$samtools_bin" index -@ "$((threads - 1))" "$output_bam"
 validate_bam_pair "$output_bam" "$output_bam.bai" "Canonical"

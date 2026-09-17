@@ -7,7 +7,7 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 fake_bin="$tmp_dir/bin"
 mkdir -p "$fake_bin" "$tmp_dir/inputs" "$tmp_dir/staged" "$tmp_dir/work"
-export EMRYS_SHA256_PYTHON="$repo_root/.venv/bin/python"
+export EMRYS_SHA256_PYTHON="${EMRYS_SHA256_PYTHON:-$repo_root/.venv/bin/python}"
 export EMRYS_TASK_WORK_DIR="$tmp_dir/work" TMPDIR="$tmp_dir/work"
 export PATH="$fake_bin:$PATH"
 fail() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
@@ -103,7 +103,7 @@ case "\$subcommand" in
             printf 'fake gatk missing --tmp-dir\\n' >&2
             exit 64
         fi
-        if [[ "\$java_options" != -Xmx*m\ -Djava.io.tmpdir=* ]]; then
+        if [[ "\$java_options" != -Xmx*m\ -XX:ActiveProcessorCount=*\ -Djava.io.tmpdir=* ]]; then
             printf 'fake gatk missing java.io.tmpdir option\\n' >&2
             exit 64
         fi
@@ -143,6 +143,7 @@ case "\$subcommand" in
         printf 'samtools 1.19.2\\n'
         ;;
     index)
+        [[ "\${1:-}" != "-@" ]] || shift 2
         input_bam="\${1:-}"
         [[ -n "\$input_bam" ]] || { printf 'fake samtools index missing BAM\\n' >&2; exit 64; }
         if [[ "\${FAKE_INDEX_EMPTY:-0}" == "1" ]]; then
@@ -161,6 +162,7 @@ case "\$subcommand" in
         [[ -s "\$input_bam" ]]
         ;;
     view)
+        [[ "\${1:-}" != "-@" ]] || shift 2
         if [[ "\${1:-}" == "-H" ]]; then
             input_bam="\${2:-}"
             grep -E '^@(HD|RG)' "\$input_bam"
@@ -224,8 +226,10 @@ command=(bash "$SCRIPT" --native-memory-mb 800 --sample-id sample --input-bam "$
 "${command[@]}"
 assert_contains "${gatk_log}" '-Xmx800m'
 : >"${gatk_log}"
-"${command[@]}" --native-memory-mb 1600
+"${command[@]}" --native-memory-mb 1600 --threads 16
 assert_contains "${gatk_log}" '-Xmx1600m'
+assert_contains "${gatk_log}" '-XX:ActiveProcessorCount=16'
+assert_fails 'positive integer' "${command[@]}" --threads 0
 assert_fails 'positive integer' "${command[@]}" --native-memory-mb 0
 assert_contains "$tmp_dir/staged/sample.split_ncigar.bam" $'@HD\tVN:1.6\tSO:coordinate'
 [[ -s "$tmp_dir/staged/sample.split_ncigar.bam.bai" ]] || fail 'missing canonical BAI'

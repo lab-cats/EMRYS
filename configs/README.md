@@ -201,7 +201,7 @@ From an existing Project, preview placement and resource choices with
 the Project. A name identifies `runtime/profiles/NAME.yaml`. Existing files,
 including `default.yaml`, are preserved.
 
-New Viking Projects already select the historical EV/PUM1 policy. For an
+New Viking Projects already select the whole-node placement. For an
 existing Project with an older placement, create a named Viking profile:
 
 ```bash
@@ -242,12 +242,31 @@ observed or free memory. An omitted memory request remains unknown even when
 exclusivity is requested. Placement-only resume compares its retained Run policy;
 actual allocation checks still run after the scheduler starts the job.
 
-The default policy restores the historical six-library EV/PUM1 settings:
-12 workflow cores, 524288 MiB (512 GiB) and explicit stage allowances. Viking
-requests 256 CPUs, exclusive placement and 12 hours; allocation memory comes
-from the site. Doctor and Run show these separate allocation and workflow limits.
-Existing explicit profiles remain unchanged, and resume preserves the
-predecessor Run's policy.
+The default workflow uses all process-accessible CPUs and RAM granted to the
+allocation. Repeated stages share that allowance across the admitted samples or
+partitions that fit; native thread controls receive each task's CPU share.
+Singleton stages receive the workflow memory allowance. Viking requests one
+exclusive node, all node RAM and 12 hours. This removes fixed workflow and stage
+caps; it does not guarantee that serial or I/O-bound phases saturate the node.
+Doctor and Run show the declared policy, then numeric limits inside the allocation.
+
+For an existing Project with old explicit limits, create and select a fresh
+profile. Profile creation starts from packaged defaults, not `default.yaml`.
+The explicit allocation flags below save the entire current computational policy:
+
+```bash
+emrys profile create full-node --site viking \
+  --workflow-cores allocation --workflow-memory-mb allocation
+emrys profile create full-node --site viking \
+  --workflow-cores allocation --workflow-memory-mb allocation --execute
+emrys doctor --profile full-node
+emrys run --profile full-node
+```
+
+Review the account, partition and other site fields in the preview. This creates
+`runtime/profiles/full-node.yaml`; it preserves `default.yaml` and existing Runs.
+A resumed Run retains its previous resource declaration. Use a new Run for the
+new computational policy. An unchanged explicit numeric override remains a cap.
 
 ### Profile document
 
@@ -256,11 +275,44 @@ placement (where to run):
 
 | Under `resources` | Meaning |
 |---|---|
-| `workflow_cores` | Total CPU budget for the workflow. |
+| `workflow_cores` | Total CPU budget; `allocation` uses the process-accessible allocated CPUs. |
 | `workflow_memory_mb` | Total memory budget in MiB; `allocation` uses the available allocation. |
-| `stage_concurrency` | Maximum simultaneous tasks for each repeatable stage. |
-| `step_threads` | Threads per task for stages that support threaded tools. |
-| `stage_memory_mb` | Memory budget per stage task in MiB; `workflow` uses the workflow budget. |
+| `stage_concurrency` | Positive maximum simultaneous tasks, or `auto` to fit sample/partition work to CPU and memory capacity. |
+| `step_threads` | Positive CPU allowance per task, `auto` to divide workflow CPUs across stage concurrency, or `workflow` for the whole CPU allowance (concurrency 1). |
+| `stage_memory_mb` | Positive MiB per task; `workflow` for the whole budget; `auto` to divide memory across stage concurrency; `{minimum_mb: N}` to share it while retaining a minimum per task. |
+
+With automatic concurrency, the resolver takes the smallest of the number of
+admitted tasks, tasks fitting the CPU allowance, and tasks fitting the memory
+minimum. It then divides CPUs and memory using integer shares. For example,
+256 CPUs, 524288 MiB and six samples give six STAR tasks with 42 threads and
+87381 MiB each. With 96 CPUs, 131072 MiB and twenty samples, the 40960 MiB
+minimum allows three STAR tasks with 32 threads and 43690 MiB each.
+These recovered memory values are configurable planning minimums, not measured
+bounds for every dataset. Explicit numeric limits and `workflow` retain their
+meaning; `workflow` never silently becomes a shared per-task allowance.
+
+| Stage | Default CPU use | Default task memory |
+|---|---|---|
+| `00a` STAR index | Whole workflow | Whole workflow |
+| `00b` GTF conversion | Serial | Whole workflow |
+| `00c` FASTA sidecars | Whole-workflow Java helper allowance; main operations serial | Whole workflow |
+| `01` STAR alignment | Automatic samples and threads, including BAM sorting | Shared, minimum 40960 MiB |
+| `02` canonical BAM | Automatic samples and samtools workers | Shared, minimum 4096 MiB |
+| `02b` BAM QC | Automatic samples and flagstat read workers | Shared, minimum 2048 MiB |
+| `03` RSeQC | Automatic samples; one CPU per task | Shared, minimum 4096 MiB |
+| `04` duplicate marking | Automatic samples and Java helper allowance | Shared, minimum 32768 MiB |
+| `05` SplitNCigarReads | Automatic samples and Java helper allowance | Shared, minimum 16384 MiB |
+| `06` orientation | Automatic samples and samtools workers | Shared, minimum 4096 MiB |
+| `07` mpileup | Automatic partitions; one CPU per task | Shared, minimum 8192 MiB |
+| `08` preprocessing | Workflow CPUs; R uses at most the available VCF jobs | Whole workflow |
+| `09`, `10` analysis | Serial main algorithms | Whole workflow |
+
+Steps `09`/`10` retain their historical thread fields for retained-policy
+compatibility; their current producers do not consume them. Raising those fields
+only changes the reservation. Step `08` forks workers; more workers can increase
+peak memory, so lower its thread override if measured memory requires it.
+Automatic shares are fixed for one Attempt, based on admitted work, and are not
+redistributed as individual tasks finish. Snakemake remains the sole scheduler.
 
 For Steps `00a`, `00c`, `01`, `02`, `04`, and `05`, the resolved stage budget
 also sets native STAR/samtools buffers or Java heaps with overhead headroom.
@@ -287,7 +339,8 @@ For a site administrator configuring Slurm, these fields are under `placement`:
 
 | Field | Value |
 | --- | --- |
-| `memory_mb` | A positive integer in MiB. `null` omits the memory request and leaves it to site policy; establish adequate site memory before using it. |
+| `cpus_per_task` | A positive integer, or `node` with `exclusive: true` to request every CPU on one node without fixing its size. |
+| `memory_mb` | Positive MiB, `0` for all node memory (`--mem=0`), or `null` to leave the request to site policy. Exclusivity alone does not request all RAM. |
 | `time` | The wall-time limit; use a quoted `"HH:MM:SS"` value, such as `"08:00:00"`. |
 | `modules` without module setup | `mode: none`, `init: ""`, and `load: []`. |
 | `modules` with module setup | `mode: exact`, an absolute path to the real, nonsymlink initialization file in `init`, and a nonempty list of exact module names in `load`. |
@@ -296,6 +349,66 @@ The batch wrapper starts with `PATH=/usr/bin:/bin`. For exact module setup it
 sources the initialization file, purges modules, then loads the declared names
 in order. The interactive module roster is not inherited. Record the setup
 used to admit the runtime; the wrapper does not install dependencies.
+
+### Slurm and tool resource semantics
+
+The implementation was checked against the pinned runtime (STAR 2.7.11b,
+samtools 1.19.2, Java 17+, Snakemake 9.25.1), and these primary sources:
+
+- [Slurm sbatch](https://slurm.schedmd.com/sbatch.html#OPT_exclusive):
+  `--exclusive` reserves CPUs, but memory must be requested separately;
+  `--mem=0` requests all node memory. Partition policy can override exclusivity.
+- [Slurm CPU management](https://slurm.schedmd.com/cpu_management.html):
+  allocation, task distribution and CPU binding are separate. A Slurm CPU can
+  represent a core or a hardware thread depending on site configuration.
+  EMRYS uses the granted, affinity- and cgroup-bounded capacity; it neither
+  assumes 256 physical cores nor overrides the site's binding. SMT and NUMA
+  placement require measurement on Viking before choosing a different policy.
+- [Snakemake resources](https://snakemake.readthedocs.io/en/v9.25.1/snakefiles/rules.html#resources):
+  resource requests are totals per job and admission controls, not live RSS
+  limits. EMRYS keeps one local Snakemake scheduler inside the Slurm allocation;
+  allocating more CPUs alone does not create native workers.
+- [STAR 2.7.11b parameters](https://github.com/alexdobin/STAR/blob/2.7.11b/source/parametersDefault):
+  `runThreadN` controls workers; BAM sorting otherwise defaults to at most six.
+  Input/output buffers grow with thread count, and `limitBAMsortRAM` governs
+  sorting, not total process RSS. The
+  [STAR execution sequence](https://github.com/alexdobin/STAR/blob/2.7.11b/source/STAR.cpp)
+  frees the genome before coordinate sorting; subtracting a second genome copy
+  from the sorting budget would therefore misrepresent that phase. More sort
+  threads remain limited by nonempty bins and the native sorting memory budget.
+- [samtools sort](https://www.htslib.org/doc/1.19/samtools-sort.html):
+  `-m` is approximately per sorting thread, and insufficient memory creates
+  temporary files. EMRYS divides the native memory allowance by sort threads.
+  [View](https://www.htslib.org/doc/1.19/samtools-view.html),
+  [merge](https://www.htslib.org/doc/1.19/samtools-merge.html) and
+  [index](https://www.htslib.org/doc/1.19/samtools-index.html) use additional I/O
+  workers; EMRYS subtracts the main thread from those worker counts.
+- [Java processor count](https://docs.oracle.com/en/java/javase/17/docs/specs/man/java.html):
+  `ActiveProcessorCount` controls helper-pool sizing. It does not convert serial
+  Picard or GATK traversal into a parallel algorithm.
+- [bcftools scaling](https://samtools.github.io/bcftools/howtos/scaling.html):
+  mpileup parallelism comes from independent regions. Adding compression threads
+  to EMRYS's plain-VCF output would not parallelize pileup computation.
+
+The sharing policy exposes allocated capacity without asserting an optimal
+thread/concurrency mix. Historical task memory allowances are starting minimums;
+the 20% native headroom is not a proof that every workload fits. STAR buffers,
+R forked workers, garbage collection, serial phases, memory bandwidth and shared
+filesystem contention can all limit scaling. More workers may increase wall time
+or peak memory; any tuning override should come from comparable measurements.
+
+For the next operator-approved Viking comparison, retain the Run/Attempt
+resource-policy record and actual commands, tool versions, node model, physical
+cores/SMT topology (`lscpu`), process affinity (`Cpus_allowed_list` in
+`/proc/self/status`), `scontrol show job -dd JOB_ID`, and the site's
+`SelectTypeParameters`, `TaskPlugin` and partition policy. Capture `sacct` elapsed,
+allocated CPUs, TotalCPU and MaxRSS (including the batch step), STAR's timestamped
+phase messages, and task I/O/temporary-file measurements. Compare the same input,
+reference, partitioning and storage/cache conditions. Separate STAR-native time
+from EMRYS validation/hashing. Report CPU time divided by elapsed time and
+allocated CPUs alongside wall time; neither requested CPUs nor a successful job
+proves utilization. Slurm accounting granularity may miss short RSS peaks.
+No Viking topology, benchmark or speedup is established by local fixture tests.
 
 ## Specialist examples
 

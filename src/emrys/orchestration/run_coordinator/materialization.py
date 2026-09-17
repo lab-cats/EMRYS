@@ -457,6 +457,7 @@ def _task_commands(
                 ("gatk-bin", gatk),
                 ("native-memory-mb", native_memory_mb),
                 ("java-bin", java),
+                ("threads", threads),
             ),
         )
         validator = _validator(
@@ -573,6 +574,7 @@ def _task_commands(
             producer_arguments = (
                 *command_flags(
                     ("bam", canonical_bam),
+                    ("threads", threads),
                     ("output-dir", working_paths[quickcheck].parent),
                     ("samtools-bin", samtools),
                 ),
@@ -611,6 +613,7 @@ def _task_commands(
                     ("picard-jar", picard_jar),
                     ("native-memory-mb", native_memory_mb),
                     ("java-bin", java),
+                    ("threads", threads),
                     ("samtools-bin", samtools),
                 ),
             )
@@ -642,6 +645,7 @@ def _task_commands(
                     ("native-memory-mb", native_memory_mb),
                     ("samtools-bin", samtools),
                     ("java-bin", java),
+                    ("threads", threads),
                 ),
             )
             validator_name = "split-n-cigar"
