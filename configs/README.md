@@ -148,7 +148,7 @@ declares them so. Retain provider checksums: file binding does not prove provena
 | `selector_type` | `region` for a bcftools `-r` expression or `regions_file` for an admitted `-R` file. |
 | `selector_value` | A FASTA/FAI contig or interval, or a literal regions-file path. |
 
-The [quickstart's guided Project creation](../quickstart.md#create-the-project-and-its-input-lists)
+The [quickstart's guided Project creation](../quickstart.md#3-create-the-project)
 asks for these selectors. Its advanced command form accepts repeated
 `--region PARTITION_ID SELECTOR` and
 `--regions-file PARTITION_ID PATH` options. They can be combined; partition IDs
