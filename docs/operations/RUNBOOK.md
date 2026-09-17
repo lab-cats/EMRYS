@@ -667,8 +667,9 @@ Viking users select `--site viking` when creating either a synthetic or a
 real-data Project. EMRYS writes the Project's default execution profile with
 account `viking-users`, partition `long`, QoS `normal`, 12 hours, all CPUs and RAM
 on one exclusive node, and private temporary files beneath `/tmp`. The workflow
-and STAR indexing resolve their limits from the allocation; other stages keep
-the recovered EV/PUM1 thread, concurrency and memory settings. Both
+and every stage resolve CPU, memory and concurrency limits from the allocation
+and admitted workload, using native tool controls where available. Serial phases
+remain serial; configured allowance is not measured utilization. Both
 synthetic and real-data initialization select these defaults automatically.
 Existing Projects can select them through
 [named profile creation](../../configs/README.md#create-a-named-profile-without-writing-yaml).

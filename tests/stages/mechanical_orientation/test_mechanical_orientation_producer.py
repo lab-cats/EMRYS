@@ -94,7 +94,7 @@ class FakeSamtools:
         elif action == "merge":
             Path(command[command.index("-o") + 1]).write_bytes(b"BAM\x01merged\n")
         elif action == "index":
-            Path(f"{command[2]}.bai").write_bytes(b"BAI\x01index\n")
+            Path(f"{command[-1]}.bai").write_bytes(b"BAI\x01index\n")
         elif action == "view" and "-c" in command:
             if "-f" in command:
                 return f"{self.flag_counts[command[command.index('-f') + 1]]}\n"
@@ -143,7 +143,7 @@ def test_worker_preserves_scientific_commands_and_counts(
             (
                 "view",
                 "-@",
-                "2",
+                "1",
                 "-b",
                 "-f",
                 flag,
@@ -156,7 +156,7 @@ def test_worker_preserves_scientific_commands_and_counts(
         (
             "merge",
             "-@",
-            "2",
+            "1",
             "-o",
             str(fixture.finals[0]),
             str(Path(f"{prefix}.99.bam")),
@@ -165,21 +165,21 @@ def test_worker_preserves_scientific_commands_and_counts(
         (
             "merge",
             "-@",
-            "2",
+            "1",
             "-o",
             str(fixture.finals[2]),
             str(Path(f"{prefix}.83.bam")),
             str(Path(f"{prefix}.163.bam")),
         ),
-        ("index", str(fixture.finals[0])),
-        ("index", str(fixture.finals[2])),
-        ("view", "-c", str(fixture.input_bam)),
-        ("view", "-c", "-f", "99", str(fixture.input_bam)),
-        ("view", "-c", "-f", "147", str(fixture.input_bam)),
-        ("view", "-c", "-f", "83", str(fixture.input_bam)),
-        ("view", "-c", "-f", "163", str(fixture.input_bam)),
-        ("view", "-c", str(fixture.finals[0])),
-        ("view", "-c", str(fixture.finals[2])),
+        ("index", "-@", "1", str(fixture.finals[0])),
+        ("index", "-@", "1", str(fixture.finals[2])),
+        ("view", "-@", "1", "-c", str(fixture.input_bam)),
+        ("view", "-@", "1", "-c", "-f", "99", str(fixture.input_bam)),
+        ("view", "-@", "1", "-c", "-f", "147", str(fixture.input_bam)),
+        ("view", "-@", "1", "-c", "-f", "83", str(fixture.input_bam)),
+        ("view", "-@", "1", "-c", "-f", "163", str(fixture.input_bam)),
+        ("view", "-@", "1", "-c", str(fixture.finals[0])),
+        ("view", "-@", "1", "-c", str(fixture.finals[2])),
         ("quickcheck", str(fixture.finals[0])),
         ("quickcheck", str(fixture.finals[2])),
     ]

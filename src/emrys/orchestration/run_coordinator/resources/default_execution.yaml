@@ -4,36 +4,40 @@ resources:
   workflow_cores: allocation
   workflow_memory_mb: allocation
   stage_concurrency:
-    "01": 6
-    "02": 6
-    "02b": 6
-    "03": 6
-    "04": 4
-    "05": 6
-    "06": 6
-    "07": 12
+    "01": auto
+    "02": auto
+    "02b": auto
+    "03": auto
+    "04": auto
+    "05": auto
+    "06": auto
+    "07": auto
   step_threads:
+    "00c": workflow
+    "02b": auto
+    "04": auto
+    "05": auto
     "00a": workflow
-    "01": 2
-    "02": 1
-    "06": 1
-    "08": 4
+    "01": auto
+    "02": auto
+    "06": auto
+    "08": auto
     "09": 1
     "10": 1
   stage_memory_mb:
     "00a": workflow
-    "00b": 16384
-    "00c": 16384
-    "01": 40960
-    "02": 4096
-    "02b": 2048
-    "03": 4096
-    "04": 32768
-    "05": 16384
-    "06": 4096
-    "07": 8192
-    "08": 65536
-    "09": 16384
-    "10": 32768
+    "00b": workflow
+    "00c": workflow
+    "01": {minimum_mb: 40960}
+    "02": {minimum_mb: 4096}
+    "02b": {minimum_mb: 2048}
+    "03": {minimum_mb: 4096}
+    "04": {minimum_mb: 32768}
+    "05": {minimum_mb: 16384}
+    "06": {minimum_mb: 4096}
+    "07": {minimum_mb: 8192}
+    "08": workflow
+    "09": workflow
+    "10": workflow
 placement:
   kind: direct

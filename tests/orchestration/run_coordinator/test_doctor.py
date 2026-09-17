@@ -654,8 +654,11 @@ def test_doctor_refuses_incompatible_reservation_before_planning_runtime_repair(
     _patch_foundations(monkeypatch, project)
     profile = project.source_path.parent / "runtime/profiles/default.yaml"
     profile.write_bytes(
-        project_default_profile_bytes("viking").replace(
-            b"cpus_per_task: node", b"cpus_per_task: 3"
+        project_default_profile_bytes("viking")
+        .replace(b"cpus_per_task: node", b"cpus_per_task: 3")
+        .replace(
+            b"placement:",
+            b'resources:\n  schema_version: emrys.local-pilot-resources.v1\n  stage_concurrency: {"01": 6}\n  step_threads: {"01": 2}\nplacement:',
         )
     )
     monkeypatch.setattr(

@@ -327,23 +327,34 @@ this restored the selected historical configuration but left CV-U06's request
 to use all available resources incomplete. CV-U33 remains separately owned.
 See CV-U28 for historical provenance and verification scope.
 
-**Full-allocation implementation:** Workflow cores and memory now resolve from
-the allocation. STAR indexing takes the full workflow CPU/memory allowance;
-its native memory limit retains 20% overhead headroom. Viking requests all CPUs
-and RAM on one exclusive node without assuming a 256-CPU node size. The same
-symbolic thread control is available to other supported stages with concurrency
-1; their historical defaults remain explicit. This provides allocation-wide
-capacity, not a claim of full utilization by every algorithm or measured speedup.
+**Allocation-aware implementation:** Workflow cores and memory resolve from the
+allocation. Repeated stages resolve concurrency from admitted sample/partition
+counts and CPU/memory capacity, share memory with recovered per-task minimums,
+and pass CPU shares to native tools that support them. Singleton memory follows
+the workflow; STAR indexing and Step 08 receive workflow CPU allowances. STAR
+alignment's sorting threads, samtools additional workers, and Java helper-pool
+CPU counts are now explicit. Steps 00b, 03, 07, 09 and 10 retain serial main
+algorithms (03/07 parallelize across samples/partitions). Every stage's policy
+and the limits of parallelism are in the
+[stage resource table](../../configs/README.md#profile-document).
+
+Viking requests all CPUs and RAM on one exclusive node without assuming a fixed
+node size. Resource shares do not prove full utilization, safe peak RSS for every
+dataset, or improved wall time. The
+[HPC resource research](../../configs/README.md#slurm-and-tool-resource-semantics)
+records primary-source behavior and the measurements needed for performance
+acceptance. Static Attempt shares do not expand as sibling tasks finish.
 
 The existing resource resolver owns profile admission, reservation checks,
 Attempt resolution and retained-policy validation. Shared schema definitions
 replace duplicate CPU/memory value validation, and redundant parsing is removed.
-No new scheduler, dependency, product file, or mutable state is introduced.
+No new scheduler, dependency, product file or mutable authority is introduced.
+The existing Attempt policy retains Analysis-derived workload counts.
 Existing numeric policies remain valid and existing Runs retain their declaration.
 The [profile guide](../../configs/README.md#profile-document) documents values;
 the preceding migration procedure creates a new profile for existing Projects.
 
-**Local verification:** 848 focused profile/resource/Doctor/onboarding/Slurm,
+**Earlier STAR-index slice verification:** 848 focused profile/resource/Doctor/onboarding/Slurm,
 submission-inspection, application-contract and E2E-harness checks passed; the
 two separately selected onboarding subprocess cases also passed. The final
 Doctor/capacity run passed 154 cases, including nested cgroup v1/v2 limits, and
@@ -359,6 +370,20 @@ Ruff, documentation structure and whitespace checks passed. The historical
 restoration's CI result does not cover this follow-up. Current hosted results are
 attached to [PR #271](https://github.com/lab-cats/EMRYS/pull/271). Institutional
 execution remains pending; CV-U06 remains **Verification pending**.
+
+**All-stage follow-up verification:** 335 targeted resource, profile,
+application-contract, materialization and orientation checks passed; 543
+capacity, Slurm, Doctor and onboarding checks passed. All six affected shell
+worker fixtures passed, including STAR sort threads above six, Java processor
+counts and samtools additional-worker accounting. Ruff, documentation structure
+and whitespace checks passed. Isolated subprocess/runtime lanes remain for
+hosted CI: the available local isolated interpreter selects an older checkout
+and lacks its optional CLI dependencies. No dependencies or cluster jobs were
+installed or started. The follow-up replaces the existing resolver and schema
+mechanics rather than adding a scheduler; the complete PR has no new product
+files and stays within the approved 250-net-line product allowance. These are
+implementation and local-fixture results, not Viking utilization or speedup
+proof. Current hosted status remains attached to PR #271.
 
 ### CV-U07 Projects directory
 

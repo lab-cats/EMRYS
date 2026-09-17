@@ -165,21 +165,20 @@
         "content_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" }
       }
     },
-    "positive_integer_map": {
+    "auto_value_map": {
       "type": "object",
-      "patternProperties": {
-        "^[A-Za-z0-9][A-Za-z0-9._-]*$": { "type": "integer", "minimum": 1 }
-      },
-      "additionalProperties": false
+      "propertyNames": { "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+      "additionalProperties": { "$ref": "urn:emrys:schema:orchestration:resource-config:v1#/$defs/auto_value" }
     },
     "workflow_value_map": {
       "type": "object",
-      "patternProperties": {
-        "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
-          "$ref": "urn:emrys:schema:orchestration:resource-config:v1#/$defs/workflow_value"
-        }
-      },
-      "additionalProperties": false
+      "propertyNames": { "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+      "additionalProperties": { "$ref": "urn:emrys:schema:orchestration:resource-config:v1#/$defs/workflow_value" }
+    },
+    "stage_memory_value_map": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+      "additionalProperties": { "$ref": "urn:emrys:schema:orchestration:resource-config:v1#/$defs/stage_memory_value" }
     },
     "computational_resources": {
       "type": "object",
@@ -192,9 +191,9 @@
         "workflow_memory_mb": {
           "$ref": "urn:emrys:schema:orchestration:resource-config:v1#/$defs/allocation_value"
         },
-        "stage_concurrency": { "$ref": "#/$defs/positive_integer_map" },
+        "stage_concurrency": { "$ref": "#/$defs/auto_value_map" },
         "step_threads": { "$ref": "#/$defs/workflow_value_map" },
-        "stage_memory_mb": { "$ref": "#/$defs/workflow_value_map" }
+        "stage_memory_mb": { "$ref": "#/$defs/stage_memory_value_map" }
       }
     },
     "execution_plan_identity": {

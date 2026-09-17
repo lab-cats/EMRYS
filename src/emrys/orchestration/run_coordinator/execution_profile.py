@@ -200,6 +200,8 @@ class ExecutionProfile:
                     else self.placement.cpus_per_task,
                     self.placement.memory_mb or None,
                     limit_source="Slurm reservation",
+                    # A reservation must fit at least one automatic task.
+                    workload={"samples": 1, "partitions": 1},
                 )
             except orchestration_contracts.ContractValidationError as exc:
                 raise ExecutionProfileError(str(exc)) from exc
@@ -256,10 +258,12 @@ class ExecutionProfile:
                 + ", ".join(
                     f"{step}={count}" for step, count in resources.stage_concurrency
                 ),
-                "Stage memory: workflow ceiling; explicit MiB caps: "
+                "Stage memory: workflow ceiling; explicit MiB limits/shares: "
                 + (
                     ", ".join(
-                        f"{step}={memory}"
+                        f"{step}=auto (minimum {memory['minimum_mb']} MiB)"
+                        if isinstance(memory, Mapping)
+                        else f"{step}={memory}"
                         for step, memory in resources.stage_memory_mb
                         if memory != "workflow"
                     )

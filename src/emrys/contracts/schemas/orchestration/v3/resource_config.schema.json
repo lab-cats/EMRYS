@@ -23,12 +23,18 @@
       ]
     },
     "workflow_value": {
+      "oneOf": [{ "$ref": "#/$defs/auto_value" }, { "const": "workflow" }]
+    },
+    "auto_value": {
+      "oneOf": [{ "$ref": "#/$defs/positive_integer" }, { "const": "auto" }]
+    },
+    "stage_memory_value": {
       "oneOf": [
+        { "$ref": "#/$defs/workflow_value" },
         {
-          "$ref": "#/$defs/positive_integer"
-        },
-        {
-          "const": "workflow"
+          "type": "object", "additionalProperties": false,
+          "required": ["minimum_mb"],
+          "properties": { "minimum_mb": { "$ref": "#/$defs/positive_integer" } }
         }
       ]
     },
@@ -36,14 +42,14 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "01": { "$ref": "#/$defs/positive_integer" },
-        "02": { "$ref": "#/$defs/positive_integer" },
-        "02b": { "$ref": "#/$defs/positive_integer" },
-        "03": { "$ref": "#/$defs/positive_integer" },
-        "04": { "$ref": "#/$defs/positive_integer" },
-        "05": { "$ref": "#/$defs/positive_integer" },
-        "06": { "$ref": "#/$defs/positive_integer" },
-        "07": { "$ref": "#/$defs/positive_integer" }
+        "01": { "$ref": "#/$defs/auto_value" },
+        "02": { "$ref": "#/$defs/auto_value" },
+        "02b": { "$ref": "#/$defs/auto_value" },
+        "03": { "$ref": "#/$defs/auto_value" },
+        "04": { "$ref": "#/$defs/auto_value" },
+        "05": { "$ref": "#/$defs/auto_value" },
+        "06": { "$ref": "#/$defs/auto_value" },
+        "07": { "$ref": "#/$defs/auto_value" }
       }
     },
     "step_threads": {
@@ -51,6 +57,10 @@
       "additionalProperties": false,
       "properties": {
         "00a": { "$ref": "#/$defs/workflow_value" },
+        "00c": { "$ref": "#/$defs/workflow_value" },
+        "02b": { "$ref": "#/$defs/workflow_value" },
+        "04": { "$ref": "#/$defs/workflow_value" },
+        "05": { "$ref": "#/$defs/workflow_value" },
         "01": { "$ref": "#/$defs/workflow_value" },
         "02": { "$ref": "#/$defs/workflow_value" },
         "06": { "$ref": "#/$defs/workflow_value" },
@@ -63,20 +73,20 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "00a": { "$ref": "#/$defs/workflow_value" },
-        "00b": { "$ref": "#/$defs/workflow_value" },
-        "00c": { "$ref": "#/$defs/workflow_value" },
-        "01": { "$ref": "#/$defs/workflow_value" },
-        "02": { "$ref": "#/$defs/workflow_value" },
-        "02b": { "$ref": "#/$defs/workflow_value" },
-        "03": { "$ref": "#/$defs/workflow_value" },
-        "04": { "$ref": "#/$defs/workflow_value" },
-        "05": { "$ref": "#/$defs/workflow_value" },
-        "06": { "$ref": "#/$defs/workflow_value" },
-        "07": { "$ref": "#/$defs/workflow_value" },
-        "08": { "$ref": "#/$defs/workflow_value" },
-        "09": { "$ref": "#/$defs/workflow_value" },
-        "10": { "$ref": "#/$defs/workflow_value" }
+        "00a": { "$ref": "#/$defs/stage_memory_value" },
+        "00b": { "$ref": "#/$defs/stage_memory_value" },
+        "00c": { "$ref": "#/$defs/stage_memory_value" },
+        "01": { "$ref": "#/$defs/stage_memory_value" },
+        "02": { "$ref": "#/$defs/stage_memory_value" },
+        "02b": { "$ref": "#/$defs/stage_memory_value" },
+        "03": { "$ref": "#/$defs/stage_memory_value" },
+        "04": { "$ref": "#/$defs/stage_memory_value" },
+        "05": { "$ref": "#/$defs/stage_memory_value" },
+        "06": { "$ref": "#/$defs/stage_memory_value" },
+        "07": { "$ref": "#/$defs/stage_memory_value" },
+        "08": { "$ref": "#/$defs/stage_memory_value" },
+        "09": { "$ref": "#/$defs/stage_memory_value" },
+        "10": { "$ref": "#/$defs/stage_memory_value" }
       }
     }
   },

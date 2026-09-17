@@ -2095,7 +2095,7 @@ def test_profile_creation_previews_exact_settings_without_scientific_reads(
         ["--placement", "direct", "--module-init", ""],
         ["--placement", "slurm"],
         ["--site", "viking", "--cpus-per-task", "0"],
-        ["--site", "viking", "--cpus-per-task", "3"],
+        ["--site", "viking", "--cpus-per-task", "3", "--step-threads", "00a=4"],
         ["--site", "viking", "--memory-mb", "4096", "--workflow-memory-mb", "8192"],
         ["--site", "viking", "--memory-mb", "4096", "--stage-memory-mb", "00a=8192"],
         ["--site", "viking", "--module", "compiler/1.2"],

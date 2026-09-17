@@ -55,8 +55,10 @@ command=(bash "$SCRIPT" --native-memory-mb 800 --sample-id sample --r1-fastq "$t
 "${command[@]}"
 assert_contains "${star_log}" '838860800'
 : >"${star_log}"
-"${command[@]}" --native-memory-mb 1600
+"${command[@]}" --native-memory-mb 1600 --threads 32
 assert_contains "${star_log}" '1677721600'
+assert_contains "${star_log}" $'--runThreadN\n32'
+assert_contains "${star_log}" $'--outBAMsortingThreadN\n32'
 assert_fails 'positive integer' "${command[@]}" --native-memory-mb 0
 for suffix in Aligned.sortedByCoord.out.bam Log.final.out Log.out Log.progress.out SJ.out.tab; do
     [[ -s "$tmp_dir/staged/sample.$suffix" ]] || fail "missing STAR $suffix"

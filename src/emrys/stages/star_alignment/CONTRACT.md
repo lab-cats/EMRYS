@@ -67,6 +67,10 @@ alignments.
 [`step_01_star_align.sh`](step_01_star_align.sh) is an internal worker of the
 [Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
+`--threads` supplies both `--runThreadN` and `--outBAMsortingThreadN`,
+so the sorting phase does not retain STAR's implicit six-thread ceiling.
+Actual parallelism is still limited by available sort bins and memory.
+
 The required internal `--native-memory-mb` argument supplies STAR
 `--limitBAMsortRAM`, converted from MiB to bytes. The
 [Run planner](../../orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)

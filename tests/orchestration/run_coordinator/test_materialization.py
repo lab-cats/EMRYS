@@ -228,6 +228,7 @@ def _readiness(
         if step_threads is None
         else step_threads
     )
+    resource_document["step_threads"].update({"00c": 1, "02b": 1, "04": 1, "05": 1})
     profile_document["resources"] = resource_document
     execution_profile_path.write_text(
         yaml.safe_dump(profile_document, sort_keys=False),
@@ -1933,11 +1934,25 @@ def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
 
 
 def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> None:
-    allocation = {"00a": 1, "01": 2, "02": 3, "06": 4, "08": 2}
+    allocation = {
+        "00a": 1,
+        "00c": 1,
+        "01": 2,
+        "02": 3,
+        "02b": 1,
+        "04": 1,
+        "05": 1,
+        "06": 4,
+        "08": 2,
+    }
     plan = _plan(tmp_path, workflow_cores=4, step_threads=allocation)
     records = _task_records(plan)
     threaded_owners = {
         "emrys.stage.construct_STAR_index.v1",
+        "emrys.stage.construct_FASTA_sidecars.v1",
+        "emrys.evidence.collect_canonical_BAM_QC_evidence.v1",
+        "emrys.stage.mark_BAM_duplicates_with_Picard.v1",
+        "emrys.stage.split_N_cigar_reads_with_GATK.v1",
         "emrys.stage.align_RNA_reads_with_STAR.v1",
         "emrys.stage.construct_canonical_BAM.v1",
         "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1",
@@ -1947,6 +1962,10 @@ def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> Non
     assert dict(plan.resources.step_threads) == {**allocation, "09": 1, "10": 1}
     owner_steps = {
         "emrys.stage.construct_STAR_index.v1": "00a",
+        "emrys.stage.construct_FASTA_sidecars.v1": "00c",
+        "emrys.evidence.collect_canonical_BAM_QC_evidence.v1": "02b",
+        "emrys.stage.mark_BAM_duplicates_with_Picard.v1": "04",
+        "emrys.stage.split_N_cigar_reads_with_GATK.v1": "05",
         "emrys.stage.align_RNA_reads_with_STAR.v1": "01",
         "emrys.stage.construct_canonical_BAM.v1": "02",
         "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1": "06",
@@ -1962,13 +1981,17 @@ def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> Non
 
 
 @pytest.mark.parametrize("cores,memory_mb", ((32, 262144), (96, 524288)))
-def test_full_node_policy_reaches_snakemake_and_star_commands(
+def test_full_node_policy_reaches_snakemake_and_all_stage_commands(
     tmp_path: Path, cores: int, memory_mb: int
 ) -> None:
     readiness, _, _, workspace = _readiness(tmp_path)
     resources = resolve_resource_policy(
         load_execution_profile().resource_policy,
         AllocationCapacity(cores, memory_mb, "Slurm fixture", "123"),
+        workload={
+            name: len(readiness.analysis.revision.record["identity"][name])
+            for name in ("samples", "partitions")
+        },
     )
     plan = build_attempt_plan(
         _run_candidate(readiness, resources),
@@ -1991,6 +2014,19 @@ def test_full_node_policy_reaches_snakemake_and_star_commands(
     effective = _workflow(plan)["resource_policy"]["effective"]
     assert effective["step_threads"]["00a"] == cores
     assert effective["stage_memory_mb"]["00a"] == memory_mb
+    for record in _task_records(plan):
+        producer = record["producer_argv"]
+        if "--threads" in producer:
+            step = next(
+                row["step_id"]
+                for row in plan.run.execution_plan.record["identity"][
+                    "functional_specification"
+                ]["owner_tasks"]
+                if row["machine_key"] == record["machine_key"]
+            )
+            assert producer[producer.index("--threads") + 1] == str(
+                effective["step_threads"][step]
+            )
     assert not (workspace / "runs").exists()
 
 
@@ -2089,6 +2125,10 @@ def test_plan_records_stage_specific_concurrency(tmp_path: Path) -> None:
     effective = config["resource_policy"]["effective"]
     assert effective["step_threads"] == {
         "00a": 4,
+        "00c": 1,
+        "02b": 1,
+        "04": 1,
+        "05": 1,
         "01": 2,
         "02": 2,
         "06": 2,

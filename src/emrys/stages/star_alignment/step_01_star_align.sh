@@ -61,6 +61,7 @@ require_executable "STAR" "$star_bin"
 command=("$star_bin" --runThreadN "$threads" --genomeDir "$star_index"
     --readFilesIn "$r1_fastq" "$r2_fastq" --outFileNamePrefix "$output_dir/$sample_id."
     --outSAMtype BAM SortedByCoordinate
+    --outBAMsortingThreadN "$threads"
     --limitBAMsortRAM "$((native_memory_mb * 1024 * 1024))"
     --outSAMattrRGline "ID:$sample_id" "SM:$sample_id" "LB:$sample_id" PL:ILLUMINA)
 if is_gzip_path "$r1_fastq" && is_gzip_path "$r2_fastq"; then

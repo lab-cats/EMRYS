@@ -35,6 +35,129 @@ from tests.tools.real_synthetic_e2e import (
 DEFAULT_SHA256 = "d" * 64
 
 
+@pytest.mark.parametrize(
+    "cores,memory_mb,samples,expected",
+    [
+        (256, 524288, 6, (6, 42, 87381)),
+        (96, 131072, 20, (3, 32, 43690)),
+        (8, 65536, 1, (1, 8, 65536)),
+    ],
+)
+def test_automatic_stage_shares_follow_workload_and_memory_minimum(
+    cores, memory_mb, samples, expected
+):
+    document = _document()
+    document["workflow_cores"] = "allocation"
+    document["stage_concurrency"]["01"] = "auto"
+    document["step_threads"]["01"] = "auto"
+    document["stage_memory_mb"]["01"] = {"minimum_mb": 40960}
+    policy = _policy(document)
+    resolved = resolve_resource_policy(
+        policy,
+        _allocation(cores=cores, memory_mb=memory_mb),
+        workload={"samples": samples, "partitions": 1},
+    )
+    assert (
+        dict(resolved.stage_concurrency)["01"],
+        resolved.threads_for("01"),
+        dict(resolved.stage_memory_mb)["01"],
+    ) == expected
+    assert admit_resource_policy_record(resolved.policy_record()) == resolved
+    assert policy.document() == document
+    assert expected[0] * expected[1] <= cores
+    assert expected[0] * expected[2] <= memory_mb
+
+
+def test_automatic_partition_parallelism_has_no_twelve_task_cap():
+    document = _document()
+    document["workflow_cores"] = "allocation"
+    document["stage_concurrency"]["07"] = "auto"
+    document["stage_memory_mb"]["07"] = {"minimum_mb": 8192}
+    resolved = resolve_resource_policy(
+        _policy(document),
+        _allocation(cores=96, memory_mb=524288),
+        workload={"samples": 6, "partitions": 100},
+    )
+    assert dict(resolved.stage_concurrency)["07"] == 64
+    assert dict(resolved.stage_memory_mb)["07"] == 8192
+
+
+def test_automatic_policy_reallocates_without_changing_run_declaration():
+    document = _document()
+    document["workflow_cores"] = "allocation"
+    document["stage_concurrency"]["01"] = "auto"
+    document["step_threads"]["01"] = "auto"
+    document["stage_memory_mb"]["01"] = {"minimum_mb": 40960}
+    policy = _policy(document)
+    workload = {"samples": 20, "partitions": 10}
+    first = resolve_resource_policy(
+        policy, _allocation(cores=96, memory_mb=131072), workload=workload
+    )
+    retained = admit_resource_policy_record(first.policy_record())
+    resumed = resolve_resource_policy(
+        resume_resource_policy(retained.policy),
+        _allocation(cores=256, memory_mb=524288),
+        workload=workload,
+    )
+    assert first.policy.document() == resumed.policy.document() == document
+    assert dict(first.stage_concurrency)["01"] == 3
+    assert dict(resumed.stage_concurrency)["01"] == 12
+
+
+@pytest.mark.parametrize(
+    "workload",
+    [[], 2, {}, {"samples": True, "partitions": 1}, {"samples": 1, "partitions": 0}],
+)
+def test_resource_workload_rejects_malformed_counts(workload):
+    with pytest.raises(ResourceConfigError, match="workload"):
+        resolve_resource_policy(_policy(), _allocation(), workload=workload)
+
+
+def test_auto_threads_cannot_resolve_to_zero():
+    document = _document()
+    document["stage_concurrency"]["01"] = 5
+    document["step_threads"]["01"] = "auto"
+    document["stage_memory_mb"]["01"] = "auto"
+    with pytest.raises(ResourceConfigError, match="concurrency exceeds workflow cores"):
+        _policy(document)
+
+
+def test_auto_concurrency_still_rejects_one_task_exceeding_known_cpu_budget():
+    document = _document()
+    document["stage_concurrency"]["01"] = "auto"
+    document["step_threads"]["01"] = 5
+    with pytest.raises(ResourceConfigError, match="cannot fit one task"):
+        _policy(document)
+
+
+def test_auto_cli_controls_round_trip():
+    parser = argparse.ArgumentParser()
+    add_resource_override_arguments(parser)
+    overrides = ResourceOverrides(
+        stage_concurrency=(("01", "auto"),),
+        step_threads=(("02b", "auto"),),
+        stage_memory_mb=(("01", "auto"),),
+    )
+    assert (
+        overrides_from_args(parser.parse_args(resource_override_argv(overrides)))
+        == overrides
+    )
+
+
+def test_automatic_policy_requires_workload_and_one_task_must_fit():
+    document = _document()
+    document["stage_concurrency"]["01"] = "auto"
+    document["step_threads"]["01"] = "auto"
+    document["stage_memory_mb"]["01"] = {"minimum_mb": 40960}
+    policy = _policy(document)
+    with pytest.raises(ResourceConfigError, match="workload"):
+        resolve_resource_policy(policy, _allocation(memory_mb=65536))
+    with pytest.raises(ResourceConfigError, match="one task|minimum"):
+        resolve_resource_policy(
+            policy, _allocation(), workload={"samples": 6, "partitions": 1}
+        )
+
+
 @pytest.mark.parametrize("cores", (8, 96, 256))
 def test_allocation_cpu_policy_resolves_threads_and_survives_readmission(
     cores: int,

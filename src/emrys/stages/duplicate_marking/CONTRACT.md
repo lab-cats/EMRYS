@@ -40,6 +40,11 @@ attempt.
 [`step_04_mark_duplicates.sh`](step_04_mark_duplicates.sh) is an internal worker of the
 [Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
+The internal `--threads` allowance (one when omitted) also supplies
+`-XX:ActiveProcessorCount` so Java helper pools see the task's CPU share.
+This does not parallelize the main scientific traversal. Samtools indexing
+receives `threads - 1` additional I/O workers.
+
 The required internal `--native-memory-mb` argument supplies Java
 `-Xmx<N>m` before the Picard jar invocation. The
 [Run planner](../../orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)

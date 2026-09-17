@@ -96,19 +96,26 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
     assert viking.resource_policy.document() == retained_policy
     for memory_mb in (262144, 524287, 524288, 1048576):
         resolved = resolve_resource_policy(
-            viking.resource_policy, AllocationCapacity(256, memory_mb, "fixture")
+            viking.resource_policy,
+            AllocationCapacity(256, memory_mb, "fixture"),
+            workload={"samples": 6, "partitions": 100},
         )
         assert resolved.workflow_cores == resolved.threads_for("00a") == 256
         assert resolved.workflow_memory_mb == memory_mb
         assert dict(resolved.stage_memory_mb)["00a"] == memory_mb
-    for capacity, message in (
-        ((11, 524288), "Stage 01 concurrency x threads exceeds workflow cores"),
-        ((256, 245759), "Stage 01 concurrency x memory exceeds workflow memory"),
-    ):
-        with pytest.raises(ResourceConfigError, match=message):
-            resolve_resource_policy(
-                viking.resource_policy, AllocationCapacity(*capacity, "undersized")
-            )
+    small = resolve_resource_policy(
+        viking.resource_policy,
+        AllocationCapacity(11, 65536, "small node"),
+        workload={"samples": 6, "partitions": 100},
+    )
+    assert small.threads_for("01") == 11
+    assert dict(small.stage_concurrency)["01"] == 1
+    with pytest.raises(ResourceConfigError, match="minimum memory"):
+        resolve_resource_policy(
+            viking.resource_policy,
+            AllocationCapacity(8, 32768, "too small"),
+            workload={"samples": 6, "partitions": 1},
+        )
     submission = slurm_submission.plan_submission(
         viking, emrys_argv=("emrys", "run"), log_dir=tmp_path / "logs"
     )
@@ -125,8 +132,8 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
         "Workflow CPU ceiling: allocation capacity (unknown until execution); memory ceiling: "
         "allocation capacity (unknown until execution)" in summary
     )
-    assert "Stage thread caps: 00a=workflow, 01=2, 02=1, 06=1, 08=4" in summary
-    assert "Repeated-stage concurrency caps: 01=6" in summary
+    assert "Stage thread caps: 00a=workflow, 00c=workflow, 01=auto, 02=auto" in summary
+    assert "Repeated-stage concurrency caps: 01=auto" in summary
     assert "all node CPUs" in summary
     assert "all node memory (unknown until execution)" in summary
 
@@ -392,10 +399,11 @@ def test_submission_summary_keeps_requests_limits_and_unknown_capacity_distinct(
         + ("8192 MiB" if explicit else "allocation capacity (unknown until execution)")
         in summary
     )
-    assert "Stage thread caps: 00a=2, 01=4" in summary
+    assert "Stage thread caps: 00a=2" in summary
+    assert "01=4" in summary
     assert "Repeated-stage concurrency caps: 01=1" in summary
     assert (
-        "Stage memory: workflow ceiling; explicit MiB caps: "
+        "Stage memory: workflow ceiling; explicit MiB limits/shares: "
         + ("00a=1024" if explicit else "none")
         in summary
     )

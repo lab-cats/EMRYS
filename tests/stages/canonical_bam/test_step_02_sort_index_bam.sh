@@ -148,6 +148,7 @@ case "\$subcommand" in
         fi
         ;;
     view)
+        [[ "\${1:-}" != "-@" ]] || shift 2
         if [[ "\${1:-}" == "-H" ]]; then
             input_bam="\${2:-}"
             grep '^@' "\$input_bam"
@@ -163,6 +164,7 @@ case "\$subcommand" in
         fi
         ;;
     index)
+        [[ "\${1:-}" != "-@" ]] || shift 2
         input_bam="\${1:-}"
         [[ -n "\$input_bam" ]] || { printf 'fake samtools index missing input BAM\\n' >&2; exit 64; }
         printf 'fake bam index\\n' > "\$input_bam.bai"

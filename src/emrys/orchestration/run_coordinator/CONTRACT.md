@@ -655,7 +655,9 @@ in the Run's existing allocation. Initial Viking selection changes placement
 only, not the scientific resource policy or Run identity.
 
 Packaged workflow CPU and memory limits use `allocation`; STAR indexing threads
-and memory use `workflow`. Other stages retain the historical EV/PUM1 allowances.
+and memory use `workflow`. Repeated stages use `auto` concurrency and shared
+memory with recovered EV/PUM1 per-task minimums. Supported tools receive
+automatic CPU shares; singleton memory budgets follow the workflow.
 Initial Viking placement uses `cpus_per_task: node`, `exclusive: true`, and
 `memory_mb: 0`: one node/task, no fixed `--cpus-per-task`, `--exclusive`, and
 `--mem=0`, for 12 hours. `node` requires exclusivity. Positive numeric placement
@@ -670,7 +672,27 @@ The Run retains its symbolic CPU/thread/memory declaration; each Attempt records
 the allocation and resolved numeric settings. Snakemake and tool construction
 consume the same resolution. `step_threads: workflow` claims the full workflow
 CPU budget for one task; repeated-stage concurrency must be 1 for that stage.
+`auto` concurrency is the minimum of the admitted task count, CPU capacity
+(divided by a numeric per-task thread requirement, or one for automatic threads),
+and memory capacity divided by the task minimum. Step `07` uses partition count;
+other repeated stages use sample count. Automatic threads and memory divide the
+workflow budget by that concurrency, rounding down. `{minimum_mb: N}` shares
+memory while bounding fanout; an allocation unable to fit one task is rejected.
+The Attempt retains the immutable Analysis-derived sample/partition counts in
+its existing resource-policy record. Contract admission compares them with the
+Analysis; retained-policy readmission reproduces the same numeric resolution.
+Legacy records without counts remain admissible for fixed concurrency.
+
 The existing native-memory headroom applies after stage-memory resolution.
+STAR alignment explicitly sets `outBAMsortingThreadN` to its task allowance.
+Samtools sort receives the sorting-thread count and memory divided by that count;
+view, merge, addreplacerg, index and flagstat receive `threads - 1` additional
+workers. Java receives `-XX:ActiveProcessorCount` to size its helper pools within
+the task CPU allowance, not to parallelize the main Picard/GATK algorithm.
+Optional thread keys `00c`, `02b`, `04`, `05` default to one when absent from a
+retained policy. Step `08` consumes its thread allowance through R workers;
+`09`/`10` main algorithms remain serial. Snakemake globally admits the resolved
+CPU, memory and stage-slot requests; it does not enforce per-process RSS.
 
 One pure formatter on the admitted execution profile supplies Doctor and
 Run/resume/report submission summaries. It shows requested nodes and exclusivity,

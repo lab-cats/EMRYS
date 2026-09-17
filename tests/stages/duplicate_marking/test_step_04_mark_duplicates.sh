@@ -27,6 +27,8 @@ printf '%s\\n' "\$@" >> "$java_log"
 
 [[ "\${1:-}" == -Xmx*m ]] || exit 64
 shift
+[[ "\${1:-}" == -XX:ActiveProcessorCount=* ]] || exit 64
+shift
 
 if [[ "\${1:-}" != "-jar" ]]; then
     printf 'fake java expected -jar as first argument\\n' >&2
@@ -115,6 +117,7 @@ case "\$subcommand" in
         [[ -s "\$input_bam" ]]
         ;;
     index)
+        [[ "\${1:-}" != "-@" ]] || shift 2
         input_bam="\${1:-}"
         if [[ -z "\$input_bam" ]]; then
             printf 'fake samtools index missing input BAM\\n' >&2
@@ -146,8 +149,10 @@ command=(bash "$SCRIPT" --native-memory-mb 800 --sample-id sample --input-bam "$
 "${command[@]}"
 assert_contains "${java_log}" '-Xmx800m'
 : >"${java_log}"
-"${command[@]}" --native-memory-mb 1600
+"${command[@]}" --native-memory-mb 1600 --threads 16
 assert_contains "${java_log}" '-Xmx1600m'
+assert_contains "${java_log}" '-XX:ActiveProcessorCount=16'
+assert_fails 'positive integer' "${command[@]}" --threads 0
 assert_fails 'positive integer' "${command[@]}" --native-memory-mb 0
 for path in "$tmp_dir/staged/sample.markdup.bam" "$tmp_dir/staged/sample.markdup.bam.bai" "$tmp_dir/metrics/sample.markdup.metrics.txt"; do
     [[ -s "$path" ]] || fail "missing output: $path"

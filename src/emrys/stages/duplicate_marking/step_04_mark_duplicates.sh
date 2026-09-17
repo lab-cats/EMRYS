@@ -14,6 +14,7 @@ Usage: src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh \
   --output-dir OUTPUT_DIR \
   --metrics-dir METRICS_DIR \
   --native-memory-mb NATIVE_MEMORY_MB \
+  --threads THREADS \
   --picard-jar PICARD_JAR \
   --java-bin JAVA_BIN \
   --samtools-bin SAMTOOLS_BIN
@@ -32,8 +33,10 @@ source "$script_dir/../../libraries/file_checks.sh"
 
 declare_required_arguments sample_id input_bam output_dir metrics_dir picard_jar java_bin samtools_bin native_memory_mb
 
+threads=1
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
         --native-memory-mb) assign_option_value "$1" "${2:-}" native_memory_mb; shift 2 ;;
         --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
         --input-bam) assign_option_value "$1" "${2:-}" input_bam; shift 2 ;;
@@ -47,6 +50,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 require_arguments
+validate_positive_integer "--threads" "$threads"
 require_task_work_dir
 validate_positive_integer "--native-memory-mb" "$native_memory_mb"
 
@@ -59,11 +63,11 @@ require_executable "Java" "$java_bin"
 require_executable "samtools" "$samtools_bin"
 output_bam="$output_dir/$sample_id.markdup.bam"
 metrics="$metrics_dir/$sample_id.markdup.metrics.txt"
-"$java_bin" "-Xmx${native_memory_mb}m" -jar "$picard_jar" MarkDuplicates "INPUT=$input_bam" \
+"$java_bin" "-Xmx${native_memory_mb}m" "-XX:ActiveProcessorCount=${threads}" -jar "$picard_jar" MarkDuplicates "INPUT=$input_bam" \
     "OUTPUT=$output_bam" "METRICS_FILE=$metrics" REMOVE_DUPLICATES=false \
     "TMP_DIR=$EMRYS_TASK_WORK_DIR"
 "$samtools_bin" quickcheck "$output_bam"
-"$samtools_bin" index "$output_bam"
+"$samtools_bin" index -@ "$((threads - 1))" "$output_bam"
 validate_nonempty_file "Duplicate-marked BAM" "$output_bam"
 validate_nonempty_file "Duplicate-marked BAI" "$output_bam.bai"
 validate_nonempty_file "Picard metrics" "$metrics"

@@ -96,6 +96,7 @@ from emrys.orchestration.run_coordinator.resource_policy import (
     ResourceConfigError,
     is_canonical_slurm_job_id,
     resolve_resource_policy,
+    resource_workload,
 )
 
 DESCRIPTION = (
@@ -1516,7 +1517,11 @@ def _qualify_slurm(
             raise DoctorRepairError(
                 "Project, package, or runtime changed before compute qualification"
             )
-        resolve_resource_policy(execution.resource_policy, observe_allocation())
+        resolve_resource_policy(
+            execution.resource_policy,
+            observe_allocation(),
+            workload=resource_workload(result.analysis.revision),
+        )
         with progress("Checking storage from the compute node"):
             receipt = storage_qualification.qualify_compute(workspace, fasta)
         _stderr(
