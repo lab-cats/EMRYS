@@ -68,6 +68,120 @@ class PresentationError(RuntimeError):
     """An inspection cannot be projected into the supported public view."""
 
 
+@dataclass(frozen=True)
+class Navigation:
+    view: str = "overview"
+    stream_index: int = 0
+    scroll: int = 0
+    follow: bool = True
+    count: str = ""
+    search_input: str | None = None
+    search_query: str = ""
+    search_error: str = ""
+    match_line: int | None = None
+
+
+def fit_navigation(
+    state: Navigation, max_scroll: int, matches: tuple[int, ...]
+) -> Navigation:
+    """Clamp repaint-derived positions without reading or changing selection."""
+    return replace(
+        state,
+        scroll=max_scroll if state.follow else min(state.scroll, max_scroll),
+        match_line=state.match_line if state.match_line in matches else None,
+    )
+
+
+def reduce_navigation(
+    state: Navigation,
+    key: bytes,
+    *,
+    max_scroll: int,
+    matches: tuple[int, ...],
+    more_input: bool = False,
+    search_result: tuple[tuple[int, ...], str] | None = None,
+) -> tuple[Navigation, str | tuple[bool, int] | None]:
+    """Apply one key to immutable watch navigation and return any refresh command."""
+    if state.search_input is not None:
+        if key in (b"\r", b"\n"):
+            found, error = search_result or ((), "Search result unavailable")
+            candidate = state.search_input or state.search_query
+            match = next(
+                (line for line in found if line > state.scroll),
+                found[0] if found else None,
+            )
+            return (
+                replace(
+                    state,
+                    search_input=None,
+                    search_error=error,
+                    search_query=candidate if candidate and not error else state.search_query,
+                    match_line=match if not error else None,
+                    scroll=min(match, max_scroll) if match is not None else state.scroll,
+                    follow=False if match is not None else state.follow,
+                ),
+                None,
+            )
+        if key in (b"\x1b", b"\x03"):
+            return replace(state, search_input=None), None
+        if key in (b"\x7f", b"\b"):
+            return replace(state, search_input=state.search_input[:-1]), None
+        if len(key) == 1 and 32 <= key[0] <= 126:
+            return replace(state, search_input=state.search_input + key.decode("ascii")), None
+        return state, None
+    if key in (b"q", b"Q", b"\x04", b""):
+        return state, "quit"
+    if key == b"/" and state.view == "evidence":
+        return replace(state, search_input="", search_error=""), None
+    if (
+        state.view == "evidence"
+        and len(key) == 1
+        and key.isdigit()
+        and (state.count or key not in (b"1", b"2", b"3") or more_input)
+    ):
+        return replace(state, count=state.count + key.decode("ascii")), None
+    if state.view == "evidence" and key in (b"n", b"N") and matches:
+        anchor = state.scroll if state.match_line is None else state.match_line
+        candidates = (
+            tuple(line for line in matches if line < anchor)[::-1]
+            if key == b"N"
+            else tuple(line for line in matches if line > anchor)
+        )
+        match = candidates[0] if candidates else (matches[-1] if key == b"N" else matches[0])
+        return replace(state, match_line=match, scroll=min(match, max_scroll), follow=False, count=""), None
+    if key in _VIEW_KEYS or key == b"\t":
+        view = (
+            ("details" if state.view == "overview" else "overview")
+            if key == b"\t"
+            else _VIEW_KEYS[key]
+        )
+        return replace(state, view=view, scroll=0, follow=view == "evidence", count=""), None
+    if key in (b"r", b"R", b"[", b"]"):
+        if key in (b"[", b"]"):
+            state = replace(
+                state,
+                stream_index=state.stream_index + (1 if key == b"]" else -1),
+                view="evidence",
+                scroll=0,
+                follow=True,
+                search_query="",
+                search_error="",
+                match_line=None,
+            )
+        return state, (key in (b"r", b"R"), state.stream_index)
+    if key in _SCROLL_DELTAS:
+        delta = _SCROLL_DELTAS[key]
+        if state.count:
+            delta = (1 if delta > 0 else -1) * int(state.count)
+        scroll = max(0, state.scroll + delta)
+        return replace(state, scroll=scroll, follow=scroll >= max_scroll, count=""), None
+    if key in _TOP_KEYS:
+        return replace(state, scroll=0, follow=max_scroll == 0, count=""), None
+    if key in _BOTTOM_KEYS:
+        return replace(state, scroll=max_scroll, follow=True, count=""), None
+    return state, None
+
+
 def task_observation(task: TaskInspection) -> str:
     if task.state == "verified":
         return "Verified complete"
@@ -1046,23 +1160,15 @@ def watch(
     descriptor = sys.stdin.fileno()
     original = termios.tcgetattr(descriptor)
     worker = RefreshWorker(initial, refresh)
-    stream_index = 0
-    scroll = 0
     max_scroll = 0
-    follow = True
-    count = ""
-    search_input = None
-    search_query = ""
-    search_error = ""
-    match_line = None
     matches = ()
-    selected_view = (
-        "evidence" if run_root is not None and request is None else "overview"
+    navigation = Navigation(
+        view="evidence" if run_root is not None and request is None else "overview"
     )
     selected_review = None
     reviews = {key: callback for key, _label, callback in review_actions}
     deadline = time.monotonic() + refresh_seconds
-    worker.request(verify=True, stream_index=stream_index)
+    worker.request(verify=True, stream_index=navigation.stream_index)
     mouse_tracking = False
     try:
         tty.setcbreak(descriptor)
@@ -1083,28 +1189,28 @@ def watch(
             while True:
                 now = time.monotonic()
                 if now >= deadline:
-                    worker.request(verify=False, stream_index=stream_index)
+                    worker.request(verify=False, stream_index=navigation.stream_index)
                     deadline = now + refresh_seconds
                 snapshot = worker.snapshot
                 controls = "Views: 1/o overview | 2/d details | 3/v evidence/logs | Tab switch | [/] stream | Scroll: arrows/j/k PgUp/PgDn Home/g | r recheck selection/evidence (read-only) | q quit"
                 controls += f"\nDiagnostic trace: {snapshot.trace_at or 'unavailable'} (unverified log identity/progress) | Scheduler: {snapshot.scheduler_at or 'unavailable'}"
-                if selected_view == "evidence":
-                    state = "FOLLOWING" if follow else "PAUSED"
+                if navigation.view == "evidence":
+                    state = "FOLLOWING" if navigation.follow else "PAUSED"
                     search = (
-                        f"/{search_input}"
-                        if search_input is not None
-                        else f"/{search_query}"
-                        if search_query
+                        f"/{navigation.search_input}"
+                        if navigation.search_input is not None
+                        else f"/{navigation.search_query}"
+                        if navigation.search_query
                         else "none"
                     )
                     controls += (
                         f"\nLog: {state}; tail-relative lines; count+j/k; G bottom; "
                         f"/ search; n/N matches | Search: {search}"
                     )
-                    if count:
-                        controls += f" | Count: {count}"
-                    if search_error:
-                        controls += f" | {search_error}"
+                    if navigation.count:
+                        controls += f" | Count: {navigation.count}"
+                    if navigation.search_error:
+                        controls += f" | {navigation.search_error}"
                 if reviews:
                     controls += "\nLeave view: " + " | ".join(
                         f"{key.decode('ascii')} {label}"
@@ -1131,18 +1237,20 @@ def watch(
                         ),
                     ),
                 )
-                if selected_view == "evidence":
+                if navigation.view == "evidence":
                     rows, matches, render_error = _render_log_rows(
-                        snapshot, now=datetime.now(UTC), query=search_query
+                        snapshot, now=datetime.now(UTC), query=navigation.search_query
                     )
                     if render_error:
-                        search_error = render_error
+                        navigation = replace(
+                            navigation, search_error=render_error
+                        )
                     body_height = max(1, console.size.height - layout["controls"].size)
                     max_scroll = max(0, len(rows) - body_height)
-                    scroll = max_scroll if follow else min(scroll, max_scroll)
-                    if match_line not in matches:
-                        match_line = None
-                    layout["body"].update(Text("\n").join(rows[scroll:]))
+                    navigation = fit_navigation(navigation, max_scroll, matches)
+                    layout["body"].update(
+                        Text("\n").join(rows[navigation.scroll :])
+                    )
                 else:
                     layout["body"].update(
                         render_dashboard(
@@ -1151,8 +1259,8 @@ def watch(
                                 1, console.size.height - layout["controls"].size
                             ),
                             width=console.size.width,
-                            view=selected_view,
-                            scroll=scroll,
+                            view=navigation.view,
+                            scroll=navigation.scroll,
                             refresh_seconds=refresh_seconds,
                         )
                     )
@@ -1162,99 +1270,40 @@ def watch(
                     key = _read_watch_key(descriptor)
                     if key is None:
                         continue
-                    if search_input is not None:
-                        if key in (b"\r", b"\n"):
-                            candidate = search_input or search_query
-                            _rows, found, error = _render_log_rows(
-                                snapshot,
-                                now=datetime.now(UTC),
-                                query=candidate,
-                            )
-                            search_input = None
-                            search_error = error
-                            if not error and candidate:
-                                search_query = candidate
-                                matches = found
-                                match_line = next(
-                                    (line for line in matches if line > scroll),
-                                    matches[0] if matches else None,
-                                )
-                                if match_line is not None:
-                                    scroll = min(match_line, max_scroll)
-                                    follow = False
-                        elif key in (b"\x1b", b"\x03"):
-                            search_input = None
-                        elif key in (b"\x7f", b"\b"):
-                            search_input = search_input[:-1]
-                        elif len(key) == 1 and 32 <= key[0] <= 126:
-                            search_input += key.decode("ascii")
-                        continue
-                    if key in (b"q", b"Q", b"\x04", b""):
-                        return 0
-                    selected_review = reviews.get(key.lower())
+                    selected_review = (
+                        None
+                        if navigation.search_input is not None
+                        else reviews.get(key.lower())
+                    )
                     if selected_review is not None:
                         break
-                    if key == b"/" and selected_view == "evidence":
-                        search_input, search_error = "", ""
-                        continue
-                    if (
-                        selected_view == "evidence"
+                    search_result = None
+                    if navigation.search_input is not None and key in (b"\r", b"\n"):
+                        candidate = navigation.search_input or navigation.search_query
+                        _rows, found, error = _render_log_rows(
+                            snapshot, now=datetime.now(UTC), query=candidate
+                        )
+                        search_result = found, error
+                    more_input = bool(
+                        navigation.search_input is None
+                        and navigation.view == "evidence"
                         and len(key) == 1
                         and key.isdigit()
-                        and (
-                            count
-                            or key not in (b"1", b"2", b"3")
-                            or select.select([descriptor], [], [], 0.15)[0]
-                        )
-                    ):
-                        count += key.decode("ascii")
-                        continue
-                    if selected_view == "evidence" and key in (b"n", b"N") and matches:
-                        anchor = scroll if match_line is None else match_line
-                        candidates = (
-                            tuple(line for line in matches if line < anchor)[::-1]
-                            if key == b"N"
-                            else tuple(line for line in matches if line > anchor)
-                        )
-                        match_line = (
-                            candidates[0]
-                            if candidates
-                            else (matches[-1] if key == b"N" else matches[0])
-                        )
-                        scroll = min(match_line, max_scroll)
-                        follow = False
-                        count = ""
-                        continue
-                    if key in _VIEW_KEYS or key == b"\t":
-                        selected_view = (
-                            ("details" if selected_view == "overview" else "overview")
-                            if key == b"\t"
-                            else _VIEW_KEYS[key]
-                        )
-                        scroll = 0
-                        follow = selected_view == "evidence"
-                        count = ""
-                    if key in (b"r", b"R", b"[", b"]"):
-                        if key in (b"[", b"]"):
-                            stream_index += 1 if key == b"]" else -1
-                            selected_view, scroll = "evidence", 0
-                            follow, search_query, search_error = True, "", ""
-                            match_line = None
-                        worker.request(
-                            verify=key in (b"r", b"R"), stream_index=stream_index
-                        )
-                    if key in _SCROLL_DELTAS:
-                        delta = _SCROLL_DELTAS[key]
-                        if count:
-                            delta = (1 if delta > 0 else -1) * int(count)
-                        count = ""
-                        scroll = max(0, scroll + delta)
-                        follow = scroll >= max_scroll
-                    if key in _TOP_KEYS:
-                        scroll = 0
-                        follow, count = max_scroll == 0, ""
-                    if key in _BOTTOM_KEYS:
-                        scroll, follow, count = max_scroll, True, ""
+                        and select.select([descriptor], [], [], 0.15)[0]
+                    )
+                    navigation, command = reduce_navigation(
+                        navigation,
+                        key,
+                        max_scroll=max_scroll,
+                        matches=matches,
+                        more_input=more_input,
+                        search_result=search_result,
+                    )
+                    if command == "quit":
+                        return 0
+                    if isinstance(command, tuple):
+                        verify, stream_index = command
+                        worker.request(verify=verify, stream_index=stream_index)
     except KeyboardInterrupt:
         return 0
     finally:

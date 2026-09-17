@@ -14,10 +14,9 @@ Query one request by its printed directory name or absolute path:
 emrys inspect --submission "submission-REPLACE_WITH_THE_EXACT_REQUEST_TOKEN"
 ```
 
-This queries only the selected request and prints its recorded streams,
-scheduler observation, matching application log, and any independently
-admitted Run/Attempt. `UNKNOWN`, partial, or legacy observations remain visible;
-never choose another request or resubmit solely because its Run is absent.
+This prints that request's recorded streams, scheduler observation, matching
+application log, and any independently admitted Run/Attempt. Preserve
+`UNKNOWN`, partial, and legacy observations.
 
 An explicit Run selection also discovers its recorded application logs:
 
@@ -27,8 +26,7 @@ emrys inspect RUN --project "$EMRYS_PROJECT_ROOT" --log-root /absolute/historica
 ```
 
 The Run search uses `--log-root`, then `EMRYS_LOG_ROOT`, then the Project's
-`logs/application` directory. Supply an historical custom root explicitly.
-The selector is read-only and never substitutes a newest file. The
+`logs/application` directory. Supply an historical custom root explicitly. The
 [submission and inspection contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#resume-inspection-results-and-reporting)
 owns the exact admission, query, evidence, and recovery limits.
 
@@ -73,10 +71,9 @@ emrys inspect --snapshot --job-id 12345 --offline --out /absolute/scheduler/logs
 ```
 
 Without Project context or an explicit selector, watch offers bounded owned
-scheduler candidates and never scans for a newest log. Command-line selection
-precedes `EMRYS_DASHBOARD_JOB_ID`/`EMRYS_DASHBOARD_LOG_DIR`. Offline mode needs
-an exact ID plus both streams and makes no scheduler queries. Raw scheduler
-selection has no Project, Run, or action authority.
+scheduler candidates. Command-line selection precedes
+`EMRYS_DASHBOARD_JOB_ID`/`EMRYS_DASHBOARD_LOG_DIR`. Offline mode needs an exact
+ID plus both streams.
 
 | Control | Behavior |
 | --- | --- |
@@ -89,12 +86,10 @@ selection has no Project, Run, or action authority.
 | `q` | Quit and restore the terminal. |
 
 Automatic diagnostic refresh defaults to 30 seconds; `--refresh` accepts at
-least five seconds. `r` also re-verifies Run evidence and associations. Workflow
-streams retain full diagnostic history; other tails retain at most 64 KiB/256
-lines. Rotation clears the prior generation, stalled reads stay dated, mouse
-reports are ignored, and `NO_COLOR` keeps identical plain text. `--snapshot`,
-redirection, or a noninteractive terminal emits one snapshot. Use `--log-root`
-for a historical application-log root. The
+least five seconds. Workflow streams retain full diagnostic history; other
+tails retain at most 64 KiB/256 lines. `--snapshot`, redirection, or a
+noninteractive terminal emits one snapshot. Use `--log-root` for a historical
+application-log root. The
 [inspection contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#resume-inspection-results-and-reporting)
 owns the distinction between dated diagnostics, verified completion, and
 recovery authority.
@@ -115,9 +110,7 @@ emrys inspect --submission REQUEST --project "$EMRYS_PROJECT_ROOT" --watch --act
 | Submission request | `s` | Stop preview for the exact retained request; does not cancel the job. |
 
 Each handoff restores the terminal and freshly admits the exact selection.
-Report/stop remain previews, Run handoffs use the default profile, and
-noninteractive action mode is refused. Use the direct CLI to choose another
-profile or execute a report/stop plan.
+Use the direct CLI to choose another profile or execute a report/stop plan.
 
 ## Stop one exact Slurm request
 
@@ -128,15 +121,8 @@ Project that submitted it. Preview first:
 emrys stop --project "$EMRYS_PROJECT_ROOT" --submission "submission-EXACT_TOKEN"
 ```
 
-Review the Project, request, numeric owner, cluster, root job ID, token-specific
-job name and current scheduler observation. Add `--execute` to issue the
-displayed stop request. Preview writes nothing. Execution requires a complete
-v3 request and supported `scancel`, retains synchronized intent and raw client
-streams, rechecks identity, issues one whole-job cancellation, and observes the
-scheduler again. It never retries or falls back to job ID alone. If the client
-is interrupted or the outcome remains uncertain, retain the records and inspect
-that exact request and associated Run. Stop never removes locks or outputs;
-resume only when Run inspection admits recovery. The
+Review the displayed identity and scheduler observation. Add `--execute` to
+issue that stop request; retain its records if the result is uncertain. The
 [stop contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries)
 owns the exact identity, mutation, and evidence rules.
 
@@ -399,36 +385,24 @@ automation executes with `emrys run --execute`. Full Runs generate reports
 unless `--no-report` is supplied. Use the [Slurm route](#slurm-setup-and-submission)
 for cluster submission.
 
-`emrys inspect` reads the sole Run or offers a terminal picker. Its normal view
-keeps Run admission, Attempt outcome, Scientific Results, Reporting admission,
-blockers, any available recovery, the next action, and verified report paths.
-Verified completion is emphasized directly beneath the Run name. To select one
-explicitly, use its two-word name, full ID, or unique ID prefix; EMRYS never
-assumes latest. `--verbose` adds Run/Attempt identities and admitted
-milestones, timing, application-log associations, reporting transactions, and
-terminal Task records with their original Attempt, recorded outcome, and exact
-stdout/stderr paths. Failed retries remain visible in Attempt-chain order per
-Task. Recorded success alone does not establish verified scientific completion.
-Missing, changed or malformed log evidence stays blocked; preserve it for
-diagnosis. `--verbose` also adds authority hashes, receipts and task commands.
-Planning, execution, Doctor, and static inspection all use `--verbose`.
+`emrys inspect` reads the sole Run or offers a terminal picker. Select one by
+two-word name, full ID, or unique ID prefix. The normal view shows admission,
+outcome, blockers, recovery, next action, and verified reports; `--verbose`
+adds identities, milestones, timing, application associations, reporting
+transactions, Task records, authority hashes, receipts, and commands.
 For failed or interrupted Runs, follow [resume and recovery](TROUBLESHOOTING.md#run-and-reporting-state).
 
-Verbose **Scientific task observations** count only admitted evidence. `Started;
-completion unverified` records a start, not proof that its worker still runs.
-`No admitted start` may reflect absent or invalid records. Read printed blockers
-before choosing an action; neither count overrides the four completion lines
-or inspection's recovery decision.
+Read printed blockers before choosing an action. The
+[inspection contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#resume-inspection-results-and-reporting)
+defines the displayed Task and completion states.
 
 `emrys watch` uses the same Run picker and inspection authority. A successful
 Slurm submission is labelled **submitted** and returns before completion;
 `watch` and `inspect` announce completion only after current Run evidence admits
 the successful Attempt, complete Results, and applicable reporting state.
 
-Selected submission inspection also prints the retained scheduler name for new
-v3 requests and requires that exact name in scheduler metadata. Older requests
-remain readable with their original evidence limits. A matching name or a
-terminal scheduler state alone does not authorize recovery or prove completion.
+Selected submission inspection also prints the retained scheduler name; the
+submission contract defines version-specific identity checks.
 
 ### Inspect and open reports
 
@@ -546,15 +520,6 @@ Specialist commands validate existing outputs, reconcile reference provenance
 owner-validation report because validator exit zero alone does not establish
 semantic success.
 
-The installed watch shares the selection, scheduler and diagnostic presentation
-owners. Shared observation checks
-numeric ownership, exact root IDs, duplicate accounting records and selected
-stream paths; uncertainty appears as `UNKNOWN`. Log interpretation does not
-replace Run inspection or establish which retained request owns a reused job ID.
-Its `--offline` mode requires an explicit job ID and both stream paths.
-Selection, snapshots and interactive refresh make no Slurm queries; scheduler
-state stays `UNKNOWN` while the same sanitized diagnostic streams remain usable.
-
 ## Slurm setup and submission
 
 Viking users select `--site viking` when creating either a synthetic or a
@@ -575,10 +540,9 @@ emrys doctor --repair
 emrys run
 ```
 
-Doctor installs the managed tools on the head node, then submits compute-side
-runtime and storage checks through Slurm and finishes the storage check on the
-head node. It retains the existing qualification evidence. A successful repair
-means these checks passed; it does not establish scientific completion.
+Doctor installs the managed tools on the head node, submits compute-side
+runtime and storage checks through Slurm, then finishes storage qualification
+on the head node.
 
 Qualification covers the selected inventory's exact tools, not every tool
 installed on the node. A different system default is not itself a reason to
@@ -625,9 +589,8 @@ available for investigating storage failures; their exact contract lives with
 Do not alter scheduler variables to imitate an allocation or erase existing
 qualification evidence to retry.
 
-For detailed submission diagnostics, use `--verbose`. Normal operator
-instructions use the default output level. Scheduler job success alone does
-not establish valid Results; use `emrys inspect` and the retained reports.
+For detailed submission diagnostics, use `--verbose`; use `emrys inspect` for
+the Run result.
 
 ## Inspecting a Slurm Run
 
@@ -723,46 +686,16 @@ the maintenance JSONL; see [installation logs](TROUBLESHOOTING.md#watching-docto
 | Storage `NOT QUALIFIED` | Required storage proof is unavailable or invalid; read the observed problem. |
 | Execution `NOT ADMITTED` | The selected execution profile cannot be used; follow its diagnostic. |
 
-`PASS` means that domain passed current checks. `DOCTOR BLOCKED` means the
-requested maintenance action cannot proceed. Doctor changes only Project-owned
-tools and preparation records; it does not obtain scientific inputs, change a
-study design, or repair Results. A verification-only plan does not invoke package
-managers, but repeats current file/runtime checks and, for Slurm, compute checks
-and head-node finalization. Declining the plan with Enter or `n` makes no repair.
-After an error, retain diagnostics; do not change dependency locks or clear
-installation folders to force another attempt.
+Declining the plan with Enter or `n` makes no repair. After an error, retain the
+diagnostics and selected runtime rather than clearing installation state.
 
-Doctor prints its full invocation elapsed time and exit outcome, including time
-spent awaiting operator confirmation. Add `--verbose` for precise phase times.
-For approved maintenance, the same phase measurements appear in
-the existing diagnostic JSONL as `doctor_phase_timing`; read-only diagnosis does
-not create a log. Compute observations stay distinct from head observations.
-`Slurm submission-to-return wait` includes waiting, launch, compute and return
-overhead. It cannot by itself tell you how long the job spent queued. After a
-waited submission, Doctor makes one bounded accounting lookup using the recorded
-job identity and exact maintenance stream paths. Normal output hides submission
-transcript and scheduler-log paths; `--verbose` adds them without sharing a row
-with the live timer. The accounting summary separates
-submitted-to-start wait, eligible queue wait and allocation wall time; time
-before eligibility is not eligible queue wait. Allocation wall time includes
-launch/verification overhead and does not measure scientific compute time.
-Missing, delayed, inconsistent, requeued or suspended accounting leaves derived
-intervals unavailable. The existing maintenance log retains admitted UTC dates,
-accounting counters and limitations as `doctor_scheduler_timing`, after the
-maintenance outcome. Normal output also shows the accounting state, source and
-scheduler exit status. This separates observed `CANCELLED` from `FAILED`; missing
-accounting stays `UNKNOWN`. A `COMPLETED` accounting observation does not erase
-a client/submission failure or establish completed qualification.
-Lookup duration is a separate phase, outside the waited
-submission timer. Timing never establishes qualification or permits recovery.
-Keep complete diagnostics when investigating slow verification; these timings
-do not justify removing input reads or changing resource requests.
-Maintenance logs also retain `runtime_check_passed` details for their actual
-Doctor phases, buffered until the operation outcome. Verbose/debug diagnosis
-shows escaped passing details, including available subprocess durations.
-Separate Snakemake version/startup times from content hashing; the SHA-256
-utility check measures only its known test payload. These observations still
-do not attribute runtime-file bytes, physical I/O or memory.
+Doctor prints full invocation elapsed time and exit outcome; add `--verbose` for
+phase times. Approved maintenance retains `doctor_phase_timing`, one bounded
+`doctor_scheduler_timing` accounting observation after a waited submission,
+and phase-specific `runtime_check_passed` records in the maintenance JSONL.
+Normal output hides transcript paths; `--verbose` adds them. The
+[runtime and evidence contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#public-model-and-admission)
+owns the status meanings and timing limits.
 
 Allow more than ten minutes when planning setup; downloads, compilation and
 queue waits can take considerably longer, and verification alone can exceed
