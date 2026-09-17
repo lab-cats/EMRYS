@@ -118,7 +118,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U03](#cv-u03-init-and-validate-summaries) | Init and Validate summaries | Verification pending |
 | [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Open |
 | [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Verification pending |
-| [CV-U06](#cv-u06-available-resources) | Restore historical workflow and stage resources | Verification pending |
+| [CV-U06](#cv-u06-available-resources) | Use all allocated workflow CPUs and memory | Verification pending |
 | [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Verification pending |
 | [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Open |
 | [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Open |
@@ -347,8 +347,9 @@ could not import `coolname_hash`. That fixture remains for hosted CI; no
 dependency was installed to bypass the environment mismatch. Checks used this
 worktree's source, build-generated metadata and existing cached dependencies.
 Ruff, documentation structure and whitespace checks passed. The historical
-restoration's CI result does not cover this follow-up. Hosted CI and institutional
-execution remain pending; CV-U06 remains **Verification pending**.
+restoration's CI result does not cover this follow-up. Current hosted results are
+attached to [PR #271](https://github.com/lab-cats/EMRYS/pull/271). Institutional
+execution remains pending; CV-U06 remains **Verification pending**.
 
 ### CV-U07 Projects directory
 
