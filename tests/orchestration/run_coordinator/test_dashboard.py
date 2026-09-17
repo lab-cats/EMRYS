@@ -390,19 +390,13 @@ Finished jobid: 1 (Rule: align_RNA_reads_with_STAR)
     )
     assert model["expected"] == {"01": samples, "07": partitions, "FINAL": 1}
     assert dashboard.progress_values(model) == (1, total, total - 1)
-    lines = dashboard.pipeline_lines(model, 1_800_000_000, 100)
-    alignment = next(
-        line[0]
-        for line in lines
-        if isinstance(line, tuple) and line[0].startswith("01 ")
-    )
+    lines = _flatten_render_lines(
+        dashboard.pipeline_lines(model, 1_800_000_000, 100)
+    ).splitlines()
+    alignment = next(line for line in lines if line.startswith("01 "))
     assert f"1/{samples}" in alignment
     assert ("DONE" in alignment) is (samples == 1)
-    partitions_line = next(
-        line[0]
-        for line in lines
-        if isinstance(line, tuple) and line[0].startswith("07 ")
-    )
+    partitions_line = next(line for line in lines if line.startswith("07 "))
     assert f"0/{partitions}" in partitions_line
 
 

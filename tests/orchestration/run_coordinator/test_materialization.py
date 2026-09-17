@@ -25,6 +25,7 @@ from types import SimpleNamespace
 
 import pytest
 import yaml
+from rich.text import Text
 
 from emrys import __main__ as cli
 import emrys.libraries.installed_package_identity as installed_package_identity
@@ -4486,7 +4487,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
         assert control.run_from_args(arguments) == 0
         captured = capsys.readouterr()
         assert captured.out == ""
-        projections[level] = captured.err
+        projections[level] = Text.from_ansi(captured.err).plain
         assert ("Execute this plan?" in captured.err) is interactive
         assert not (workspace / "logs").exists()
 

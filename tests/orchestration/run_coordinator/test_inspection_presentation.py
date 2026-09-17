@@ -1296,15 +1296,16 @@ def test_dashboard_pipeline_separates_columns_from_semantic_state() -> None:
     row = next(
         item
         for item in rows[1:]
-        if isinstance(item, list) and item[0][0].strip() == "00a"
+        if isinstance(item, list) and item[0][0].strip() == "01"
     )
-    assert "".join(text for text, _style in row).startswith("00a     STAR index")
+    assert "".join(text for text, _style in row).startswith("01      STAR alignment")
+    assert row[-1] == ("WAITING", "yellow")
     assert [style for _text, style in row] == [
         "cyan_bold",
         "normal",
         "value",
         "dim",
-        "green",
+        "yellow",
     ]
 
 
