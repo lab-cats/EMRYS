@@ -44,6 +44,24 @@ _TAIL_LINES = 256
 _REFRESH_SECONDS = 30
 _MOUSE_TRACKING_ON = "\x1b[?1000h\x1b[?1006h"
 _MOUSE_TRACKING_OFF = "\x1b[?1000l\x1b[?1006l"
+_VIEW_KEYS = {
+    **dict.fromkeys((b"1", b"o", b"O"), "overview"),
+    **dict.fromkeys((b"2", b"d", b"D"), "details"),
+    **dict.fromkeys((b"3", b"v", b"V"), "evidence"),
+}
+_SCROLL_DELTAS = {
+    b"j": 1,
+    b"J": 1,
+    b"\x1b[B": 1,
+    b"k": -1,
+    b"K": -1,
+    b"\x1b[A": -1,
+    b"\x1b[5~": -6,
+    b"\x1b[6~": 6,
+}
+_TOP_KEYS = (b"g", b"\x1b[H", b"\x1bOH", b"\x1b[1~", b"\x1b[7~")
+_BOTTOM_KEYS = (b"G", b"\x1b[F", b"\x1bOF", b"\x1b[4~", b"\x1b[8~")
+_ACTION_KEYS = {bytes((value,)) for value in b"odrqvgjk123\t[]"}
 
 
 class PresentationError(RuntimeError):
@@ -662,10 +680,11 @@ def render_snapshot(
     lines.append(
         f"Scheduler: {scheduler['state']} ({scheduler.get('source', 'unavailable')}); observed {snapshot.scheduler_at or 'not yet'}"
     )
-    for name in ("cluster", "reason", "exit_code", "diagnostic"):
-        if scheduler.get(name) is not None:
-            lines.append(f"  {name}: {scheduler[name]}")
     for name in (
+        "cluster",
+        "reason",
+        "exit_code",
+        "diagnostic",
         "elapsed",
         "left",
         "time_limit",
@@ -1006,26 +1025,7 @@ def watch(
         require_action_terminal()
         if snapshot_only:
             raise PresentationError("Actions require an interactive watch")
-        if any(
-            key.lower()
-            in (
-                b"o",
-                b"d",
-                b"r",
-                b"q",
-                b"v",
-                b"g",
-                b"j",
-                b"k",
-                b"1",
-                b"2",
-                b"3",
-                b"\t",
-                b"[",
-                b"]",
-            )
-            for key, _, _ in review_actions
-        ):
+        if any(key.lower() in _ACTION_KEYS for key, _, _ in review_actions):
             raise PresentationError("Actions cannot replace dashboard navigation keys")
         if (request is None) == (run_root is None):
             raise PresentationError("Actions require one exact Run or submission")
@@ -1240,28 +1240,11 @@ def watch(
                         follow = False
                         count = ""
                         continue
-                    if key in (
-                        b"1",
-                        b"o",
-                        b"O",
-                        b"2",
-                        b"d",
-                        b"D",
-                        b"3",
-                        b"v",
-                        b"V",
-                        b"\t",
-                    ):
+                    if key in _VIEW_KEYS or key == b"\t":
                         selected_view = (
                             ("details" if selected_view == "overview" else "overview")
                             if key == b"\t"
-                            else (
-                                "overview"
-                                if key in (b"1", b"o", b"O")
-                                else "details"
-                                if key in (b"2", b"d", b"D")
-                                else "evidence"
-                            )
+                            else _VIEW_KEYS[key]
                         )
                         scroll = 0
                         follow = selected_view == "evidence"
@@ -1275,34 +1258,17 @@ def watch(
                         worker.request(
                             verify=key in (b"r", b"R"), stream_index=stream_index
                         )
-                    if key in (
-                        b"j",
-                        b"J",
-                        b"\x1b[B",
-                        b"k",
-                        b"K",
-                        b"\x1b[A",
-                        b"\x1b[5~",
-                        b"\x1b[6~",
-                    ):
-                        delta = (
-                            6
-                            if key == b"\x1b[6~"
-                            else -6
-                            if key == b"\x1b[5~"
-                            else 1
-                            if key in (b"j", b"J", b"\x1b[B")
-                            else -1
-                        )
+                    if key in _SCROLL_DELTAS:
+                        delta = _SCROLL_DELTAS[key]
                         if count:
                             delta = (1 if delta > 0 else -1) * int(count)
                         count = ""
                         scroll = max(0, scroll + delta)
                         follow = scroll >= max_scroll
-                    if key in (b"g", b"\x1b[H", b"\x1bOH", b"\x1b[1~", b"\x1b[7~"):
+                    if key in _TOP_KEYS:
                         scroll = 0
                         follow, count = max_scroll == 0, ""
-                    if key in (b"G", b"\x1b[F", b"\x1bOF", b"\x1b[4~", b"\x1b[8~"):
+                    if key in _BOTTOM_KEYS:
                         scroll, follow, count = max_scroll, True, ""
     except KeyboardInterrupt:
         return 0

@@ -53,6 +53,10 @@ def _observe_scheduler(monkeypatch, *replies, job="700123", cluster=None, **opti
     ), command
 
 
+def _file_snapshot(root: Path) -> dict[Path, bytes]:
+    return {path: path.read_bytes() for path in root.rglob("*") if path.is_file()}
+
+
 def _request_record(
     tmp_path: Path,
     token: str = "a",
@@ -188,7 +192,7 @@ def test_stop_preview_requires_supported_client_without_writing_or_mutating(
     fixture = _stop_fixture(
         tmp_path, monkeypatch, version=version, version_status=status
     )
-    before = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
+    before = _file_snapshot(tmp_path)
     if accepted:
         plan = slurm_submission.plan_stop(fixture.project, fixture.root.name)
         assert plan.client_version == version.decode().strip()
@@ -204,9 +208,7 @@ def test_stop_preview_requires_supported_client_without_writing_or_mutating(
         with pytest.raises(slurm_submission.SlurmSubmissionError, match=">=23.11.6"):
             slurm_submission.plan_stop(fixture.project, fixture.root.name)
     assert not fixture.marker.exists()
-    assert {
-        path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()
-    } == before
+    assert _file_snapshot(tmp_path) == before
 
 
 @pytest.mark.parametrize(
@@ -615,7 +617,7 @@ def test_submission_requests_keep_all_retained_responses_without_scheduler_or_wr
         tmp_path, stdout=b"700123;other-cluster\n", stderr=b"reason:\xff\n"
     )
     _, second, _ = _request_record(tmp_path, "b")
-    before = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
+    before = _file_snapshot(tmp_path)
     monkeypatch.setattr(
         slurm_submission.subprocess,
         "run",
@@ -632,9 +634,7 @@ def test_submission_requests_keep_all_retained_responses_without_scheduler_or_wr
     )
     assert observations[0].stderr_excerpt == b"reason:\xff\n"
     assert isinstance(observations[0].context["emrys_argv"], tuple)
-    assert {
-        path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()
-    } == before
+    assert _file_snapshot(tmp_path) == before
 
 
 @pytest.mark.parametrize(

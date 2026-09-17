@@ -151,6 +151,10 @@ def _log_events(path: Path) -> list[str]:
     return [record["event"] for record in _read_log(path)]
 
 
+def _file_snapshot(root: Path) -> dict[Path, bytes]:
+    return {path: path.read_bytes() for path in root.rglob("*") if path.is_file()}
+
+
 def _application_controls(root: Path) -> LogControls:
     return LogControls(False, root, "default")
 
@@ -2209,9 +2213,7 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert observed.latest_attempt is None
 
     arguments = _command_arguments(plan.run.analysis.source_path, run=None)
-    inspection_bytes = {
-        path: path.read_bytes() for path in plan.run_root.rglob("*") if path.is_file()
-    }
+    inspection_bytes = _file_snapshot(plan.run_root)
     assert control.inspect_from_args(arguments) == 0
     normal = capsys.readouterr().out
     assert normal.index("Retained submissions:") < normal.index("Run:")
@@ -2283,9 +2285,7 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
         assert ("Recovery available: no" in started_output) is (detail == "verbose")
         assert "Do not resume." in started_output
         assert "reporter is running" not in started_output
-    assert {
-        path: path.read_bytes() for path in plan.run_root.rglob("*") if path.is_file()
-    } == inspection_bytes
+    assert _file_snapshot(plan.run_root) == inspection_bytes
 
     monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: observed)
     assert control.inspect_from_args(arguments) == 0
@@ -3594,9 +3594,7 @@ def test_public_inspect_retains_submission_observations_before_any_run(
         malformed.mkdir()
     elif records == "unavailable":
         (project.parent / "logs").write_bytes(b"not a directory\n")
-    before = {
-        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
-    }
+    before = _file_snapshot(project.parent)
     monkeypatch.setattr(
         control.slurm_submission.subprocess,
         "run",
@@ -3637,9 +3635,7 @@ def test_public_inspect_retains_submission_observations_before_any_run(
             )
             assert r"reason:\x1b[31m" in captured.out
             assert "\x1b" not in captured.out
-    assert {
-        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
-    } == before
+    assert _file_snapshot(project.parent) == before
     assert (
         control.inspect_from_args(
             parser.parse_args(["run-" + "a" * 64, "--project", str(project)])
@@ -3671,7 +3667,7 @@ def test_public_stop_preview_is_read_only_and_names_exact_target(
     )
     parser = argparse.ArgumentParser()
     control.configure_stop_parser(parser)
-    before = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
+    before = _file_snapshot(tmp_path)
     assert (
         control.stop_from_args(
             parser.parse_args(
@@ -3692,9 +3688,7 @@ def test_public_stop_preview_is_read_only_and_names_exact_target(
     assert "cluster alpha" in output and f"UID {os.getuid()}" in output
     assert "Preview only" in output and "--ctld" in output and "--me" in output
     assert not fixture.marker.exists()
-    assert {
-        path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()
-    } == before
+    assert _file_snapshot(tmp_path) == before
 
 
 @pytest.mark.parametrize("changed", (False, True))
@@ -3994,9 +3988,7 @@ def test_public_submission_selection_queries_only_the_exact_request(
     )
     parser = argparse.ArgumentParser()
     control.configure_inspect_parser(parser)
-    before = {
-        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
-    }
+    before = _file_snapshot(project.parent)
     assert (
         control.inspect_from_args(parser.parse_args(["--project", str(project)])) == 0
     )
@@ -4032,9 +4024,7 @@ def test_public_submission_selection_queries_only_the_exact_request(
     if terminal:
         assert "source: sacct" in output
         assert f"Scheduler exit status: {scheduler_exit}" in output
-    assert {
-        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
-    } == before
+    assert _file_snapshot(project.parent) == before
     calls.clear()
     for extra in (
         ("--submission", "submission-a"),
@@ -4104,9 +4094,7 @@ def test_public_watch_selected_request_is_one_read_only_nonterminal_snapshot(
         if selector_kind == "name"
         else str(request.request_root)
     )
-    before = {
-        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
-    }
+    before = _file_snapshot(project.parent)
     argv = ["--project", str(project), "--submission", selector, "--watch"]
     assert control.inspect_from_args(parser.parse_args(argv)) == 0
     output = capsys.readouterr().out
@@ -4116,9 +4104,7 @@ def test_public_watch_selected_request_is_one_read_only_nonterminal_snapshot(
     assert "Resources\\x1b[31m" in output and "\x1b" not in output
     assert "Application association as of" in output
     assert len(calls) == 1
-    assert {
-        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
-    } == before
+    assert _file_snapshot(project.parent) == before
     calls.clear()
     assert control.inspect_from_args(parser.parse_args([*argv, "run-" + "a" * 64])) == 2
     assert not calls
@@ -4154,18 +4140,14 @@ def test_public_watch_run_uses_existing_selection_and_one_scientific_snapshot(
     monkeypatch.setattr(control, "open_attempt_log", forbidden)
     parser = argparse.ArgumentParser()
     control.configure_inspect_parser(parser)
-    before = {
-        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
-    }
+    before = _file_snapshot(project.parent)
     argv = ["--project", str(project), "--watch", *([root.name] if explicit else [])]
     assert control.inspect_from_args(parser.parse_args(argv)) == 0
     assert calls == [root]
     output = capsys.readouterr().out
     assert "Run evidence as of:" in output and "Scheduler: UNKNOWN" in output
     assert "No exact submission selected" in output
-    assert {
-        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
-    } == before
+    assert _file_snapshot(project.parent) == before
 
 
 @pytest.mark.parametrize("state", ["unknown", "candidate", "admitted"])
@@ -4231,9 +4213,7 @@ def test_public_application_correlation_scans_only_selected_request_and_escapes_
     )
     parser = argparse.ArgumentParser()
     control.configure_inspect_parser(parser)
-    before = {
-        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
-    }
+    before = _file_snapshot(project.parent)
     assert (
         control.inspect_from_args(parser.parse_args(["--project", str(project)])) == 0
     )
@@ -4267,9 +4247,7 @@ def test_public_application_correlation_scans_only_selected_request_and_escapes_
         assert r"log\x1b[31m.jsonl" in output and r"Attempt=recorded\nAttempt" in output
         assert "Log snapshot SHA-256: " + "f" * 64 in output
         assert r"attempt_failed; phase: preflight\nother\x1b[31m" in output
-    assert {
-        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
-    } == before
+    assert _file_snapshot(project.parent) == before
 
 
 @pytest.mark.parametrize(
