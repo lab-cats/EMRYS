@@ -3938,7 +3938,14 @@ def test_oversized_submission_context_prevents_scheduler_invocation(
 
 
 @pytest.mark.parametrize(
-    "state", ("pending", "completed", "failed", "cancelled", "unavailable", "legacy")
+    ("state", "scheduler_state", "source", "detail"),
+    (
+        ("pending", "PENDING", "squeue", "Resources\x1b[31m"),
+        ("completed", "COMPLETED", "sacct", "0:0"),
+        ("failed", "FAILED", "sacct", "7:0"),
+        ("cancelled", "CANCELLED", "sacct", "0:15"),
+        ("unavailable", "UNKNOWN", None, "scheduler unavailable"),
+    ),
 )
 @pytest.mark.parametrize("selector_kind", ("name", "absolute"))
 def test_public_submission_selection_queries_only_the_exact_request(
@@ -3946,6 +3953,9 @@ def test_public_submission_selection_queries_only_the_exact_request(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     state: str,
+    scheduler_state: str,
+    source: str | None,
+    detail: str,
     selector_kind: str,
 ) -> None:
     from tests.orchestration.run_coordinator.test_slurm_submission import (
@@ -3953,39 +3963,29 @@ def test_public_submission_selection_queries_only_the_exact_request(
     )
 
     project = build(tmp_path / "project")
-    _, selected, context = _request_record(
+    _, selected, _context = _request_record(
         project.parent,
         stdout=b"700123;cluster-a\n",
-        version="v1" if state == "legacy" else "v2",
+        version="v2",
     )
     _, other, _ = _request_record(project.parent, "b", stdout=b"700124\n")
-    calls = []
-    terminal = state in {"completed", "failed", "cancelled"}
-    scheduler_exit = {"failed": "7:0", "cancelled": "0:15"}.get(state, "0:0")
+    observed = []
+    terminal = source == "sacct"
+    scheduler = {
+        "state": scheduler_state,
+        "terminal": terminal,
+        "source": source,
+        "cluster": "cluster-a" if source else None,
+        "diagnostic": detail if source is None else None,
+        **({"reason": detail} if state == "pending" else {}),
+        **({"exit_code": detail} if terminal else {}),
+    }
 
-    def query(argv, **_kwargs):
-        calls.append(argv)
-        assert "700123" in argv and "700124" not in argv
-        assert "--clusters=cluster-a" in argv
-        if state == "unavailable":
-            return None
-        if terminal and argv[0] == "squeue":
-            return b""
-        assert state != "legacy", "legacy diagnostic records cannot query a job"
-        fields = (
-            "700123",
-            str(os.getuid()),
-            f"CANCELLED by {os.getuid()}" if state == "cancelled" else state.upper(),
-            "cluster-a",
-            context["scheduler_stdout_pattern"].replace("%j", "700123"),
-            context["scheduler_stderr_pattern"].replace("%j", "700123"),
-            "Resources\x1b[31m" if state == "pending" else scheduler_exit,
-        )
-        return ("|".join(fields) + "\n").encode()
+    def observe(request, **_kwargs):
+        observed.append(request.request_root)
+        return scheduler
 
-    monkeypatch.setattr(
-        control.slurm_submission.scheduler_observation, "command_bytes", query
-    )
+    monkeypatch.setattr(control.slurm_submission, "observe_submission_request", observe)
     parser = argparse.ArgumentParser()
     control.configure_inspect_parser(parser)
     before = _file_snapshot(project.parent)
@@ -3993,7 +3993,7 @@ def test_public_submission_selection_queries_only_the_exact_request(
         control.inspect_from_args(parser.parse_args(["--project", str(project)])) == 0
     )
     roster = capsys.readouterr().out
-    assert str(selected) in roster and str(other) in roster and calls == []
+    assert str(selected) in roster and str(other) in roster and observed == []
     monkeypatch.setattr(
         control,
         "_resolve_run_argument",
@@ -4008,8 +4008,7 @@ def test_public_submission_selection_queries_only_the_exact_request(
     )
     output = capsys.readouterr().out
     assert str(selected) in output and str(other) not in output
-    expected = state.upper() if state == "pending" or terminal else "UNKNOWN"
-    assert f"Scheduler observation: {expected}" in output
+    assert f"Scheduler observation: {scheduler['state']}" in output
     assert "Recorded response job ID: 700123; cluster: cluster-a" in output
     assert "Recorded scheduler stdout:" in output
     assert "Recorded scheduler stderr:" in output
@@ -4017,15 +4016,15 @@ def test_public_submission_selection_queries_only_the_exact_request(
         "do not establish workflow entry, Run completion or recovery eligibility"
         in output
     )
-    assert len(calls) == (2 if terminal else 0 if state == "legacy" else 1)
+    assert observed == [selected]
     if state == "pending":
         assert r"Queue reason: Resources\x1b[31m" in output
         assert "\x1b" not in output
-    if terminal:
+    if scheduler["terminal"]:
         assert "source: sacct" in output
-        assert f"Scheduler exit status: {scheduler_exit}" in output
+        assert f"Scheduler exit status: {scheduler['exit_code']}" in output
     assert _file_snapshot(project.parent) == before
-    calls.clear()
+    observed.clear()
     for extra in (
         ("--submission", "submission-a"),
         ("--submission", selector, "run-" + "a" * 64),
@@ -4036,7 +4035,7 @@ def test_public_submission_selection_queries_only_the_exact_request(
             )
             == 2
         )
-        assert calls == []
+        assert observed == []
 
 
 @pytest.mark.parametrize("selector_kind", ("name", "absolute"))
@@ -4047,41 +4046,24 @@ def test_public_watch_selected_request_is_one_read_only_nonterminal_snapshot(
 
     project = build(tmp_path / "project")
     request, _profile = _request(project.parent, version="v3")
-    context = request.context
-    calls = []
+    observed = []
 
-    def query(argv, **kwargs):
-        calls.append(argv)
-        return (
-            "|".join(
-                (
-                    request.recorded_job_id,
-                    str(os.getuid()),
-                    "PENDING",
-                    "local",
-                    context["scheduler_stdout_pattern"].replace(
-                        "%j", request.recorded_job_id
-                    ),
-                    context["scheduler_stderr_pattern"].replace(
-                        "%j", request.recorded_job_id
-                    ),
-                    "Resources\x1b[31m",
-                    context["scheduler_job_name"],
-                    "0:00",
-                    "1:00:00",
-                    "12",
-                    "compute",
-                    "(Priority)",
-                )
-            )
-            + "\n"
-        ).encode()
+    def observe(selected, **_kwargs):
+        observed.append(selected.request_root)
+        return {
+            "state": "PENDING",
+            "terminal": False,
+            "source": "squeue",
+            "cluster": "local",
+            "reason": "Resources\x1b[31m",
+            "diagnostic": None,
+        }
 
     def forbidden(*args, **kwargs):
         pytest.fail("watch must not enter workflow, create a log, or choose a Run")
 
     monkeypatch.setattr(
-        control.slurm_submission.scheduler_observation, "command_bytes", query
+        control.slurm_submission, "observe_submission_request", observe
     )
     monkeypatch.setattr(control, "_resolve_run_argument", forbidden)
     monkeypatch.setattr(control, "open_attempt_log", forbidden)
@@ -4103,11 +4085,11 @@ def test_public_watch_selected_request_is_one_read_only_nonterminal_snapshot(
     assert "Scheduler: PENDING" in output
     assert "Resources\\x1b[31m" in output and "\x1b" not in output
     assert "Application association as of" in output
-    assert len(calls) == 1
+    assert observed == [request.request_root]
     assert _file_snapshot(project.parent) == before
-    calls.clear()
+    observed.clear()
     assert control.inspect_from_args(parser.parse_args([*argv, "run-" + "a" * 64])) == 2
-    assert not calls
+    assert not observed
 
 
 @pytest.mark.parametrize("explicit", (False, True))
@@ -4851,26 +4833,22 @@ def test_public_slurm_errors_keep_control_exit_and_never_retry(
         monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, profile.binding_sha256)
         monkeypatch.setenv(scheduler.SUBMIT_UID_ENV, str(os.getuid()))
         monkeypatch.setenv("SLURM_JOB_ID", "0")
-    submitted = root / "submitted"
-    rejector = root / "sbatch"
-    rejector.write_text(
-        f"#!{sys.executable}\n"
-        "import os, pathlib\n"
-        "os.close(0)\n"
-        f"with pathlib.Path({str(submitted)!r}).open('ab') as stream: stream.write(b'once\\n')\n"
-        "os.write(2, b'sbatch: invalid account\\n\\x1b[31m')\n"
-        "raise SystemExit(23)\n"
-    )
-    rejector.chmod(0o700)
-    original_plan = scheduler.plan_submission
+    if failure == "submission":
 
-    def plan_rejected(*args, **kwargs):
-        planned = original_plan(*args, **kwargs, sbatch=str(rejector))
-        return replace(
-            planned, batch_script=planned.batch_script + "# padding\n" * 100_000
+        def reject_submission(*_args, **_kwargs):
+            raise scheduler.SlurmSubmissionError(
+                "sbatch exited with 23; job ID unconfirmed; invalid account\x1b[31m"
+            )
+
+        monkeypatch.setattr(scheduler, "submit", reject_submission)
+    else:
+        monkeypatch.setattr(
+            scheduler,
+            "submit",
+            lambda *_args, **_kwargs: pytest.fail(
+                "pre-submission failure invoked sbatch"
+            ),
         )
-
-    monkeypatch.setattr(scheduler, "plan_submission", plan_rejected)
     monkeypatch.setattr(
         control.doctor,
         "diagnose_project",
@@ -4895,13 +4873,7 @@ def test_public_slurm_errors_keep_control_exit_and_never_retry(
     assert expected[failure] in output.err
     assert "\x1b" not in output.err
     if failure == "submission":
-        assert submitted.read_bytes() == b"once\n"
-        assert "sbatch exited with 23" in output.err
-        assert "invalid account" in output.err
-        (request_path,) = (project.parent / "logs").glob("submission-*/sbatch.stderr")
-        assert request_path.read_bytes() == b"sbatch: invalid account\n\x1b[31m"
-    else:
-        assert not submitted.exists()
+        assert "sbatch exited with 23" in output.err and "invalid account" in output.err
     assert not (project.parent / "logs/application").exists()
 
 

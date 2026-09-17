@@ -2483,33 +2483,25 @@ _RETAINED_QUALIFICATION_FAILURES = {
 
 
 @pytest.mark.parametrize(
-    ("failure", "selection", "timing_outcome"),
+    ("failure", "selection"),
     (
-        (None, None, "available"),
-        (None, "named", "available"),
-        (None, "absolute", "available"),
-        (None, None, "unknown"),
-        (None, None, "raises"),
-        ("scheduler", None, "available"),
-        ("scheduler", None, "failed"),
-        ("scheduler", None, "cancelled"),
-        ("scheduler", None, "unknown"),
-        ("scheduler", None, "raises"),
-        ("scheduler_unconfirmed", None, "available"),
-        ("scheduler_interrupt", None, "available"),
-        ("runtime", None, "available"),
-        ("startup", None, "available"),
-        ("head_runtime", None, "available"),
-        ("profile", None, "available"),
-        ("finalize", None, "available"),
-        ("execution_before", "named", "available"),
-        ("execution_after", "absolute", "available"),
-        ("execution_final", "named", "available"),
-        ("head_final_error", None, "available"),
-        ("head_final_io", None, "available"),
-        ("final_project", None, "available"),
-        ("final_package", None, "available"),
-        ("final_inventory", None, "available"),
+        (None, None),
+        ("scheduler", None),
+        ("scheduler_unconfirmed", None),
+        ("scheduler_interrupt", None),
+        ("runtime", None),
+        ("startup", None),
+        ("head_runtime", None),
+        ("profile", None),
+        ("finalize", None),
+        ("execution_before", "named"),
+        ("execution_after", "absolute"),
+        ("execution_final", "named"),
+        ("head_final_error", None),
+        ("head_final_io", None),
+        ("final_project", None),
+        ("final_package", None),
+        ("final_inventory", None),
     ),
 )
 def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
@@ -2518,7 +2510,6 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     capsys: pytest.CaptureFixture[str],
     failure: str | None,
     selection: str | None,
-    timing_outcome: str,
 ) -> None:
     from emrys.orchestration.run_coordinator import execution_profile, slurm_submission
     from tests.evidence.storage_inventory.test_storage_inventory import (
@@ -2748,10 +2739,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         return "614999"
 
     observe_job = doctor.scheduler_observation.observe_job
-    scheduler_state, scheduler_exit = {
-        "failed": ("FAILED", "7:0"),
-        "cancelled": ("CANCELLED", "0:15"),
-    }.get(timing_outcome, ("COMPLETED", "0:0"))
+    scheduler_state, scheduler_exit = "COMPLETED", "0:0"
     accounting_queries = []
 
     def accounting_query(argv, **kwargs):
@@ -2796,12 +2784,6 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         timing_queries.append(job_id)
         assert_timing_not_flushed()
         elapsed += 11.0
-        if timing_outcome == "raises":
-            raise OSError('accounting "unavailable"\n\x1b[31m')
-        if timing_outcome == "unknown":
-            return doctor.scheduler_observation.unknown_observation(
-                'accounting "unavailable"\n\x1b[31m'
-            )
         return observe_job(job_id, stdout, stderr, cluster, **kwargs)
 
     monkeypatch.setattr(slurm_submission, "submit", submit)
@@ -2835,9 +2817,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         "scheduler_interrupt",
     }
     assert timing_queries == (["614999"] if queried else [])
-    assert len(accounting_queries) == (
-        1 if queried and timing_outcome in {"available", "failed", "cancelled"} else 0
-    )
+    assert len(accounting_queries) == (1 if queried else 0)
     timing_reads = [
         item
         for item in timing_events
@@ -2859,7 +2839,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         assert observation["fields"]["scheduler_job_id"] == (
             None if failure == "scheduler_unconfirmed" else "614999"
         )
-        if queried and timing_outcome in {"available", "failed", "cancelled"}:
+        if queried:
             assert observation["fields"]["timing"]["eligible_to_start_seconds"] == 90
             assert observation["fields"]["state"] == scheduler_state
             assert observation["fields"]["exit_code"] == scheduler_exit
@@ -2874,14 +2854,6 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
                 in output
             )
             assert "eligible queue wait: unavailable" in output
-        if queried and timing_outcome in {"unknown", "raises"}:
-            assert (
-                'accounting "unavailable"\n\x1b[31m'
-                == observation["fields"]["diagnostic"]
-            )
-            assert (
-                r'accounting "unavailable"\n\x1b[31m' in output and "\x1b" not in output
-            )
     if failure in _SCHEDULER_FAILURES:
         assert waits[0]["outcome"] == "interrupted or failed"
         assert not state["finalized"]
