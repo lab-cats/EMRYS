@@ -303,7 +303,7 @@ Record the printed full commit ID, including when you selected a tag. Leave
 the checkout and installed environment unchanged for the Project's Runs.
 Choosing a revision identifies the installation; it does not establish that
 it is qualified for your institution or scientific study. Viking users can
-continue at [quickstart step 2](../../quickstart.md#2-create-the-supplied-study).
+continue with the [optional smoke test](../../quickstart.md#optional-smoke-test).
 
 ## Standalone compute host with a managed runtime
 
@@ -362,7 +362,7 @@ successful computation generates both reports automatically. Follow
 view the outputs or finish reporting without repeating completed computation.
 
 For your own study, use the quickstart's
-[input and manifest guidance](../../quickstart.md#gather-the-study-inputs-and-scientific-choices).
+[input and manifest guidance](../../quickstart.md#2-gather-the-study-inputs-and-scientific-choices).
 Create a new Project on this host using its Project-creation commands with
 `--site viking` omitted, then return to Doctor and Run above after validation.
 Confirm resources for the actual data using the
@@ -372,7 +372,7 @@ for incomplete Runs rather than deleting their files.
 
 ## Create a Project for your own data
 
-Follow the [quickstart's own-data continuation](../../quickstart.md#7-create-a-project-for-your-own-data)
+Follow the [Quickstart's real-data path](../../quickstart.md#3-create-the-project)
 for the complete Viking sequence: prepare study inputs, create the Project,
 run Doctor, submit the study, inspect it and open the reports.
 The ordinary `emrys init NAME` creates beneath the current directory, so first
@@ -418,7 +418,7 @@ Use this route when the institution supplies the exact versions in
 [`runtime_policy.tsv`](../../src/emrys/resources/runtime/runtime_policy.tsv):
 STAR 2.7.11b, Samtools 1.19.2, GATK 4.6.1.0, Picard 3.1.1, Bcftools 1.21,
 RSeQC 5.0.4, Java 17+, and R 4.6.1 with the locked R packages. For managed
-installation, use [Viking's Doctor procedure](../../quickstart.md#3-prepare-the-scientific-tools)
+installation, use [Viking's Doctor procedure](../../quickstart.md#5-prepare-the-scientific-tools-and-storage)
 or the [standalone procedure](#standalone-compute-host-with-a-managed-runtime).
 
 On the intended execution host, load the approved modules and reactivate the

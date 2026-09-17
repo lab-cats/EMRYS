@@ -15,9 +15,24 @@ from typing import Any
 
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.text import Text
 
 _MAX_FIELD_BYTES = 16 * 1024
 _UNSAFE_TEXT_CATEGORIES = frozenset({"Cc", "Cf", "Cs", "Zl", "Zp"})
+_STATUS_STYLES = {
+    **dict.fromkeys(
+        "admitted complete completed pass ready succeeded valid yes".split(),
+        "bold green",
+    ),
+    **dict.fromkeys("blocked fail failed invalid".split(), "bold red"),
+    **dict.fromkeys(
+        "incomplete pending planned running unknown unverified".split(),
+        "bold yellow",
+    ),
+    "not admitted": "bold red",
+    "not ready": "bold red",
+    **dict.fromkeys(("not applicable", "no", "none"), "dim"),
+}
 
 
 def _console(file: Any = None) -> Console:
@@ -42,6 +57,30 @@ def console_print(
 ) -> None:
     """Print literal human text, styling only an eligible terminal."""
     _console(file).print(message, style=style, end=end)
+
+
+def console_field(
+    label: str,
+    value: object,
+    *,
+    file: Any = None,
+    value_style: str | None = None,
+    indent: str = "",
+) -> None:
+    """Print one literal label/value pair with a stable visual hierarchy."""
+    text = Text.assemble(
+        (f"{indent}{label}: ", "bold cyan"),
+        (str(value), value_style),
+    )
+    _console(file).print(text)
+
+
+def console_status(
+    label: str, value: object, *, file: Any = None, indent: str = ""
+) -> None:
+    """Print a field whose value has a restrained semantic status style."""
+    style = _STATUS_STYLES.get(str(value).strip().casefold(), "bold")
+    console_field(label, value, file=file, value_style=style, indent=indent)
 
 
 @contextmanager

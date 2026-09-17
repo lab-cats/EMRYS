@@ -978,6 +978,7 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
     assert output.out == ""
     assert "Doctor invocation timing" not in output.err
     assert "Doctor phase timing" not in output.err
+    assert ("Doctor elapsed:" in output.err) is repair
     if repair:
         assert f"EMRYS Doctor {operation} plan" in output.err
         assert "First Doctor setup can take 5–25 minutes." in output.err
@@ -1048,6 +1049,11 @@ def test_invocation_timing_includes_confirmation_and_preserves_read_only_preview
     )
     assert (
         "Doctor invocation timing (head/local, including operator confirmation time): elapsed 8.750000s; exit status 1"
+        in output
+    )
+    assert (
+        "Doctor elapsed: 8.750s including confirmation; slowest phase: "
+        "Inspecting the Project and runtime (1.250s); exit 1"
         in output
     )
     assert _snapshot(tmp_path) == before

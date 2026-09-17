@@ -14,7 +14,14 @@ from .handler import (
     event,
     open_attempt_log,
 )
-from .helpers import console_print, field, phase_progress, render_failure_summary
+from .helpers import (
+    console_field,
+    console_print,
+    console_status,
+    field,
+    phase_progress,
+    render_failure_summary,
+)
 
 __all__ = [
     "ApplicationLogError",
@@ -24,7 +31,9 @@ __all__ = [
     "LogControls",
     "add_log_arguments",
     "add_verbose_argument",
+    "console_field",
     "console_print",
+    "console_status",
     "event",
     "field",
     "open_attempt_log",

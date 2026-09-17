@@ -1677,6 +1677,8 @@ def test_dashboard_model_and_text_views_cover_active_terminal_and_empty_states(
     dashboard.snapshot(JOB_ID, _slurm(), identity, model)
     snapshot = capsys.readouterr().out
     assert "EMRYS LIVE DASHBOARD" in snapshot
+    assert "00a     STAR index" in snapshot
+    assert "[('00a" not in snapshot
     assert "Reports:" not in snapshot
     assert "/products/report/" not in snapshot
 

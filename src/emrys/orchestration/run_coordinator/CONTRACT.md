@@ -170,7 +170,9 @@ These descriptions add no probes, inferred cache admission or skipped checks.
 
 Doctor reports invocation timing separately from admission. The total spans
 entry through return/exception and explicitly includes operator confirmation
-time; `--verbose` shows precise phase elapsed seconds. An
+time. A repair or verification plan ends with one normal-output elapsed summary
+that names the slowest observed phase and exit; `--verbose` also shows every
+precise phase elapsed time. Neither summary is an admission result. An
 invocation-local collector receives best-effort observations from the shared
 progress owner without removing or reusing any input checks. Approved maintenance
 buffers all phases until controlling work and the claim-release decision finish,
@@ -218,6 +220,16 @@ their log timestamp is the later flush time. Head maintenance retains its own
 observations without treating delegated compute checks as head observations.
 Verbose/debug diagnosis prints escaped passing details without creating a log.
 Existing immediate failure diagnostics and qualification identities are unchanged.
+
+Scientist-facing Init, Validate, Runtime Discover, Doctor, Run and Inspect
+summaries share the application-presentation owner's literal label/value fields.
+Labels and values use distinct terminal styles; admitted success, waiting and
+failure values use restrained semantic emphasis, while complete/ready messages
+remain prominent. Guided prompt labels are emphasized separately from dimmed
+`Press ENTER for ...` default hints. Redirected, dumb-terminal and `NO_COLOR`
+output retains the same labels, separators and values, including
+machine-oriented `NAME=value` submission fields. Verbose diagnostic records
+remain available and unchanged.
 
 Managed repair opens its diagnostic log before acquiring the private durable
 `runtime/maintenance.lock` claim, then re-admits the plan before manager work.
@@ -530,8 +542,12 @@ them, so mouse wheels and buttons do not navigate the dashboard. Terminal or
 multiplexer bindings that translate a wheel into keyboard arrows are
 indistinguishable from permitted arrow-key input and remain outside this
 contract. Action keys cannot replace navigation keys. The installed evidence
-view colors literal severity/workflow prefixes without changing its sanitized
-text; `NO_COLOR` suppresses all optional colors. `--snapshot`, noninteractive
+view colors literal severity/workflow prefixes, including timestamp-prefixed
+plain lines and structured `level`/`severity` fields, without changing its
+sanitized text. Dashboard tables style labels, identity values, elapsed values
+and terminal states separately instead of coloring an entire row as one block;
+`NO_COLOR` suppresses all optional colors while retaining those columns and
+labels. `--snapshot`, noninteractive
 or dumb terminals emit one plain, dated snapshot; `--verbose` expands static
 inspection. Ordinary
 watch creates no operational action, persistent cache or additional log.
