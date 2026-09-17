@@ -140,10 +140,8 @@ emrys runtime discover --from-project /absolute/source/project.yaml --replace --
 ```
 
 Replacement accepts only an existing shared selection from the same source
-Project. Do not edit the recorded digest, copy qualification receipts, remove a
-seal, or delete the old generation to bypass admission. A failed repair or
-selection can leave a partial generation and claim; retain both for the
-maintainer.
+Project. Preserve old and partial generations, seals, and claims for the
+maintainer; never edit their records to bypass admission.
 
 **Runtime inventory already exists.** Discovery preserves even identical-looking
 inventories. Use Doctor to inspect the admitted runtime. `--replace` changes only
@@ -232,24 +230,13 @@ original scheduler text; full Doctor transcripts remain at the printed paths.
 If a job ID was confirmed, the job was accepted: inspect that exact ID and its
 printed stdout/stderr paths before another action. A nonzero
 [`sbatch --wait` exit](https://slurm.schedmd.com/sbatch.html#OPT_wait) can reflect
-job failure or signal termination; exit 1 alone does not establish cancellation.
-During task finalization, a catchable termination signal can arrive after one
-terminal record is written but before the next reference is published. Keep
-both present and absent-record diagnostics: a retained successful task-attempt
-record alone does not prove a complete verified task or a recoverable Run.
-Use inspection's supported recovery decision; preserve incomplete chains,
-logs, native partials, and locks. SIGKILL and lost native-worker ownership can
-still leave ambiguity that requires maintainer investigation.
-`Forced workflow termination cannot prove separately owned native groups
-stopped` means the outer workflow ended without proof that all native writers
-stopped. EMRYS retains the Run lock and omits the Attempt receipt. A missing
-outer process or completed scheduler job does not authorize removing that lock;
-retain the Run and native workspace for investigation.
+job failure or signal termination. Preserve incomplete chains, logs, native
+partials, and locks; follow inspection's supported recovery decision. The
+[Task and Attempt contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
+owns interruption and writer-ownership semantics.
 If the response leaves the job ID unconfirmed, keep the command, submission
 time, and response, and resolve acceptance with the scheduler/operator before
-retrying. EMRYS does not automatically resubmit an uncertain request. Scheduler
-accounting is operational evidence; inspect the Run to determine its actual
-completion and supported recovery.
+retrying. EMRYS does not automatically resubmit an uncertain request.
 
 **Job reached its wall-time limit.** Preserve the exact `sacct` row, scheduler
 streams, application log, Run directory, Attempt records, lock, partials, and

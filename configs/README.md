@@ -230,17 +230,10 @@ resumed Run retains its immutable policy. To change computation, create a new
 Run. A larger reservation does not itself increase workflow or stage limits.
 
 Impossible declared relationships fail during profile admission, before an
-allocation: for example, three tasks with four threads each cannot fit an
-eight-core workflow budget. Memory checks apply where the declared values
-prove a conflict; symbolic `allocation`/`workflow` values remain symbolic until
-actual allocation admission. An explicit CLI correction is applied before
-these relationship checks. EMRYS does not silently lower an allowance.
-
-Slurm planning also rejects a final workflow policy that cannot fit its explicit
-CPU or memory request. This is a reservation check, not a claim about the node's
-observed or free memory. An omitted memory request remains unknown even when
-exclusivity is requested. Placement-only resume compares its retained Run policy;
-actual allocation checks still run after the scheduler starts the job.
+allocation. Symbolic capacity remains symbolic until actual allocation
+admission; EMRYS does not silently lower an allowance. The
+[profile contract](../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+owns precedence, reservation checks, and immutable resume behavior.
 
 The default workflow uses all process-accessible CPUs and RAM granted to the
 allocation. Repeated stages share that allowance across the admitted samples or
@@ -307,19 +300,11 @@ meaning; `workflow` never silently becomes a shared per-task allowance.
 | `08` preprocessing | Workflow CPUs; R uses at most the available VCF jobs | Whole workflow |
 | `09`, `10` analysis | Serial main algorithms | Whole workflow |
 
-Steps `09`/`10` retain their historical thread fields for retained-policy
-compatibility; their current producers do not consume them. Raising those fields
-only changes the reservation. Step `08` forks workers; more workers can increase
-peak memory, so lower its thread override if measured memory requires it.
-Automatic shares are fixed for one Attempt, based on admitted work, and are not
-redistributed as individual tasks finish. Snakemake remains the sole scheduler.
-
-For Steps `00a`, `00c`, `01`, `02`, `04`, and `05`, the resolved stage budget
-also sets native STAR/samtools buffers or Java heaps with overhead headroom.
-Increasing it raises those limits; it does not enforce total process memory or
-guarantee faster execution. See the
+Automatic shares are fixed for one Attempt rather than redistributed as tasks
+finish. Steps `09`/`10` retain historical thread fields for retained-policy
+compatibility. See the
 [command-construction contract](../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
-for the derivation and minimum usable budgets.
+for native tool controls, derivation, and minimum usable budgets.
 
 `placement` chooses direct execution or one Slurm allocation. Its fields cover
 account, partition, `qos` (the site's Quality of Service class), CPUs, memory,
@@ -352,63 +337,13 @@ used to admit the runtime; the wrapper does not install dependencies.
 
 ### Slurm and tool resource semantics
 
-The implementation was checked against the pinned runtime (STAR 2.7.11b,
-samtools 1.19.2, Java 17+, Snakemake 9.25.1), and these primary sources:
-
-- [Slurm sbatch](https://slurm.schedmd.com/sbatch.html#OPT_exclusive):
-  `--exclusive` reserves CPUs, but memory must be requested separately;
-  `--mem=0` requests all node memory. Partition policy can override exclusivity.
-- [Slurm CPU management](https://slurm.schedmd.com/cpu_management.html):
-  allocation, task distribution and CPU binding are separate. A Slurm CPU can
-  represent a core or a hardware thread depending on site configuration.
-  EMRYS uses the granted, affinity- and cgroup-bounded capacity; it neither
-  assumes 256 physical cores nor overrides the site's binding. SMT and NUMA
-  placement require measurement on Viking before choosing a different policy.
-- [Snakemake resources](https://snakemake.readthedocs.io/en/v9.25.1/snakefiles/rules.html#resources):
-  resource requests are totals per job and admission controls, not live RSS
-  limits. EMRYS keeps one local Snakemake scheduler inside the Slurm allocation;
-  allocating more CPUs alone does not create native workers.
-- [STAR 2.7.11b parameters](https://github.com/alexdobin/STAR/blob/2.7.11b/source/parametersDefault):
-  `runThreadN` controls workers; BAM sorting otherwise defaults to at most six.
-  Input/output buffers grow with thread count, and `limitBAMsortRAM` governs
-  sorting, not total process RSS. The
-  [STAR execution sequence](https://github.com/alexdobin/STAR/blob/2.7.11b/source/STAR.cpp)
-  frees the genome before coordinate sorting; subtracting a second genome copy
-  from the sorting budget would therefore misrepresent that phase. More sort
-  threads remain limited by nonempty bins and the native sorting memory budget.
-- [samtools sort](https://www.htslib.org/doc/1.19/samtools-sort.html):
-  `-m` is approximately per sorting thread, and insufficient memory creates
-  temporary files. EMRYS divides the native memory allowance by sort threads.
-  [View](https://www.htslib.org/doc/1.19/samtools-view.html),
-  [merge](https://www.htslib.org/doc/1.19/samtools-merge.html) and
-  [index](https://www.htslib.org/doc/1.19/samtools-index.html) use additional I/O
-  workers; EMRYS subtracts the main thread from those worker counts.
-- [Java processor count](https://docs.oracle.com/en/java/javase/17/docs/specs/man/java.html):
-  `ActiveProcessorCount` controls helper-pool sizing. It does not convert serial
-  Picard or GATK traversal into a parallel algorithm.
-- [bcftools scaling](https://samtools.github.io/bcftools/howtos/scaling.html):
-  mpileup parallelism comes from independent regions. Adding compression threads
-  to EMRYS's plain-VCF output would not parallelize pileup computation.
-
-The sharing policy exposes allocated capacity without asserting an optimal
-thread/concurrency mix. Historical task memory allowances are starting minimums;
-the 20% native headroom is not a proof that every workload fits. STAR buffers,
-R forked workers, garbage collection, serial phases, memory bandwidth and shared
-filesystem contention can all limit scaling. More workers may increase wall time
-or peak memory; any tuning override should come from comparable measurements.
-
-For the next operator-approved Viking comparison, retain the Run/Attempt
-resource-policy record and actual commands, tool versions, node model, physical
-cores/SMT topology (`lscpu`), process affinity (`Cpus_allowed_list` in
-`/proc/self/status`), `scontrol show job -dd JOB_ID`, and the site's
-`SelectTypeParameters`, `TaskPlugin` and partition policy. Capture `sacct` elapsed,
-allocated CPUs, TotalCPU and MaxRSS (including the batch step), STAR's timestamped
-phase messages, and task I/O/temporary-file measurements. Compare the same input,
-reference, partitioning and storage/cache conditions. Separate STAR-native time
-from EMRYS validation/hashing. Report CPU time divided by elapsed time and
-allocated CPUs alongside wall time; neither requested CPUs nor a successful job
-proves utilization. Slurm accounting granularity may miss short RSS peaks.
-No Viking topology, benchmark or speedup is established by local fixture tests.
+The
+[profile contract](../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+owns allocation observation, automatic sharing, native tool controls, and their
+limits. Resource declarations are admission controls, not live utilization or
+performance measurements. Base overrides on comparable retained measurements;
+use the [resource benchmark procedure](../docs/operations/RUNBOOK.md#resource-benchmarking)
+for operator-owned trials.
 
 ## Specialist examples
 

@@ -1,5 +1,11 @@
 # Runbook
 
+Operational observations establish only the layer they directly check. Scheduler
+state, files, logs, receipts, reports, and local validation do not by themselves
+promote a Run, scientific, performance, or biological claim. The
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+owns exact semantics; this runbook owns operator procedures.
+
 ## Retain a submission before its Run exists
 
 Run, resume, and report print an exact `Submission request:` directory after
@@ -89,10 +95,9 @@ Automatic diagnostic refresh defaults to 30 seconds; `--refresh` accepts at
 least five seconds. Workflow streams retain full diagnostic history; other
 tails retain at most 64 KiB/256 lines. `--snapshot`, redirection, or a
 noninteractive terminal emits one snapshot. Use `--log-root` for a historical
-application-log root. The
+application-log root. See the
 [inspection contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#resume-inspection-results-and-reporting)
-owns the distinction between dated diagnostics, verified completion, and
-recovery authority.
+for admission and recovery semantics.
 
 ### Review CLI operations from watch
 
@@ -392,25 +397,17 @@ adds identities, milestones, timing, application associations, reporting
 transactions, Task records, authority hashes, receipts, and commands.
 For failed or interrupted Runs, follow [resume and recovery](TROUBLESHOOTING.md#run-and-reporting-state).
 
-Read printed blockers before choosing an action. The
+Read printed blockers before choosing an action. `emrys watch` uses the same
+selection and inspection authority. The
 [inspection contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#resume-inspection-results-and-reporting)
-defines the displayed Task and completion states.
-
-`emrys watch` uses the same Run picker and inspection authority. A successful
-Slurm submission is labelled **submitted** and returns before completion;
-`watch` and `inspect` announce completion only after current Run evidence admits
-the successful Attempt, complete Results, and applicable reporting state.
-
-Selected submission inspection also prints the retained scheduler name; the
-submission contract defines version-specific identity checks.
+defines its Task, submission, and completion states.
 
 ### Inspect and open reports
 
 A successful full Run shows `Run admission: valid`, `Attempt outcome: succeeded`,
 `Scientific Results: complete`, and `Reporting admission: complete`. Open the printed
 `Scientific report` for candidate results and `Evidence report` for execution
-and provenance. Linked machine-readable tables contain the complete data;
-reports do not establish biological conclusions or validate editing sites.
+and provenance. Linked machine-readable tables contain the complete data.
 
 For the built-in Analysis, copy the complete Run `results/` directory, preserving
 its structure so HTML and table links work. Use your institution's file-transfer
@@ -427,12 +424,7 @@ emrys report
 The command never prompts to write. Only when generation is admitted, run
 `emrys report --execute`, then inspect again. Complete bundles are verified and
 reused; partial or blocked bundles need [recovery](TROUBLESHOOTING.md#run-and-reporting-state).
-The normal inspection table shows `No admitted start`, `Started; completion
-unverified`, or `Verified complete` for each reporting transaction. A start
-without completion can reflect work in progress or an interrupted publication;
-it does not establish that a reporter is alive. Preserve the records and follow
-the printed supported action. Do not delete partial files or rerun science to
-make a reporting blocker disappear.
+Preserve blocked or partial records and follow the printed supported action.
 
 Reporting does not overwrite arbitrary bundles, change scientific Results, or
 create another scientific Attempt. Generation follows the Project's default
@@ -492,11 +484,8 @@ existing profile; direct execution requires a permitted compute host.
    tables; retain the complete copied tree. No web server or tunnel is needed.
 
 Keep the original Project, complete Run, inputs, runtime, and logs available for
-inspection and recovery. The copied reports retain those original provenance
-paths; the results copy is not a relocated executable Project. Record visual
-review separately, including Run identity, report names, and any broken links
-or unreadable figures. Copying and opening the files does not complete visual
-acceptance or biological review.
+inspection and recovery. Record visual review separately, including Run identity,
+report names, and any broken links or unreadable figures.
 
 ### Reusable processing
 
@@ -522,15 +511,8 @@ semantic success.
 
 ## Slurm setup and submission
 
-Viking users select `--site viking` when creating either a synthetic or a
-real-data Project. EMRYS writes the Project's default execution profile with
-account `viking-users`, partition `long`, QoS `normal`, 12 hours, all CPUs and RAM
-on one exclusive node, and private temporary files beneath `/tmp`. The workflow
-and every stage resolve CPU, memory and concurrency limits from the allocation
-and admitted workload, using native tool controls where available. Serial phases
-remain serial; configured allowance is not measured utilization. Both
-synthetic and real-data initialization select these defaults automatically.
-Existing Projects can select them through
+Viking users select `--site viking` when creating a Project. Existing Projects
+can select the current site defaults through
 [named profile creation](../../configs/README.md#create-a-named-profile-without-writing-yaml).
 
 From the head node, prepare the Project and submit its Analysis:
@@ -542,16 +524,9 @@ emrys run
 
 Doctor installs the managed tools on the head node, submits compute-side
 runtime and storage checks through Slurm, then finishes storage qualification
-on the head node.
-
-Qualification covers the selected inventory's exact tools, not every tool
-installed on the node. A different system default is not itself a reason to
-cancel a healthy job that is using the admitted targets. Read the
+on the head node. Read the
 [qualification scope](../../src/emrys/evidence/runtime_availability/README.md#what-qualification-establishes)
-for the checks at each boundary and their limits. Slurm may choose another
-eligible node unless the profile requests a pin; that node still must pass
-runtime, allocation, and storage admission. Single-host direct storage evidence
-does not replace shared-storage qualification.
+for the exact checks and limits.
 
 Slurm runs the complete Analysis and its reports on one compute node. Normal
 Run, resume and report execution use the Project's default profile. Inspecting
@@ -573,13 +548,6 @@ The batch wrapper starts with `PATH=/usr/bin:/bin`, loads only the declared
 module roster and uses the admitted runtime's absolute paths. It creates and
 removes its own temporary directory. Runtime repair is an explicit Doctor
 operation; scientific execution does not install packages.
-
-The submission requests a batch-shell `TERM` warning five minutes before the
-wall-time limit. The wrapper forwards that warning once to the exact EMRYS
-delegate and waits for its exit, giving the existing Task and Attempt owners a
-bounded chance to record an honest interruption. Slurm may deliver configured
-advance signals somewhat early, and the hard limit still ends the allocation;
-the warning is not a promise that finalization will finish.
 
 Advanced operators may run `emrys doctor --repair --compute` inside an actual
 allocation. Return to the head node to complete preparation with
@@ -603,17 +571,8 @@ tail -n +1 -F /exact/OUT /exact/ERR
 ```
 
 Replace the placeholders above. Control-C stops `tail`, not the allocation.
-`COMPLETED 0:0` establishes scheduler success; use `emrys inspect` for EMRYS
-completion. Keep the source commit, command, inputs, job ID, accounting,
-streams, outputs, validation records, and receipts tied to the same Attempt.
-See [Troubleshooting](TROUBLESHOOTING.md) before retry or cleanup.
-
-For `TIMEOUT`, `CANCELLED`, `FAILED`, or another terminal failure, the dashboard
-labels formerly active work `INTERRUPTED`, partially completed stages
-`INCOMPLETE`, and untouched stages `NOT REACHED`. Those labels only correct the
-stopped-job display. Run final `emrys inspect` and follow its supported action;
-do not resume, remove a lock, or infer recoverability from the dashboard or
-scheduler state alone.
+Use `emrys inspect` for the Run result and follow
+[Troubleshooting](TROUBLESHOOTING.md#storage-and-slurm) before retry or cleanup.
 
 ## Reuse prepared managed tools
 
@@ -639,15 +598,10 @@ emrys doctor --project /absolute/borrower/project.yaml --repair
 ```
 
 Doctor still qualifies the new Project, storage and selected placement;
-inspect its plan before confirming. Reuse does not copy storage receipts or
-qualify every eligible node. Python/EMRYS and Analysis dependencies retain
-their independent requirements. Continue only after borrower readiness passes.
-
-Keep every selected seal and managed generation with its dependent Runs. A seal
-covers fixed executable/jar bytes and required R package trees; it does not
-freeze the full environment or transitive libraries. Avoid external upgrades,
-removal, moves or edits. Changed or inaccessible content blocks reuse, Run and
-resume.
+inspect its plan before confirming. Continue only after borrower readiness
+passes. Keep both Projects and every selected runtime generation available; the
+[runtime owner](../../src/emrys/evidence/runtime_availability/README.md#sealed-managed-runtime-reuse)
+defines the seal, replacement, and qualification boundaries.
 
 Doctor never repairs a shared generation in place. If the source Project's
 selected tools fail, `emrys doctor --repair` prepares and verifies a new
@@ -659,13 +613,8 @@ emrys runtime discover --project /absolute/dependent/project.yaml --from-project
 ```
 
 Review the replacement and answer `y`; noninteractive automation adds
-`--execute` to that command.
-
-Replacement is allowed only when the existing inventory already shares tools
-from that same source Project. The previous generation and seal remain for
-retained Runs and Attempts. A failed seal, generation or selection publication
-may leave a `maintenance.lock`; retain it and the partial generation for explicit
-reconciliation. Do not edit an inventory, seal or digest to bypass admission.
+`--execute` to that command. Preserve previous generations and any partial or
+locked publication for [recovery](TROUBLESHOOTING.md#runtime-and-dependencies).
 
 ## Dependency maintenance
 
@@ -690,23 +639,11 @@ Declining the plan with Enter or `n` makes no repair. After an error, retain the
 diagnostics and selected runtime rather than clearing installation state.
 
 Doctor prints full invocation elapsed time and exit outcome; add `--verbose` for
-phase times. Approved maintenance retains `doctor_phase_timing`, one bounded
-`doctor_scheduler_timing` accounting observation after a waited submission,
-and phase-specific `runtime_check_passed` records in the maintenance JSONL.
-Normal output hides transcript paths; `--verbose` adds them. The
-[runtime and evidence contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#public-model-and-admission)
-owns the status meanings and timing limits.
-
-Allow more than ten minutes when planning setup; downloads, compilation and
-queue waits can take considerably longer, and verification alone can exceed
-that allowance. Read the named phase and retained diagnostics instead of treating
-elapsed time as failure. An unchanged retry preserves package reuse but repeats
-current admission checks. Interrupted setup may reuse retained tools even when
-the inventory is missing; changed dependencies or inputs require fresh checks.
-The immutable plan names required work, while `package-output.log` records actual
-package-manager reuse and changes. Earlier successful evidence remains retained
-without qualifying the present files. Comparable site measurements and any
-reduction of repeated checks remain CV-26 work.
+phase times and transcript paths. Allow for downloads, compilation, and queue
+waits; use the named phase and retained diagnostics rather than elapsed time
+alone. The
+[Doctor contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries)
+owns timing and admission semantics.
 
 Institutional R restoration below requires the installed EMRYS R guard and
 permission to install packages. The [engineering guide](ENGINEERING_CONVENTIONS.md#dependencies-and-environments)
