@@ -775,8 +775,20 @@ def _first_fastq_read_length(path: Path) -> int:
     return len(sequence)
 
 
+def _reference_contigs(reference_fasta: Path) -> tuple[tuple[str, int], ...]:
+    try:
+        with reference_fasta.open("r", encoding="utf-8") as source:
+            return tuple(parse_fasta_lines(source))
+    except (OSError, UnicodeError, ReferenceContigError) as exc:
+        raise OnboardingError(
+            f"could not inspect reference sequences in {reference_fasta}: {exc}"
+        ) from exc
+
+
 def _star_suggestions(
-    reference_fasta: Path, sample_manifest: bytes, manifest_path: Path
+    reference_contigs: Sequence[tuple[str, int]],
+    sample_manifest: bytes,
+    manifest_path: Path,
 ) -> tuple[dict[str, int], int, int]:
     _table, _sample_ids, rows = step08.validate_sample_manifest_bytes(
         sample_manifest, manifest_path
@@ -785,13 +797,7 @@ def _star_suggestions(
         {Path(row[mate]) for row in rows for mate in ("r1_fastq", "r2_fastq")}
     )
     read_length = max(_first_fastq_read_length(path) for path in fastqs)
-    try:
-        with reference_fasta.open("r", encoding="utf-8") as source:
-            genome_length = sum(length for _name, length in parse_fasta_lines(source))
-    except (OSError, UnicodeError, ReferenceContigError) as exc:
-        raise OnboardingError(
-            f"could not determine reference length from {reference_fasta}: {exc}"
-        ) from exc
+    genome_length = sum(length for _name, length in reference_contigs)
     return (
         {
             "sjdb_overhang": read_length - 1,
@@ -810,6 +816,7 @@ def _collect_project_answers(
     output: Path,
     *,
     fields: Sequence[str] = _PROJECT_FIELDS,
+    reference_contigs: Sequence[tuple[str, int]] | None = None,
 ) -> dict[str, object]:
     missing = [
         f"--{destination.replace('_', '-')}"
@@ -830,8 +837,12 @@ def _collect_project_answers(
         suggestion = _PROJECT_SUGGESTIONS.get(destination)
         if value is None and destination in _STAR_FIELDS:
             if star_suggestions is None:
+                if reference_contigs is None:
+                    reference_contigs = _reference_contigs(
+                        Path(answers["reference_fasta"])
+                    )
                 star_suggestions, read_length, genome_length = _star_suggestions(
-                    Path(answers["reference_fasta"]),
+                    reference_contigs,
                     manifest_members["samples.tsv"][0],
                     output / "samples.tsv",
                 )
@@ -939,6 +950,8 @@ def _discover_fastqs(directory: Path) -> list[Path]:
 
 def _guided_manifest_members(
     arguments: argparse.Namespace,
+    *,
+    reference_contigs: Sequence[tuple[str, int]] | None = None,
 ) -> dict[str, tuple[bytes, int]]:
     interactive = _interactive_terminal()
     fastqs = list(getattr(arguments, "fastq", ()))
@@ -988,10 +1001,29 @@ def _guided_manifest_members(
             regions_files = [["regions", regions_file]]
             arguments.regions_file = regions_files
         else:
+            if reference_contigs is None:
+                reference_contigs = _reference_contigs(
+                    Path(arguments.reference_fasta)
+                )
+            names = [name for name, _length in reference_contigs]
+            shown = names[:24]
+            suffix = f"; plus {len(names) - len(shown)} more" if len(names) > 24 else ""
+            console_field(
+                f"Accepted FASTA names ({len(names)})",
+                " ".join(shown) + suffix,
+                value_style="bold green",
+                file=sys.stderr,
+            )
             label = f"FASTA names/regions from {Path(arguments.reference_fasta).name}"
             selectors = shlex.split(_prompt(label))
             if not selectors:
                 raise OnboardingError("at least one chromosome or region is required")
+            lengths = dict(reference_contigs)
+            try:
+                for selector in selectors:
+                    validate_region_selector(selector, lengths)
+            except ValidationError as exc:
+                raise OnboardingError(str(exc)) from exc
             regions = [
                 [f"part{index:03d}", selector]
                 for index, selector in enumerate(selectors, start=1)
@@ -1001,7 +1033,10 @@ def _guided_manifest_members(
 
 
 def _copied_manifest_members(
-    arguments: argparse.Namespace, output: Path
+    arguments: argparse.Namespace,
+    output: Path,
+    *,
+    reference_contigs: Sequence[tuple[str, int]] | None = None,
 ) -> dict[str, tuple[bytes, int]]:
     sample_value = getattr(arguments, "sample_manifest", None)
     partition_value = getattr(arguments, "partition_manifest", None)
@@ -1010,7 +1045,9 @@ def _copied_manifest_members(
             "--sample-manifest and --partition-manifest must be supplied together"
         )
     if sample_value is None:
-        return _guided_manifest_members(arguments)
+        return _guided_manifest_members(
+            arguments, reference_contigs=reference_contigs
+        )
     if any(
         getattr(arguments, name, ())
         for name in ("fastq", "sample", "regions_file", "region")
@@ -1200,8 +1237,25 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         )
         for field, value in reference_answers.items():
             setattr(arguments, field, value)
-        manifest_members = _copied_manifest_members(arguments, output)
-        answers = _collect_project_answers(arguments, manifest_members, output)
+        needs_reference_summary = (
+            getattr(arguments, "sample_manifest", None) is None
+            and not getattr(arguments, "regions_file", ())
+            and not getattr(arguments, "region", ())
+        ) or any(getattr(arguments, field) is None for field in _STAR_FIELDS)
+        reference_contigs = (
+            _reference_contigs(Path(arguments.reference_fasta))
+            if needs_reference_summary
+            else None
+        )
+        manifest_members = _copied_manifest_members(
+            arguments, output, reference_contigs=reference_contigs
+        )
+        answers = _collect_project_answers(
+            arguments,
+            manifest_members,
+            output,
+            reference_contigs=reference_contigs,
+        )
         execution_profile_bytes = project_default_profile_bytes(
             getattr(arguments, "site", None)
         )
@@ -1851,14 +1905,33 @@ def project_runtime_directory(
         ) from exc
 
 
-def discover_runtime_profile(
+@dataclass(frozen=True, slots=True)
+class _RuntimeDiscoveryPlan:
+    inspection: RuntimeInspection
+    admit: Callable[[], RuntimeInspection]
+
+
+def _require_project_source_unchanged(project: ProjectAdmission) -> None:
+    try:
+        current, _state = read_bytes_with_identity(
+            project.source_path, "Project definition"
+        )
+    except ValidationError as exc:
+        raise OnboardingError(str(exc)) from exc
+    if current != project.source_bytes:
+        raise OnboardingError(
+            f"Project definition changed after runtime preview: {project.source_path}"
+        )
+
+
+def _discover_runtime_candidate(
     *,
     project: Path,
     environment: Mapping[str, str] | None = None,
     root: Path | None = None,
     python_executable: Path | None = None,
-) -> RuntimeInspection:
-    """Discover and probe one candidate profile without publishing it."""
+) -> tuple[RuntimeInspection, ProjectAdmission]:
+    """Discover one candidate and retain its admitted Project boundary."""
 
     package_root = _absolute(source_root() if root is None else root)
     admitted = validate_project(project, root=package_root).project
@@ -1873,12 +1946,33 @@ def discover_runtime_profile(
         renv_library,
         base_environment=selected_environment,
     )
-    return inspect_runtime_profile_bytes(
-        profile_bytes,
-        destination,
-        checks=runtime_profile_checks(profile_bytes, package_root),
-        environment=inspection_environment,
+    return (
+        inspect_runtime_profile_bytes(
+            profile_bytes,
+            destination,
+            checks=runtime_profile_checks(profile_bytes, package_root),
+            environment=inspection_environment,
+        ),
+        admitted,
     )
+
+
+def discover_runtime_profile(
+    *,
+    project: Path,
+    environment: Mapping[str, str] | None = None,
+    root: Path | None = None,
+    python_executable: Path | None = None,
+) -> RuntimeInspection:
+    """Discover and probe one candidate profile without publishing it."""
+
+    inspection, _project = _discover_runtime_candidate(
+        project=project,
+        environment=environment,
+        root=root,
+        python_executable=python_executable,
+    )
+    return inspection
 
 
 def publish_runtime_profile(inspection: RuntimeInspection) -> None:
@@ -1891,14 +1985,35 @@ def publish_runtime_profile(inspection: RuntimeInspection) -> None:
     )
 
 
-def reuse_runtime_profile(
-    *, project: Path, donor: Path, execute: bool, replace_existing: bool = False
-) -> RuntimeInspection:
-    """Freshly qualify one source generation for a dependent Project."""
+def _plan_runtime_discovery(*, project: Path) -> _RuntimeDiscoveryPlan:
+    inspection, admitted = _discover_runtime_candidate(project=project)
+    expected_bindings = (
+        runtime_file_bindings(inspection) if inspection.required_ready else ()
+    )
+
+    def admit() -> RuntimeInspection:
+        _require_project_source_unchanged(admitted)
+        if runtime_file_bindings(inspection) != expected_bindings:
+            raise OnboardingError(
+                "Runtime content changed after preview; preview again"
+            )
+        destination = project_runtime_directory(admitted) / "runtime.tsv"
+        if destination != inspection.profile_path:
+            raise OnboardingError("Project runtime destination changed after preview")
+        publish_runtime_profile(inspection)
+        return inspection
+
+    return _RuntimeDiscoveryPlan(inspection, admit)
+
+
+def _plan_runtime_reuse(
+    *, project: Path, donor: Path, replace_existing: bool = False
+) -> _RuntimeDiscoveryPlan:
+    """Plan one source-generation selection and retain exact freshness inputs."""
     package_root = _absolute(source_root())
     borrower = validate_project(project, root=package_root).project
     source = validate_project(donor, root=package_root).project
-    destination = project_runtime_directory(borrower, writable=execute) / "runtime.tsv"
+    destination = project_runtime_directory(borrower, writable=False) / "runtime.tsv"
     runtime = project_runtime_directory(source, writable=False)
     seal_path = runtime / "shared.json"
     if borrower.source_path == source.source_path:
@@ -1945,6 +2060,7 @@ def reuse_runtime_profile(
         runtime / "runtime.tsv", package_root
     )
     source_selection = shared_runtime_selection(source_data)
+    seal_needed = False
     if source_selection is not None:
         seal_path = source_selection.seal_path
         if runtime_root_for_seal(seal_path) != runtime:
@@ -1955,10 +2071,36 @@ def reuse_runtime_profile(
     elif os.path.lexists(seal_path):
         seal_data = load_runtime_seal(seal_path).data
     else:
-        ownership = None
-        payload = f"emrys-runtime-seal:{uuid.uuid4().hex}\n".encode("ascii")
-        if execute:
+        seal_needed = True
+        choices = runtime_profile_choices(source_data)
+        choices["python"] = Path(sys.executable)
+        candidate = inspect(runtime_profile_bytes(choices))
+        seal_data = runtime_seal_bytes(candidate, seal_path)
+        reference = shared_runtime_profile_bytes(
+            seal_path, seal_data, Path(sys.executable)
+        )
+        preview = replace(
+            candidate,
+            profile_bytes=reference,
+            profile_sha256=hashlib.sha256(reference).hexdigest(),
+        )
+    if not seal_needed:
+        reference = shared_runtime_profile_bytes(
+            seal_path, seal_data, Path(sys.executable)
+        )
+        preview = inspect(reference)
+        runtime_file_bindings(preview)
+
+    def admit() -> RuntimeInspection:
+        _require_project_source_unchanged(borrower)
+        _require_project_source_unchanged(source)
+        if os.path.lexists(claim_path):
+            raise OnboardingError(
+                f"Runtime maintenance claim appeared during selection: {claim_path}"
+            )
+        if seal_needed:
             project_runtime_directory(source)
+            payload = f"emrys-runtime-seal:{uuid.uuid4().hex}\n".encode("ascii")
             ownership = acquire_lock(
                 claim_path, payload, OnboardingError, retain_on_failure=True
             )
@@ -1967,27 +2109,18 @@ def reuse_runtime_profile(
             )
             if current_data != source_data:
                 raise OnboardingError("Source runtime inventory changed before sealing")
-        # Failed or interrupted preparation/publication deliberately retains the claim.
-        choices = runtime_profile_choices(source_data)
-        choices["python"] = Path(sys.executable)
-        candidate = inspect(runtime_profile_bytes(choices))
-        seal_data = runtime_seal_bytes(candidate, seal_path)
-        reference = shared_runtime_profile_bytes(
-            seal_path, seal_data, Path(sys.executable)
-        )
-        if not execute:
-            return replace(
-                candidate,
-                profile_bytes=reference,
-                profile_sha256=hashlib.sha256(reference).hexdigest(),
-            )
-        publish_exclusive(seal_path, seal_data, OnboardingError)
-        assert ownership is not None
-        release_lock(claim_path, ownership, payload, OnboardingError)
-    reference = shared_runtime_profile_bytes(seal_path, seal_data, Path(sys.executable))
-    inspection = inspect(reference)
-    runtime_file_bindings(inspection)
-    if execute:
+            if runtime_seal_bytes(candidate, seal_path) != seal_data:
+                raise OnboardingError(
+                    "Source runtime content changed after preview; preview again"
+                )
+            # Failed or interrupted publication deliberately retains the claim.
+            publish_exclusive(seal_path, seal_data, OnboardingError)
+            release_lock(claim_path, ownership, payload, OnboardingError)
+            inspection = inspect(reference)
+            runtime_file_bindings(inspection)
+        else:
+            inspection = preview
+            runtime_file_bindings(inspection)
         if os.path.lexists(claim_path):
             raise OnboardingError(
                 f"Runtime maintenance claim appeared during selection: {claim_path}"
@@ -2024,7 +2157,20 @@ def reuse_runtime_profile(
                 replace_expected=existing,
             )
             release_lock(selection_claim, ownership, payload, OnboardingError)
-    return inspection
+        return inspection
+
+    return _RuntimeDiscoveryPlan(preview, admit)
+
+
+def reuse_runtime_profile(
+    *, project: Path, donor: Path, execute: bool, replace_existing: bool = False
+) -> RuntimeInspection:
+    """Freshly qualify one source generation for a dependent Project."""
+
+    plan = _plan_runtime_reuse(
+        project=project, donor=donor, replace_existing=replace_existing
+    )
+    return plan.admit() if execute else plan.inspection
 
 
 def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
@@ -2038,7 +2184,10 @@ def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--execute",
         action="store_true",
-        help="Publish the admitted inventory; omission is a no-write discovery.",
+        help=(
+            "Publish without prompting; omission previews and offers confirmation "
+            "in a terminal."
+        ),
     )
     parser.add_argument(
         "--replace",
@@ -2046,6 +2195,18 @@ def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
         help="Replace an existing shared selection from the same source Project; preview remains no-write without --execute.",
     )
     parser.set_defaults(_command_parser=parser)
+
+
+def _confirm_runtime_admission() -> bool:
+    if not _interactive_terminal():
+        return False
+    console_print(
+        "Admit this runtime inventory? [y/N] ",
+        style="bold",
+        file=sys.stderr,
+        end="",
+    )
+    return sys.stdin.readline().strip().casefold() in {"y", "yes"}
 
 
 def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
@@ -2058,16 +2219,17 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
         if replace_existing and donor is None:
             raise OnboardingError("--replace requires --from-project")
         if donor is None:
-            inspection = discover_runtime_profile(
+            plan = _plan_runtime_discovery(
                 project=project_definition_path(arguments.project)
             )
         else:
-            inspection = reuse_runtime_profile(
+            plan = _plan_runtime_reuse(
                 project=project_definition_path(arguments.project),
                 donor=project_definition_path(donor),
-                execute=arguments.execute,
                 replace_existing=replace_existing,
             )
+        inspection = plan.inspection
+        if donor is not None:
             selected = shared_runtime_selection(inspection.profile_bytes)
             assert selected is not None
             if verbose:
@@ -2084,11 +2246,13 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
                 )
         if not inspection.required_ready:
             return 1
-        if not arguments.execute:
-            print("Dry-run complete; no files were written. Use --execute to admit it.")
+        if not arguments.execute and not _confirm_runtime_admission():
+            print(
+                "Dry-run complete; no files were written. Run again and answer y, "
+                "or use --execute for automation."
+            )
             return 0
-        if donor is None:
-            publish_runtime_profile(inspection)
+        inspection = plan.admit()
         console_field(
             "Runtime inventory admitted",
             inspection.profile_path,

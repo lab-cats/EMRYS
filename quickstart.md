@@ -147,9 +147,11 @@ space-separated list:
 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y MT
 ```
 
-Those names must match the first words after `>` in the delivered FASTA headers.
-Project creation validates them against that FASTA. If the delivery uses
-different names, stop and confirm the intended selectors rather than guessing.
+Immediately before the prompt, EMRYS prints the number of accepted FASTA names
+and a bounded list taken from the first words after `>` in its headers. The
+entered names are checked immediately and Project creation rechecks them. If the
+delivery uses different names, stop and confirm the intended selectors rather
+than guessing.
 
 The preview ends with `Preview complete; Project not created.` It then prints
 one long command under `Next action`. Review the interpretation immediately
@@ -192,18 +194,17 @@ wait. Continue only after the distinct `EMRYS is ready.` message. If Doctor
 reports a blocker or failure, stop and retain the diagnostic and log path.
 
 If you completed the [optional smoke test](#optional-smoke-test), reuse its
-prepared tools instead. Preview the selection first:
+prepared tools instead. Preview the selection:
 
 ```bash
 emrys runtime discover --from-project "$EMRYS_SOURCE_ROOT/Projects/emrys-smoke"
 ```
 
-`Runtime discovery: READY` means the source generation is compatible; the
-preview writes nothing. Record the verified selection:
-
-```bash
-emrys runtime discover --from-project "$EMRYS_SOURCE_ROOT/Projects/emrys-smoke" --execute
-```
+`Runtime discovery: READY` means the source generation is compatible. Review
+the preview, then answer `y` at `Admit this runtime inventory? [y/N]`. EMRYS
+reuses that in-memory inspection and performs focused freshness checks before
+writing. Press Enter or answer `n` to leave the Project unchanged. Advanced
+noninteractive automation may add `--execute` to the same command.
 
 Continue after `Runtime inventory admitted:`. Doctor must still verify this
 Project, its storage and the intended compute placement:

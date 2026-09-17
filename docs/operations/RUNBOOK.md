@@ -440,17 +440,18 @@ instead be found on `PATH`. If the library is missing, complete
 ```bash
 emrys validate
 emrys runtime discover
-emrys runtime discover --execute
 emrys doctor
 ```
 
 Inside a real Slurm allocation, use `emrys doctor --compute` for that diagnosis.
 Ordinary head-node or non-Slurm diagnosis uses `emrys doctor` without the flag.
 
-The first discovery previews without writing; execute only after every required
-check passes. Success prints `Runtime inventory admitted.` and creates
-`runtime/runtime.tsv`. Discovery never replaces an inventory, loads modules,
-or installs software.
+Discovery previews first. In a terminal, answer `y` only after every required
+check passes; Enter or `n` leaves the Project unchanged. The confirmed command
+reuses its in-memory inspection and performs focused freshness checks before
+publication. Noninteractive automation uses `emrys runtime discover --execute`.
+Success prints `Runtime inventory admitted.` and creates `runtime/runtime.tsv`.
+Discovery never replaces an inventory, loads modules, or installs software.
 
 The inventory stores 12 selected paths in `check_id` and `target` columns.
 Version requirements and probe arguments come from the installed EMRYS policy;
@@ -769,14 +770,13 @@ explicitly selects a newer generation from the same source Project.
 emrys runtime discover --project /absolute/borrower/project.yaml --from-project /absolute/donor/project.yaml
 ```
 
-This previews without writing. Add `--verbose` to review every observed tool
-check and the selected source seal; the normal view shows readiness and the
-no-write/admission outcome.
-The next command installs nothing and creates the new Project's inventory only
-after the source generation and fresh checks succeed:
+This previews first. Add `--verbose` to review every observed tool check and the
+selected source seal; the normal view shows readiness and the no-write/admission
+outcome. Answer `y` to create the new Project's inventory only after the source
+generation and focused freshness checks succeed. The command installs nothing;
+`--execute` is the noninteractive equivalent. Then run:
 
 ```bash
-emrys runtime discover --project /absolute/borrower/project.yaml --from-project /absolute/donor/project.yaml --execute
 emrys doctor --project /absolute/borrower/project.yaml --repair
 ```
 
@@ -798,8 +798,10 @@ continue to name the old generation and must explicitly select the replacement:
 
 ```bash
 emrys runtime discover --project /absolute/dependent/project.yaml --from-project /absolute/source/project.yaml --replace
-emrys runtime discover --project /absolute/dependent/project.yaml --from-project /absolute/source/project.yaml --replace --execute
 ```
+
+Review the replacement and answer `y`; noninteractive automation adds
+`--execute` to that command.
 
 Replacement is allowed only when the existing inventory already shares tools
 from that same source Project. The previous generation and seal remain for
