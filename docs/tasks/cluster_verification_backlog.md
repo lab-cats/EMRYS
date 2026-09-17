@@ -31,11 +31,11 @@ jobs, with four configured skips, at
 ([CI 34991470527](https://github.com/lab-cats/EMRYS/actions/runs/34991470527)).
 This includes the public Doctor and selected-request accounting cases below.
 
-PR [#266](https://github.com/lab-cats/EMRYS/pull/266) head
-`abd43ff2fcf093fdabc38f5557e86a30fbb3b6c9` contains the later approved CLI,
+PR [#266](https://github.com/lab-cats/EMRYS/pull/266) implementation checkpoint
+`feff802057f035c8e18893ef37c4f8e69a05ac2d` contains the later approved CLI,
 onboarding, resource-policy, monitoring, dashboard, runtime-reuse and timeout
 slices recorded below. Its
-[standard CI](https://github.com/lab-cats/EMRYS/actions/runs/35128503816)
+[standard CI](https://github.com/lab-cats/EMRYS/actions/runs/35174741384)
 passed all 14 active jobs; four configured manual/nightly lanes were skipped.
 This is hosted software evidence. It is not a fresh Viking installation, an
 institutional scheduler/filesystem exercise, a novice walkthrough, a new
@@ -722,8 +722,9 @@ One-based displayed line numbers are explicitly tail-relative. Stream changes
 reset search and resume follow. The existing 64-KiB/256-line read bound, identity
 pinning, sanitization, rotation/truncation handling and ignored mouse reports are
 unchanged. The standalone dashboard has no selectable evidence/log view and
-retains its existing bounded keyboard scrolling. CV-U16 is **Verification
-pending** for hosted CI and Viking/tmux terminal acceptance.
+retains its existing bounded keyboard scrolling. The implementation checkpoint's
+standard CI recorded above passed. CV-U16 is **Verification pending** for
+Viking/tmux terminal acceptance.
 
 ### CV-U17 Completion communication
 
@@ -984,8 +985,9 @@ immediately rejects an entered name or interval that the selected FASTA cannot
 accept. The same in-memory contig summary supplies STAR's reference-length
 suggestion rather than reopening the FASTA. Publication still freshly validates
 the reference, annotation and selectors at its separate mutation boundary. No
-biological selector or reference release is inferred. CV-U21 is **Verification
-pending** for hosted CI and a fresh operator walkthrough.
+biological selector or reference release is inferred. The implementation
+checkpoint's standard CI recorded above passed. CV-U21 is **Verification
+pending** for a fresh operator walkthrough.
 
 ### CV-U22 Smoke-project tool reuse
 
@@ -1988,7 +1990,8 @@ automation route. Confirmation reuses the previewed probes while rechecking the
 Project, destination, exact source inventory and runtime content at the mutation
 boundary. A newly published donor seal still receives its distinct post-seal
 probe before borrower publication. No retained plan, cache, schema or cleanup
-policy was added. Hosted CI and institutional reuse acceptance remain pending.
+policy was added. The implementation checkpoint's standard CI recorded above
+passed. Institutional reuse acceptance remains pending.
 
 ### CV-09 Qualification scope and placement
 
