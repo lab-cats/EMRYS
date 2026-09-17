@@ -77,6 +77,15 @@ def _request(root):
     )
 
 
+def _forbid_path_reads(monkeypatch, message):
+    def forbidden(*_args, **_kwargs):
+        pytest.fail(message)
+
+    for name in ("stat", "lstat", "open", "resolve"):
+        monkeypatch.setattr(Path, name, forbidden)
+    return forbidden
+
+
 class _PtyProcess:
     def __init__(self, tmp_path, code, *arguments, rows, columns, term):
         self.master, slave = pty.openpty()
@@ -242,11 +251,7 @@ def test_recorded_application_outcomes_are_dated_escaped_diagnostics_in_all_view
     )
     logs = association.RunApplicationObservation(tmp_path, (application,), "complete")
 
-    def forbidden(*_args, **_kwargs):
-        pytest.fail("Outcome rendering cannot read or re-admit evidence")
-
-    for name in ("stat", "lstat", "open", "resolve"):
-        monkeypatch.setattr(Path, name, forbidden)
+    _forbid_path_reads(monkeypatch, "Outcome rendering cannot read evidence")
     for selected in (
         {"application": application},
         {"run_applications": logs},
@@ -284,11 +289,7 @@ def test_task_streams_require_both_admitted_start_fields(
     if missing in {"reference", "both"}:
         started.start_reference = None
 
-    def forbidden(*args, **kwargs):
-        pytest.fail("Stream projection must not read or infer start evidence")
-
-    for name in ("stat", "lstat", "open", "resolve"):
-        monkeypatch.setattr(Path, name, forbidden)
+    _forbid_path_reads(monkeypatch, "Stream projection cannot read start evidence")
     assert view.task_stream_sources(observed) == ()
 
 
@@ -328,11 +329,7 @@ def test_task_streams_preserve_preentry_history_and_exact_start_origin_without_r
                 for name in ("stderr.log", "stdout.log")
             )
 
-    def forbidden(*args, **kwargs):
-        pytest.fail("Projection must not read logs, current Attempt, or dispatch")
-
-    for name in ("stat", "lstat", "open", "resolve"):
-        monkeypatch.setattr(Path, name, forbidden)
+    _forbid_path_reads(monkeypatch, "Projection cannot read logs or dispatch")
     sources = view.task_stream_sources(observed, selected_attempt=selection)
     assert [source.path for source in sources] == expected
     assert all(source.root == observed.run_root for source in sources)
@@ -1197,12 +1194,8 @@ def test_run_log_rendering_uses_only_the_collection_and_escapes_public_output(
         tmp_path, run_applications=collection, application_at=NOW
     )
 
-    def forbidden(*args, **kwargs):
-        pytest.fail("Rendering performed a read or association scan")
-
+    forbidden = _forbid_path_reads(monkeypatch, "Rendering performed a read")
     monkeypatch.setattr(association, "inspect_run_applications", forbidden)
-    for name in ("stat", "lstat", "open", "resolve"):
-        monkeypatch.setattr(Path, name, forbidden)
     normal = view.run_application_lines(collection)
     verbose = view.run_application_lines(collection, detail="verbose")
     assert str(item.application_log) not in "\n".join(normal)

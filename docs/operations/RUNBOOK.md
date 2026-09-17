@@ -3,49 +3,21 @@
 ## Retain a submission before its Run exists
 
 Run, resume, and report print an exact `Submission request:` directory after
-approval. Keep that directory along with the printed job and stream paths.
-`request.json` records the command, Project, selected profile binding, and
-application-log location; `sbatch.stdout` and `sbatch.stderr` preserve the raw
-scheduler response. These records can exist while no Run has been created.
-New submissions use request-specific scheduler stream names. Preserve the
-complete printed paths, including the request token; the job number alone can
-be reused and does not identify those logs. Existing v1 records remain readable.
+approval. Retain it with the printed job and stream paths; a request can exist
+before its Run. From the Project, `emrys inspect` lists retained requests,
+including partial or malformed records, without querying Slurm or application
+logs. `emrys inspect RUN` instead selects that Run.
 
-From the Project, run `emrys inspect` to list every retained request before
-selecting a Run. The roster prints each exact directory, recorded command/time,
-requested Run, application-log root, response job/cluster, and a bounded stderr
-excerpt when readable. `partial`, `malformed`, or `unconfirmed` records remain
-visible. An explicit `emrys inspect RUN` selects that Run directly.
-
-`Runs: none found at inspection time` is a successful read-only observation.
-It does not establish rejection, startup failure, or absence of a queued job.
-A recorded job ID is historical response data; this roster does not query the
-scheduler or associate that request with a Run. An unavailable log directory
-is an inspection error, not an empty roster.
-
-To query one request, pass its exact printed directory name or absolute path:
+Query one request by its printed directory name or absolute path:
 
 ```bash
 emrys inspect --submission "submission-REPLACE_WITH_THE_EXACT_REQUEST_TOKEN"
 ```
 
-This selects a submission instead of a Run. It prints the recorded scheduler
-stream paths and queries only that request: one `squeue` call and, only after
-a successful empty queue reply, at most one `sacct` call. Each has a ten-second
-timeout. A v2 request requires an exact job ID, current numeric UID, cluster
-and both request-specific stream paths; v3 also checks the token-specific job
-name. The output reports state and queue
-reason or accounting exit status when admitted. Unsupported fields, missing
-proof, duplicate records or query failure produce `UNKNOWN`. Legacy v1 or
-incomplete request records stay unknown without scheduler calls.
-
-Selected inspection also searches the request's retained application-log root
-and command scope for one exact matching log. It shows that log and its snapshot
-digest, any recorded preparation or reporting start, and an admitted Run/Attempt
-when their retained contracts agree with the request. If admission fails, a
-recorded candidate stays distinct from an admitted Run. Missing, changing,
-ambiguous or oversized evidence stays unknown; it never selects the newest log.
-The printed Run-inspection command checks the broader workflow evidence.
+This queries only the selected request and prints its recorded streams,
+scheduler observation, matching application log, and any independently
+admitted Run/Attempt. `UNKNOWN`, partial, or legacy observations remain visible;
+never choose another request or resubmit solely because its Run is absent.
 
 An explicit Run selection also discovers its recorded application logs:
 
@@ -54,41 +26,22 @@ emrys inspect RUN --project "$EMRYS_PROJECT_ROOT" --verbose
 emrys inspect RUN --project "$EMRYS_PROJECT_ROOT" --log-root /absolute/historical/log/root --watch
 ```
 
-The search uses `--log-root`, then `EMRYS_LOG_ROOT`, then the selected Project's
-`logs/application` directory. Historical custom roots are not retained in Run
-contracts; supply the root used for those invocations. One search covers new-Run
-preparation and that exact Run's resume/report scope, preserving all admitted
-historical matches. A reporting-only log names a Run, not a scientific Attempt.
-Missing, malformed or bounded-out evidence leaves the scan unknown; zero matches
-does not mean no logs exist elsewhere. The selector creates no logs and cannot
-override a selected submission's frozen root. It requires an explicit Run.
-
-The ordinary roster makes no scheduler calls or application-log scans. These
-observations do not establish workflow entry, current progress, Run completion,
-native process absence or recovery eligibility. They do not authorize
-cancellation or lock removal.
-
-An empty or malformed response does not prove that submission was rejected.
-If acceptance is uncertain or the client was interrupted, resolve the exact
-request with the scheduler and its logs before submitting again. Do not choose
-the most recently modified directory as the intended request. Retain every
-partial request; its presence alone is neither completion evidence nor recovery
-authority.
+The Run search uses `--log-root`, then `EMRYS_LOG_ROOT`, then the Project's
+`logs/application` directory. Supply an historical custom root explicitly.
+The selector is read-only and never substitutes a newest file. The
+[submission and inspection contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#resume-inspection-results-and-reporting)
+owns the exact admission, query, evidence, and recovery limits.
 
 ## Watch one fixed selection
 
-The installed watch offers overview and detail screens plus verified
-Run evidence and selected logs. From a Project, the ordinary command selects
-the sole retained submission before its Run exists, or the sole Run afterward:
+The installed watch offers overview, detail, and dated evidence/log views. From
+a Project, it selects the sole request or Run; ambiguity opens a picker:
 
 ```bash
 emrys watch
 ```
 
-Several plausible selections open a terminal picker. Noninteractive use must
-provide an exact selector; EMRYS never selects the newest Run or request. A Run
-name or ID uses Project evidence. A numeric ID or exact scheduler name selects
-scheduler diagnostics:
+Select a Run by name/ID or scheduler diagnostics by numeric ID/exact job name:
 
 ```bash
 emrys watch international-jackrabbit
@@ -96,11 +49,8 @@ emrys watch 12345
 emrys watch emrys-local-pilot-EXACT_REQUEST_TOKEN
 ```
 
-When `EMRYS_PROJECTS_ROOT` names the canonical Projects home, `emrys watch`
-can be started from another directory. It scans only immediate Project children,
-selects one available Run, or opens the same picker. This is read-only discovery,
-not a registry or current/latest marker. An exact `--project` also works from
-any directory.
+`EMRYS_PROJECTS_ROOT` enables the same read-only picker outside a Project;
+`--project` selects an exact Project from any directory.
 
 For a submitted Project request selected explicitly, including before its Run
 exists:
@@ -109,9 +59,8 @@ exists:
 emrys inspect --project "$EMRYS_PROJECT_ROOT" --submission "submission-EXACT_TOKEN" --watch
 ```
 
-Use `emrys inspect RUN --watch` for a Run's evidence and application/Task logs.
-Its recorded job number does not establish current scheduler identity; select
-its retained request for scheduler observations and the workflow trace.
+Use `emrys inspect RUN --watch` for Run evidence and application/Task logs;
+select its retained request for scheduler identity and workflow diagnostics.
 
 Watch also supports scheduler discovery and historical selection without
 requiring a Project:
@@ -123,15 +72,11 @@ emrys inspect --snapshot --job-id 12345 --log-dir /absolute/scheduler/logs
 emrys inspect --snapshot --job-id 12345 --offline --out /absolute/scheduler/logs/emrys-local-pilot-12345.out --err /absolute/scheduler/logs/emrys-local-pilot-12345.err
 ```
 
-Without a current Project, declared Projects home, or explicit selector, plain
-`emrys watch` and `emrys inspect --watch` discover
-a current-user EMRYS job. Discovery checks live jobs and bounded recent
-accounting; it never scans storage for a newest log. Explicit IDs never fall
-back to another job. `EMRYS_DASHBOARD_JOB_ID` and `EMRYS_DASHBOARD_LOG_DIR` are
-fallbacks for scheduler selection; command-line values take precedence.
-Offline requires an exact ID and both owned regular streams and makes no
-scheduler queries. Raw scheduler selection permits no operational actions and
-never admits a Project or Run from text printed in a log.
+Without Project context or an explicit selector, watch offers bounded owned
+scheduler candidates and never scans for a newest log. Command-line selection
+precedes `EMRYS_DASHBOARD_JOB_ID`/`EMRYS_DASHBOARD_LOG_DIR`. Offline mode needs
+an exact ID plus both streams and makes no scheduler queries. Raw scheduler
+selection has no Project, Run, or action authority.
 
 | Control | Behavior |
 | --- | --- |
@@ -139,53 +84,20 @@ never admits a Project or Run from text printed in a log.
 | `3` / `v` | Dated Run evidence and selected diagnostic log. |
 | `[` / `]` | Previous/next log; opens the evidence/log view. |
 | Arrows / `j` / `k`, Page Up/Down, Home / `g` | Scroll or return to the top. |
+| `G`, count + `j` / `k`, `/`, `n` / `N` | Follow the bottom, counted movement, and regex search in logs. |
 | `r` | Read-only recheck of the fixed selection: refresh diagnostics, recheck association, and fully verify its Run evidence. |
 | `q` | Quit and restore the terminal. |
 
-Overview/details preserve pipeline progress, stage explanations and resources,
-sample lanes and timings, peer comparisons, recent activity, errors, scheduler
-placement and batch usage. Counts come from the reported invocation; unknown
-counts stay unknown. Logs describe observed workflow activity and cannot prove
-scientific completion. Resource maxima are per-task batch-step observations,
-not total job I/O or whole-process memory. Read their observation dates.
-When admitted Run evidence establishes completed Results, its verified Task
-counts replace stale diagnostic stage counts and the view announces completion.
-Scheduler completion and log text alone never produce that announcement.
-
-Automatic refresh checks scheduler diagnostics and stream updates every 30
-seconds; `--refresh SECONDS` accepts intervals of at least five seconds. A
-terminal scheduler observation stays dated until `r` requests another query.
-Full Run verification runs initially and on `r`, and can read substantial
-scientific data. Screen painting performs no reads. Timers cannot refresh the
-authority of dated Run/Task/reporting evidence or infer recovery eligibility.
-The selected request's historical Attempt stays distinct from the Run's latest
-Attempt. Reconnecting to the same selection reconstructs its full workflow
-trace. Watch never switches to another job or a guessed latest log.
-
-Workflow stdout/stderr use the shared full-history reader; other selected tails
-retain at most 64 KiB and 256 lines. Missing, changed, truncated or replaced
-streams are identified, previous generations are cleared, and terminal controls
-are sanitized. A stalled read preserves its earlier date and cannot prevent
-quitting after the view opens. Initial selection remains synchronous. Memory
-for the parsed workflow trace grows with retained diagnostic history.
-
-The interactive view captures and ignores mouse reports; use the documented
-keyboard controls to navigate. A tmux binding can instead translate
-wheel movement into arrow keys before EMRYS receives it. EMRYS cannot distinguish
-those translated keys from physical arrow-key input; adjust that tmux binding if
-wheel movement still scrolls. Log colors distinguish literal severity and common
-workflow prefixes without hiding or reinterpreting lines; `NO_COLOR` makes the
-same text plain.
-
-An explicit Run's `r` refresh searches its selected application-log root again
-and removes associations no longer admitted. Independent Task streams remain
-available. Expected Task paths require an admitted start; they prove neither
-file existence nor worker liveness. Static `--verbose` inspection lists the
-same exact paths. Use `--log-root` to select a historical custom application root.
-
-`--snapshot`, redirected output, or a noninteractive terminal produces one
-plain snapshot. `NO_COLOR` disables optional status colors. Ordinary watch
-creates no operational action, log or persistent state.
+Automatic diagnostic refresh defaults to 30 seconds; `--refresh` accepts at
+least five seconds. `r` also re-verifies Run evidence and associations. Workflow
+streams retain full diagnostic history; other tails retain at most 64 KiB/256
+lines. Rotation clears the prior generation, stalled reads stay dated, mouse
+reports are ignored, and `NO_COLOR` keeps identical plain text. `--snapshot`,
+redirection, or a noninteractive terminal emits one snapshot. Use `--log-root`
+for a historical application-log root. The
+[inspection contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#resume-inspection-results-and-reporting)
+owns the distinction between dated diagnostics, verified completion, and
+recovery authority.
 
 ### Review CLI operations from watch
 
@@ -202,17 +114,10 @@ emrys inspect --submission REQUEST --project "$EMRYS_PROJECT_ROOT" --watch --act
 | Run | `b` | Report preview; does not generate or submit reporting work. |
 | Submission request | `s` | Stop preview for the exact retained request; does not cancel the job. |
 
-Each command freshly checks its selection; dated watch observations do not
-authorize recovery or cancellation. Run handoffs use the ordinary default
-profile. Use the corresponding CLI directly to choose another profile or to
-execute a report/stop plan. Noninteractive action mode is refused.
-
-The terminal is restored before the CLI handler runs. A read already in
-progress may finish in the background, but its result is discarded. The command
-returns that handler's result and does not reopen watch. Slurm resume follows the
-existing submission preview: scientific resume admission happens on compute,
-so a concurrent resume can make an allocation unnecessary without bypassing
-recovery checks. A request handoff never selects an associated historical Run.
+Each handoff restores the terminal and freshly admits the exact selection.
+Report/stop remain previews, Run handoffs use the default profile, and
+noninteractive action mode is refused. Use the direct CLI to choose another
+profile or execute a report/stop plan.
 
 ## Stop one exact Slurm request
 
@@ -225,24 +130,15 @@ emrys stop --project "$EMRYS_PROJECT_ROOT" --submission "submission-EXACT_TOKEN"
 
 Review the Project, request, numeric owner, cluster, root job ID, token-specific
 job name and current scheduler observation. Add `--execute` to issue the
-displayed stop request. Preview creates no log or cancellation records.
-Only complete v3 requests are eligible; older records remain inspectable.
-EMRYS requires a confirmed `scancel` release of at least 23.11.6 so the
-controller applies owner, name and job-ID filters together. An unsupported
-client or uncertain target refuses before cancellation.
-
-Execution retains a synchronized intent and raw `scancel.stdout`/`scancel.stderr`
-beside the printed maintenance log. It rechecks the request, exact scheduler
-identity and client before issuing one whole-job cancellation, then observes
-the scheduler again. There is no retry or fallback to cancellation by job ID
-alone. A timeout or interrupted client can leave the request outcome uncertain;
-retain the printed records and inspect that exact submission before acting again.
-
-A processed cancellation request is not proof that every native process stopped.
-A matching terminal scheduler observation is still separate from EMRYS recovery
-eligibility. Inspect the associated Run and use its supported resume action only
-when its retained evidence admits recovery. Missing terminal records, ambiguous
-locks and partial outputs remain preserved; stop never removes or repairs them.
+displayed stop request. Preview writes nothing. Execution requires a complete
+v3 request and supported `scancel`, retains synchronized intent and raw client
+streams, rechecks identity, issues one whole-job cancellation, and observes the
+scheduler again. It never retries or falls back to job ID alone. If the client
+is interrupted or the outcome remains uncertain, retain the records and inspect
+that exact request and associated Run. Stop never removes locks or outputs;
+resume only when Run inspection admits recovery. The
+[stop contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries)
+owns the exact identity, mutation, and evidence rules.
 
 Use the [quickstart](../../quickstart.md) for Viking installation, a first
 synthetic Project and your own study. For other setup needs, start with

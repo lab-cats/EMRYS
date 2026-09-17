@@ -16,28 +16,6 @@ JOB_ID = 605305
 RUN_ID = "run-" + "a" * 64
 
 
-def _render_attrs() -> dict[str, int]:
-    return {
-        name: 0
-        for name in (
-            "normal",
-            "title",
-            "green",
-            "green_bold",
-            "cyan",
-            "cyan_bold",
-            "yellow",
-            "yellow_bold",
-            "red",
-            "dim",
-            "border",
-            "panel_title",
-            "label",
-            "value",
-        )
-    }
-
-
 def _make_logs(log_dir: Path, job_id: int = JOB_ID) -> tuple[Path, Path]:
     log_dir.mkdir()
     stdout = log_dir / f"emrys-local-pilot-{job_id}.out"
@@ -1625,76 +1603,34 @@ def test_dashboard_model_and_text_views_cover_active_terminal_and_empty_states()
     assert dashboard.workflow_frontier_lines(empty, now, 80)
 
 
-class _FakeScreen:
-    def __init__(
-        self, height: int = 50, width: int = 160, keys: list[int] | None = None
-    ):
-        self.height = height
-        self.width = width
-        self.keys = iter(keys or [])
-        self.writes: list[tuple[int, int, str, int, int]] = []
-        self.refreshes = 0
-        self.erases = 0
-
-    def getmaxyx(self) -> tuple[int, int]:
-        return self.height, self.width
-
-    def addnstr(self, y: int, x: int, text: str, limit: int, attr: int) -> None:
-        self.writes.append((y, x, text, limit, attr))
-
-    def erase(self) -> None:
-        self.erases += 1
-
-    def refresh(self) -> None:
-        self.refreshes += 1
-
-    def keypad(self, _enabled: bool) -> None:
-        return None
-
-    def timeout(self, _milliseconds: int) -> None:
-        return None
-
-    def getch(self) -> int:
-        return next(self.keys)
-
-
-def test_dashboard_drawing_and_rendering_support_wide_compact_and_small_screens(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    attrs = _render_attrs()
+def _rendered_dashboard(*, height=50, width=160, selected="overview", terminal=False):
     model = _rich_model(1_800_000_000.0)
-    identity = _dashboard_identity()
-    screen = _FakeScreen()
-    dashboard.render.attrs = attrs
-
-    assert (
-        dashboard.draw_box(
-            screen,
-            1,
-            1,
-            8,
-            40,
-            "FIXTURE",
-            ["plain", ("styled", "green"), [("segment", "yellow")]] * 4,
-            attrs,
-            scroll=2,
-            scrollable=True,
-        )
-        > 0
+    view = dashboard.dashboard_view(
+        JOB_ID,
+        _slurm(terminal=terminal, state="TIMEOUT" if terminal else "RUNNING"),
+        _dashboard_identity(),
+        model,
+        height=height,
+        width=width,
+        view=selected,
+        work_scroll=0,
+        now=1_800_000_000.0,
     )
-    dashboard.safe_add(screen, -1, 0, "outside")
-    dashboard.safe_add(screen, 0, screen.width, "outside")
-    for selected in ("overview", "details"):
-        dashboard.render(screen, JOB_ID, _slurm(), identity, model, 30, 0, selected, 0)
-    dashboard.render(screen, JOB_ID, _slurm(), identity, model, 30, 0, "details", 0)
-    dashboard.render(screen, JOB_ID, _slurm(), identity, model, 30, 0, "overview", 0)
-    assert screen.writes
-    assert screen.refreshes == 4
+    return "\n".join(
+        "".join(character for character, _ in row)
+        for row in dashboard.render_view(view)
+    )
 
-    compact = _FakeScreen(height=30, width=100)
+
+def test_dashboard_rendering_supports_wide_compact_and_small_screens() -> None:
     for selected in ("overview", "details"):
-        dashboard.render(compact, JOB_ID, _slurm(), identity, model, 30, 0, selected, 0)
-    compact_text = "\n".join(write[2] for write in compact.writes)
+        text = _rendered_dashboard(selected=selected)
+        assert "PIPELINE" in text and "CURRENT WORK" in text
+
+    compact_text = "\n".join(
+        _rendered_dashboard(height=30, width=100, selected=selected)
+        for selected in ("overview", "details")
+    )
     for label in (
         "State:",
         "Slurm placement:",
@@ -1705,9 +1641,7 @@ def test_dashboard_drawing_and_rendering_support_wide_compact_and_small_screens(
         "Run root:",
     ):
         assert label in compact_text
-    small = _FakeScreen(height=10, width=60)
-    dashboard.render(small, JOB_ID, _slurm(), identity, model, 30, 0, "overview", 0)
-    assert any("too small" in write[2] for write in small.writes)
+    assert "too small" in _rendered_dashboard(height=10, width=60)
 
 
 def test_terminal_timeout_never_presents_stale_work_as_pending_or_running() -> None:
@@ -1744,10 +1678,7 @@ def test_terminal_timeout_never_presents_stale_work_as_pending_or_running() -> N
     assert title == "JOB ENDED"
     assert "scheduler termination alone does not establish recovery" in str(activity)
 
-    screen = _FakeScreen()
-    dashboard.render.attrs = _render_attrs()
-    dashboard.render(screen, JOB_ID, slurm, identity, model, 30, 0, "details", 0)
-    rendered = "\n".join(write[2] for write in screen.writes)
+    rendered = _rendered_dashboard(selected="details", terminal=True)
     assert "JOB ENDED" in rendered
     assert "INTERRUPTED" in rendered
     assert "PENDING" not in rendered

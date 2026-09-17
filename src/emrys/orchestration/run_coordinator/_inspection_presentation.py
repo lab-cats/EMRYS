@@ -781,62 +781,10 @@ def render_snapshot(
     return "\n".join(safe_text(line) for line in lines)
 
 
-class _DashboardCanvas:
-    """Project the shared dashboard's terminal layout into styled Rich rows."""
-
-    def __init__(self, height: int, width: int):
-        self.height, self.width = height, width
-        self.erase()
-
-    def getmaxyx(self):
-        return self.height, self.width
-
-    def erase(self):
-        self.rows = [[(" ", "") for _ in range(self.width)] for _ in range(self.height)]
-
-    def addnstr(self, y, x, text, count, attr=""):
-        for index, character in enumerate(safe_text(text)[:count]):
-            if 0 <= y < self.height and 0 <= x + index < self.width:
-                self.rows[y][x + index] = (character, attr)
-
-    def refresh(self):
-        pass
-
-    def text(self):
-        from itertools import groupby
-        from rich.text import Text
-
-        result = Text()
-        for row in self.rows:
-            for style, cells in groupby(row, key=lambda cell: cell[1]):
-                result.append(
-                    "".join(character for character, _ in cells), style=style or None
-                )
-            result.append("\n")
-        return result
-
-
 def render_dashboard(
     snapshot, *, height, width, view, scroll, refresh_seconds=_REFRESH_SECONDS
 ):
-    """Reuse every legacy overview/detail projection without reading any source."""
-    canvas = _DashboardCanvas(height, width)
-    dashboard.render.attrs = {
-        "normal": "",
-        "dim": "dim",
-        "border": "dim cyan",
-        "label": "bold cyan",
-        "value": "bold",
-        "title": "bold cyan",
-        "panel_title": "bold magenta",
-        "green": "green",
-        "green_bold": "bold green",
-        "cyan_bold": "bold cyan",
-        "yellow": "yellow",
-        "yellow_bold": "bold yellow",
-        "red": "red",
-        "cyan": "cyan",
-    }
+    """Render the shared overview/detail projection without reading any source."""
     job = snapshot.raw_job
     job_id = (
         job["job_id"]
@@ -871,21 +819,58 @@ def render_dashboard(
                 workflow["done"]["REPORT"] = workflow["expected"]["REPORT"]
                 workflow["expected"]["FINAL"] = 1
                 workflow["done"]["FINAL"] = 1
-    dashboard.render(
-        canvas,
+    model = dashboard.dashboard_view(
         job_id,
         snapshot.scheduler or {"state": "QUERYING"},
         identity,
         workflow,
-        refresh_seconds,
-        time.monotonic()
-        - max(0, (datetime.now(UTC) - snapshot.trace_at).total_seconds())
-        if snapshot.trace_at is not None
-        else None,
-        view,
-        scroll,
+        height=height,
+        width=width,
+        view=view,
+        work_scroll=scroll,
+        footer=(
+            "NFS-light %ss (%s)"
+            % (
+                refresh_seconds,
+                "unavailable"
+                if snapshot.trace_at is None
+                else "%ss ago"
+                % max(
+                    0,
+                    int((datetime.now(UTC) - snapshot.trace_at).total_seconds()),
+                ),
+            ),
+            "dim",
+        ),
     )
-    return canvas.text()
+    from itertools import groupby
+    from rich.text import Text
+
+    styles = {
+        "normal": "",
+        "dim": "dim",
+        "border": "dim cyan",
+        "label": "bold cyan",
+        "value": "bold",
+        "title": "bold cyan",
+        "panel_title": "bold magenta",
+        "green": "green",
+        "green_bold": "bold green",
+        "cyan_bold": "bold cyan",
+        "yellow": "yellow",
+        "yellow_bold": "bold yellow",
+        "red": "red",
+        "cyan": "cyan",
+    }
+    result = Text()
+    for row in dashboard.render_view(model):
+        for style, cells in groupby(row, key=lambda cell: cell[1]):
+            result.append(
+                "".join(character for character, _ in cells),
+                style=styles.get(style) or None,
+            )
+        result.append("\n")
+    return result
 
 
 def render_watch_text(snapshot, *, now):

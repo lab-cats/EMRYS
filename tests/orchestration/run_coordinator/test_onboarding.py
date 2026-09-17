@@ -1091,49 +1091,44 @@ def test_manifest_init_lists_missing_biology_and_writes_nothing(
     assert "--sample sample_b CONDITION REPLICATE STRANDEDNESS" in error
 
 
-@pytest.mark.parametrize("mate_marker", ("R", ""))
-def test_manifest_init_rejects_unpaired_fastq_without_writing(
-    tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
-    mate_marker: str,
-) -> None:
-    r1 = _fastqs(tmp_path, "sample_a", mate_marker=mate_marker)[0]
-    output = tmp_path / "drafts"
-    result = cli.main(
-        _manifest_command(
-            output,
-            (r1,),
-            samples=(("sample_a", "control", "pair_1", "unknown"),),
-            execute=True,
-        )
-    )
-
-    assert result == 2
-    assert not output.exists()
-    assert "unpaired FASTQ sample: sample_a" in capsys.readouterr().err
-
-
 @pytest.mark.parametrize(
-    ("unsafe_name", "message"),
-    (("[literal]", "explicit normalized path"), ('literal"path', "raw TSV field")),
+    ("fault", "mate_marker", "message"),
+    (
+        ("unpaired", "R", "unpaired FASTQ sample: sample_a"),
+        ("unpaired", "", "unpaired FASTQ sample: sample_a"),
+        ("unsafe-[literal]", "R", "explicit normalized path"),
+        ('unsafe-literal"path', "R", "raw TSV field"),
+        ("condition", "R", "condition must match"),
+        ("hardlink", "R", "one FASTQ file is reused"),
+        ("hardlink", "", "one FASTQ file is reused"),
+    ),
 )
-def test_manifest_init_rejects_paths_the_project_cannot_consume(
+def test_manifest_fault_scenarios_write_nothing(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
-    unsafe_name: str,
+    fault: str,
+    mate_marker: str,
     message: str,
 ) -> None:
-    unsafe_directory = tmp_path / unsafe_name
-    unsafe_directory.mkdir()
-    fastqs = _fastqs(unsafe_directory, "sample_a")
+    root = tmp_path
+    if fault.startswith("unsafe-"):
+        root /= fault.removeprefix("unsafe-")
+        root.mkdir()
+    fastqs = _fastqs(root, "sample_a", mate_marker=mate_marker)
+    if fault == "unpaired":
+        fastqs.pop()
+    elif fault == "hardlink":
+        fastqs[1].unlink()
+        fastqs[1].hardlink_to(fastqs[0])
     output = tmp_path / "drafts"
+    condition = "bad\tcondition" if fault == "condition" else "control"
 
     assert (
         cli.main(
             _manifest_command(
                 output,
                 tuple(fastqs),
-                samples=(("sample_a", "control", "pair_1", "forward"),),
+                samples=(("sample_a", condition, "pair_1", "forward"),),
                 execute=True,
             )
         )
@@ -1141,28 +1136,6 @@ def test_manifest_init_rejects_paths_the_project_cannot_consume(
     )
     assert not output.exists()
     assert message in capsys.readouterr().err
-
-
-def test_manifest_init_rejects_a_condition_that_requires_tsv_quoting(
-    tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    fastqs = _fastqs(tmp_path, "sample_a")
-    output = tmp_path / "drafts"
-
-    assert (
-        cli.main(
-            _manifest_command(
-                output,
-                tuple(fastqs),
-                samples=(("sample_a", "bad\tcondition", "pair_1", "forward"),),
-                execute=True,
-            )
-        )
-        == 2
-    )
-    assert not output.exists()
-    assert "condition must match" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("mate_marker", ("R", ""))
@@ -1192,31 +1165,6 @@ def test_manifest_init_pairs_by_the_admitted_file_not_a_symlink_alias(
     assert rows[0]["r2_fastq"] == str(canonical[1])
 
 
-@pytest.mark.parametrize("mate_marker", ("R", ""))
-def test_manifest_init_rejects_hard_linked_fastq_reuse(
-    tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
-    mate_marker: str,
-) -> None:
-    r1 = tmp_path / f"sample_a_{mate_marker}1.fastq.gz"
-    r2 = tmp_path / f"sample_a_{mate_marker}2.fastq.gz"
-    r1.write_bytes(b"same file\n")
-    r2.hardlink_to(r1)
-    output = tmp_path / "drafts"
-
-    assert (
-        cli.main(
-            _manifest_command(
-                output,
-                (r1, r2),
-                samples=(("sample_a", "control", "pair_1", "forward"),),
-                execute=True,
-            )
-        )
-        == 2
-    )
-    assert not output.exists()
-    assert "one FASTQ file is reused" in capsys.readouterr().err
 
 
 def test_synthetic_init_is_dry_run_first_and_refuses_predecessor(

@@ -6,6 +6,7 @@ replace EMRYS inspection or completion evidence.
 
 import datetime as dt
 from collections import Counter
+from dataclasses import dataclass
 import os
 import re
 import statistics
@@ -1275,99 +1276,102 @@ def completion_velocity(model, now):
     )
 
 
-def safe_add(screen, y, x, text, attr=0, limit=None):
-    height, width = screen.getmaxyx()
-    if y < 0 or y >= height or x < 0 or x >= width:
-        return
-    available = width - x - 1
-    if limit is not None:
-        available = min(available, limit)
-    if available <= 0:
-        return
-    screen.addnstr(y, x, text, available, attr)
+@dataclass(frozen=True)
+class DashboardPanel:
+    """One positioned projection in the installed watch dashboard."""
+
+    y: int
+    x: int
+    height: int
+    width: int
+    title: str
+    lines: tuple
+    scroll: int = 0
+    scrollable: bool = False
 
 
-def draw_box(
-    screen, y, x, height, width, title, lines, attrs, scroll=0, scrollable=False
-):
-    max_y, max_x = screen.getmaxyx()
-    height = min(height, max_y - y)
-    width = min(width, max_x - x)
-    if height < 3 or width < 12:
-        return
-    border = attrs["border"]
-    safe_add(screen, y, x, "+" + "-" * (width - 2) + "+", border, width)
-    safe_add(screen, y + height - 1, x, "+" + "-" * (width - 2) + "+", border, width)
-    for row in range(y + 1, y + height - 1):
-        safe_add(screen, row, x, "|", border)
-        safe_add(screen, row, x + width - 1, "|", border)
-    safe_add(
-        screen,
-        y,
-        x + 2,
-        " %s " % title,
-        attrs["panel_title"],
-        width - 4,
-    )
-    content_height = height - 2
-    overflow = len(lines) > content_height
-    visible_height = content_height - 1 if overflow else content_height
-    visible_height = max(1, visible_height)
-    max_scroll = max(0, len(lines) - visible_height)
-    start = min(max(0, scroll), max_scroll) if scrollable else 0
-    visible_lines = lines[start : start + visible_height]
-    for offset, item in enumerate(visible_lines):
-        if isinstance(item, list):
+@dataclass(frozen=True)
+class DashboardView:
+    """Immutable dashboard layout; rendering performs no reads or selection."""
+
+    height: int
+    width: int
+    header: tuple
+    panels: tuple[DashboardPanel, ...] = ()
+    message: tuple | None = None
+    footer: tuple | None = None
+
+
+def render_view(view):
+    """Render a dashboard layout once into terminal-sized styled rows."""
+    cells = [[(" ", "") for _ in range(view.width)] for _ in range(view.height)]
+
+    def write(y, x, value, style="", limit=None):
+        if not (0 <= y < view.height and 0 <= x < view.width):
+            return
+        text = "".join(
+            character if character.isprintable() else ascii(character)[1:-1]
+            for character in str(value)
+        )
+        available = view.width - x
+        if limit is not None:
+            available = min(available, limit)
+        for index, character in enumerate(text[: max(0, available)]):
+            cells[y][x + index] = (character, style)
+
+    used = 0
+    for text, style in view.header:
+        write(0, used, text, style)
+        used += len(str(text))
+    if view.message is not None:
+        write(2, 0, view.message[0], view.message[1], view.width)
+    if view.footer is not None:
+        write(view.height - 1, 1, view.footer[0], view.footer[1], view.width - 2)
+    for panel in view.panels:
+        height = min(panel.height, view.height - panel.y)
+        width = min(panel.width, view.width - panel.x)
+        if height < 3 or width < 12:
+            continue
+        border = "+" + "-" * (width - 2) + "+"
+        write(panel.y, panel.x, border, "border", width)
+        write(panel.y + height - 1, panel.x, border, "border", width)
+        for row in range(panel.y + 1, panel.y + height - 1):
+            write(row, panel.x, "|", "border")
+            write(row, panel.x + width - 1, "|", "border")
+        write(panel.y, panel.x + 2, f" {panel.title} ", "panel_title", width - 4)
+        content_height = height - 2
+        overflow = len(panel.lines) > content_height
+        visible_height = max(1, content_height - overflow)
+        max_scroll = max(0, len(panel.lines) - visible_height)
+        start = min(max(0, panel.scroll), max_scroll) if panel.scrollable else 0
+        for offset, item in enumerate(panel.lines[start : start + visible_height]):
+            segments = item if isinstance(item, list) else [item]
             used = 0
-            available = width - 4
-            for segment in item:
-                if isinstance(segment, tuple):
-                    text, style = segment
-                    attr = attrs.get(style, 0)
-                else:
-                    text, attr = segment, 0
-                text = str(text)
-                remaining = available - used
+            for segment in segments:
+                text, style = segment if isinstance(segment, tuple) else (segment, "")
+                remaining = width - 4 - used
                 if remaining <= 0:
                     break
-                safe_add(
-                    screen,
-                    y + 1 + offset,
-                    x + 2 + used,
-                    text,
-                    attr,
-                    remaining,
+                write(panel.y + 1 + offset, panel.x + 2 + used, text, style, remaining)
+                used += min(len(str(text)), remaining)
+        if overflow:
+            if panel.scrollable:
+                end = min(len(panel.lines), start + visible_height)
+                arrows = ("^" if start else "-") + "/" + (
+                    "v" if end < len(panel.lines) else "-"
                 )
-                used += min(len(text), remaining)
-        elif isinstance(item, tuple):
-            text, style = item
-            attr = attrs.get(style, 0)
-            safe_add(screen, y + 1 + offset, x + 2, text, attr, width - 4)
-        else:
-            text, attr = item, 0
-            safe_add(screen, y + 1 + offset, x + 2, text, attr, width - 4)
-    if overflow:
-        if scrollable:
-            end = min(len(lines), start + visible_height)
-            arrows = ("^" if start else "-") + "/" + ("v" if end < len(lines) else "-")
-            message = "[%s Up/Down] Current Work lines %d-%d of %d" % (
-                arrows,
-                start + 1,
-                end,
-                len(lines),
-            )
-        else:
-            hidden = len(lines) - visible_height
-            message = "... %d more lines; resize or use the other view" % hidden
-        safe_add(
-            screen,
-            y + height - 2,
-            x + 2,
-            message,
-            attrs["yellow"],
-            width - 4,
-        )
-    return max_scroll
+                message = "[%s Up/Down] Current Work lines %d-%d of %d" % (
+                    arrows,
+                    start + 1,
+                    end,
+                    len(panel.lines),
+                )
+            else:
+                message = "... %d more lines; resize or use the other view" % (
+                    len(panel.lines) - visible_height
+                )
+            write(panel.y + height - 2, panel.x + 2, message, "yellow", width - 4)
+    return tuple(tuple(row) for row in cells)
 
 
 def wrapped(text, width, prefix=""):
@@ -2233,83 +2237,61 @@ def activity_lines(model, slurm, identity, now):
     return "ACTIVITY", lines
 
 
-def render_header(screen, job_id, view, attrs):
-    safe_add(screen, 0, 1, "EMRYS LIVE DASHBOARD v4.9", attrs["title"])
-    safe_add(
-        screen,
-        0,
-        27,
-        "| %s | job %s | %s"
-        % (view.upper(), job_id, time.strftime("%a %b %d %I:%M:%S %p %Z %Y")),
-        attrs["normal"],
-    )
-
-
-def render_footer(screen, row, width, attrs, refresh_seconds, last_sync, stream_status):
-    if stream_status is not None:
-        safe_add(screen, row, 1, stream_status, attrs["yellow"], width - 2)
-        row += 1
-    age = (
-        "unavailable"
-        if last_sync is None
-        else "%ss ago" % max(0, int(time.monotonic() - last_sync))
-    )
-    footer = (
-        "[Up/Down/PgUp/PgDn] scroll  [Tab] switch  [r] recheck job/logs  [q] quit | NFS-light %ss (%s)"
-        % (refresh_seconds, age)
-    )
-    safe_add(screen, row, 1, footer, attrs["dim"], width - 2)
-
-
-def render(
-    screen,
+def dashboard_view(
     job_id,
     slurm,
     identity,
     model,
-    refresh_seconds,
-    last_sync,
+    *,
+    height,
+    width,
     view,
     work_scroll,
-    stream_status=None,
+    now=None,
+    footer=None,
 ):
-    screen.erase()
-    height, width = screen.getmaxyx()
-    attrs = render.attrs
-    now = time.time()
+    """Build the shared overview/detail view without reading external state."""
+    now = time.time() if now is None else now
+    header = (
+        (" EMRYS LIVE DASHBOARD v4.9 ", "title"),
+        (
+            "| %s | job %s | %s"
+            % (view.upper(), job_id, time.strftime("%a %b %d %I:%M:%S %p %Z %Y")),
+            "normal",
+        ),
+    )
     if height < 20 or width < 72:
-        safe_add(screen, 0, 0, "EMRYS LIVE DASHBOARD v4.9", attrs["title"])
-        safe_add(
-            screen,
-            2,
-            0,
-            "Terminal is too small (%dx%d). Resize to at least 72x20."
-            % (width, height),
-            attrs["yellow"],
+        return DashboardView(
+            height,
+            width,
+            header,
+            message=(
+                "Terminal is too small (%dx%d). Resize to at least 72x20."
+                % (width, height),
+                "yellow",
+            ),
         )
-        screen.refresh()
-        return
 
     details = view == "details"
     terminal_state = terminal_failure_state(slurm)
-    render_header(screen, job_id, "details" if details else "overview", attrs)
+    panels = []
 
     def panel(y, x, h, w, title, lines, *, scrollable=False):
-        draw_box(
-            screen,
-            y,
-            x,
-            h,
-            w,
-            title,
-            lines,
-            attrs,
-            scroll=work_scroll if scrollable else 0,
-            scrollable=scrollable,
+        panels.append(
+            DashboardPanel(
+                y,
+                x,
+                h,
+                w,
+                title,
+                tuple(lines),
+                work_scroll if scrollable else 0,
+                scrollable,
+            )
         )
 
     top_lines = (
-        job_lines(slurm, identity, width - 6, attrs)
+        job_lines(slurm, identity, width - 6, {})
         if details
         else overview_lines(slurm, identity, model, width - 6)
     )
@@ -2324,8 +2306,7 @@ def render(
         top_lines,
     )
     main_y = 1 + top_h
-    footer_y = height - 1 - (stream_status is not None)
-    main_h = footer_y - main_y
+    main_h = height - main_y - bool(footer)
     current_title = "CURRENT WORK DETAILS" if details else "CURRENT WORK"
     if width >= 140 and main_h >= (24 if details else 38):
         left_w = (
@@ -2416,7 +2397,4 @@ def render(
             current_lines(model, identity, now, width - 6, details, terminal_state),
             scrollable=True,
         )
-    render_footer(
-        screen, footer_y, width, attrs, refresh_seconds, last_sync, stream_status
-    )
-    screen.refresh()
+    return DashboardView(height, width, header, tuple(panels), footer=footer)
