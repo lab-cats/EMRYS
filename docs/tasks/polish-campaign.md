@@ -317,21 +317,15 @@ removed; the [Run-coordinator contract](../../src/emrys/orchestration/run_coordi
 defines rejection in new profiles and current-version resume behavior. The broader
 `REPORT-ROSTER-01` outcome remains open.
 
-### 14. Retire the frozen dashboard when its existing row is selected
+### 14. Retire the replaced standalone dashboard
 
-**Finding:** The [coordinator guide](../../src/emrys/orchestration/run_coordinator/README.md)
-describes the dashboard as a stale, unsupported preview frozen under
-**`DASHBOARD-RETIRE-01`**.
-
-**Disposition and acceptance:** The user requires a usable replacement before
-retirement. Keep the dashboard and its protections until that prerequisite is
-implemented and accepted; retirement is excluded from the current tranche.
-The eventual caller-complete change must preserve Project-local inspection,
-required scheduler accounting, sanitized streams, and exact historical reads,
-or obtain an explicit narrower capability decision. Product code, parsers,
-dedicated tests, targets, and stale guidance retire together only under that
-approved scope. The existing row retains the decision and evidence-deletion
-boundaries; potential size reduction does not override the replacement condition.
+**Disposition and acceptance:** On 2026-09-17 the institutional owner accepted
+the installed watch as the replacement and approved a caller-complete compression
+that preserves watch behavior. The standalone curses/CLI wrapper, duplicate
+scheduler query, Make target, dedicated protections, and stale guidance retire
+together. Project-local inspection, strict scheduler accounting, sanitized
+streams, exact historical reads, and the shared watch parser/renderer remain.
+`DASHBOARD-RETIRE-01` retains the separate new-name and evidence-deletion work.
 
 ## Development and CI tooling
 

@@ -77,7 +77,7 @@ authority.
 
 ## Watch one fixed selection
 
-The dashboard offers the legacy overview and detail screens plus verified
+The installed watch offers overview and detail screens plus verified
 Run evidence and selected logs. From a Project, the ordinary command selects
 the sole retained submission before its Run exists, or the sole Run afterward:
 
@@ -113,8 +113,8 @@ Use `emrys inspect RUN --watch` for a Run's evidence and application/Task logs.
 Its recorded job number does not establish current scheduler identity; select
 its retained request for scheduler observations and the workflow trace.
 
-The dashboard also reproduces standalone scheduler discovery and historical
-selection without requiring a Project:
+Watch also supports scheduler discovery and historical selection without
+requiring a Project:
 
 ```bash
 emrys inspect --watch --job-id
@@ -160,7 +160,7 @@ scientific data. Screen painting performs no reads. Timers cannot refresh the
 authority of dated Run/Task/reporting evidence or infer recovery eligibility.
 The selected request's historical Attempt stays distinct from the Run's latest
 Attempt. Reconnecting to the same selection reconstructs its full workflow
-trace. The dashboard never switches to another job or a guessed latest log.
+trace. Watch never switches to another job or a guessed latest log.
 
 Workflow stdout/stderr use the shared full-history reader; other selected tails
 retain at most 64 KiB and 256 lines. Missing, changed, truncated or replaced
@@ -169,8 +169,8 @@ are sanitized. A stalled read preserves its earlier date and cannot prevent
 quitting after the view opens. Initial selection remains synchronous. Memory
 for the parsed workflow trace grows with retained diagnostic history.
 
-Both interactive entry points capture and ignore mouse reports; use the
-documented keyboard controls to navigate. A tmux binding can instead translate
+The interactive view captures and ignores mouse reports; use the documented
+keyboard controls to navigate. A tmux binding can instead translate
 wheel movement into arrow keys before EMRYS receives it. EMRYS cannot distinguish
 those translated keys from physical arrow-key input; adjust that tmux binding if
 wheel movement still scrolls. Log colors distinguish literal severity and common
@@ -185,9 +185,7 @@ same exact paths. Use `--log-root` to select a historical custom application roo
 
 `--snapshot`, redirected output, or a noninteractive terminal produces one
 plain snapshot. `NO_COLOR` disables optional status colors. Ordinary watch
-creates no operational action, log or persistent state. The original standalone
-entry point remains supported until institutional validation and coordinated
-retirement are complete.
+creates no operational action, log or persistent state.
 
 ### Review CLI operations from watch
 
@@ -652,13 +650,12 @@ Specialist commands validate existing outputs, reconcile reference provenance
 owner-validation report because validator exit zero alone does not establish
 semantic success.
 
-The installed dashboard shares the legacy selection, scheduler and diagnostic
-presentation owners. The original CSU entry point remains supported until
-institutional validation and coordinated retirement. Shared observation checks
+The installed watch shares the selection, scheduler and diagnostic presentation
+owners. Shared observation checks
 numeric ownership, exact root IDs, duplicate accounting records and selected
 stream paths; uncertainty appears as `UNKNOWN`. Log interpretation does not
 replace Run inspection or establish which retained request owns a reused job ID.
-Its existing `--offline` mode requires an explicit job ID and both stream paths.
+Its `--offline` mode requires an explicit job ID and both stream paths.
 Selection, snapshots and interactive refresh make no Slurm queries; scheduler
 state stays `UNKNOWN` while the same sanitized diagnostic streams remain usable.
 

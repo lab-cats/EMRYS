@@ -2445,17 +2445,7 @@ def inspect_from_args(
             )
         )
         verbose = getattr(arguments, "verbose", False)
-        milestones = _inspection_presentation.milestone_progress(
-            observed.tasks,
-            processing_source_state=(
-                None
-                if observed.processing_source_run_id is None
-                else "reused"
-                if observed.processing_source is not None
-                else "blocked"
-            ),
-        )
-        elapsed = _inspection_presentation.attempt_elapsed_line(observed)
+        projection = _inspection_presentation.project_run(observed)
         result_lines = _verified_report_location_lines(
             observed.verified_report_locations
         )
@@ -2475,7 +2465,7 @@ def inspect_from_args(
     present_status = partial(console_status, file=sys.stdout)
     run_name = inspection.human_run_name(run_root.name)
     present_field("Run", run_name, value_style="bold blue")
-    if completion := _inspection_presentation.completion_line(observed):
+    if completion := projection.completion:
         present(completion, style="bold green")
     present_status("Run admission", observed.integrity)
     latest = observed.latest_attempt
@@ -2512,23 +2502,19 @@ def inspect_from_args(
                 applications, detail="verbose"
             ):
                 _print_safe(line)
-        print(elapsed)
+        print(projection.elapsed)
         present("Scientific milestones:", style="bold blue")
-        for label, state, verified, total in milestones:
+        for label, state, verified, total in projection.milestones:
             print(f"  {label}: {state}")
             if observed.processing_source_run_id is None or total:
                 print(f"    Verified tasks: {verified}/{total}")
         if observed.tasks:
             print("Scientific task observations:")
-            for label, count in Counter(
-                _inspection_presentation.task_observation(task)
-                for task in observed.tasks
-            ).items():
+            for label, count in projection.task_counts:
                 print(f"  {label}: {count}")
         if observed.reporting_status != "not applicable":
             print("Reporting transactions:")
-            for kind, records in observed.reporting_completion_records.items():
-                state = _inspection_presentation.reporting_observation(records)
+            for kind, state in projection.reporting:
                 print(f"  {kind}: {state}")
         print(f"Run ID: {observed.run_id}")
         if observed.processing_source_run_id is not None:

@@ -837,9 +837,8 @@ That explanation was not independently verified and is not an established
 description of current behavior. The unclear label is the recorded finding.
 
 **Implemented software outcome:** The installed watch control now says
-`r recheck selection/evidence (read-only)`. The retained standalone dashboard
-uses `r recheck job/logs`. Both labels describe the read-only action without the
-unexplained “verify/associate again” wording. Public terminal fixtures passed the
+`r recheck selection/evidence (read-only)`. The label describes the read-only
+action without the unexplained “verify/associate again” wording. Public terminal fixtures passed the
 integrated standard CI; operator wording acceptance remains pending, so CV-U15
 is **Verification pending**.
 
@@ -852,8 +851,8 @@ is **Verification pending**.
 including the log view where it reportedly remains possible. Preserve keyboard
 scrolling using the up/down arrows and `j`/`k`.
 
-**Implemented software outcome:** Installed watch and the retained standalone
-dashboard capture and ignore mouse reports, then restore terminal mouse state on
+**Implemented software outcome:** Installed watch captures and ignores mouse
+reports, then restores terminal mouse state on
 exit. Arrow, `j`/`k`, Page Up/Down and Home/`g` keyboard navigation remains.
 Terminal fixtures cover mouse reports, keyboard navigation and restoration and
 passed the integrated standard CI. An external terminal multiplexer can still
@@ -880,9 +879,9 @@ sanitized retained tail, highlights matches, and `n`/`N` moves forward/backward.
 One-based displayed line numbers are explicitly tail-relative. Stream changes
 reset search and resume follow. The existing 64-KiB/256-line read bound, identity
 pinning, sanitization, rotation/truncation handling and ignored mouse reports are
-unchanged. The standalone dashboard has no selectable evidence/log view and
-retains its existing bounded keyboard scrolling. The implementation checkpoint's
-standard CI recorded above passed. CV-U16 is **Verification pending** for
+unchanged. The standalone dashboard had no selectable evidence/log view and was
+retired after the institutional owner accepted installed watch. The implementation
+checkpoint's standard CI recorded above passed. CV-U16 is **Verification pending** for
 Viking/tmux terminal acceptance.
 
 **September 17 adversarial audit:** The implementation records when the selected
@@ -1701,9 +1700,9 @@ exercise ran; the card is Verification pending.
 
 **Tranche consolidation and accounting:** The four cards add no production
 file, schema, dependency, configuration record or mutable selection state.
-`watch` routes through the existing inspection/dashboard owner, static and live
+`watch` routes through the existing inspection/presentation owner, static and live
 completion share one projection, and one terminal-selection helper replaces the
-duplicated picker mechanics. The expert `inspect` surface and legacy dashboard
+duplicated picker mechanics. The expert `inspect` surface and shared watch
 parser/renderer remain necessary owners, so this bounded audit found no complete
 production surface that these cards safely supersede. The current source-code
 diff is 385 insertions and 42 deletions, a net increase of 343 lines; committing
@@ -2669,24 +2668,24 @@ misleading interim inspection output to monitor work (E05, E06, E12).
 **Acceptance:** Provide one view of scheduler state, stage/task progress,
 elapsed time, relevant logs, and next supported actions. Use current Run and
 submission authorities with explicit uncertainty. Preserve the existing
-dashboard's useful discovery/accounting behavior and sanitized stream handling;
-cover missing/rotated/truncated logs and reconnecting. Retire the old dashboard
-only after the replacement is validated under `DASHBOARD-RETIRE-01`.
-**Owners/dependencies:** Run coordinator presentation and existing dashboard;
+diagnostic discovery/accounting behavior and sanitized stream handling; cover
+missing/rotated/truncated logs and reconnecting.
+**Owners/dependencies:** Run coordinator inspection/presentation and watch;
 CV-15/20/21/25. The selected CLI handoffs are completed under CV-24.
 
 **Implemented evidence projection:** CV-15 supplies Task evidence counts;
 CV-25 adds admitted terminal outcomes and exact retained logs to the same
 inspection snapshot. CV-20 supplies exact selected-request scheduler state.
-These are shared CLI observations for the integrated watch view; the existing
-dashboard remains in place until its complete replacement acceptance is met.
+These are shared CLI observations for the integrated watch view. The institutional
+owner accepted that replacement on 2026-09-17, after which the standalone
+dashboard wrapper and duplicate mechanics were retired.
 
 **Dashboard parity implementation:** Installed `inspect --watch` now shares the
-legacy diagnostic discovery, selection, parser and overview/detail renderer.
-It reproduces explicit/recent/historical job selection, environment precedence,
+diagnostic discovery, selection, parser and overview/detail renderer.
+It provides explicit/recent/historical job selection,
 offline owned streams, configurable refresh and snapshots, pipeline history,
 sample lanes and peer timings, stage explanations/resources, current frontier,
-activity/errors, scheduler placement/usage and legacy navigation. Exact-request
+activity/errors, scheduler placement/usage and keyboard navigation. Exact-request
 resources preserve stronger name/UID/cluster/path identity; optional batch usage
 has independent dates and before/after local identity checks.
 
@@ -2776,7 +2775,7 @@ before Run creation and during a native task. Reuse CV-10 recovery mechanics.
 scheduler job name in closed v3 context. Planning, validation and selected
 observation bind the same name alongside numeric owner, root job ID, cluster
 and exact stream paths. Older v1/v2 records keep read-only inspection and gain
-no cancellation authority. Existing dashboard discovery remains compatible.
+no cancellation authority. Shared watch discovery remains compatible.
 This prepares safe target selection; it does not execute cancellation.
 
 **Stop design boundary:** Select an exact retained request with Project context,
@@ -2846,20 +2845,19 @@ of any submission. Preserve the rule against duplicate submission on uncertainty
 **Owners/dependencies:** Submission/control, inspection/presentation/logging;
 CV-03/15/16/18/25.
 
-**Implemented scheduler-observer prerequisite:** The existing dashboard now
-shares strict root-job/numeric-UID admission across discovery, accounting, and
+**Implemented scheduler-observer prerequisite:** Watch uses strict
+root-job/numeric-UID admission across discovery, accounting, and
 state observation. It requests accounting duplicates rather than silently
 choosing the latest reused ID, rejects ambiguous/missing/mismatched identity,
 checks selected stream paths on refresh, and reports unavailable proof as
 `UNKNOWN`. Exact batch-step identity controls usage display. This retires
 username-environment matching and duplicate first-row accounting parsing while
-preserving standalone loading and existing bounded discovery/stream handling.
+preserving bounded discovery/stream handling.
 Job-ID/UID/path agreement is not request/cluster identity or recovery proof;
-the current inspection path below integrates retained requests. Institutional
-dashboard validation and coordinated retirement remain under
-`DASHBOARD-RETIRE-01`. The standalone dashboard suite
-passes 66 local tests; after duplicate-query changes all 50 affected cases pass.
-Actual scheduler/site verification remains pending.
+the current inspection path below integrates retained requests. The institutional
+owner accepted installed watch on 2026-09-17; its shared observer then replaced
+the looser standalone scheduler query. Actual scheduler/site verification
+remains pending.
 
 **Selected first slice:** Ordinary Run/resume/report now retain a private,
 create-absent request context and raw scheduler responses after approval,
@@ -2885,9 +2883,9 @@ No newest-request selection, acceptance inference or Run association is added.
 **Implemented stream-identity prerequisite:** Each ordinary submission freezes
 one request UUID before preview/confirmation and uses it in both scheduler
 stream destinations. The v2 context binds those paths to the request directory;
-v1 remains readable as historical diagnostics. Existing dashboard discovery
-accepts exact matching token-based stream pairs and preserves legacy support.
-Doctor's qualification paths and isolated dashboard loading are unchanged.
+v1 remains readable as historical diagnostics. Watch discovery accepts exact
+matching token-based stream pairs and preserves historical support. Doctor's
+qualification paths are unchanged; isolated standalone loading was retired later.
 The token alone does not establish a job's current state or cluster identity.
 Transport/dashboard/shared-input tests pass 191 cases, with 17 affected cases
 rechecked after the final naming changes. Public confirmation/decline and
@@ -2901,8 +2899,8 @@ accounting. State, queue reason and exit status are escaped observations.
 Legacy/incomplete requests make no queries; unsupported, malformed, mismatched,
 duplicate or unavailable metadata remains `UNKNOWN`. The ordinary roster makes
 no scheduler calls, keeping query cost independent of retained history. The
-existing dashboard and request adapter share extracted stdlib identity and
-accounting mechanics while preserving isolated dashboard loading.
+watch and the request adapter share extracted stdlib identity and accounting
+mechanics.
 
 **Verification and remaining scope:** Tiny real subprocess tests cover accepted,
 rejected, malformed, invalid-byte, interrupted, and early-stdin-close responses;

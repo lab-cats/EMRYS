@@ -138,9 +138,9 @@ class _TerminalOutput:
 
 
 def _command_arguments(project: Path, **options) -> argparse.Namespace:
-    return argparse.Namespace(
-        project=project, profile=None, verbose=False, log_root=None, **options
-    )
+    values = dict(project=project, profile=None, verbose=False, log_root=None)
+    values.update(options)
+    return argparse.Namespace(**values)
 
 
 def _read_log(path: Path) -> list[dict]:
@@ -336,6 +336,23 @@ def _run_candidate(readiness, resources, *, through: str = "analysis"):
     )
 
 
+def _attempt_plan(
+    readiness,
+    resources,
+    workspace: Path,
+    *,
+    run=None,
+    through: str = "analysis",
+):
+    return build_attempt_plan(
+        run or _run_candidate(readiness, resources, through=through),
+        readiness,
+        workspace,
+        resources=resources,
+        operation="execute",
+    )
+
+
 def _plan(
     tmp_path: Path,
     *,
@@ -352,13 +369,7 @@ def _plan(
         step_threads=step_threads,
         regions_file=regions_file,
     )
-    return build_attempt_plan(
-        _run_candidate(readiness, resources, through=through),
-        readiness,
-        workspace,
-        resources=resources,
-        operation="execute",
-    )
+    return _attempt_plan(readiness, resources, workspace, through=through)
 
 
 def _freeze_attempt_identity(
@@ -961,13 +972,7 @@ def test_distinct_installed_module_materializes_one_typed_task(
         tmp_path / "rejected"
     )
     with pytest.raises(MaterializationError, match="requires at least 2 threads"):
-        build_attempt_plan(
-            _run_candidate(rejected_readiness, rejected_resources),
-            rejected_readiness,
-            rejected_workspace,
-            resources=rejected_resources,
-            operation="execute",
-        )
+        _attempt_plan(rejected_readiness, rejected_resources, rejected_workspace)
 
     readiness, resources, _project, workspace = _readiness(
         tmp_path / "run",
@@ -983,13 +988,7 @@ def test_distinct_installed_module_materializes_one_typed_task(
         },
     )
     run = _run_candidate(readiness, resources)
-    plan = build_attempt_plan(
-        run,
-        readiness,
-        workspace,
-        resources=resources,
-        operation="execute",
-    )
+    plan = _attempt_plan(readiness, resources, workspace, run=run)
 
     assert run.analysis.revision.record["identity"]["analysis_module"][
         "configuration"
@@ -1013,13 +1012,7 @@ def test_processing_plan_is_a_distinct_closed_31_task_run(tmp_path: Path) -> Non
     readiness, resources, _project, workspace = _readiness(tmp_path)
     full = _run_candidate(readiness, resources)
     processing = _run_candidate(readiness, resources, through="processing")
-    plan = build_attempt_plan(
-        processing,
-        readiness,
-        workspace,
-        resources=resources,
-        operation="execute",
-    )
+    plan = _attempt_plan(readiness, resources, workspace, run=processing)
     owners = {
         str(item["machine_key"]): str(item["step_id"])
         for item in readiness.analysis.profile["owner_tasks"]
@@ -1056,13 +1049,7 @@ def test_subset_plan_materializes_one_bound_analysis_sample_manifest(
         replicate_count=3,
         sample_ids=["PUM1_3", "EV_2", "PUM1_2", "EV_3"],
     )
-    plan = build_attempt_plan(
-        _run_candidate(readiness, resources),
-        readiness,
-        workspace,
-        resources=resources,
-        operation="execute",
-    )
+    plan = _attempt_plan(readiness, resources, workspace)
 
     manifest = (
         plan.run_root
@@ -1105,13 +1092,7 @@ def test_subset_plan_materializes_one_bound_analysis_sample_manifest(
         if record["scope"]["scope_type"] == "sample"
     } == {"EV_2", "PUM1_2", "EV_3", "PUM1_3"}
 
-    processing = build_attempt_plan(
-        _run_candidate(readiness, resources, through="processing"),
-        readiness,
-        workspace,
-        resources=resources,
-        operation="execute",
-    )
+    processing = _attempt_plan(readiness, resources, workspace, through="processing")
     assert not any(
         "workflow-inputs" in item.path.parts for item in processing.attempt_files
     )
@@ -1902,13 +1883,7 @@ def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
         tmp_path / "case",
         source_root=checkout,
     )
-    plan = build_attempt_plan(
-        _run_candidate(readiness, resources),
-        readiness,
-        workspace,
-        resources=resources,
-        operation="execute",
-    )
+    plan = _attempt_plan(readiness, resources, workspace)
     base = lifecycle.default_lifecycle_ops()
     ops = replace(
         base,
@@ -1993,13 +1968,7 @@ def test_full_node_policy_reaches_snakemake_and_all_stage_commands(
             for name in ("samples", "partitions")
         },
     )
-    plan = build_attempt_plan(
-        _run_candidate(readiness, resources),
-        readiness,
-        workspace,
-        resources=resources,
-        operation="execute",
-    )
+    plan = _attempt_plan(readiness, resources, workspace)
     argv = plan.attempt_record["snakemake_argv"]
     assert argv[argv.index("--cores") + 1] == str(cores)
     assert f"mem_mb={memory_mb}" in argv
@@ -2052,13 +2021,7 @@ def test_plan_freezes_native_memory_only_for_supported_tools(
         ),
     ).resource_policy
     resources = resolve_resource_policy(policy, initial.allocation)
-    plan = build_attempt_plan(
-        _run_candidate(readiness, resources),
-        readiness,
-        workspace,
-        resources=resources,
-        operation="execute",
-    )
+    plan = _attempt_plan(readiness, resources, workspace)
     observed = set()
     for record in _task_records(plan):
         producer = record["producer_argv"]
@@ -2092,13 +2055,7 @@ def test_plan_rejects_unusable_native_memory_before_publication(
     with pytest.raises(
         MaterializationError, match=f"Stage {step} memory cannot provide"
     ):
-        build_attempt_plan(
-            _run_candidate(readiness, resources),
-            readiness,
-            workspace,
-            resources=resources,
-            operation="execute",
-        )
+        _attempt_plan(readiness, resources, workspace)
     assert not (workspace / "runs").exists()
 
 
@@ -2251,11 +2208,7 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert observed.run_id == plan.run.run_id
     assert observed.latest_attempt is None
 
-    arguments = argparse.Namespace(
-        project=plan.run.analysis.source_path,
-        run=None,
-        verbose=False,
-    )
+    arguments = _command_arguments(plan.run.analysis.source_path, run=None)
     inspection_bytes = {
         path: path.read_bytes() for path in plan.run_root.rglob("*") if path.is_file()
     }
@@ -2624,13 +2577,7 @@ def test_new_run_rejects_processing_edge_drift_but_existing_run_resumes(
     assert not (workspace / "runs").exists()
 
     # This older accepted profile remains an immutable resumable Run.
-    first = build_attempt_plan(
-        _run_candidate(readiness, resources),
-        readiness,
-        workspace,
-        resources=resources,
-        operation="execute",
-    )
+    first = _attempt_plan(readiness, resources, workspace)
     observed = _failed_run(first)
     _patch_resume_control(monkeypatch, observed, readiness, resources, [])
     second = control._plan_resume(
@@ -2770,13 +2717,7 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     run_two = _run_candidate(readiness_two, first_resources)
     assert run_two.run_id == run_one.run_id
 
-    first = build_attempt_plan(
-        run_one,
-        readiness_one,
-        workspace,
-        resources=first_resources,
-        operation="execute",
-    )
+    first = _attempt_plan(readiness_one, first_resources, workspace, run=run_one)
     base = lifecycle.default_lifecycle_ops()
     first_ops = replace(
         base,
@@ -2989,13 +2930,7 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
     tmp_path: Path,
 ) -> None:
     readiness, resources, _request, workspace = _readiness(tmp_path)
-    initial = build_attempt_plan(
-        _run_candidate(readiness, resources),
-        readiness,
-        workspace,
-        resources=resources,
-        operation="execute",
-    )
+    initial = _attempt_plan(readiness, resources, workspace)
     base = lifecycle.default_lifecycle_ops()
     common_ops = replace(
         base,
@@ -3293,12 +3228,10 @@ def test_interactive_resume_uses_the_same_no_write_gate(
 
     monkeypatch.setattr(control, "_plan_resume", plan_resume)
     _terminal_input(monkeypatch, "no\n")
-    arguments = argparse.Namespace(
-        project=plan.run.analysis.source_path,
+    arguments = _command_arguments(
+        plan.run.analysis.source_path,
         run=plan.run.run_id,
         profile="resume-ci",
-        verbose=False,
-        log_root=None,
         execute=False,
     )
 
@@ -3627,12 +3560,10 @@ def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Names
     document = yaml.safe_load(profile.read_bytes())
     document["resources"] = symbolic_resource_document()
     profile.write_text(yaml.safe_dump(document), encoding="utf-8")
-    return argparse.Namespace(
-        project=project,
+    return _command_arguments(
+        project,
         analysis="sensitivity",
         profile=str(profile),
-        verbose=False,
-        log_root=None,
         allow_duplicate_submission=False,
         execute=execute,
     )
@@ -4400,12 +4331,10 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
 ) -> None:
     first = _plan(tmp_path, workflow_cores=workflow_cores)
     _failed_run(first)
-    arguments = argparse.Namespace(
-        project=first.run.analysis.source_path,
+    arguments = _command_arguments(
+        first.run.analysis.source_path,
         run=first.run.run_id,
         profile=str(_slurm_profile(tmp_path, cpus_per_task=cpus_per_task)),
-        verbose=False,
-        log_root=None,
         execute=True,
     )
     submissions = []
@@ -4917,12 +4846,10 @@ def test_public_slurm_errors_keep_control_exit_and_never_retry(
         run_id = "run-" + "a" * 64
         if command == "report":
             (project.parent / "runs" / run_id).mkdir(parents=True)
-    arguments = argparse.Namespace(
-        project=project,
+    arguments = _command_arguments(
+        project,
         run=run_id,
         profile=str(_slurm_profile(root, cpus_per_task=12)),
-        verbose=False,
-        log_root=None,
         execute=True,
     )
     scheduler = control.slurm_submission
@@ -5405,12 +5332,10 @@ def test_standalone_report_logging_boundary(
             )
 
         monkeypatch.setattr(control, "open_attempt_log", reject_log)
-    arguments = argparse.Namespace(
-        project=project,
+    arguments = _command_arguments(
+        project,
         run=run_root.name,
         execute=execute_requested,
-        verbose=False,
-        log_root=None,
     )
     monkeypatch.setattr(reporting_operation, "run_reporting", report)
     if not execute_requested and outcome_status == "reused":
@@ -5981,12 +5906,10 @@ def _public_native_cancellation_child(root: Path) -> None:
             ),
         )
         patched.setattr(control.lifecycle, "default_lifecycle_ops", lambda: ops)
-        arguments = argparse.Namespace(
-            project=project,
-            profile=None,
+        arguments = _command_arguments(
+            project,
             allocated_cores=1,
             execute=True,
-            verbose=False,
             log_root=workspace / "logs/application",
         )
         assert control.run_from_args(arguments) == 1
@@ -6242,12 +6165,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
             fail_after_rule=fail_after_rule[0],
         ),
     )
-    run_arguments = argparse.Namespace(
-        project=request,
-        profile=None,
-        allocated_cores=1,
-        execute=True,
-    )
+    run_arguments = _command_arguments(request, allocated_cores=1, execute=True)
     run_id = _run_candidate(readiness, resources).run_id
 
     assert control.run_from_args(run_arguments) == 1
@@ -6261,12 +6179,8 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert 0 < len(before) < 35
 
     fail_after_rule[0] = None
-    resume_arguments = argparse.Namespace(
-        project=request,
-        run=run_id,
-        profile=None,
-        allocated_cores=1,
-        execute=False,
+    resume_arguments = _command_arguments(
+        request, run=run_id, allocated_cores=1, execute=False
     )
     assert control.resume_from_args(resume_arguments) == 0
     dry_output = capsys.readouterr().err
@@ -6423,11 +6337,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     }
     assert len(application_paths) == 2
 
-    inspect_arguments = argparse.Namespace(
-        project=request,
-        run=run_id,
-        verbose=False,
-    )
+    inspect_arguments = _command_arguments(request, run=run_id)
     assert control.inspect_from_args(inspect_arguments) == 0
     inspect_output = capsys.readouterr().out
     assert "Run diagnostic logs:" not in inspect_output
@@ -6587,10 +6497,9 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         ),
     )
 
-    source_arguments = argparse.Namespace(
-        project=project,
+    source_arguments = _command_arguments(
+        project,
         analysis="primary",
-        profile=None,
         through="processing",
         execute=True,
     )
@@ -6626,10 +6535,9 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     }
 
     fail_after_rule[0] = "generate_partitioned_cohort_mpileup_VCFs"
-    target_arguments = argparse.Namespace(
-        project=project,
+    target_arguments = _command_arguments(
+        project,
         analysis="sensitivity",
-        profile=None,
         through="analysis",
         from_processing_run=source_run_id,
         execute=True,
@@ -6679,10 +6587,9 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
 
     assert (
         control.resume_from_args(
-            argparse.Namespace(
-                project=project,
+            _command_arguments(
+                project,
                 run=target_root.name,
-                profile=None,
                 allocated_cores=1,
                 execute=True,
             )
@@ -6745,8 +6652,8 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
 
     assert (
         control.inspect_from_args(
-            argparse.Namespace(
-                project=project,
+            _command_arguments(
+                project,
                 run=target_root.name,
                 verbose=True,
             )
@@ -6803,10 +6710,9 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     )
     assert (
         control.run_from_args(
-            argparse.Namespace(
-                project=project,
+            _command_arguments(
+                project,
                 analysis="source-drift",
-                profile=None,
                 through="analysis",
                 from_processing_run=source_run_id,
                 execute=True,
@@ -6842,10 +6748,9 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     assert not inspection.inspect_run(drift_root).recovery_available
     assert (
         control.resume_from_args(
-            argparse.Namespace(
-                project=project,
+            _command_arguments(
+                project,
                 run=drift_root.name,
-                profile=None,
                 allocated_cores=1,
                 execute=True,
             )

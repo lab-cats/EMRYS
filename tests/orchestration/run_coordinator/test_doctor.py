@@ -2463,6 +2463,25 @@ def test_default_slurm_qualification_hides_submission_record_paths(
         doctor._qualify_slurm(plan, result, attempt, controls)
 
 
+_INTERRUPTED_FAILURES = {"finalize", "scheduler_interrupt"}
+_SCHEDULER_FAILURES = {"scheduler", "scheduler_unconfirmed", "scheduler_interrupt"}
+_RUNTIME_FAILURES = {"runtime", "startup", "head_runtime"}
+_FINAL_DRIFT_FAILURES = {"final_project", "final_package", "final_inventory"}
+_PROBED_FAILURES = {
+    "head_runtime",
+    "execution_after",
+    "execution_final",
+    "head_final_error",
+    "head_final_io",
+    *_FINAL_DRIFT_FAILURES,
+}
+_RETAINED_QUALIFICATION_FAILURES = {
+    "execution_final",
+    "head_final_io",
+    *_FINAL_DRIFT_FAILURES,
+}
+
+
 @pytest.mark.parametrize(
     ("failure", "selection", "timing_outcome"),
     (
@@ -2788,11 +2807,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     monkeypatch.setattr(slurm_submission, "submit", submit)
     monkeypatch.setattr(doctor.scheduler_observation, "observe_job", observe_timing)
     expected_status = (
-        0
-        if failure is None
-        else 130
-        if failure in {"finalize", "scheduler_interrupt"}
-        else 1
+        0 if failure is None else 130 if failure in _INTERRUPTED_FAILURES else 1
     )
     assert doctor.doctor_from_args(arguments) == expected_status
     assert records.count("opened") == 1
@@ -2867,7 +2882,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
             assert (
                 r'accounting "unavailable"\n\x1b[31m' in output and "\x1b" not in output
             )
-    if failure in {"scheduler", "scheduler_unconfirmed", "scheduler_interrupt"}:
+    if failure in _SCHEDULER_FAILURES:
         assert waits[0]["outcome"] == "interrupted or failed"
         assert not state["finalized"]
         assert "repair_requalified" not in {item["event"] for item in events}
@@ -2910,7 +2925,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
             for item in events
             if item["phase"] == "terminal"
         ] == [("repair_requalified", "Project verification completed.")]
-    elif failure in {"finalize", "scheduler_interrupt"}:
+    elif failure in _INTERRUPTED_FAILURES:
         assert "Verification interrupted;" in output
     else:
         assert "VERIFICATION FAILED:" in output
@@ -2938,7 +2953,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         else:
             assert r'head cleanup "denied"\n\x1b[31m' in output
             assert "\x1b[31m" not in output
-    if failure in {"final_project", "final_package", "final_inventory"}:
+    if failure in _FINAL_DRIFT_FAILURES:
         assert "Project, package, or runtime changed during head finalization" in output
         assert len(selected_sources) == 5
         assert state["jobs"] == 1
@@ -2947,7 +2962,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         assert len(selected_sources) == 5
         assert selected_sources[0] == selector
         assert all(Path(str(source)) == profile_path for source in selected_sources[1:])
-    if failure in {"runtime", "startup", "head_runtime"}:
+    if failure in _RUNTIME_FAILURES:
         diagnostics = [
             item for item in events if item["event"] == "runtime_check_failed"
         ]
@@ -3003,31 +3018,11 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         ] == [("repair_requalified", "Project verification completed.")]
         assert records.count("opened") == 2
     else:
-        assert state["probes"] == (
-            1
-            if failure
-            in {
-                "head_runtime",
-                "execution_after",
-                "execution_final",
-                "head_final_error",
-                "head_final_io",
-                "final_project",
-                "final_package",
-                "final_inventory",
-            }
-            else 0
-        )
+        assert state["probes"] == (1 if failure in _PROBED_FAILURES else 0)
         assert (
             "interrupted" if failure == "scheduler_interrupt" else "failed"
         ) in records
-        if failure in {
-            "execution_final",
-            "head_final_io",
-            "final_project",
-            "final_package",
-            "final_inventory",
-        }:
+        if failure in _RETAINED_QUALIFICATION_FAILURES:
             qualification.admit_final_qualification(project.source_path.parent, fasta)
         else:
             with pytest.raises(qualification.StorageQualificationError):

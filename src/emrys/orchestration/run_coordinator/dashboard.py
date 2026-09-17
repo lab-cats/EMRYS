@@ -1,13 +1,9 @@
-#!/usr/bin/python3
-"""Responsive, read-only EMRYS/Slurm live dashboard v4.9.
+"""Shared read-only scheduler-trace model and rendering for ``emrys watch``.
 
 This is an operational view over append-only scheduler streams. It does not
 replace EMRYS inspection or completion evidence.
 """
 
-import argparse
-import importlib.util
-import curses
 import datetime as dt
 from collections import Counter
 import os
@@ -20,16 +16,7 @@ import time
 import textwrap
 
 
-if __package__:
-    from . import scheduler_observation as _scheduler
-else:
-    # The Make entry point uses Python -I; load only this exact adjacent stdlib owner.
-    _scheduler_spec = importlib.util.spec_from_file_location(
-        "emrys_scheduler_observation",
-        os.path.join(os.path.dirname(__file__), "scheduler_observation.py"),
-    )
-    _scheduler = importlib.util.module_from_spec(_scheduler_spec)
-    _scheduler_spec.loader.exec_module(_scheduler)
+from . import scheduler_observation as _scheduler
 
 
 STAGES = [
@@ -1288,53 +1275,6 @@ def completion_velocity(model, now):
     )
 
 
-def init_colors():
-    if os.environ.get("NO_COLOR"):
-        return {
-            name: 0
-            for name in (
-                "normal",
-                "title",
-                "green",
-                "green_bold",
-                "cyan",
-                "cyan_bold",
-                "yellow",
-                "yellow_bold",
-                "red",
-                "dim",
-                "border",
-                "panel_title",
-                "label",
-                "value",
-            )
-        }
-    curses.start_color()
-    curses.use_default_colors()
-    pairs = {
-        "green": curses.COLOR_GREEN,
-        "cyan": curses.COLOR_CYAN,
-        "yellow": curses.COLOR_YELLOW,
-        "red": curses.COLOR_RED,
-        "magenta": curses.COLOR_MAGENTA,
-    }
-    attrs = {"normal": 0, "dim": curses.A_DIM}
-    index = 1
-    for name, color in pairs.items():
-        curses.init_pair(index, color, -1)
-        attrs[name] = curses.color_pair(index)
-        index += 1
-    attrs["title"] = attrs["cyan"] | curses.A_BOLD
-    attrs["green_bold"] = attrs["green"] | curses.A_BOLD
-    attrs["cyan_bold"] = attrs["cyan"] | curses.A_BOLD
-    attrs["yellow_bold"] = attrs["yellow"] | curses.A_BOLD
-    attrs["border"] = attrs["cyan"] | curses.A_DIM
-    attrs["panel_title"] = attrs["magenta"] | curses.A_BOLD
-    attrs["label"] = attrs["cyan"] | curses.A_BOLD
-    attrs["value"] = curses.A_BOLD
-    return attrs
-
-
 def safe_add(screen, y, x, text, attr=0, limit=None):
     height, width = screen.getmaxyx()
     if y < 0 or y >= height or x < 0 or x >= width:
@@ -1344,10 +1284,7 @@ def safe_add(screen, y, x, text, attr=0, limit=None):
         available = min(available, limit)
     if available <= 0:
         return
-    try:
-        screen.addnstr(y, x, text, available, attr)
-    except curses.error:
-        pass
+    screen.addnstr(y, x, text, available, attr)
 
 
 def draw_box(
@@ -2483,236 +2420,3 @@ def render(
         screen, footer_y, width, attrs, refresh_seconds, last_sync, stream_status
     )
     screen.refresh()
-
-
-def snapshot(job_id, slurm, identity, model):
-    now = time.time()
-    complete, total, remaining = progress_values(model)
-    terminal_state = terminal_failure_state(slurm)
-    print("EMRYS LIVE DASHBOARD v4.9 snapshot | job %s" % job_id)
-    print(
-        "State: %s | %s/%s Snakemake jobs | %s %s"
-        % (
-            slurm.get("state", "UNKNOWN"),
-            complete,
-            "unknown" if total is None else total,
-            "unknown" if remaining is None else remaining,
-            "not completed" if terminal_state else "remaining",
-        )
-    )
-    print("Run: %s" % identity.get("run_id", "-"))
-    print("Configuration: %s" % configuration_text(identity))
-    for line in pipeline_lines(model, now, 80, terminal_state=terminal_state):
-        if isinstance(line, list):
-            line = "".join(segment[0] for segment in line)
-        print(line[0] if isinstance(line, tuple) else line)
-
-
-def selected_scheduler_state(args):
-    if args.offline:
-        return {
-            "state": "UNKNOWN",
-            "terminal": False,
-            "reason": "Offline; scheduler not queried",
-        }
-    return _scheduler.query_slurm(args.job_id, args.out, args.err)
-
-
-def stream_cache_status(out_cache, err_cache):
-    caches = (out_cache, err_cache)
-    dates = [cache.observed_at for cache in caches if cache.observed_at is not None]
-    observed_at = min(dates) if len(dates) == 2 else None
-    stamp = (
-        "unavailable"
-        if observed_at is None
-        else dt.datetime.fromtimestamp(observed_at, dt.timezone.utc).strftime(
-            "%Y-%m-%d %H:%M:%SZ"
-        )
-    )
-    states = [
-        "pending"
-        if cache.pending or cache.diagnostic.startswith("Read pending")
-        else "unavailable"
-        if cache.observed_at is None
-        else "current"
-        for cache in caches
-    ]
-    return observed_at, "Trace %s | out %s; err %s" % (stamp, *states)
-
-
-def dashboard(screen, args):
-    try:
-        curses.curs_set(0)
-    except curses.error:
-        pass
-    screen.keypad(True)
-    screen.timeout(250)
-    render.attrs = init_colors()
-    mouse_enabled = False
-    try:
-        curses.mousemask(curses.ALL_MOUSE_EVENTS)
-        mouse_enabled = True
-    except curses.error:
-        pass
-
-    out_cache = StreamCache(args.out)
-    err_cache = StreamCache(args.err)
-    slurm = {"state": "QUERYING", "terminal": False}
-    identity = {}
-    model = parse_workflow("")
-    last_refresh = -args.refresh
-    last_sync = None
-    stream_status = "Trace unavailable"
-    force = True
-    view = "overview"
-    work_scroll = 0
-    active_signature = ()
-
-    try:
-        while True:
-            now = time.monotonic()
-            if force or now - last_refresh >= args.refresh:
-                refresh_slurm = force or not slurm.get("terminal")
-                out_cache.sync()
-                err_cache.sync()
-                observed_at, stream_status = stream_cache_status(out_cache, err_cache)
-                last_sync = (
-                    None
-                    if observed_at is None
-                    else time.monotonic() - max(0, time.time() - observed_at)
-                )
-                identity = parse_identity(out_cache.text())
-                model = parse_workflow(err_cache.text())
-                new_signature = tuple(
-                    sorted(
-                        (job_id, info.get("stage"), info.get("wildcards"))
-                        for job_id, info in model["active"].items()
-                        if info.get("stage") != "FINAL"
-                    )
-                )
-                if new_signature != active_signature:
-                    work_scroll = 0
-                    active_signature = new_signature
-                if refresh_slurm:
-                    slurm = selected_scheduler_state(args)
-                last_refresh = now
-                force = False
-            render(
-                screen,
-                args.job_id,
-                slurm,
-                identity,
-                model,
-                args.refresh,
-                last_sync,
-                view,
-                work_scroll,
-                stream_status,
-            )
-            key = screen.getch()
-            if key == curses.KEY_MOUSE:
-                continue
-            if key in (ord("q"), ord("Q")):
-                return
-            if key in (ord("1"), ord("o"), ord("O")):
-                view = "overview"
-            elif key in (ord("2"), ord("d"), ord("D")):
-                view = "details"
-            elif key == 9:
-                view = "details" if view == "overview" else "overview"
-            elif key in (ord("r"), ord("R")):
-                force = True
-            elif key in (curses.KEY_UP, ord("k"), ord("K")):
-                work_scroll = max(0, work_scroll - 1)
-            elif key in (curses.KEY_DOWN, ord("j"), ord("J")):
-                work_scroll += 1
-            elif key == curses.KEY_PPAGE:
-                work_scroll = max(0, work_scroll - 6)
-            elif key == curses.KEY_NPAGE:
-                work_scroll += 6
-            elif key in (curses.KEY_HOME, ord("g")):
-                work_scroll = 0
-            elif key == curses.KEY_RESIZE:
-                screen.erase()
-            if slurm.get("terminal"):
-                # Keep the completion summary visible until the operator exits.
-                pass
-    finally:
-        if mouse_enabled:
-            try:
-                curses.mousemask(0)
-            except curses.error:
-                pass
-        out_cache.close()
-        err_cache.close()
-
-
-def parse_args(argv):
-    parser = argparse.ArgumentParser(
-        description="Responsive EMRYS/Slurm live dashboard"
-    )
-    parser.add_argument("job_id", nargs="?", type=int)
-    parser.add_argument("log_dir", nargs="?")
-    parser.add_argument("--refresh", type=int, default=30)
-    parser.add_argument("--out")
-    parser.add_argument("--err")
-    parser.add_argument(
-        "--offline",
-        action="store_true",
-        help="use explicit --out/--err fixtures without scheduler metadata",
-    )
-    parser.add_argument("--snapshot", action="store_true")
-    args = parser.parse_args(argv)
-    if args.refresh < 5:
-        parser.error("--refresh must be at least 5 seconds")
-    env_job = os.environ.get("EMRYS_DASHBOARD_JOB_ID", "").strip()
-    env_log_dir = os.environ.get("EMRYS_DASHBOARD_LOG_DIR", "").strip()
-    selected_job = args.job_id if args.job_id is not None else env_job or None
-    selected_log_dir = args.log_dir if args.log_dir is not None else env_log_dir or None
-    try:
-        selection = resolve_selection(
-            selected_job,
-            selected_log_dir,
-            args.out,
-            args.err,
-            args.offline,
-        )
-    except _scheduler.DiscoveryError as exc:
-        parser.error(str(exc))
-    args.job_id = selection["job_id"]
-    args.log_dir = selection["log_dir"]
-    args.out = selection["out"]
-    args.err = selection["err"]
-    return args
-
-
-def main(argv=None):
-    args = parse_args(argv or sys.argv[1:])
-    if args.snapshot:
-        out_cache = StreamCache(args.out)
-        err_cache = StreamCache(args.err)
-        try:
-            ready = (out_cache.sync(), err_cache.sync())
-            print(stream_cache_status(out_cache, err_cache)[1])
-            print("Parsed log progress is unverified diagnostic context.")
-            print("stdout: " + out_cache.diagnostic)
-            print("stderr: " + err_cache.diagnostic)
-            snapshot(
-                args.job_id,
-                selected_scheduler_state(args),
-                parse_identity(out_cache.text()),
-                parse_workflow(err_cache.text()),
-            )
-            return 0 if all(ready) else 1
-        finally:
-            out_cache.close()
-            err_cache.close()
-    try:
-        curses.wrapper(dashboard, args)
-    except KeyboardInterrupt:
-        return 0
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

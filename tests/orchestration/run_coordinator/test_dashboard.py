@@ -1,30 +1,41 @@
 from __future__ import annotations
 
-import importlib.util
 import os
 import subprocess
-import sys
 import threading
 import time
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
+from emrys.orchestration.run_coordinator import dashboard
 from tests.orchestration.run_coordinator.test_slurm_submission import _scheduler_replies
-
-MODULE_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "src/emrys/orchestration/run_coordinator/dashboard.py"
-)
-SPEC = importlib.util.spec_from_file_location("emrys_dashboard_under_test", MODULE_PATH)
-assert SPEC is not None and SPEC.loader is not None
-dashboard = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(dashboard)
 
 
 JOB_ID = 605305
 RUN_ID = "run-" + "a" * 64
+
+
+def _render_attrs() -> dict[str, int]:
+    return {
+        name: 0
+        for name in (
+            "normal",
+            "title",
+            "green",
+            "green_bold",
+            "cyan",
+            "cyan_bold",
+            "yellow",
+            "yellow_bold",
+            "red",
+            "dim",
+            "border",
+            "panel_title",
+            "label",
+            "value",
+        )
+    }
 
 
 def _make_logs(log_dir: Path, job_id: int = JOB_ID) -> tuple[Path, Path]:
@@ -70,39 +81,6 @@ def test_request_specific_scheduler_stream_pair_admission(
             dashboard._scheduler.DiscoveryError, match="stderr does not match"
         ):
             dashboard.validate_log_selection(JOB_ID, str(stdout), str(stderr))
-
-
-def test_dashboard_remains_directly_executable_in_isolated_mode() -> None:
-    completed = subprocess.run(
-        [sys.executable, "-I", "-B", str(MODULE_PATH), "--help"],
-        capture_output=True,
-        text=True,
-        timeout=10,
-        check=False,
-    )
-    assert completed.returncode == 0, completed.stderr
-    assert "--refresh" in completed.stdout
-
-
-def test_installed_dashboard_uses_the_shared_scheduler_exception_class() -> None:
-    completed = subprocess.run(
-        [
-            sys.executable,
-            "-I",
-            "-B",
-            "-c",
-            "import sys; sys.path.insert(0, sys.argv[1]); "
-            "from emrys.orchestration.run_coordinator import dashboard, scheduler_observation; "
-            "assert dashboard._scheduler is scheduler_observation; "
-            "assert dashboard._scheduler.DiscoveryError is scheduler_observation.DiscoveryError",
-            str(MODULE_PATH.parents[3]),
-        ],
-        capture_output=True,
-        text=True,
-        timeout=10,
-        check=False,
-    )
-    assert completed.returncode == 0, completed.stderr
 
 
 @pytest.mark.parametrize("source", ["squeue", "sacct"])
@@ -409,7 +387,7 @@ Finished jobid: 1 (Rule: align_RNA_reads_with_STAR)
         "Job stats:\njob count\n--- -----\nalign_RNA_reads_with_STAR 1\nalign_RNA_reads_with_STAR 1\ntotal 2\n",
     ],
 )
-def test_missing_or_invalid_counts_never_invent_completion(stats, capsys):
+def test_missing_or_invalid_counts_never_invent_completion(stats):
     model = dashboard.parse_workflow(stats)
     model["done"]["01"] = 6
     model["done"]["07"] = 25
@@ -438,8 +416,6 @@ def test_missing_or_invalid_counts_never_invent_completion(stats, capsys):
     )
     assert dashboard.workflow_phase(model) == (2, "SAMPLE PROCESSING (observed)")
     dashboard.activity_lines(model, _slurm(terminal=True), {}, 10)
-    dashboard.snapshot(JOB_ID, _slurm(terminal=True), {}, model)
-    assert "unknown not completed" in capsys.readouterr().out
 
 
 def test_finished_log_without_run_evidence_is_not_presented_as_active_waiting():
@@ -530,7 +506,10 @@ def test_dashboard_processing_rule_mapping_matches_current_backend_contract():
     import json
 
     profile = json.loads(
-        (MODULE_PATH.parents[2] / "workflow/contracts/local_cmh_v2.json").read_text()
+        (
+            Path(__file__).resolve().parents[3]
+            / "src/emrys/workflow/contracts/local_cmh_v2.json"
+        ).read_text()
     )
     for task in profile["owner_tasks"]:
         assert dashboard.RULE_TO_STAGE[task["rule_name"]] == task["step_id"]
@@ -1020,31 +999,6 @@ def test_stream_cache_close_serializes_start_without_waiting_for_read(
         if cache._reader is not None:
             cache._reader.join(2)
     assert not cache.sync() and cache.text() == "" and cache.observed_at is None
-
-
-def test_positional_overrides_take_precedence_over_environment(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[tuple[object, ...]] = []
-    monkeypatch.setenv("EMRYS_DASHBOARD_JOB_ID", "111")
-    monkeypatch.setenv("EMRYS_DASHBOARD_LOG_DIR", "/environment")
-
-    def fake_resolve(*args: object) -> dict[str, object]:
-        calls.append(args)
-        return {
-            "job_id": 222,
-            "log_dir": "/explicit",
-            "out": "/explicit/emrys-local-pilot-222.out",
-            "err": "/explicit/emrys-local-pilot-222.err",
-        }
-
-    monkeypatch.setattr(dashboard, "resolve_selection", fake_resolve)
-
-    parsed = dashboard.parse_args(["222", "/explicit"])
-
-    assert calls == [(222, "/explicit", None, None, False)]
-    assert parsed.job_id == 222
-    assert parsed.log_dir == "/explicit"
 
 
 def test_explicit_job_failure_does_not_fall_back_to_discovery(
@@ -1603,9 +1557,9 @@ def _slurm(*, terminal: bool = False, state: str = "RUNNING") -> dict[str, objec
     }
 
 
-def test_dashboard_model_and_text_views_cover_active_terminal_and_empty_states(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
+def test_dashboard_model_and_text_views_cover_active_terminal_and_empty_states() -> (
+    None
+):
     now = 1_800_000_000.0
     model = _rich_model(now)
     identity = _dashboard_identity()
@@ -1670,14 +1624,6 @@ def test_dashboard_model_and_text_views_cover_active_terminal_and_empty_states(
     assert "Waiting for sample jobs" in dashboard.sample_lines(empty, now, 80)[-1]
     assert dashboard.workflow_frontier_lines(empty, now, 80)
 
-    dashboard.snapshot(JOB_ID, _slurm(), identity, model)
-    snapshot = capsys.readouterr().out
-    assert "EMRYS LIVE DASHBOARD" in snapshot
-    assert "00a     STAR index" in snapshot
-    assert "[('00a" not in snapshot
-    assert "Reports:" not in snapshot
-    assert "/products/report/" not in snapshot
-
 
 class _FakeScreen:
     def __init__(
@@ -1715,8 +1661,7 @@ class _FakeScreen:
 def test_dashboard_drawing_and_rendering_support_wide_compact_and_small_screens(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("NO_COLOR", "1")
-    attrs = dashboard.init_colors()
+    attrs = _render_attrs()
     model = _rich_model(1_800_000_000.0)
     identity = _dashboard_identity()
     screen = _FakeScreen()
@@ -1765,9 +1710,7 @@ def test_dashboard_drawing_and_rendering_support_wide_compact_and_small_screens(
     assert any("too small" in write[2] for write in small.writes)
 
 
-def test_terminal_timeout_never_presents_stale_work_as_pending_or_running(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_terminal_timeout_never_presents_stale_work_as_pending_or_running() -> None:
     now = 1_800_000_000.0
     model = _rich_model(now)
     slurm = _slurm(terminal=True, state="TIMEOUT")
@@ -1801,49 +1744,20 @@ def test_terminal_timeout_never_presents_stale_work_as_pending_or_running(
     assert title == "JOB ENDED"
     assert "scheduler termination alone does not establish recovery" in str(activity)
 
-    monkeypatch.setenv("NO_COLOR", "1")
     screen = _FakeScreen()
-    dashboard.render.attrs = dashboard.init_colors()
+    dashboard.render.attrs = _render_attrs()
     dashboard.render(screen, JOB_ID, slurm, identity, model, 30, 0, "details", 0)
     rendered = "\n".join(write[2] for write in screen.writes)
     assert "JOB ENDED" in rendered
     assert "INTERRUPTED" in rendered
     assert "PENDING" not in rendered
-    dashboard.snapshot(JOB_ID, slurm, identity, model)
-    assert "13 not completed" in capsys.readouterr().out
 
 
-def test_slurm_queries_cover_success_and_failures(
+def test_scheduler_command_transport_covers_success_and_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     real_command_bytes = dashboard._scheduler.command_bytes
     real_command_text = dashboard._scheduler.command_text
-    calls = iter(
-        (
-            f"{JOB_ID}|{os.getuid()}|RUNNING|00:10:00|01:50:00|12|compute|node01|None",
-            "605305.batch|00:01:00|2G|1G|512M",
-        )
-    )
-    monkeypatch.setattr(
-        dashboard._scheduler, "command_text", lambda *_args, **_kwargs: next(calls)
-    )
-    live = dashboard._scheduler.query_slurm(JOB_ID)
-    assert live["state"] == "RUNNING"
-    assert live["max_rss"] == "2G"
-
-    calls = iter(
-        (
-            "",
-            f"{JOB_ID}|emrys-run|COMPLETED|user|{os.getuid()}|||0:0|00:20:00|12|node01",
-        )
-    )
-    monkeypatch.setattr(
-        dashboard._scheduler, "command_text", lambda *_args, **_kwargs: next(calls)
-    )
-    completed = dashboard._scheduler.query_slurm(JOB_ID)
-    assert completed["terminal"] is True
-    assert completed["state"] == "COMPLETED"
-
     monkeypatch.setattr(dashboard._scheduler, "command_bytes", real_command_bytes)
     monkeypatch.setattr(
         dashboard._scheduler.subprocess,
@@ -1857,405 +1771,6 @@ def test_slurm_queries_cover_success_and_failures(
         lambda argv, **_kwargs: subprocess.CompletedProcess(argv, 1, b"", b""),
     )
     assert dashboard._scheduler.command_bytes(["fixture"]) is None
-
-
-@pytest.mark.parametrize(
-    "identity",
-    [
-        f"{JOB_ID + 1}|{os.getuid()}",
-        f"{JOB_ID}.batch|{os.getuid()}",
-        f"0{JOB_ID}|{os.getuid()}",
-        f"{JOB_ID}|",
-        f"{JOB_ID}|user",
-        f"{JOB_ID}|{os.getuid() + 1}",
-        f"{JOB_ID};cluster|{os.getuid()}",
-        "",
-    ],
-)
-def test_scheduler_observation_rejects_unproven_live_identity(
-    monkeypatch: pytest.MonkeyPatch,
-    identity: str,
-) -> None:
-    calls = []
-
-    def command(argv: list[str], timeout: int = 10) -> str:
-        calls.append(argv)
-        return identity + "|RUNNING|00:01|01:00|4|compute|node|None"
-
-    monkeypatch.setenv("USER", "user")
-    monkeypatch.setattr(dashboard._scheduler, "command_text", command)
-    assert dashboard._scheduler.query_slurm(JOB_ID) == {
-        "terminal": False,
-        "state": "UNKNOWN",
-    }
-    assert len(calls) == 1
-
-
-@pytest.mark.parametrize("source", ["squeue", "sacct"])
-@pytest.mark.parametrize(
-    "defect",
-    [
-        "duplicate",
-        "missing-state",
-        "wrong-owner",
-        "wrong-root",
-        "truncated",
-        "unavailable",
-    ],
-)
-def test_scheduler_observation_preserves_unknown_for_ambiguous_records(
-    monkeypatch: pytest.MonkeyPatch,
-    source: str,
-    defect: str,
-) -> None:
-    uid = str(os.getuid() + (defect == "wrong-owner"))
-    job_id = str(JOB_ID + (defect == "wrong-root"))
-    state = "" if defect == "missing-state" else "COMPLETED"
-    if source == "squeue":
-        record = f"{job_id}|{uid}|{state}|00:01|00:00|4|compute|node|None"
-    else:
-        record = f"{job_id}|emrys-run|{state}|user|{uid}|||0:0|00:01|4|node"
-    if defect == "duplicate":
-        # A partial duplicate root is still ambiguity, not an ignorable row.
-        record += f"\n{job_id}"
-    elif defect == "truncated":
-        record = job_id
-    elif defect == "unavailable":
-        record = ""
-    calls = []
-
-    def command(argv: list[str], timeout: int = 10) -> str:
-        calls.append(argv)
-        if argv[0] == "sacct":
-            assert "--duplicates" in argv
-        return record if argv[0] == source else ""
-
-    monkeypatch.setenv("USER", "user")
-    monkeypatch.setenv("LOGNAME", "user")
-    monkeypatch.setattr(dashboard._scheduler, "command_text", command)
-    assert dashboard._scheduler.query_slurm(JOB_ID) == {
-        "terminal": False,
-        "state": "UNKNOWN",
-    }
-    if defect != "unavailable":
-        assert len(calls) == (1 if source == "squeue" else 2)
-
-
-@pytest.mark.parametrize("live", [True, False])
-@pytest.mark.parametrize("paths", ["match", "changed", "missing", "incomplete"])
-def test_scheduler_observation_rechecks_selected_stream_paths(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    live: bool,
-    paths: str,
-) -> None:
-    stdout, stderr = _make_logs(tmp_path / "logs")
-    declared_out = str(stdout).replace(str(JOB_ID), "%j")
-    declared_err = str(stderr).replace(str(JOB_ID), "%j")
-    if paths == "changed":
-        declared_out = str(tmp_path / "other" / stdout.name)
-    elif paths == "missing":
-        declared_out = declared_err = ""
-    elif paths == "incomplete":
-        declared_err = ""
-
-    def command(argv: list[str], timeout: int = 10) -> str:
-        if argv[0] == "squeue":
-            return (
-                f"{JOB_ID}|{os.getuid()}|RUNNING|00:01|01:00|4|compute|node|None"
-                if live
-                else ""
-            )
-        if argv[0] == "scontrol":
-            return (
-                f"JobId={JOB_ID} UserId=user({os.getuid()}) JobState=RUNNING "
-                f"StdOut={declared_out} StdErr={declared_err}"
-            )
-        if argv[0] == "sacct":
-            return (
-                f"{JOB_ID}.batch|batch|FAILED|user|{os.getuid()}||||||\n"
-                f"{JOB_ID}|emrys-run|COMPLETED|user|{os.getuid()}|"
-                f"{declared_out}|{declared_err}|0:0|00:01|4|node"
-            )
-        assert argv[0] == "sstat"
-        return ""
-
-    monkeypatch.setattr(dashboard._scheduler, "command_text", command)
-    result = dashboard._scheduler.query_slurm(JOB_ID, str(stdout), str(stderr))
-    assert result["state"] == (
-        ("RUNNING" if live else "COMPLETED") if paths == "match" else "UNKNOWN"
-    )
-    assert result["terminal"] is (not live and paths == "match")
-    if not live and paths == "match":
-        assert result["exit_code"] == "0:0"
-
-
-@pytest.mark.parametrize("basic", [True, False])
-def test_accounting_identity_prefix_without_requested_trailing_fields_is_unknown(
-    monkeypatch: pytest.MonkeyPatch,
-    basic: bool,
-) -> None:
-    calls = []
-
-    def command(argv: list[str], timeout: int = 10) -> str:
-        calls.append(argv)
-        if argv[0] == "squeue" or (basic and ",StdOut,StdErr" in argv[-1]):
-            return ""
-        return f"{JOB_ID}|emrys-run|COMPLETED|user|{os.getuid()}" + (
-            "" if basic else "||"
-        )
-
-    monkeypatch.setattr(dashboard._scheduler, "command_text", command)
-    assert dashboard._scheduler.query_slurm(JOB_ID) == {
-        "terminal": False,
-        "state": "UNKNOWN",
-    }
-    assert len(calls) == (3 if basic else 2)
-
-
-@pytest.mark.parametrize(
-    "usage",
-    [
-        f"{JOB_ID + 1}.batch|00:01|99G|1G|1G",
-        f"{JOB_ID}.batch|00:01|99G|1G|1G\n{JOB_ID}.batch|00:01|99G|1G|1G",
-    ],
-)
-def test_scheduler_observation_omits_ambiguous_usage(
-    monkeypatch: pytest.MonkeyPatch,
-    usage: str,
-) -> None:
-    monkeypatch.setattr(
-        dashboard._scheduler,
-        "command_text",
-        lambda argv, timeout=10: (
-            f"{JOB_ID}|{os.getuid()}|RUNNING|00:01|01:00|4|compute|node|None"
-            if argv[0] == "squeue"
-            else usage
-        ),
-    )
-    result = dashboard._scheduler.query_slurm(JOB_ID)
-    assert result["state"] == "RUNNING"
-    assert "max_rss" not in result
-
-
-def test_dashboard_event_loop_handles_navigation_refresh_and_quit(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    keys = [
-        ord("2"),
-        ord("1"),
-        9,
-        ord("r"),
-        dashboard.curses.KEY_UP,
-        dashboard.curses.KEY_DOWN,
-        dashboard.curses.KEY_PPAGE,
-        dashboard.curses.KEY_NPAGE,
-        dashboard.curses.KEY_HOME,
-        dashboard.curses.KEY_RESIZE,
-        ord("q"),
-    ]
-    screen = _FakeScreen(keys=keys)
-    monkeypatch.setenv("NO_COLOR", "1")
-    monkeypatch.setattr(dashboard.curses, "curs_set", lambda _value: None)
-    queries = []
-    monkeypatch.setattr(
-        dashboard._scheduler,
-        "query_slurm",
-        lambda *args: queries.append(args) or _slurm(),
-    )
-    monkeypatch.setattr(dashboard, "render", lambda *_args, **_kwargs: None)
-    arguments = SimpleNamespace(
-        out="/missing/out",
-        err="/missing/err",
-        refresh=30,
-        job_id=JOB_ID,
-        offline=False,
-    )
-
-    dashboard.dashboard(screen, arguments)
-
-    assert screen.erases == 1
-    assert queries == [(JOB_ID, arguments.out, arguments.err)] * 2
-
-
-@pytest.mark.parametrize("snapshot", [False, True])
-def test_offline_public_modes_read_exact_streams_without_scheduler_queries(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-    snapshot: bool,
-) -> None:
-    stdout, stderr = _make_logs(tmp_path / "logs")
-    stdout.write_text(f"\x1b[31mRun ID: {RUN_ID}\x1b[0m\n")
-    before = {path: path.read_bytes() for path in (stdout, stderr)}
-
-    def forbidden(*args, **kwargs):
-        pytest.fail("Offline selection, snapshot and refresh must not query Slurm")
-
-    monkeypatch.setattr(dashboard._scheduler, "command_bytes", forbidden)
-    monkeypatch.setattr(dashboard._scheduler, "query_slurm", forbidden)
-    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", forbidden)
-    monkeypatch.setattr(dashboard, "scheduler_candidates", forbidden)
-    monkeypatch.setenv("NO_COLOR", "1")
-    monkeypatch.setattr(dashboard.curses, "curs_set", lambda _value: None)
-    screen = _FakeScreen(keys=[ord("r"), ord("q")])
-    monkeypatch.setattr(
-        dashboard.curses, "wrapper", lambda callback, args: callback(screen, args)
-    )
-    assert (
-        dashboard.main(
-            [
-                str(JOB_ID),
-                "--offline",
-                "--out",
-                str(stdout),
-                "--err",
-                str(stderr),
-                *(["--snapshot"] if snapshot else []),
-            ]
-        )
-        == 0
-    )
-    rendered = (
-        capsys.readouterr().out
-        if snapshot
-        else "\n".join(row[2] for row in screen.writes)
-    )
-    assert "UNKNOWN" in rendered and "\x1b" not in rendered
-    if snapshot:
-        assert f"Run: {RUN_ID}" in rendered
-    else:
-        assert screen.refreshes == 2
-    assert {path: path.read_bytes() for path in before} == before
-
-
-@pytest.mark.parametrize("failure", ["pending", "unavailable"])
-def test_standalone_snapshot_reports_incomplete_stream_reads(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys, failure: str
-) -> None:
-    stdout, stderr = _make_logs(tmp_path / "logs")
-    release = threading.Event()
-    caches = []
-    cache_type, read_stream = dashboard.StreamCache, dashboard._read_stream
-
-    class RecordedCache(cache_type):
-        def __init__(self, path):
-            super().__init__(path)
-            caches.append(self)
-
-    def unavailable(*arguments):
-        if failure == "unavailable":
-            raise OSError("fixture read unavailable")
-        assert release.wait(5)
-        return read_stream(*arguments)
-
-    monkeypatch.setattr(dashboard, "StreamCache", RecordedCache)
-    monkeypatch.setattr(dashboard, "_read_stream", unavailable)
-    monkeypatch.setattr(dashboard, "_STREAM_WAIT_SECONDS", 0.01)
-    started = time.monotonic()
-    try:
-        assert (
-            dashboard.main(
-                [
-                    str(JOB_ID),
-                    "--offline",
-                    "--out",
-                    str(stdout),
-                    "--err",
-                    str(stderr),
-                    "--snapshot",
-                ]
-            )
-            == 1
-        )
-        assert time.monotonic() - started < 1
-        output = capsys.readouterr().out
-        assert "Trace unavailable" in output
-        assert f"out {failure}; err {failure}" in output
-        assert "Parsed log progress is unverified diagnostic context." in output
-        assert (
-            "Read pending" in output
-            if failure == "pending"
-            else "fixture read unavailable" in output
-        )
-        assert all(not cache.sync() for cache in caches)
-    finally:
-        release.set()
-        for cache in caches:
-            if cache._reader is not None:
-                cache._reader.join(2)
-
-
-def test_standalone_pending_refresh_dates_retained_history(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    stdout, stderr = _make_logs(tmp_path / "logs")
-    stdout.write_text(f"Run ID: {RUN_ID}\n")
-    release = threading.Event()
-    caches, rendered = [], []
-    cache_type, read_stream = dashboard.StreamCache, dashboard._read_stream
-    clock = [1_800_000_000.0]
-    blocked = [False]
-
-    class RecordedCache(cache_type):
-        def __init__(self, path):
-            super().__init__(path)
-            caches.append(self)
-
-    def delayed(*arguments):
-        if blocked[0]:
-            assert release.wait(5)
-        return read_stream(*arguments)
-
-    def render(*arguments):
-        rendered.append((arguments[3], arguments[6], arguments[9]))
-        if len(rendered) == 1:
-            clock[0] += 60
-            blocked[0] = True
-            monkeypatch.setattr(dashboard, "_STREAM_WAIT_SECONDS", 0.01)
-            with stdout.open("a") as stream:
-                stream.write("Run ID: later-unread-run\n")
-
-    monkeypatch.setattr(dashboard, "StreamCache", RecordedCache)
-    monkeypatch.setattr(dashboard, "_read_stream", delayed)
-    monkeypatch.setattr(dashboard.time, "time", lambda: clock[0])
-    monkeypatch.setattr(dashboard, "render", render)
-    monkeypatch.setattr(dashboard, "init_colors", dict)
-    monkeypatch.setattr(dashboard.curses, "curs_set", lambda *_args: None)
-    args = SimpleNamespace(
-        job_id=JOB_ID, out=str(stdout), err=str(stderr), refresh=30, offline=True
-    )
-    try:
-        dashboard.dashboard(_FakeScreen(keys=[ord("r"), ord("q")]), args)
-        assert len(rendered) == 2
-        assert rendered[0][0]["run_id"] == rendered[1][0]["run_id"] == RUN_ID
-        assert "out current; err current" in rendered[0][2]
-        assert "out pending; err pending" in rendered[1][2]
-        assert rendered[0][2].split(" | ")[0] == rendered[1][2].split(" | ")[0]
-        assert time.monotonic() - rendered[1][1] >= 59
-        assert all(not cache.sync() for cache in caches)
-    finally:
-        release.set()
-        for cache in caches:
-            if cache._reader is not None:
-                cache._reader.join(2)
-
-
-def test_standalone_dashboard_ignores_mouse_and_restores_tracking(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    stdout, stderr = _make_logs(tmp_path / "logs")
-    masks, rendered = [], []
-    monkeypatch.setattr(dashboard, "init_colors", dict)
-    monkeypatch.setattr(dashboard.curses, "curs_set", lambda *_args: None)
-    monkeypatch.setattr(dashboard.curses, "mousemask", lambda mask: masks.append(mask))
-    monkeypatch.setattr(dashboard, "render", lambda *_args: rendered.append(True))
-    args = SimpleNamespace(
-        job_id=JOB_ID, out=str(stdout), err=str(stderr), refresh=30, offline=True
-    )
-    dashboard.dashboard(_FakeScreen(keys=[dashboard.curses.KEY_MOUSE, ord("q")]), args)
-    assert len(rendered) == 2
-    assert masks == [dashboard.curses.ALL_MOUSE_EVENTS, 0]
 
 
 @pytest.mark.parametrize("usage", ["complete", "unavailable"])

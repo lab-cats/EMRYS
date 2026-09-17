@@ -276,6 +276,6 @@ The binding sink, redaction, degradation, and ownership behavior is in
 Status is derived from immutable Run, Attempt, task, reporting, receipt, and
 lock records. No mutable status cache competes with them. Elapsed time belongs
 to one current or latest Attempt; resumes are not silently summed and no ETA is
-invented. The stale dashboard is not a status or Results authority and remains
-frozen under `DASHBOARD-RETIRE-01` until a replacement dashboard is implemented
-and validated; retirement then requires its own approved scope.
+invented. Watch diagnostics are not a status or Results authority. The replaced
+standalone dashboard was retired after the institutional owner accepted the
+installed watch; shared parsing and rendering remain internal watch mechanics.

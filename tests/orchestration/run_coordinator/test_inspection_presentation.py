@@ -77,6 +77,81 @@ def _request(root):
     )
 
 
+class _PtyProcess:
+    def __init__(self, tmp_path, code, *arguments, rows, columns, term):
+        self.master, slave = pty.openpty()
+        fcntl.ioctl(
+            self.master,
+            termios.TIOCSWINSZ,
+            struct.pack("HHHH", rows, columns, 0, 0),
+        )
+        self.original_terminal = termios.tcgetattr(self.master)
+        environment = dict(
+            os.environ,
+            TERM=term,
+            COLUMNS=str(columns),
+            LINES=str(rows),
+            PYTHONDONTWRITEBYTECODE="1",
+            PYTHONPATH=str(Path(__file__).resolve().parents[3] / "src"),
+        )
+        self.process = subprocess.Popen(
+            [sys.executable, "-B", "-c", code, str(tmp_path), *arguments],
+            stdin=slave,
+            stdout=slave,
+            stderr=slave,
+            env=environment,
+        )
+        os.close(slave)
+        self.output = b""
+
+    @property
+    def plain(self):
+        return b" ".join(re.sub(rb"\x1b\[[0-?]*[ -/]*[@-~]", b"", self.output).split())
+
+    def read_until(self, *needles, timeout=5, ready=lambda: True):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if all(needle in self.plain for needle in needles) and ready():
+                return self.plain
+            if self.process.poll() is not None:
+                break
+            if select.select([self.master], [], [], 0.05)[0]:
+                try:
+                    chunk = os.read(self.master, 65536)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                self.output += chunk
+        pytest.fail(f"missing {needles!r} in {self.output[-3000:]!r}")
+
+    def drain(self):
+        while select.select([self.master], [], [], 0)[0]:
+            try:
+                chunk = os.read(self.master, 65536)
+            except OSError:
+                break
+            if not chunk:
+                break
+            self.output += chunk
+
+    def wait(self, timeout):
+        deadline = time.monotonic() + timeout
+        while self.process.poll() is None and time.monotonic() < deadline:
+            if select.select([self.master], [], [], 0.05)[0]:
+                try:
+                    self.output += os.read(self.master, 65536)
+                except OSError:
+                    break
+        return self.process.wait(timeout=max(0.1, deadline - time.monotonic()))
+
+    def close(self):
+        if self.process.poll() is None:
+            self.process.kill()
+            self.process.wait()
+        os.close(self.master)
+
+
 @pytest.fixture
 def watcher(monkeypatch):
     """Record callbacks; unconfigured callbacks still execute their real owner."""
@@ -888,32 +963,9 @@ result = view.watch(root / 'project.yaml',
 print('WATCH EXITED', result)
 raise SystemExit(result)
 """
-    master, slave = pty.openpty()
-    fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 80, 0, 0))
-    original_terminal = termios.tcgetattr(master)
-    environment = dict(
-        os.environ,
-        TERM="xterm",
-        COLUMNS="80",
-        LINES="40",
-        PYTHONDONTWRITEBYTECODE="1",
-        PYTHONPATH=str(Path(__file__).resolve().parents[3] / "src"),
-    )
-    process = subprocess.Popen(
-        [sys.executable, "-B", "-c", code, str(tmp_path), mode],
-        stdin=slave,
-        stdout=slave,
-        stderr=slave,
-        env=environment,
-    )
-    os.close(slave)
-    output = b""
-
-    def rendered_text():
-        return b" ".join(re.sub(rb"\x1b\[[0-?]*[ -/]*[@-~]", b"", output).split())
+    session = _PtyProcess(tmp_path, code, mode, rows=40, columns=80, term="xterm")
 
     try:
-        deadline = time.monotonic() + 5
         caption = (
             b"q quit"
             if mode == "readonly"
@@ -923,57 +975,26 @@ raise SystemExit(result)
                 else b"p resume plan/confirm | b report preview"
             )
         )
-        while (
-            (
-                not marker.exists()
-                or caption not in rendered_text()
-                or b"Refresh in progress" not in rendered_text()
-            )
-            and process.poll() is None
-            and time.monotonic() < deadline
-        ):
-            if select.select([master], [], [], 0.05)[0]:
-                chunk = os.read(master, 65536)
-                if not chunk:
-                    break
-                output += chunk
-        assert marker.exists(), output
-        assert caption in rendered_text(), output
-        assert b"recheck selection/evidence (read-only)" in rendered_text(), output
-        assert (b"resume plan/confirm" in rendered_text()) is (
+        session.read_until(caption, b"Refresh in progress", ready=marker.exists)
+        assert b"recheck selection/evidence (read-only)" in session.plain
+        assert (b"resume plan/confirm" in session.plain) is (
             mode not in {"readonly", "stop"}
         )
-        assert (b"stop preview" in rendered_text()) is (mode == "stop")
-        assert b"Refresh in progress" in rendered_text()
+        assert (b"stop preview" in session.plain) is (mode == "stop")
         selected_key = {"report": b"b", "stop": b"s"}.get(mode, b"p")
         os.write(
-            master,
+            session.master,
             b"pobsq"
             if mode == "readonly"
             else b"3\x1b[<64;10;4Mo2\t1\x1b[B\x1b[A\x1b[6~\x1b[5~gq"
             if mode == "quit-enabled"
             else selected_key * 2,
         )
-        while process.poll() is None and time.monotonic() < deadline:
-            if select.select([master], [], [], 0.05)[0]:
-                try:
-                    chunk = os.read(master, 65536)
-                    if not chunk:
-                        break
-                    output += chunk
-                except OSError:
-                    break
         reviewed = mode in {"resume", "report", "stop"}
         expected = 7 if reviewed else 1 if mode == "restore-failure" else 0
-        assert process.wait(timeout=1) == expected, output[-1800:]
-        while select.select([master], [], [], 0)[0]:
-            try:
-                chunk = os.read(master, 65536)
-                if not chunk:
-                    break
-                output += chunk
-            except OSError:
-                break
+        assert session.wait(5) == expected, session.output[-1800:]
+        session.drain()
+        output = session.output
         assert b"\x1b[?1049l" in output
         assert view._MOUSE_TRACKING_ON.encode() in output
         assert view._MOUSE_TRACKING_OFF.encode() in output
@@ -983,15 +1004,12 @@ raise SystemExit(result)
             assert b"WATCH EXITED" not in output
         else:
             assert b"WATCH EXITED" in output
-            assert termios.tcgetattr(master) == original_terminal
+            assert termios.tcgetattr(session.master) == session.original_terminal
         if reviewed:
             assert (b"REVIEW CALLED " + mode.encode()) in output
             assert output.index(b"\x1b[?1049l") < output.index(b"REVIEW CALLED")
     finally:
-        if process.poll() is None:
-            process.kill()
-            process.wait()
-        os.close(master)
+        session.close()
 
 
 @pytest.mark.skipif(
@@ -1039,71 +1057,33 @@ result = view.watch(
 print('WATCH EXITED', flush=True)
 raise SystemExit(result)
 """
-    master, slave = pty.openpty()
-    fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
-    environment = dict(
-        os.environ,
-        TERM="xterm-256color",
-        COLUMNS="100",
-        LINES="24",
-        PYTHONDONTWRITEBYTECODE="1",
-        PYTHONPATH=str(Path(__file__).resolve().parents[3] / "src"),
-    )
-    process = subprocess.Popen(
-        [sys.executable, "-B", "-c", code, str(tmp_path)],
-        stdin=slave,
-        stdout=slave,
-        stderr=slave,
-        env=environment,
-    )
-    os.close(slave)
-
-    def read_until(*needles, timeout=5):
-        output = b""
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            if select.select([master], [], [], 0.05)[0]:
-                try:
-                    output += os.read(master, 65536)
-                except OSError:
-                    break
-                plain = b" ".join(
-                    re.sub(rb"\x1b\[[0-?]*[ -/]*[@-~]", b"", output).split()
-                )
-                if all(needle in plain for needle in needles):
-                    return output, plain
-            if process.poll() is not None:
-                break
-        pytest.fail(f"missing {needles!r} in {output[-3000:]!r}")
+    session = _PtyProcess(tmp_path, code, rows=24, columns=100, term="xterm-256color")
 
     try:
-        _initial, plain = read_until(b"FOLLOWING", b"line-100", b"2026-09-17 02:00:01")
+        plain = session.read_until(b"FOLLOWING", b"line-100", b"2026-09-17 02:00:01")
         assert b"line-001" not in plain
 
-        os.write(master, b"10k")
-        _paused, _plain = read_until(b"PAUSED", b"Count: 10")
+        os.write(session.master, b"10k")
+        session.read_until(b"PAUSED", b"Count: 10")
 
         with log.open("a", encoding="utf-8") as stream:
             stream.write("line-101\n")
-        os.write(master, b"r")
-        _refresh, plain = read_until(b"PAUSED", b"2026-09-17 02:00:02")
+        os.write(session.master, b"r")
+        plain = session.read_until(b"PAUSED", b"2026-09-17 02:00:02")
         assert b"line-101" not in plain
 
-        os.write(master, b"G")
-        _bottom, _plain = read_until(b"FOLLOWING", b"line-101")
+        os.write(session.master, b"G")
+        session.read_until(b"FOLLOWING", b"line-101")
 
-        os.write(master, b"/ERROR\r")
-        searched, _plain = read_until(b"PAUSED", b"ERROR target", b"Search: /ERROR")
-        assert b"\x1b[" in searched
+        os.write(session.master, b"/ERROR\r")
+        session.read_until(b"PAUSED", b"ERROR target", b"Search: /ERROR")
+        assert b"\x1b[" in session.output
 
-        os.write(master, b"q")
-        read_until(b"WATCH EXITED")
-        assert process.wait(timeout=2) == 0
+        os.write(session.master, b"q")
+        session.read_until(b"WATCH EXITED")
+        assert session.process.wait(timeout=2) == 0
     finally:
-        if process.poll() is None:
-            process.kill()
-            process.wait()
-        os.close(master)
+        session.close()
 
 
 @pytest.mark.parametrize(
@@ -1515,7 +1495,7 @@ def test_terminal_dashboard_poll_retains_original_date_until_explicit_refresh(
         scheduler_at=NOW,
     )
     query = Mock(return_value={"state": "UNKNOWN", "terminal": False})
-    monkeypatch.setattr(view.dashboard._scheduler, "query_slurm", query)
+    monkeypatch.setattr(view.scheduler_observation, "observe_job", query)
     monkeypatch.setattr(view, "read_tail", lambda *args: None)
     calls.inspect.side_effect = calls.action.side_effect = pytest.fail.Exception(
         "A raw selection cannot admit a Run"
@@ -1525,4 +1505,4 @@ def test_terminal_dashboard_poll_retains_original_date_until_explicit_refresh(
     assert kept.scheduler_at == NOW and kept.scheduler == initial.scheduler
     fresh = refresh(kept, verify=True)
     assert fresh.scheduler["state"] == "UNKNOWN" and fresh.scheduler_at != NOW
-    query.assert_called_once_with(42, job["out"], job["err"])
+    query.assert_called_once_with(42, job["out"], job["err"], include_resources=True)

@@ -39,6 +39,11 @@ from emrys.orchestration.run_coordinator import (
 from tests.orchestration.run_coordinator.fixture import build
 
 
+class _Terminal(io.StringIO):
+    def isatty(self) -> bool:
+        return True
+
+
 def _decoded_terminal(value: str) -> Text:
     return AnsiDecoder().decode_line(value)
 
@@ -87,6 +92,31 @@ def _fastqs(
     return paths
 
 
+def _manifest_command(
+    output: Path,
+    fastqs: list[Path] | tuple[Path, ...],
+    *,
+    samples: tuple[tuple[str, str, str, str], ...] = (),
+    partitions: tuple[tuple[str, str, str], ...] = (),
+    execute: bool = False,
+) -> list[str]:
+    command = [
+        "init",
+        "manifests",
+        "--output-dir",
+        str(output),
+        "--fastq",
+        *(str(path) for path in fastqs),
+    ]
+    for sample in samples:
+        command.extend(("--sample", *sample))
+    for option, name, value in partitions:
+        command.extend((option, name, value))
+    if execute:
+        command.append("--execute")
+    return command
+
+
 def _project_arguments(
     tmp_path: Path, output: Path, *, execute: bool
 ) -> argparse.Namespace:
@@ -129,10 +159,6 @@ def test_setup_prompts_for_and_publishes_closed_cli_defaults(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    class Terminal(io.StringIO):
-        def isatty(self) -> bool:
-            return True
-
     root = tmp_path / "checkout"
     projects = root / "Projects"
     projects.mkdir(parents=True)
@@ -142,9 +168,9 @@ def test_setup_prompts_for_and_publishes_closed_cli_defaults(
     for key in ("EMRYS_PROJECTS_ROOT", "EMRYS_SITE", "EMRYS_LOG_ROOT"):
         monkeypatch.setenv(key, "")  # Track restoration even when initially absent.
         monkeypatch.delenv(key, raising=False)
-    stderr = Terminal()
+    stderr = _Terminal()
     monkeypatch.chdir(projects)
-    monkeypatch.setattr(onboarding.sys, "stdin", Terminal("\n\n\n"))
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("\n\n\n"))
     monkeypatch.setattr(onboarding.sys, "stderr", stderr)
 
     assert cli.main(["setup", "--execute"]) == 0
@@ -368,10 +394,6 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    class Terminal(io.StringIO):
-        def isatty(self) -> bool:
-            return True
-
     output = tmp_path / "guided-study"
     arguments = _project_arguments(tmp_path, output, execute=True)
     reads = tmp_path / "source" / "reads"
@@ -387,7 +409,7 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
     reference_gtf = arguments.reference_gtf
     arguments.reference_fasta = None
     arguments.reference_gtf = None
-    terminal = Terminal(
+    terminal = _Terminal(
         "\n".join(
             (
                 str(reference_fasta),
@@ -415,7 +437,7 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
     )
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(onboarding.sys, "stdin", terminal)
-    terminal_output = Terminal()
+    terminal_output = _Terminal()
     monkeypatch.setattr(onboarding.sys, "stderr", terminal_output)
     reference_reads = []
     read_reference = onboarding._reference_contigs
@@ -450,10 +472,6 @@ def test_guided_project_rejects_selector_absent_from_supplied_fasta(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    class Terminal(io.StringIO):
-        def isatty(self) -> bool:
-            return True
-
     arguments = _project_arguments(tmp_path, tmp_path / "guided", execute=False)
     _table, _sample_ids, rows = step08.validate_sample_manifest(
         arguments.sample_manifest
@@ -469,8 +487,8 @@ def test_guided_project_rejects_selector_absent_from_supplied_fasta(
     ]
     arguments.regions_file = []
     arguments.region = []
-    monkeypatch.setattr(onboarding.sys, "stdin", Terminal("\nnot-a-contig\n"))
-    monkeypatch.setattr(onboarding.sys, "stderr", Terminal())
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("\nnot-a-contig\n"))
+    monkeypatch.setattr(onboarding.sys, "stderr", _Terminal())
 
     with pytest.raises(
         onboarding.OnboardingError, match="absent from the reference FASTA"
@@ -487,10 +505,6 @@ def test_guided_project_preview_replays_exact_answers_without_new_prompts(
     capsys: pytest.CaptureFixture[str],
     site: str | None,
 ) -> None:
-    class Terminal(io.StringIO):
-        def isatty(self) -> bool:
-            return True
-
     study = tmp_path / "lab's study inputs"
     study.mkdir()
     projects = tmp_path / "scientist's Projects; retained"
@@ -543,8 +557,8 @@ def test_guided_project_preview_replays_exact_answers_without_new_prompts(
             command.extend((f"--{name.replace('_', '-')}", str(value)))
     before = _tree_bytes(tmp_path)
     monkeypatch.chdir(projects)
-    monkeypatch.setattr(onboarding.sys, "stdin", Terminal("c>t\n71.5\n"))
-    monkeypatch.setattr(onboarding.sys, "stderr", Terminal())
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("c>t\n71.5\n"))
+    monkeypatch.setattr(onboarding.sys, "stderr", _Terminal())
 
     assert cli.main(command) == 0
 
@@ -703,15 +717,11 @@ def test_init_project_prompts_and_requires_explicit_suggestion_acceptance(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    class Terminal(io.StringIO):
-        def isatty(self) -> bool:
-            return True
-
     arguments = _project_arguments(tmp_path, tmp_path / "project", execute=False)
     arguments.target_change = None
     arguments.min_sample_dp = None
-    terminal_input = Terminal("C>T\n\n")
-    terminal_output = Terminal()
+    terminal_input = _Terminal("C>T\n\n")
+    terminal_output = _Terminal()
     monkeypatch.setenv("NO_COLOR", "1")
     monkeypatch.setattr(onboarding.sys, "stdin", terminal_input)
     monkeypatch.setattr(onboarding.sys, "stderr", terminal_output)
@@ -727,14 +737,10 @@ def test_init_project_prompts_and_requires_explicit_suggestion_acceptance(
 def test_init_prompt_colors_label_and_dims_explicit_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    class Terminal(io.StringIO):
-        def isatty(self) -> bool:
-            return True
-
-    terminal_output = Terminal()
+    terminal_output = _Terminal()
     monkeypatch.delenv("NO_COLOR", raising=False)
     monkeypatch.setenv("TERM", "xterm-256color")
-    monkeypatch.setattr(onboarding.sys, "stdin", Terminal("\n"))
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("\n"))
     monkeypatch.setattr(onboarding.sys, "stderr", terminal_output)
 
     assert onboarding._prompt("min sample dp", "1") == "1"
@@ -753,14 +759,10 @@ def test_init_project_rejects_eof_instead_of_accepting_a_suggestion(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    class Terminal(io.StringIO):
-        def isatty(self) -> bool:
-            return True
-
     arguments = _project_arguments(tmp_path, tmp_path / "project", execute=False)
     arguments.min_sample_dp = None
-    monkeypatch.setattr(onboarding.sys, "stdin", Terminal())
-    monkeypatch.setattr(onboarding.sys, "stderr", Terminal())
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal())
+    monkeypatch.setattr(onboarding.sys, "stderr", _Terminal())
 
     with pytest.raises(onboarding.OnboardingError, match="ended before min sample dp"):
         onboarding._collect_project_answers(arguments, {}, tmp_path / "project")
@@ -770,17 +772,13 @@ def test_init_project_suggests_star_values_from_declared_inputs(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    class Terminal(io.StringIO):
-        def isatty(self) -> bool:
-            return True
-
     output = tmp_path / "project"
     arguments = _project_arguments(tmp_path, output, execute=False)
     arguments.sjdb_overhang = None
     arguments.genome_sa_index_nbases = None
     members = onboarding._copied_manifest_members(arguments, output)
-    terminal_output = Terminal()
-    monkeypatch.setattr(onboarding.sys, "stdin", Terminal("\n\n"))
+    terminal_output = _Terminal()
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("\n\n"))
     monkeypatch.setattr(onboarding.sys, "stderr", terminal_output)
 
     answers = onboarding._collect_project_answers(arguments, members, output)
@@ -836,27 +834,15 @@ def test_manifest_init_is_deterministic_validated_and_dry_run_first(
     regions = tmp_path / "targets.bed"
     regions.write_text("chr1\t0\t1\n", encoding="utf-8")
     output = tmp_path / "drafts"
-    arguments = [
-        "init",
-        "manifests",
-        "--output-dir",
-        str(output),
-        "--fastq",
-        *(str(path) for path in reversed(fastqs)),
-        "--sample",
-        "sample_b",
-        "treated",
-        "pair_2",
-        "reverse",
-        "--sample",
-        "sample_a",
-        "control",
-        "pair_1",
-        "forward",
-        "--regions-file",
-        "targets",
-        str(regions),
-    ]
+    arguments = _manifest_command(
+        output,
+        tuple(reversed(fastqs)),
+        samples=(
+            ("sample_b", "treated", "pair_2", "reverse"),
+            ("sample_a", "control", "pair_1", "forward"),
+        ),
+        partitions=(("--regions-file", "targets", str(regions)),),
+    )
 
     assert cli.main(arguments) == 0
     assert not output.exists()
@@ -878,21 +864,12 @@ def test_manifest_init_is_deterministic_validated_and_dry_run_first(
     sample_only = tmp_path / "sample-only"
     assert (
         cli.main(
-            [
-                "init",
-                "manifests",
-                "--output-dir",
-                str(sample_only),
-                "--fastq",
-                str(fastqs[0]),
-                str(fastqs[1]),
-                "--sample",
-                "sample_b",
-                "treated",
-                "pair_2",
-                "reverse",
-                "--execute",
-            ]
+            _manifest_command(
+                sample_only,
+                tuple(fastqs[:2]),
+                samples=(("sample_b", "treated", "pair_2", "reverse"),),
+                execute=True,
+            )
         )
         == 0
     )
@@ -915,18 +892,14 @@ def test_manifest_init_creates_six_vendor_libraries_and_25_chromosomes(
     )
     chromosomes = [str(number) for number in range(1, 23)] + ["X", "Y", "MT"]
     output = tmp_path / "drafts"
-    command = [
-        "init",
-        "manifests",
-        "--output-dir",
-        str(output),
-        "--fastq",
-        *(str(path) for path in reversed(fastqs)),
-    ]
-    for assignment in assignments:
-        command.extend(("--sample", *assignment, "reverse"))
-    for chromosome in reversed(chromosomes):
-        command.extend(("--region", chromosome, chromosome))
+    command = _manifest_command(
+        output,
+        tuple(reversed(fastqs)),
+        samples=tuple((*assignment, "reverse") for assignment in assignments),
+        partitions=tuple(
+            ("--region", chromosome, chromosome) for chromosome in reversed(chromosomes)
+        ),
+    )
     original = _tree_bytes(tmp_path)
 
     assert cli.main(command) == 0
@@ -976,20 +949,12 @@ def test_manifest_init_rejects_ambiguous_or_invalid_vendor_mates(
     before = _tree_bytes(tmp_path)
     assert (
         cli.main(
-            [
-                "init",
-                "manifests",
-                "--output-dir",
-                str(output),
-                "--fastq",
-                *(str(path) for path in fastqs),
-                "--sample",
-                "sample",
-                "control",
-                "pair_1",
-                "reverse",
-                "--execute",
-            ]
+            _manifest_command(
+                output,
+                tuple(fastqs),
+                samples=(("sample", "control", "pair_1", "reverse"),),
+                execute=True,
+            )
         )
         == 2
     )
@@ -1017,23 +982,24 @@ def test_manifest_init_partition_forms_share_one_unique_id_namespace(
     regions = tmp_path / "targets.bed"
     regions.write_text("chr2\t0\t1\n", encoding="utf-8")
     output = tmp_path / "drafts"
-    command = [
-        "init",
-        "manifests",
-        "--output-dir",
-        str(output),
-        "--fastq",
-        *(str(path) for path in fastqs),
-        "--sample",
-        "sample",
-        "control",
-        "pair_1",
-        "reverse",
-        "--execute",
-    ]
-    for option, name in ((first, "p1"), (second, "p1" if duplicate else "p2")):
-        value = str(regions) if option == "--regions-file" else "chr1"
-        command.extend((option, name, value))
+    partition_options = (
+        (first, "p1"),
+        (second, "p1" if duplicate else "p2"),
+    )
+    command = _manifest_command(
+        output,
+        tuple(fastqs),
+        samples=(("sample", "control", "pair_1", "reverse"),),
+        partitions=tuple(
+            (
+                option,
+                name,
+                str(regions) if option == "--regions-file" else "chr1",
+            )
+            for option, name in partition_options
+        ),
+        execute=True,
+    )
     before = _tree_bytes(tmp_path)
     assert cli.main(command) == (2 if duplicate else 0)
     if duplicate:
@@ -1073,28 +1039,21 @@ def test_manifest_init_output_passes_through_project_reference_admission(
             renamed = original.with_name(f"{row['sample_id']}_{mate}.fastq")
             original.rename(renamed)
             fastqs.append(str(renamed))
-    command = [
-        "init",
-        "manifests",
-        "--output-dir",
-        str(drafts),
-        "--fastq",
-        *fastqs,
-        "--region",
-        "primary",
-        region,
-        "--execute",
-    ]
-    for row in samples:
-        command.extend(
+    command = _manifest_command(
+        drafts,
+        tuple(Path(path) for path in fastqs),
+        samples=tuple(
             (
-                "--sample",
                 row["sample_id"],
                 row["condition"],
                 row["replicate"],
                 row["strandedness"],
             )
-        )
+            for row in samples
+        ),
+        partitions=(("--region", "primary", region),),
+        execute=True,
+    )
     assert cli.main(command) == 0
     arguments.sample_manifest = drafts / "samples.tsv"
     arguments.partition_manifest = drafts / "partitions.tsv"
@@ -1125,20 +1084,7 @@ def test_manifest_init_lists_missing_biology_and_writes_nothing(
     fastqs = _fastqs(tmp_path, "sample_b", "sample_a", mate_marker=mate_marker)
     output = tmp_path / "drafts"
 
-    assert (
-        cli.main(
-            [
-                "init",
-                "manifests",
-                "--output-dir",
-                str(output),
-                "--fastq",
-                *(str(path) for path in fastqs),
-                "--execute",
-            ]
-        )
-        == 2
-    )
+    assert cli.main(_manifest_command(output, tuple(fastqs), execute=True)) == 2
     assert not output.exists()
     error = capsys.readouterr().err
     assert "--sample sample_a CONDITION REPLICATE STRANDEDNESS" in error
@@ -1154,20 +1100,12 @@ def test_manifest_init_rejects_unpaired_fastq_without_writing(
     r1 = _fastqs(tmp_path, "sample_a", mate_marker=mate_marker)[0]
     output = tmp_path / "drafts"
     result = cli.main(
-        [
-            "init",
-            "manifests",
-            "--output-dir",
-            str(output),
-            "--fastq",
-            str(r1),
-            "--sample",
-            "sample_a",
-            "control",
-            "pair_1",
-            "unknown",
-            "--execute",
-        ]
+        _manifest_command(
+            output,
+            (r1,),
+            samples=(("sample_a", "control", "pair_1", "unknown"),),
+            execute=True,
+        )
     )
 
     assert result == 2
@@ -1192,20 +1130,12 @@ def test_manifest_init_rejects_paths_the_project_cannot_consume(
 
     assert (
         cli.main(
-            [
-                "init",
-                "manifests",
-                "--output-dir",
-                str(output),
-                "--fastq",
-                *(str(path) for path in fastqs),
-                "--sample",
-                "sample_a",
-                "control",
-                "pair_1",
-                "forward",
-                "--execute",
-            ]
+            _manifest_command(
+                output,
+                tuple(fastqs),
+                samples=(("sample_a", "control", "pair_1", "forward"),),
+                execute=True,
+            )
         )
         == 2
     )
@@ -1222,20 +1152,12 @@ def test_manifest_init_rejects_a_condition_that_requires_tsv_quoting(
 
     assert (
         cli.main(
-            [
-                "init",
-                "manifests",
-                "--output-dir",
-                str(output),
-                "--fastq",
-                *(str(path) for path in fastqs),
-                "--sample",
-                "sample_a",
-                "bad\tcondition",
-                "pair_1",
-                "forward",
-                "--execute",
-            ]
+            _manifest_command(
+                output,
+                tuple(fastqs),
+                samples=(("sample_a", "bad\tcondition", "pair_1", "forward"),),
+                execute=True,
+            )
         )
         == 2
     )
@@ -1256,20 +1178,12 @@ def test_manifest_init_pairs_by_the_admitted_file_not_a_symlink_alias(
 
     assert (
         cli.main(
-            [
-                "init",
-                "manifests",
-                "--output-dir",
-                str(output),
-                "--fastq",
-                *(str(path) for path in aliases),
-                "--sample",
-                "actual",
-                "control",
-                "pair_1",
-                "forward",
-                "--execute",
-            ]
+            _manifest_command(
+                output,
+                tuple(aliases),
+                samples=(("actual", "control", "pair_1", "forward"),),
+                execute=True,
+            )
         )
         == 0
     )
@@ -1292,21 +1206,12 @@ def test_manifest_init_rejects_hard_linked_fastq_reuse(
 
     assert (
         cli.main(
-            [
-                "init",
-                "manifests",
-                "--output-dir",
-                str(output),
-                "--fastq",
-                str(r1),
-                str(r2),
-                "--sample",
-                "sample_a",
-                "control",
-                "pair_1",
-                "forward",
-                "--execute",
-            ]
+            _manifest_command(
+                output,
+                (r1, r2),
+                samples=(("sample_a", "control", "pair_1", "forward"),),
+                execute=True,
+            )
         )
         == 2
     )
@@ -2479,12 +2384,8 @@ def test_runtime_discovery_cli_is_dry_run_then_create_absent(
     assert "Runtime checks:" in detailed
     assert all(item.check.check_id in detailed for item in inspection.observations)
 
-    class Terminal(io.StringIO):
-        def isatty(self) -> bool:
-            return True
-
     with monkeypatch.context() as terminal_context:
-        terminal = Terminal()
+        terminal = _Terminal()
         terminal_context.delenv("NO_COLOR", raising=False)
         terminal_context.setenv("TERM", "xterm-256color")
         terminal_context.setattr(onboarding.sys, "stdout", terminal)
@@ -2610,10 +2511,6 @@ def test_runtime_reuse_interactive_confirmation_reuses_preview_probe(
 ) -> None:
     from emrys.evidence.runtime_availability import inspector
 
-    class Terminal(io.StringIO):
-        def isatty(self) -> bool:
-            return True
-
     donor, borrower, _seal, _original = _reuse_projects(tmp_path, monkeypatch)
     calls = []
     observe = inspector.run_checks
@@ -2623,8 +2520,8 @@ def test_runtime_reuse_interactive_confirmation_reuses_preview_probe(
         return observe(checks, environment=environment)
 
     monkeypatch.setattr(inspector, "run_checks", fresh)
-    output, errors = Terminal(), Terminal()
-    monkeypatch.setattr(onboarding.sys, "stdin", Terminal("y\n"))
+    output, errors = _Terminal(), _Terminal()
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("y\n"))
     monkeypatch.setattr(onboarding.sys, "stdout", output)
     monkeypatch.setattr(onboarding.sys, "stderr", errors)
     arguments = argparse.Namespace(

@@ -20,7 +20,12 @@ from typing import TYPE_CHECKING
 
 from emrys.contracts.orchestration.application_model import PROCESSING_STEP_IDS
 from emrys.libraries.validation.inputs import read_suffix_with_identity
-from . import _submission_inspection, dashboard, slurm_submission
+from . import (
+    _submission_inspection,
+    dashboard,
+    scheduler_observation,
+    slurm_submission,
+)
 from .task import task_attempt_root
 
 if TYPE_CHECKING:
@@ -143,6 +148,46 @@ def attempt_elapsed_line(
     if started.tzinfo is None or finished.tzinfo is None:
         return f"{label} Attempt elapsed: unavailable — invalid timestamp boundary"
     return f"{label} Attempt elapsed: {timedelta(seconds=seconds)}"
+
+
+@dataclass(frozen=True)
+class RunProjection:
+    completion: str | None
+    elapsed: str
+    milestones: tuple[tuple[str, str, int, int], ...]
+    task_counts: tuple[tuple[str, int], ...]
+    reporting: tuple[tuple[str, str], ...]
+
+
+def project_run(
+    observed: RunInspection, *, now: datetime | None = None
+) -> RunProjection:
+    """Derive display semantics only from one already-admitted Run inspection."""
+    source_state = (
+        None
+        if observed.processing_source_run_id is None
+        else "reused"
+        if observed.processing_source is not None
+        else "blocked"
+    )
+    return RunProjection(
+        completion=completion_line(observed),
+        elapsed=attempt_elapsed_line(observed, now=now),
+        milestones=milestone_progress(
+            observed.tasks, processing_source_state=source_state
+        ),
+        task_counts=tuple(
+            Counter(task_observation(task) for task in observed.tasks).items()
+        ),
+        reporting=tuple(
+            (kind, reporting_observation(records))
+            for kind, records in (
+                observed.reporting_completion_records.items()
+                if observed.reporting_status != "not applicable"
+                else ()
+            )
+        ),
+    )
 
 
 def safe_text(value: object) -> str:
@@ -470,13 +515,14 @@ def refresh_snapshot(
                 "reason": "Offline; scheduler not queried",
             }
             if offline
-            else dashboard._scheduler.query_slurm(
+            else scheduler_observation.observe_job(
                 snapshot.raw_job["job_id"],
                 snapshot.raw_job["out"],
                 snapshot.raw_job["err"],
+                include_resources=True,
             )
             if snapshot.raw_job is not None
-            else slurm_submission.scheduler_observation.unknown_observation(
+            else scheduler_observation.unknown_observation(
                 "No exact submission selected; recorded Run job IDs are not a current binding"
             )
             if snapshot.request is None
@@ -666,6 +712,7 @@ def render_snapshot(
         lines.append("Verification unavailable: " + snapshot.verification_error)
     if observed is not None:
         latest = observed.latest_attempt
+        projection = project_run(observed, now=snapshot.verified_at or now)
         lines.append(
             f"Run: {observed.run_id}; latest Attempt: {'none' if latest is None else latest['workflow_attempt_id']}"
         )
@@ -673,27 +720,17 @@ def render_snapshot(
             f"Admission: {observed.integrity}; lock: {observed.lock_observation}; outcome: {observed.attempt_outcome}"
         )
         lines.append(
-            attempt_elapsed_line(observed, now=snapshot.verified_at or now)
-            + " (latest Run Attempt; elapsed at dated verification)"
+            projection.elapsed + " (latest Run Attempt; elapsed at dated verification)"
         )
-        if completion := completion_line(observed):
+        if completion := projection.completion:
             lines.append(completion)
-        milestones = milestone_progress(
-            observed.tasks,
-            processing_source_state=None
-            if observed.processing_source_run_id is None
-            else "reused"
-            if observed.processing_source is not None
-            else "blocked",
-        )
         lines.extend(
             f"  {label}: {state} ({verified}/{total} verified)"
-            for label, state, verified, total in milestones
+            for label, state, verified, total in projection.milestones
         )
-        counts = Counter(task_observation(task) for task in observed.tasks)
         lines.append(
             "Tasks: "
-            + "; ".join(f"{label}: {count}" for label, count in counts.items())
+            + "; ".join(f"{label}: {count}" for label, count in projection.task_counts)
         )
         outcomes = Counter(
             item.record["status"]
@@ -707,10 +744,7 @@ def render_snapshot(
             f"Results: {observed.results_status}; reporting: {observed.reporting_status}"
         )
         if observed.reporting_status != "not applicable":
-            lines.extend(
-                f"  {kind}: {reporting_observation(records)}"
-                for kind, records in observed.reporting_completion_records.items()
-            )
+            lines.extend(f"  {kind}: {state}" for kind, state in projection.reporting)
     lines.append("Next supported action at last verification: " + snapshot.next_action)
     if snapshot.tail is not None:
         lines.extend(

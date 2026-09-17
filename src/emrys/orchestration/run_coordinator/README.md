@@ -57,14 +57,14 @@ Run, resume and standalone report execution follow the selected Project profile.
 [Workflow composition](../../workflow/README.md) explains the graph;
 [the profile contract](CONTRACT.md#profiles-and-immutable-planning) defines resource selection.
 
-## Frozen dashboard and replacement
+## Installed watch
 
-`emrys inspect --watch` reproduces the legacy overview/detail projections,
+`emrys inspect --watch` provides overview/detail projections,
 job discovery, explicit historical selection, accounting fallback, offline
 stream access, configurable refresh, sample lanes/timings, stage context,
-resources and activity. It reuses `dashboard.py` as the shared diagnostic
-selection, parsing and presentation owner. The installed terminal adds a
-separate dated Run-evidence/log view and fresh CLI action handoffs.
+resources and activity. Its shared internal model owns diagnostic selection,
+parsing and rendering. The terminal also provides a dated Run-evidence/log view
+and fresh CLI action handoffs.
 
 `emrys watch [RUN_OR_JOB]` is the ordinary entry point over that same owner. It
 automatically selects the sole Project Run or pre-Run request, uses a picker for
@@ -81,11 +81,11 @@ Use `--job-id [JOB_ID]` for scheduler-only selection; omitted ID discovers an
 owned recent job only when exactly one candidate exists. Raw ambiguity requires
 an explicit ID and never chooses the newest candidate. `--log-dir`,
 `--out`/`--err --offline`, `--refresh` and `--snapshot` preserve the corresponding
-legacy capabilities. Scheduler-only selection cannot execute actions or admit
+diagnostic capabilities. Scheduler-only selection cannot execute actions or admit
 a Run from log text. Project requests retain their stronger exact
 owner/name/cluster/path binding and independently dated usage observations.
 
-Legacy `1`/`o`, `2`/`d`, Tab and scrolling navigate overview/details. `3`/`v`
+`1`/`o`, `2`/`d`, Tab and scrolling navigate overview/details. `3`/`v`
 opens evidence/logs and `[`/`]` changes streams. Interactive `--watch --actions`
 uses `p` for resume planning/confirmation, `b` for report preview, and `s` for
 request-stop preview. Navigation never invokes an operation. Handoffs restore
@@ -93,8 +93,8 @@ the terminal and discard queued keys before fresh admission; report/stop remain
 previews. Run handoffs use the default profile. Launch a new declared Analysis
 with `emrys run --project PROJECT --analysis NAME`.
 
-Both terminal entry points reserve mouse input without attaching an action to
-it; scrolling remains on the arrow, `j`/`k`, Page Up/Down and Home/`g` keys.
+The interactive terminal view reserves mouse input without attaching an action
+to it; scrolling remains on the arrow, `j`/`k`, Page Up/Down and Home/`g` keys.
 The installed evidence/log view colors literal severity and workflow prefixes
 without filtering or reinterpreting the sanitized diagnostic text. `NO_COLOR`
 keeps the same content plain. The `r` key performs a read-only recheck of the
@@ -115,20 +115,18 @@ quit. Explicit Run views discover all admitted application-log associations
 under the selected root, alongside Task streams; `--log-root` selects historical
 custom roots. No latest-file heuristic or inferred scheduler binding is used.
 
-The installed dashboard uses the same legacy functionality. The original
-CSU-oriented entry point remains until institutional validation and coordinated
-retirement under `DASHBOARD-RETIRE-01`. `emrys inspect` stays the authority for Run
-status and recovery. Shared selection preserves scheduler discovery, historical
-accounting fallback, exact job identity, stream ownership, regular-file and
-symlink checks, and sanitized display of raw streams.
-Legacy `--offline` with explicit job/stream paths makes no scheduler queries
+`emrys inspect` stays the authority for Run status and recovery. Shared
+selection preserves scheduler discovery, historical accounting fallback, exact
+job identity, stream ownership, regular-file and symlink checks, and sanitized
+display of raw streams. `--offline` with explicit job/stream paths makes no scheduler queries
 during selection, snapshot or interactive refresh. It shows scheduler state as
 `UNKNOWN`; raw-stream interpretation remains unverified diagnostic context.
 
 The shared stream cache handles missing, replaced and truncated files without
 carrying old bytes into a new generation. Its full-history memory is proportional
 to retained diagnostics. Keep site validation separate from hosted fixtures;
-retire the old entry point, tests, Make target and callers only together.
+the replaced standalone entry point, tests, Make target and duplicate scheduler
+query were retired together after institutional acceptance.
 
 Changing `emrys-local-pilot` names for new submissions is a separate caller-wide
 part of that outcome. Preserve historical names, stream paths and accounting

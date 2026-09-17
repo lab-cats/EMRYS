@@ -486,7 +486,7 @@ distinct from the Run's latest Attempt. A timer cannot promote historical
 evidence to current progress or recovery eligibility. Run-only views cannot
 derive current scheduler identity from an unbound recorded job ID.
 
-The installed view shares the legacy overview/detail renderer and diagnostic
+The installed view uses one shared overview/detail renderer and diagnostic
 parser. Sample lanes, peer timing, stage context, progress history, activity,
 errors, scheduler resources and historical accounting remain available.
 Reported Job stats define invocation counts; absent totals remain unknown.
@@ -505,7 +505,7 @@ candidate exists. A raw caller with several candidates must provide an ID;
 the bounded candidates in its existing interactive picker and fails with their
 IDs when noninteractive. Neither path infers the newest job.
 Explicit IDs do not rediscover on failure. `--log-dir` supplies a historical
-scheduler root; command-line selectors outrank the legacy environment defaults.
+scheduler root.
 `--offline` requires an exact ID and both explicit owned regular streams and
 issues no scheduler query. Raw selection rejects Project, Run, request, log-root
 and action combinations, and never derives Run admission from a parsed path.
@@ -533,16 +533,15 @@ retains the full consumed trace, and clears history on failed admission or
 replacement/truncation. Each stream has at most one bounded-wait daemon read;
 closing cannot admit another read or publish a late result. Full-history memory
 is proportional to consumed trace bytes. Initial selection remains synchronous;
-quitting the opened view does not wait for blocked reads.
-Search-only directory access is sufficient on macOS and Linux; no directory
-listing permission is required. Both installed and standalone views retain actual
-trace observation dates and label pending or unavailable reads. A standalone
-snapshot with an incomplete stream read prints its diagnostics and exits 1.
+quitting the opened view does not wait for blocked reads. Search-only directory
+access is sufficient on macOS and Linux; no directory listing permission is
+required. The installed view retains actual trace observation dates and labels
+pending or unavailable reads.
 
-Legacy overview/detail navigation uses `1`/`o`, `2`/`d` and Tab; arrows, `j`/`k`,
+Overview/detail navigation uses `1`/`o`, `2`/`d` and Tab; arrows, `j`/`k`,
 Page Up/Down and Home/`g` scroll. `3`/`v` selects dated evidence/logs and `[`/`]`
-cycles streams. Both interactive entry points request mouse reports and discard
-them, so mouse wheels and buttons do not navigate the dashboard. Terminal or
+cycles streams. The interactive view requests mouse reports and discards them,
+so mouse wheels and buttons do not navigate watch. Terminal or
 multiplexer bindings that translate a wheel into keyboard arrows are
 indistinguishable from permitted arrow-key input and remain outside this
 contract. Action keys cannot replace navigation keys. The installed evidence
@@ -588,10 +587,9 @@ when the path came from a previously admitted content reference. Task tails
 come from admitted terminal records or expected paths derived from an admitted
 start. Both start origin and content reference are required. Start publication
 precedes stream opening, so path derivation proves neither existence nor
-liveness. Missing/unadmitted starts supply no derived stream. The original standalone entry point remains until institutional replacement
-validation and coordinated retirement.
+liveness. Missing/unadmitted starts supply no derived stream.
 
-The existing dashboard's shared scheduler observer requires an exact canonical
+The shared watch scheduler observer requires an exact canonical
 root job ID and current numeric UID. It rejects missing/mismatched/duplicate
 identity, including accounting duplicates, and never substitutes `USER` or
 `LOGNAME` for UID proof. Refresh also checks selected stream paths; unavailable
