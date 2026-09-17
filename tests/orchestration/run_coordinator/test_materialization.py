@@ -143,6 +143,12 @@ def _command_arguments(project: Path, **options) -> argparse.Namespace:
     return argparse.Namespace(**values)
 
 
+def _parsed_arguments(configure, argv):
+    parser = argparse.ArgumentParser()
+    configure(parser)
+    return parser.parse_args(argv)
+
+
 def _read_log(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text().splitlines()]
 
@@ -3309,10 +3315,9 @@ def test_watch_resume_handoff_fresh_plan_and_decline_preserve_every_record(
         return review_actions[0][2]()
 
     monkeypatch.setattr(control._inspection_presentation, "watch", watch)
-    parser = argparse.ArgumentParser()
-    control.configure_inspect_parser(parser)
-    arguments = parser.parse_args(
-        [first.run.run_id, "--project", str(project), "--watch", "--actions"]
+    arguments = _parsed_arguments(
+        control.configure_inspect_parser,
+        [first.run.run_id, "--project", str(project), "--watch", "--actions"],
     )
     arguments.execute = True
     assert control.inspect_from_args(arguments) == (2 if changed else 0)
@@ -3600,9 +3605,9 @@ def test_public_inspect_retains_submission_observations_before_any_run(
         "run",
         lambda *_args, **_kwargs: pytest.fail("inspection invoked a subprocess"),
     )
-    parser = argparse.ArgumentParser()
-    control.configure_inspect_parser(parser)
-    arguments = parser.parse_args(["--project", str(project)])
+    arguments = _parsed_arguments(
+        control.configure_inspect_parser, ["--project", str(project)]
+    )
     assert control.inspect_from_args(arguments) == (
         2 if records == "unavailable" else 0
     )
@@ -3638,7 +3643,10 @@ def test_public_inspect_retains_submission_observations_before_any_run(
     assert _file_snapshot(project.parent) == before
     assert (
         control.inspect_from_args(
-            parser.parse_args(["run-" + "a" * 64, "--project", str(project)])
+            _parsed_arguments(
+                control.configure_inspect_parser,
+                ["run-" + "a" * 64, "--project", str(project)],
+            )
         )
         == 2
     )
@@ -3665,19 +3673,18 @@ def test_public_stop_preview_is_read_only_and_names_exact_target(
         "inspect_submission_application",
         lambda *_args: pytest.fail("stop scanned application logs"),
     )
-    parser = argparse.ArgumentParser()
-    control.configure_stop_parser(parser)
     before = _file_snapshot(tmp_path)
     assert (
         control.stop_from_args(
-            parser.parse_args(
+            _parsed_arguments(
+                control.configure_stop_parser,
                 [
                     "--project",
                     str(fixture.project),
                     "--submission",
                     fixture.root.name,
                     *(["--verbose"] if level == "verbose" else []),
-                ]
+                ],
             )
         )
         == 0
@@ -3728,9 +3735,8 @@ def test_watch_stop_handoff_readmits_exact_request_without_mutation(
         return review_actions[0][2]()
 
     monkeypatch.setattr(control._inspection_presentation, "watch", watch)
-    parser = argparse.ArgumentParser()
-    control.configure_inspect_parser(parser)
-    arguments = parser.parse_args(
+    arguments = _parsed_arguments(
+        control.configure_inspect_parser,
         [
             "--project",
             str(fixture.project),
@@ -3738,7 +3744,7 @@ def test_watch_stop_handoff_readmits_exact_request_without_mutation(
             fixture.root.name,
             "--watch",
             "--actions",
-        ]
+        ],
     )
     arguments.execute = True
     assert control.inspect_from_args(arguments) == (2 if changed else 0)
@@ -3856,9 +3862,8 @@ def test_public_stop_requires_durable_intent_and_preserves_uncertain_outcomes(
         "inspect_submission_application",
         lambda *_args: pytest.fail("stop scanned application logs"),
     )
-    parser = argparse.ArgumentParser()
-    control.configure_stop_parser(parser)
-    arguments = parser.parse_args(
+    arguments = _parsed_arguments(
+        control.configure_stop_parser,
         [
             "--project",
             str(fixture.project),
@@ -3867,7 +3872,7 @@ def test_public_stop_requires_durable_intent_and_preserves_uncertain_outcomes(
             "--execute",
             "--log-root",
             str(log_root),
-        ]
+        ],
     )
     assert control.stop_from_args(arguments) == expected
     captured = capsys.readouterr()
@@ -4120,11 +4125,12 @@ def test_public_watch_run_uses_existing_selection_and_one_scientific_snapshot(
         control._submission_inspection, "inspect_submission_application", forbidden
     )
     monkeypatch.setattr(control, "open_attempt_log", forbidden)
-    parser = argparse.ArgumentParser()
-    control.configure_inspect_parser(parser)
     before = _file_snapshot(project.parent)
     argv = ["--project", str(project), "--watch", *([root.name] if explicit else [])]
-    assert control.inspect_from_args(parser.parse_args(argv)) == 0
+    assert (
+        control.inspect_from_args(_parsed_arguments(control.configure_inspect_parser, argv))
+        == 0
+    )
     assert calls == [root]
     output = capsys.readouterr().out
     assert "Run evidence as of:" in output and "Scheduler: UNKNOWN" in output
@@ -5319,10 +5325,9 @@ def test_standalone_report_logging_boundary(
             )()
 
         monkeypatch.setattr(control._inspection_presentation, "watch", watch)
-        parser = argparse.ArgumentParser()
-        control.configure_inspect_parser(parser)
-        selected = parser.parse_args(
-            [run_root.name, "--project", str(project), "--watch", "--actions"]
+        selected = _parsed_arguments(
+            control.configure_inspect_parser,
+            [run_root.name, "--project", str(project), "--watch", "--actions"],
         )
         selected.execute = True
         assert control.inspect_from_args(selected) == 0
@@ -5368,10 +5373,9 @@ def test_planned_report_rejects_an_unavailable_or_unsupported_profile_without_wr
             status="planned", verified_report_locations=()
         ),
     )
-    parser = argparse.ArgumentParser()
-    control.configure_report_parser(parser)
-    arguments = parser.parse_args(
-        [run_root.name, "--project", str(project), "--profile", selection]
+    arguments = _parsed_arguments(
+        control.configure_report_parser,
+        [run_root.name, "--project", str(project), "--profile", selection],
     )
     before = sorted(tmp_path.rglob("*"))
     assert control.report_from_args(arguments) == 2
@@ -5403,10 +5407,9 @@ def test_watch_report_handoff_freshly_refuses_ineligible_run_without_writes(
             callback for key, _label, callback in review_actions if key == b"b"
         )(),
     )
-    parser = argparse.ArgumentParser()
-    control.configure_inspect_parser(parser)
-    arguments = parser.parse_args(
-        [first.run.run_id, "--project", str(project), "--watch", "--actions"]
+    arguments = _parsed_arguments(
+        control.configure_inspect_parser,
+        [first.run.run_id, "--project", str(project), "--watch", "--actions"],
     )
     before = {
         path: path.read_bytes() if path.is_file() else None
@@ -6920,9 +6923,10 @@ def test_inspect_log_root_requires_explicit_run_before_reads(
     monkeypatch.setattr(
         control.slurm_submission, "select_submission_request", forbidden
     )
-    parser = argparse.ArgumentParser()
-    control.configure_inspect_parser(parser)
-    arguments = parser.parse_args(["--log-root", str(tmp_path / "absent"), *selection])
+    arguments = _parsed_arguments(
+        control.configure_inspect_parser,
+        ["--log-root", str(tmp_path / "absent"), *selection],
+    )
     assert control.inspect_from_args(arguments) == 2
     assert "--log-root requires a Run selector" in capsys.readouterr().err
     assert list(tmp_path.iterdir()) == []

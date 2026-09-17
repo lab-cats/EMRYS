@@ -243,10 +243,18 @@ def _stream_identity(state):
     return state.st_dev, state.st_ino, state.st_mode, state.st_uid
 
 
-def _read_stream(path, offset, previous):
+def _read_stream(path, offset, previous, root=None, tail_bytes=None):
     """Read one captured generation through pinned directories; bytes are diagnostic."""
     if not os.path.isabs(path) or os.path.normpath(path) != path:
         raise ValueError("Stream path must be absolute and canonical")
+    if root is not None:
+        root = os.fspath(root)
+        if (
+            not os.path.isabs(root)
+            or os.path.normpath(root) != root
+            or os.path.commonpath((path, root)) != root
+        ):
+            raise ValueError("Stream path is not canonical beneath its admitted root")
     descriptors = []
     directories = []
     # Pin directories without requiring permission to list their entries.
@@ -261,7 +269,14 @@ def _read_stream(path, offset, previous):
             parent = os.open(component, directory_flags, dir_fd=parent)
             descriptors.append(parent)
             current = os.path.join(current, component)
-            directories.append((current, _stream_identity(os.fstat(parent))))
+            identity = _stream_identity(os.fstat(parent))
+            directories.append((current, identity))
+            if (
+                root is not None
+                and os.path.commonpath((current, root)) == root
+                and identity[3] != os.getuid()
+            ):
+                raise ValueError("Stream ancestor is not a real owned directory")
         if os.fstat(parent).st_uid != os.getuid():
             raise ValueError("Stream directory is not owned by the current UID")
         name = os.path.basename(path)
@@ -291,7 +306,11 @@ def _read_stream(path, offset, previous):
             ) != (previous.st_mtime_ns, previous.st_ctime_ns):
                 reset = True
                 reason += "; changed since previous observation"
-        start = 0 if reset else offset
+        start = (
+            max(0, opened.st_size - tail_bytes)
+            if tail_bytes is not None
+            else (0 if reset else offset)
+        )
         os.lseek(descriptor, start, os.SEEK_SET)
         remaining = opened.st_size - start
         data = bytearray()
@@ -327,13 +346,19 @@ def _read_stream(path, offset, previous):
 class StreamCache:
     """Full diagnostic history with one bounded-wait daemon read per stream."""
 
-    def __init__(self, path):
+    def __init__(self, path, *, root=None, tail=None, previous_state=None):
         self.path = os.fspath(path)
-        self.offset = 0
+        self.root = None if root is None else os.fspath(root)
+        self.tail_bytes, self.tail_lines, self.text_filter = tail or (
+            None,
+            None,
+            sanitize_text,
+        )
+        self.offset = 0 if previous_state is None else previous_state.st_size
         self.data = bytearray()
         self.diagnostic = "Not yet read"
         self.observed_at = None
-        self._state = None
+        self.state = previous_state
         self._reader = None
         self._result = None
         self._closed = False
@@ -345,7 +370,13 @@ class StreamCache:
 
     def _read(self):
         try:
-            self._result = _read_stream(self.path, self.offset, self._state)
+            self._result = _read_stream(
+                self.path,
+                self.offset,
+                self.state,
+                self.root,
+                self.tail_bytes,
+            )
         except Exception as exc:
             self._result = "Unavailable: " + sanitize_text(str(exc))
 
@@ -380,20 +411,22 @@ class StreamCache:
             if not isinstance(result, tuple):
                 self.data.clear()
                 self.offset = 0
-                self._state = None
+                self.state = None
                 self.observed_at = None
                 self.diagnostic = result or "Unavailable: reader did not complete"
                 return False
-            start, data, self._state, self.observed_at, self.diagnostic = result
-            if start == 0:
+            start, data, self.state, self.observed_at, self.diagnostic = result
+            if start == 0 or self.tail_bytes is not None:
                 self.data.clear()
             self.data.extend(data)
             self.offset = start + len(data)
             return True
 
     def text(self):
-        return sanitize_text(self.data.decode("utf-8", "replace"))
-
+        text = self.text_filter(self.data.decode("utf-8", "replace"))
+        if self.tail_lines is not None:
+            text = "\n".join(text.split("\n")[-self.tail_lines :])
+        return text
 
 def sanitize_text(value):
     """Remove terminal control sequences while preserving tabs and newlines."""

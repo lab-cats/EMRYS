@@ -93,6 +93,13 @@ def _patch_foundations(
     return qualified
 
 
+def _patch_linux(monkeypatch: pytest.MonkeyPatch, manager: Any = None) -> None:
+    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
+    if manager is not None:
+        monkeypatch.setattr(doctor, "_manager", manager)
+
+
 def _check(
     check_id: str,
     check_type: str,
@@ -1294,9 +1301,7 @@ def test_repair_refuses_a_site_owned_runtime_without_mutation(
             (_check("star", "tool_version", str(external)),),
         ),
     )
-    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
-    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
-    monkeypatch.setattr(doctor, "_manager", lambda name: Path(f"/manager/{name}"))
+    _patch_linux(monkeypatch, lambda name: Path(f"/manager/{name}"))
     monkeypatch.setattr(doctor, "_file_sha256", lambda _path: "d" * 64)
     before = _snapshot(tmp_path)
 
@@ -1349,9 +1354,7 @@ def test_managed_repair_accepts_missing_library_and_binds_base_profile(
             module=replace(result.analysis.module, descriptor=descriptor),
         ),
     )
-    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
-    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
-    monkeypatch.setattr(doctor, "_manager", lambda name: Path(f"/manager/{name}"))
+    _patch_linux(monkeypatch, lambda name: Path(f"/manager/{name}"))
     monkeypatch.setattr(doctor, "_file_sha256", lambda _path: "d" * 64)
     monkeypatch.setattr(
         doctor,
@@ -1372,10 +1375,8 @@ def test_retained_maintenance_claim_blocks_repair_but_not_verification_planning(
     project = _project(tmp_path)
     claim = project.source_path.parent / "runtime/maintenance.lock"
     claim.write_bytes(b"interrupted owner\n")
-    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
-    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
-    monkeypatch.setattr(
-        doctor, "_manager", lambda _name: pytest.fail("existing claim admitted manager")
+    _patch_linux(
+        monkeypatch, lambda _name: pytest.fail("existing claim admitted manager")
     )
     before = _snapshot(tmp_path)
     with pytest.raises(doctor.DoctorRepairError, match="claim already exists"):
@@ -1425,9 +1426,7 @@ def test_managed_repair_refuses_external_dependency_installation(
     with pytest.raises(doctor.DoctorRepairError, match="package manager"):
         doctor._build_repair_plan(result)
 
-    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
-    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
-    monkeypatch.setattr(doctor, "_manager", lambda name: Path(f"/manager/{name}"))
+    _patch_linux(monkeypatch, lambda name: Path(f"/manager/{name}"))
     monkeypatch.setattr(doctor, "_file_sha256", lambda _path: "d" * 64)
 
     bootstrap = doctor._build_repair_plan(replace(result, inspection=None))
@@ -2066,9 +2065,7 @@ def test_repair_retains_failed_candidate_probe_after_managers_succeed(
     pixi = tmp_path / "pixi"
     pixi.write_bytes(b"synthetic package manager\n")
     pixi.chmod(0o755)
-    monkeypatch.setattr(doctor, "_manager", lambda _name: pixi)
-    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
-    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
+    _patch_linux(monkeypatch, lambda _name: pixi)
     namespaces = {
         item.target: item.expected.removeprefix("^")
         .removesuffix("$")
@@ -3044,11 +3041,8 @@ def test_malformed_shared_seal_refuses_repair_without_an_admissible_inventory(
     seal.write_bytes(b"even malformed seal evidence must be preserved\n")
     if inventory == "damaged":
         (runtime / "runtime.tsv").write_bytes(b"damaged inventory\n")
-    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
-    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
-    monkeypatch.setattr(
-        doctor,
-        "_manager",
+    _patch_linux(
+        monkeypatch,
         lambda _name: pytest.fail("sealed donor admitted a package manager"),
     )
     before = _snapshot(tmp_path)
@@ -3084,9 +3078,7 @@ def test_valid_shared_owner_plans_a_fresh_generation_without_writes(
     runtime = project.source_path.parent / "runtime"
     seal = runtime / "shared.json"
     seal.write_bytes(b"retained seal\n")
-    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
-    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
-    monkeypatch.setattr(doctor, "_manager", lambda _name: Path("/manager/pixi"))
+    _patch_linux(monkeypatch, lambda _name: Path("/manager/pixi"))
     monkeypatch.setattr(doctor, "_file_sha256", lambda _path: "d" * 64)
     monkeypatch.setattr(
         doctor,
@@ -3134,10 +3126,8 @@ def test_dependent_project_requires_the_source_projects_replacement(
         "load_runtime_profile_contract",
         lambda *_args: (profile_bytes, ()),
     )
-    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
-    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
-    monkeypatch.setattr(
-        doctor, "_manager", lambda _name: pytest.fail("dependent admitted repair")
+    _patch_linux(
+        monkeypatch, lambda _name: pytest.fail("dependent admitted repair")
     )
 
     with pytest.raises(doctor.DoctorRepairError) as failure:

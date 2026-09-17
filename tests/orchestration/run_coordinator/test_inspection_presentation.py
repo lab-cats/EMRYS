@@ -640,16 +640,20 @@ def test_tail_refuses_unowned_or_unstable_paths(tmp_path, monkeypatch, defect):
     elif defect == "foreign-uid":
         monkeypatch.setattr(view.os, "getuid", lambda: path.stat().st_uid + 1)
     else:
-        original = view.read_suffix_with_identity
+        original = view.dashboard.os.read
+        replaced = False
 
         def read(*args, **kwargs):
+            nonlocal replaced
             result = original(*args, **kwargs)
-            root.rename(tmp_path / "old")
-            root.mkdir()
-            (root / "stream").write_bytes(b"replacement")
+            if not replaced:
+                replaced = True
+                root.rename(tmp_path / "old")
+                root.mkdir()
+                (root / "stream").write_bytes(b"replacement")
             return result
 
-        monkeypatch.setattr(view, "read_suffix_with_identity", read)
+        monkeypatch.setattr(view.dashboard.os, "read", read)
     observed = view.read_tail(view.StreamSource("Stream", path, root))
     assert observed.text == "" and observed.state is None
     assert observed.diagnostic.startswith("Unavailable:")

@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import re
 import select
-import stat
 import sys
 import termios
 import threading
@@ -19,7 +18,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from emrys.contracts.orchestration.application_model import PROCESSING_STEP_IDS
-from emrys.libraries.validation.inputs import read_suffix_with_identity
 from . import (
     _submission_inspection,
     dashboard,
@@ -329,6 +327,10 @@ def safe_text(value: object) -> str:
     )
 
 
+def _safe_log_text(value: str) -> str:
+    return "\n".join(safe_text(line) for line in value.split("\n"))
+
+
 @dataclass(frozen=True)
 class StreamSource:
     label: str
@@ -345,64 +347,30 @@ class StreamTail:
     observed_at: datetime | None = None
 
 
-def _ancestors(source: StreamSource) -> dict[Path, tuple[int, ...]]:
-    path, root = source.path, source.root
-    if (
-        not path.is_absolute()
-        or not path.is_relative_to(root)
-        or path.resolve() != path
-    ):
-        raise PresentationError(
-            "Stream path is not canonical beneath its admitted root"
-        )
-    result = {}
-    for parent in path.parents:
-        state = parent.lstat()
-        if not stat.S_ISDIR(state.st_mode) or (
-            (parent == root or parent.is_relative_to(root))
-            and state.st_uid != os.getuid()
-        ):
-            raise PresentationError("Stream ancestor is not a real owned directory")
-        result[parent] = (state.st_dev, state.st_ino, state.st_mode, state.st_uid)
-    return result
-
-
 def read_tail(source: StreamSource, previous: StreamTail | None = None) -> StreamTail:
-    """Read current diagnostic bytes; never inherit a prior content reference."""
-    try:
-        ancestors = _ancestors(source)
-        before = source.path.lstat()
-        if not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid():
-            raise PresentationError("Stream is not a regular owned file")
-        data, state = read_suffix_with_identity(
-            source.path, "Diagnostic stream", _TAIL_BYTES
-        )
-        if (before.st_dev, before.st_ino, before.st_uid) != (
-            state.st_dev,
-            state.st_ino,
-            state.st_uid,
-        ) or ancestors != _ancestors(source):
-            raise PresentationError("Stream or ancestor changed while read")
-        diagnostic = "Current diagnostic bytes; content not verified"
-        if (
-            previous is not None
-            and previous.source == source
-            and previous.state is not None
-        ):
-            old = previous.state
-            if (old.st_dev, old.st_ino) != (state.st_dev, state.st_ino):
-                diagnostic += "; replaced since previous observation"
-            elif state.st_size < old.st_size:
-                diagnostic += "; truncated since previous observation"
-        lines = data.decode("utf-8", "replace").split("\n")
-        text = "\n".join(safe_text(line) for line in lines[-_TAIL_LINES:])
-        return StreamTail(source, text, state, diagnostic, datetime.now(UTC))
-    except (OSError, ValueError, RuntimeError) as exc:
-        return StreamTail(
-            source,
-            diagnostic="Unavailable: " + safe_text(str(exc)[:4096]),
-            observed_at=datetime.now(UTC),
-        )
+    """Project the shared stream owner as one bounded selected tail."""
+    state = (
+        previous.state
+        if previous is not None and previous.source == source
+        else None
+    )
+    cache = dashboard.StreamCache(
+        source.path,
+        root=source.root,
+        tail=(_TAIL_BYTES, _TAIL_LINES, _safe_log_text),
+        previous_state=state,
+    )
+    cache.sync()
+    cache.close()
+    return StreamTail(
+        source,
+        cache.text(),
+        cache.state,
+        cache.diagnostic,
+        datetime.fromtimestamp(cache.observed_at, UTC)
+        if cache.observed_at is not None
+        else datetime.now(UTC),
+    )
 
 
 @dataclass(frozen=True)

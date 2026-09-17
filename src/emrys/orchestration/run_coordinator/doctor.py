@@ -1495,6 +1495,32 @@ def _qualification_binding(result: DoctorResult) -> str:
     )
 
 
+def _diagnose_phase(
+    plan: _RepairPlan,
+    phase: str,
+    timing: _DoctorTiming | None,
+    attempt: AttemptLog | None,
+    record_failures: bool = True,
+) -> DoctorResult:
+    """Run one fresh Doctor phase through the shared timing/diagnostic boundary."""
+    label = {
+        "head_requalification": "Verifying the checked runtime and Project",
+        "head_final_readiness": "Verifying final Project readiness",
+        "project_readiness": "Checking Project readiness",
+    }[phase]
+    with phase_progress(label, on_complete=timing.observe if timing else None):
+        result = diagnose_project(
+            plan.project.source_path,
+            analysis_name=plan.analysis_name,
+            execution_profile=plan.execution.source_path if plan.execution else None,
+        )
+    if timing is not None:
+        timing.observe_runtime(result.inspection, phase=phase)
+    if record_failures:
+        _record_runtime_failures(result.inspection, phase=phase, attempt=attempt)
+    return result
+
+
 def _qualify_slurm(
     plan: _RepairPlan,
     result: DoctorResult,
@@ -1595,18 +1621,8 @@ def _qualify_slurm(
     with suppress(Exception):
         if timing is not None:
             timing.observe_scheduler(submission, submitted)
-    with progress("Verifying the checked runtime and Project"):
-        _readmit_repair_plan(replace(plan, runtime=None), before_storage=False)
-        observed = diagnose_project(
-            plan.project.source_path,
-            analysis_name=plan.analysis_name,
-            execution_profile=execution.source_path,
-        )
-    if timing is not None:
-        timing.observe_runtime(observed.inspection, phase="head_requalification")
-    _record_runtime_failures(
-        observed.inspection, phase="head_requalification", attempt=attempt
-    )
+    _readmit_repair_plan(replace(plan, runtime=None), before_storage=False)
+    observed = _diagnose_phase(plan, "head_requalification", timing, attempt)
     if _qualification_binding(observed) != binding:
         raise DoctorRepairError(
             "Project, package, or runtime changed during compute qualification"
@@ -1618,14 +1634,7 @@ def _qualify_slurm(
             raise DoctorRepairError(
                 f"Head storage finalization failed after Slurm job {job_id}: {str(exc)!a}"
             ) from exc
-    with progress("Verifying final Project readiness"):
-        final = diagnose_project(
-            plan.project.source_path,
-            analysis_name=plan.analysis_name,
-            execution_profile=execution.source_path,
-        )
-    if timing is not None:
-        timing.observe_runtime(final.inspection, phase="head_final_readiness")
+    final = _diagnose_phase(plan, "head_final_readiness", timing, attempt, False)
     if final.execution_profile != execution:
         raise DoctorRepairError(
             f"Execution profile changed during head finalization after Slurm job {job_id}"
@@ -1882,19 +1891,7 @@ def _execute_repair(
                     raise DoctorRepairError(
                         "existing managed profile differs and was preserved"
                     )
-        with progress("Checking Project readiness"):
-            final = diagnose_project(
-                plan.project.source_path,
-                analysis_name=plan.analysis_name,
-                execution_profile=plan.execution.source_path
-                if plan.execution
-                else None,
-            )
-        if timing is not None:
-            timing.observe_runtime(final.inspection, phase="project_readiness")
-        _record_runtime_failures(
-            final.inspection, phase="project_readiness", attempt=attempt
-        )
+        final = _diagnose_phase(plan, "project_readiness", timing, attempt)
         compute_checked = False
         if plan.execution is not None and isinstance(
             plan.execution.placement, SlurmPlacement
