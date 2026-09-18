@@ -116,6 +116,110 @@ documented commands, and scientific-output discoverability. Provider and
 upgrade evidence refine the existing extension and release outcomes rather
 than create parallel initiatives.
 
+## Integration-scale architecture reduction options
+
+The September 17 integration review at `e580a763` compared 144 changed files,
+34,623 additions, and 6,038 deletions with merge base `f2c0149e`. Relative to
+the original integration head, the completed compression removed 2,187 net
+maintained lines but reduced the pull-request additions by only 850. A prior
+6,400–9,200-line opportunity estimate is withdrawn: it added overlapping
+candidate ranges and was not supported by caller-complete prototypes. No
+further thousands-of-lines reduction is established by the review.
+
+The options below are unselected architecture investigations, not backlog
+acceptance or implementation authority. Each must start with a current
+caller/dependency audit, one measured vertical prototype, and separate
+product, test/protection, tooling, documentation/configuration, and evidence
+accounting. Selection requires a credible caller-complete deletion plan under
+the [architecture guardrails](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails).
+Watch remains supported, and no option authorizes deleting retained evidence
+or an entire feature family.
+
+### Unified inspection and Watch observation architecture
+
+Define one immutable admitted Run-observation model. `inspect` would read one
+snapshot; `watch` would repeatedly feed snapshots through the same Run
+selection, presentation model, navigation reducer, and renderer. The current
+[dashboard](../../src/emrys/orchestration/run_coordinator/dashboard.py),
+[inspection presentation](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py),
+[inspection evidence](../../src/emrys/orchestration/run_coordinator/_inspection_evidence.py),
+and [scheduler observation](../../src/emrys/orchestration/run_coordinator/scheduler_observation.py)
+are the initial audit surface.
+
+Scheduler state must remain an observation rather than Run-completion or
+recovery authority. Exact Run selection, admitted evidence, streaming
+ownership, terminal navigation, rendering, and all current Watch interactions
+must retain parity. The redesign is acceptable only if every parallel
+selection/presentation path retires; another adapter layer is not reduction.
+
+### Shared application-operation kernel
+
+Evaluate a small lifecycle kernel for mechanics repeated by Doctor,
+onboarding, control, Task, and Slurm submission: exclusive claims, signal
+handling, phase transitions, durable application logging, rollback bookkeeping,
+and terminal receipts. Each owner would supply its own admitted inputs,
+mutation authorization, phase work, failure vocabulary, and recovery policy.
+
+This option must not turn different trust boundaries into configuration flags
+inside a generic controller. A prototype should migrate one complete repeated
+mechanic across every equivalent caller, delete the former implementations,
+and preserve public exits, writes, locks, logs, receipts, recovery states, and
+fault injection. Of the listed options, this has the broadest potential product
+surface, but no deletion quantity is accepted before that prototype.
+
+### Declarative operation records and fault scenarios
+
+Evaluate canonical builders for Project, Run, Task, attempt, scheduler,
+filesystem-fault, and publication scenarios. Tests would declare admitted
+inputs, the exact injected boundary, and literal expected records or outcomes
+instead of rebuilding complete trees and assertion plumbing. Product record
+construction may join the same effort only where equivalent owners already
+make the same decision from the same inputs.
+
+Every distinct failure mode must remain named and independently selectable;
+independent scientific or evidence oracles remain independent. Success is a
+smaller test and fixture surface with unchanged behavioral coverage, not fewer
+tests obtained by merging unlike outcomes or weakening literal expectations.
+
+### Common reporting transaction engine
+
+Evaluate replacing the artifact-index and Run-report publication loops with
+one reporting-owned transaction plan. The plan would have to express staging,
+link order, final completion marker, file modes, directory re-admission,
+rollback ownership proof, recovery evidence, and cleanup without choosing a
+publisher's admission or evidence policy.
+
+The current publishers have materially different commit ordering, exception
+handling, and recovery boundaries. This option is justified only if a
+caller-complete implementation is smaller than both existing publishers,
+preserves every injected fault outcome, and deletes both superseded transaction
+loops. Sharing isolated helpers or adding a second publication framework does
+not meet that bar.
+
+### Narrow supported surfaces without retiring feature families
+
+Audit whether multiple schema generations, selector grammars, compatibility
+routes, output representations, or command paths are still publicly supported
+and used. Where one route can become canonical, retire its superseded adapters,
+branches, tests, configuration, and documentation together while retaining the
+underlying Watch, Doctor, submission, materialization, reporting, and
+scientific feature families.
+
+This is a public-contract decision rather than an internal refactor. Each
+candidate needs an exact consumer inventory, migration and rollback path, and
+separate approval. Absence of a recently observed caller is not sufficient
+evidence for retirement.
+
+### Review structure is not architecture reduction
+
+Stacked pull requests, prerequisite merges, rebuilding from current `master`,
+or retargeting an integration pull request can make each review smaller. They
+do not reduce maintained code or total additions unless equivalent work is
+already independently reviewed in the new base or duplicate ancestry is
+removed. Squashing, renaming branches, or hiding files never counts toward an
+architecture or line-reduction result. Any future campaign must report both
+maintained-line change and the hosting service's pull-request additions.
+
 ## Correctness and recovery
 
 ### 1. Preserve ownership during validation-report recovery
