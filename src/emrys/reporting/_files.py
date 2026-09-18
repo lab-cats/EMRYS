@@ -5,12 +5,13 @@ from __future__ import annotations
 import os
 import shutil
 import stat
+from contextlib import suppress
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import NoReturn
 
-from emrys.libraries.exclusive_publication import stat_identity
+from emrys.libraries.exclusive_publication import stat_identity, write_bytes_exclusive
 
 
 @dataclass(frozen=True)
@@ -97,3 +98,15 @@ def remove_owned_stage(
     ):
         raise error_type(f"Refusing to remove unverified staging path: {path}")
     shutil.rmtree(path)
+
+
+def preserve_recovery(
+    path: Path,
+    error: type[Exception],
+    admit: Callable[[], None],
+    text: str,
+    mode: int = 0o600,
+) -> None:
+    with suppress(OSError, error):
+        admit()
+        write_bytes_exclusive(path, text.encode("utf-8"), mode=mode)

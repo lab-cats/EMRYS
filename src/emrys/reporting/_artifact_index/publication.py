@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import os
 import stat
 import sys
@@ -87,6 +86,11 @@ def publish_context(evidence: EvidenceContext) -> None:
         ):
             raise ArtifactIndexError("Artifact-index output directory changed identity")
 
+    def preserve_recovery(path: Path, text: str) -> None:
+        _files.preserve_recovery(
+            path, ArtifactIndexError, assert_directory, text, 0o666
+        )
+
     projected = (
         (evidence.summary_paths.summary_tsv, evidence.summary_tsv_bytes),
         (evidence.summary_paths.qc_summary, evidence.qc_summary_bytes),
@@ -116,8 +120,7 @@ def publish_context(evidence: EvidenceContext) -> None:
     run_token = f"{os.getpid()}-{uuid.uuid4().hex}"
     temp_records = context.output_dir / f".artifact-index.{run_token}.tmp.records"
     recovery_path = context.output_dir / f".artifact-index.{run_token}.RECOVERY.txt"
-    scratch = (temp_records,)
-    for path in (*scratch, recovery_path):
+    for path in (temp_records, recovery_path):
         if os.path.lexists(path):
             raise ArtifactIndexError(
                 f"Run-token scratch path already exists; refusing: {path}"
@@ -147,7 +150,7 @@ def publish_context(evidence: EvidenceContext) -> None:
         ) from exc
 
     attempted: dict[Path, tuple[Path, os.stat_result]] = {}
-    scratch_identity: dict[Path, tuple[int, int]] = {}
+    stage_identity: tuple[int, int] | None = None
     committed = rollback_failed = False
     try:
         assert_directory()
@@ -158,7 +161,7 @@ def publish_context(evidence: EvidenceContext) -> None:
                 )
         temp_records.mkdir()
         current = temp_records.lstat()
-        scratch_identity[temp_records] = (current.st_dev, current.st_ino)
+        stage_identity = (current.st_dev, current.st_ino)
         for path, payload in projected:
             exclusive_publication.write_bytes_exclusive(
                 temp_records / path.name, payload, mode=0o666
@@ -167,10 +170,8 @@ def publish_context(evidence: EvidenceContext) -> None:
         recheck_inputs(context)
         recheck_source_identity(context)
         assert_directory()
-        outputs = tuple(
-            (temp_records / path.name, path) for path, _payload in projected
-        )
-        for staged, final in outputs:
+        for final, _payload in projected:
+            staged = temp_records / final.name
             assert_directory()
             if final == evidence.summary_paths.summary_json:
                 _files.fsync_path(context.output_dir)
@@ -236,16 +237,11 @@ def publish_context(evidence: EvidenceContext) -> None:
             rollback_errors.append(str(cleanup_exc))
         if rollback_errors:
             rollback_failed = True
-            with contextlib.suppress(OSError, ArtifactIndexError):
-                assert_directory()
-                exclusive_publication.write_bytes_exclusive(
-                    recovery_path,
-                    (
-                        f"Artifact-index rollback was incomplete.\nOriginal error: {exc}\n"
-                        f"Rollback errors: {'; '.join(rollback_errors)}\n"
-                    ).encode("utf-8"),
-                    mode=0o666,
-                )
+            preserve_recovery(
+                recovery_path,
+                f"Artifact-index rollback was incomplete.\nOriginal error: {exc}\n"
+                f"Rollback errors: {'; '.join(rollback_errors)}\n",
+            )
             raise ArtifactIndexError(
                 f"{exc}\nArtifact-index rollback was incomplete; preserve "
                 f"the lock and recovery paths under {context.output_dir}"
@@ -256,10 +252,9 @@ def publish_context(evidence: EvidenceContext) -> None:
         if not rollback_failed:
             try:
                 assert_directory()
-                for path in scratch:
-                    _files.remove_owned_stage(
-                        path, run_token, scratch_identity.get(path), ArtifactIndexError
-                    )
+                _files.remove_owned_stage(
+                    temp_records, run_token, stage_identity, ArtifactIndexError
+                )
                 assert_directory()
                 exclusive_publication.release_lock(
                     context.lock_path, ownership, lock_payload, ArtifactIndexError
@@ -275,16 +270,11 @@ def publish_context(evidence: EvidenceContext) -> None:
             )
         if cleanup_errors:
             state = "publication is complete" if committed else "rollback completed"
-            with contextlib.suppress(OSError, ArtifactIndexError):
-                assert_directory()
-                exclusive_publication.write_bytes_exclusive(
-                    recovery_path,
-                    (
-                        f"Artifact-index {state} but owned cleanup was incomplete.\n"
-                        f"Cleanup errors: {'; '.join(cleanup_errors)}\n"
-                    ).encode("utf-8"),
-                    mode=0o666,
-                )
+            preserve_recovery(
+                recovery_path,
+                f"Artifact-index {state} but owned cleanup was incomplete.\n"
+                f"Cleanup errors: {'; '.join(cleanup_errors)}\n",
+            )
             prefix = f"{active}\n" if active is not None else ""
             raise ArtifactIndexError(
                 prefix + "Artifact-index cleanup failed; preserve the lock and "

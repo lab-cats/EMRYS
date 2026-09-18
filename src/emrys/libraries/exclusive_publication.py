@@ -152,6 +152,11 @@ def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int]:
     )
 
 
+def stable_file_identity(value: os.stat_result) -> tuple[int, ...]:
+    """Include file kind in the complete metadata identity used during reads."""
+    return (value.st_mode, *stat_identity(value))
+
+
 def _write_durable(descriptor: int, payload: bytes) -> None:
     while payload:
         written = os.write(descriptor, payload)

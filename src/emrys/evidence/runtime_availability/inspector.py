@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import stat
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TypeVar
 
 from emrys.contracts.orchestration import api as contracts
 from emrys.libraries import validation as report
@@ -54,6 +55,18 @@ class RuntimeContentMismatchError(RuntimeInspectionError):
     """A valid shared selector no longer matches the sealed fixed content."""
 
 
+_Result = TypeVar("_Result")
+
+
+def _profile_call(
+    operation: Callable[..., _Result], /, *args: object, **kwargs: object
+) -> _Result:
+    try:
+        return operation(*args, **kwargs)
+    except (PreflightError, report.ValidationError, OSError) as exc:
+        raise RuntimeInspectionError(str(exc)) from exc
+
+
 def runtime_profile_bytes(choices: Mapping[str, Path]) -> bytes:
     """Store each selected path once; probe rules belong to the installed policy."""
 
@@ -91,10 +104,7 @@ def inspect_runtime_profile_bytes(
 def runtime_profile_checks(data: bytes, source_root: Path) -> tuple[RuntimeCheck, ...]:
     """Admit runtime choices and derive their complete fixed probe policy."""
 
-    try:
-        return _runtime_profile_checks(data, source_root)
-    except (PreflightError, report.ValidationError, OSError) as exc:
-        raise RuntimeInspectionError(str(exc)) from exc
+    return _profile_call(_runtime_profile_checks, data, source_root)
 
 
 def load_runtime_profile_contract(
@@ -103,12 +113,8 @@ def load_runtime_profile_contract(
 ) -> tuple[bytes, tuple[RuntimeCheck, ...]]:
     """Read and validate one profile without running any declared probes."""
 
-    try:
-        data = report.read_bytes(profile, "Runtime choices")
-        checks = runtime_profile_checks(data, source_root)
-    except (PreflightError, report.ValidationError, OSError) as exc:
-        raise RuntimeInspectionError(str(exc)) from exc
-    return data, tuple(checks)
+    data = _profile_call(report.read_bytes, profile, "Runtime choices")
+    return data, runtime_profile_checks(data, source_root)
 
 
 def runtime_file_bindings(
@@ -261,19 +267,15 @@ def _binding_record(binding: RuntimeBinding, check: RuntimeCheck) -> dict[str, s
 
 
 def load_runtime_seal(path: Path) -> RuntimeSeal:
-    try:
-        return profile_contract.load_runtime_seal(path)
-    except (PreflightError, report.ValidationError, OSError) as exc:
-        raise RuntimeInspectionError(str(exc)) from exc
+    return _profile_call(profile_contract.load_runtime_seal, path)
 
 
 def admit_runtime_seal_bytes(path: Path, data: bytes) -> RuntimeSeal:
     """Admit retained seal bytes while an owning maintenance claim is held."""
 
-    try:
-        return profile_contract.admit_runtime_seal(path, data, require_content=False)
-    except (PreflightError, report.ValidationError, OSError) as exc:
-        raise RuntimeInspectionError(str(exc)) from exc
+    return _profile_call(
+        profile_contract.admit_runtime_seal, path, data, require_content=False
+    )
 
 
 def shared_runtime_selection(
@@ -281,27 +283,20 @@ def shared_runtime_selection(
 ) -> profile_contract.SharedRuntimeSelection | None:
     """Read one shared selector without requiring the referenced seal."""
 
-    try:
-        return profile_contract.shared_runtime_selection(data)
-    except (PreflightError, report.ValidationError, OSError) as exc:
-        raise RuntimeInspectionError(str(exc)) from exc
+    return _profile_call(profile_contract.shared_runtime_selection, data)
 
 
 def runtime_root_for_seal(path: Path) -> Path:
-    try:
-        return profile_contract.runtime_root_for_seal(path)
-    except (PreflightError, report.ValidationError, OSError) as exc:
-        raise RuntimeInspectionError(str(exc)) from exc
+    return _profile_call(profile_contract.runtime_root_for_seal, path)
 
 
 def runtime_profile_choices(data: bytes) -> dict[str, Path]:
-    try:
-        return {
-            key: Path(value)
-            for key, value in profile_contract.runtime_profile_choices(data).items()
-        }
-    except (PreflightError, report.ValidationError, OSError) as exc:
-        raise RuntimeInspectionError(str(exc)) from exc
+    return {
+        key: Path(value)
+        for key, value in _profile_call(
+            profile_contract.runtime_profile_choices, data
+        ).items()
+    }
 
 
 def runtime_seal_bytes(inspection: RuntimeInspection, path: Path) -> bytes:

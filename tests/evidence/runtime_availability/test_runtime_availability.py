@@ -66,6 +66,31 @@ def tool_row(
     ]
 
 
+def executable(
+    tmp_path: Path, name: str = "runtime-tool", body: str = "exit 0"
+) -> Path:
+    path = tmp_path / name
+    path.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
+    path.chmod(0o755)
+    return path
+
+
+def r_namespace_scenario(
+    tmp_path: Path,
+    check_id: str,
+    target: str,
+    expected: str = r"^1[.]2[.]3$",
+) -> tuple[RuntimeCheck, dict[str, str]]:
+    rscript = executable(tmp_path, "Rscript")
+    return (
+        RuntimeCheck(check_id, "r_namespace", target, (str(rscript),), expected),
+        {
+            "EMRYS_LOCAL_PILOT_R": "1",
+            "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
+        },
+    )
+
+
 def snakemake_check() -> RuntimeCheck:
     return replace(
         next(
@@ -589,15 +614,13 @@ def test_default_runner_forwards_distinct_timeout_and_records_elapsed(
     expected_timeout: int,
     detail_prefix: str,
 ) -> None:
-    executable = tmp_path / "runtime-tool"
-    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    executable.chmod(0o755)
+    runtime_tool = executable(tmp_path)
     check = RuntimeCheck(
         check_id="bounded",
         check_type=check_type,
-        target="FixturePackage" if check_type == "r_namespace" else str(executable),
+        target="FixturePackage" if check_type == "r_namespace" else str(runtime_tool),
         probe_args=(
-            (str(executable),)
+            (str(runtime_tool),)
             if check_type == "r_namespace"
             else ("python_hashlib",)
             if check_type == "hash_utility"
@@ -753,13 +776,11 @@ def test_python_hash_probe_reports_command_and_digest_failures(
     tmp_path: Path,
     output: str,
 ) -> None:
-    executable = tmp_path / "python"
-    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    executable.chmod(0o755)
+    python = executable(tmp_path, "python")
     check = RuntimeCheck(
         check_id="sha256",
         check_type="hash_utility",
-        target=str(executable),
+        target=str(python),
         probe_args=("python_hashlib",),
         expected="sha256",
     )
@@ -804,23 +825,10 @@ def test_python_hash_probe_reports_command_and_digest_failures(
 def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
     tmp_path: Path,
 ) -> None:
-    fake = tmp_path / "Rscript"
-    fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    fake.chmod(0o755)
-    library = tmp_path / "library"
+    check, environment = r_namespace_scenario(tmp_path, "r_guarded", "GuardedPackage")
+    library = Path(environment["EMRYS_RENV_LIBRARY"])
     library.mkdir()
-    check = RuntimeCheck(
-        check_id="r_guarded",
-        check_type="r_namespace",
-        target="GuardedPackage",
-        probe_args=(str(fake),),
-        expected=r"^1[.]2[.]3$",
-    )
     calls: list[tuple[list[str], bytes | None, dict[str, str] | None, int]] = []
-    environment = {
-        "EMRYS_LOCAL_PILOT_R": "1",
-        "EMRYS_RENV_LIBRARY": str(library),
-    }
     resolved_package = (tmp_path / "renv-cache" / "GuardedPackage").resolve()
 
     def capture(
@@ -847,7 +855,7 @@ def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
     assert result.status == "pass"
     argv, stdin, observed_environment, timeout_seconds = calls[0]
     assert argv[:5] == [
-        str(fake),
+        check.probe_args[0],
         "--no-environ",
         "--no-site-file",
         "--no-restore",
@@ -888,23 +896,11 @@ def test_guarded_r_namespace_rejects_missing_or_malformed_root_identity(
     tmp_path: Path,
     output: str,
 ) -> None:
-    fake = tmp_path / "Rscript"
-    fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    fake.chmod(0o755)
-    check = RuntimeCheck(
-        check_id="r_guarded",
-        check_type="r_namespace",
-        target="GuardedPackage",
-        probe_args=(str(fake),),
-        expected=r"^1[.]2[.]3$",
-    )
+    check, environment = r_namespace_scenario(tmp_path, "r_guarded", "GuardedPackage")
 
     result = run_checks(
         [check],
-        environment={
-            "EMRYS_LOCAL_PILOT_R": "1",
-            "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
-        },
+        environment=environment,
         command_runner=lambda _argv, _stdin, _environment, _timeout: (
             0,
             output,
@@ -926,16 +922,7 @@ def test_guarded_r_namespace_rejects_missing_or_malformed_root_identity(
 def test_r_namespace_timeout_is_distinct_bounded_and_fail_closed(
     tmp_path: Path,
 ) -> None:
-    fake = tmp_path / "Rscript"
-    fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    fake.chmod(0o755)
-    check = RuntimeCheck(
-        check_id="r_timeout",
-        check_type="r_namespace",
-        target="SlowPackage",
-        probe_args=(str(fake),),
-        expected=r"^1[.]2[.]3$",
-    )
+    check, environment = r_namespace_scenario(tmp_path, "r_timeout", "SlowPackage")
     observed_timeouts: list[int] = []
 
     def time_out(
@@ -950,10 +937,7 @@ def test_r_namespace_timeout_is_distinct_bounded_and_fail_closed(
     result = run_checks(
         [check],
         command_runner=time_out,
-        environment={
-            "EMRYS_LOCAL_PILOT_R": "1",
-            "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
-        },
+        environment=environment,
     )[0]
 
     assert observed_timeouts == [R_NAMESPACE_PROBE_TIMEOUT_SECONDS]
@@ -965,118 +949,67 @@ def test_r_namespace_timeout_is_distinct_bounded_and_fail_closed(
     )
 
 
-def test_r_namespace_real_exit_124_is_not_misclassified_as_timeout(
-    tmp_path: Path,
-) -> None:
-    fake = tmp_path / "Rscript"
-    fake.write_text("#!/bin/sh\nexit 124\n", encoding="utf-8")
-    fake.chmod(0o755)
-    check = RuntimeCheck(
-        check_id="r_exit_124",
-        check_type="r_namespace",
-        target="FixturePackage",
-        probe_args=(str(fake),),
-        expected=r"^1[.]2[.]3$",
-    )
-
-    result = run_checks(
-        [check],
-        command_runner=lambda _argv, _stdin, _environment, _timeout: (
+@pytest.mark.parametrize(
+    ("code", "output", "detail_prefix", "include_root", "elapsed"),
+    [
+        pytest.param(
             124,
             "real child exit",
+            "R namespace probe failed",
+            False,
             0.25,
-            False,
+            id="real-exit-124-is-not-timeout",
         ),
-        environment={
-            "EMRYS_LOCAL_PILOT_R": "1",
-            "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
-        },
-    )[0]
-
-    assert result.status == "fail"
-    assert result.observed == "real child exit"
-    assert result.detail == (
-        "R namespace probe failed; exit_status=124; expected_exit_status=0; "
-        f"elapsed_seconds=0.250; timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
-    )
-
-
-def test_r_namespace_keeps_strict_version_output_matching(tmp_path: Path) -> None:
-    fake = tmp_path / "Rscript"
-    fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    fake.chmod(0o755)
-    check = RuntimeCheck(
-        check_id="r_warning",
-        check_type="r_namespace",
-        target="FixturePackage",
-        probe_args=(str(fake),),
-        expected=r"^1[.]2[.]3$",
-    )
-    contaminated = "Warning message: replacing previous import 1.2.3"
-
-    result = run_checks(
-        [check],
-        command_runner=lambda _argv, _stdin, _environment, _timeout: (
+        pytest.param(
             0,
-            contaminated
-            + R_NAMESPACE_ROOT_OUTPUT_MARKER
-            + str(tmp_path / "library/FixturePackage").encode().hex(),
+            "Warning message: replacing previous import 1.2.3",
+            "Namespace version did not match expected regex",
+            True,
             0.0,
-            False,
+            id="strict-version-output",
         ),
-        environment={
-            "EMRYS_LOCAL_PILOT_R": "1",
-            "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
-        },
-    )[0]
-
-    assert result.status == "fail"
-    assert result.observed == contaminated
-    assert result.detail == (
-        "Namespace version did not match expected regex; "
-        "exit_status=0; expected_exit_status=0; "
-        "elapsed_seconds=0.000; "
-        f"timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
-    )
-
-
-@pytest.mark.parametrize(
-    ("code", "expected_detail"),
-    [
-        (42, "R namespace is unavailable in the selected library"),
-        (43, "R did not select the admitted library first"),
-        (44, "R namespace did not resolve to its exact selected package root"),
+        *(
+            pytest.param(code, output, detail, False, 0.0, id=f"exit-{code}-{kind}")
+            for code, detail in (
+                (42, "R namespace is unavailable in the selected library"),
+                (43, "R did not select the admitted library first"),
+                (44, "R namespace did not resolve to its exact selected package root"),
+            )
+            for kind, output in (
+                ("empty", ""),
+                ("diagnostic", "namespace dependency unavailable"),
+            )
+        ),
     ],
 )
-@pytest.mark.parametrize("output", ["", "namespace dependency unavailable"])
-def test_r_namespace_failure_detail_distinguishes_library_selection(
+def test_r_namespace_failures_retain_distinct_probe_outcomes(
     tmp_path: Path,
     code: int,
-    expected_detail: str,
     output: str,
+    detail_prefix: str,
+    include_root: bool,
+    elapsed: float,
 ) -> None:
-    fake = tmp_path / "Rscript"
-    fake.write_text("#!/bin/sh\nexit 42\n", encoding="utf-8")
-    fake.chmod(0o755)
-    check = RuntimeCheck(
-        check_id="r_fixture",
-        check_type="r_namespace",
-        target="Fixture",
-        probe_args=(str(fake),),
-        expected=r"^1[.]0[.]0$",
+    check, environment = r_namespace_scenario(
+        tmp_path,
+        "r_fixture",
+        "Fixture",
+        r"^1[.]2[.]3$" if include_root else r"^1[.]0[.]0$",
     )
-    environment = {
-        "EMRYS_LOCAL_PILOT_R": "1",
-        "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
-    }
+    command_output = output
+    if include_root:
+        command_output += (
+            R_NAMESPACE_ROOT_OUTPUT_MARKER
+            + str(tmp_path / "library/Fixture").encode().hex()
+        )
 
     result = run_checks(
         [check],
         environment=environment,
         command_runner=lambda _argv, _stdin, _environment, _timeout: (
             code,
-            output,
-            0.0,
+            command_output,
+            elapsed,
             False,
         ),
     )[0]
@@ -1084,8 +1017,8 @@ def test_r_namespace_failure_detail_distinguishes_library_selection(
     assert result.status == "fail"
     assert result.observed == (output or f"exit {code}")
     assert result.detail == (
-        f"{expected_detail}; exit_status={code}; expected_exit_status=0; "
-        "elapsed_seconds=0.000; "
+        f"{detail_prefix}; exit_status={code}; expected_exit_status=0; "
+        f"elapsed_seconds={elapsed:.3f}; "
         f"timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
     )
 

@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from emrys.libraries.exclusive_publication import stable_file_identity
 from emrys.libraries.validation.errors import fail
 
 
@@ -212,22 +213,11 @@ def _read_file(
             os.close(descriptor)
     expected_size = before.st_size if limit is None else min(before.st_size, limit)
     if (
-        _stable_file_state(before) != _stable_file_state(after)
+        stable_file_identity(before) != stable_file_identity(after)
         or observed_size != expected_size
     ):
         fail(f"{label} changed while read: {path}")
     return (digest.hexdigest() if digest is not None else b"".join(chunks)), after
-
-
-def _stable_file_state(value: os.stat_result) -> tuple[int, ...]:
-    return (
-        value.st_dev,
-        value.st_ino,
-        value.st_mode,
-        value.st_size,
-        value.st_mtime_ns,
-        value.st_ctime_ns,
-    )
 
 
 def _stable_directory_state(value: os.stat_result) -> tuple[int, ...]:
@@ -249,9 +239,9 @@ def _require_descriptor_path_binding(
         path_state = os.stat(path, follow_symlinks=False)
     except OSError as exc:
         fail(f"{label} pathname changed while read: {path}: {exc}")
-    if stat.S_ISLNK(path_state.st_mode) or _stable_file_state(
+    if stat.S_ISLNK(path_state.st_mode) or stable_file_identity(
         path_state
-    ) != _stable_file_state(descriptor_state):
+    ) != stable_file_identity(descriptor_state):
         fail(f"{label} pathname changed while read: {path}")
 
 

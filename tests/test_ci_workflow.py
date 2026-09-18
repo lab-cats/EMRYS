@@ -122,7 +122,8 @@ def test_static_job_uses_the_shared_gate_without_repeating_sharder_self_tests() 
         _workflow_jobs()["static-wheel"],
         "Run static, lint, documentation, and wheel checks",
     )
-    assert step["shell"] == "bash"
+    assert _workflow_document()["defaults"]["run"]["shell"] == "bash"
+    assert "shell" not in step
     assert step["run"].splitlines() == [
         "set -euo pipefail",
         "make -s validation-static",

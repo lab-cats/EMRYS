@@ -202,17 +202,15 @@ def publish_report(context: ReportContext) -> None:
             rollback_errors.append(str(rollback_exc))
         if rollback_errors:
             recovery_required = True
-            with contextlib.suppress(OSError, ReportRenderError):
-                assert_directory()
-                exclusive_publication.write_bytes_exclusive(
-                    recovery,
-                    (
-                        "Report rollback was incomplete.\n"
-                        f"Original error: {original}\n"
-                        f"Rollback errors: {'; '.join(rollback_errors)}\n"
-                        f"Stage: {stage}\nLock: {context.lock_path}\n"
-                    ).encode("utf-8"),
-                )
+            _files.preserve_recovery(
+                recovery,
+                ReportRenderError,
+                assert_directory,
+                "Report rollback was incomplete.\n"
+                f"Original error: {original}\n"
+                f"Rollback errors: {'; '.join(rollback_errors)}\n"
+                f"Stage: {stage}\nLock: {context.lock_path}\n",
+            )
             raise ReportRenderError(
                 "Report publication failed and rollback was incomplete; preserve "
                 "the owned lock and recovery state"
@@ -249,16 +247,14 @@ def publish_report(context: ReportContext) -> None:
             except BaseException as exc:
                 cleanup_errors.append(f"signal-handler restoration failed: {exc}")
         if cleanup_errors:
-            with contextlib.suppress(OSError, ReportRenderError):
-                assert_directory()
-                exclusive_publication.write_bytes_exclusive(
-                    recovery,
-                    (
-                        "Report cleanup was incomplete.\n"
-                        f"Active error: {active}\n"
-                        f"Cleanup errors: {'; '.join(cleanup_errors)}\n"
-                    ).encode("utf-8"),
-                )
+            _files.preserve_recovery(
+                recovery,
+                ReportRenderError,
+                assert_directory,
+                "Report cleanup was incomplete.\n"
+                f"Active error: {active}\n"
+                f"Cleanup errors: {'; '.join(cleanup_errors)}\n",
+            )
             raise ReportRenderError(
                 "Report cleanup failed; preserve recovery evidence: "
                 + "; ".join(cleanup_errors)
