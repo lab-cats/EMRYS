@@ -137,6 +137,34 @@ def write_fixture(root: Path) -> Path:
     return repository
 
 
+def test_quickstart_tracks_guided_init_and_viking_profile() -> None:
+    quickstart = (REPO_ROOT / "quickstart.md").read_text(encoding="utf-8")
+    ordered_guidance = (
+        "Enter the absolute path to the reference FASTA",
+        "asks for the absolute FASTQ directory",
+        "At `optional regions file`",
+        "After the partitions are selected",
+    )
+    positions = [quickstart.index(value) for value in ordered_guidance]
+
+    assert positions == sorted(positions)
+    assert (
+        "the delivered six paired EV/PUM1 FASTQs and their checksums" not in quickstart
+    )
+    assert "If the data provider supplied checksums, retain them" in quickstart
+    assert "Synthetic Project: ready" in quickstart
+    for value in (
+        "`viking-users`",
+        "`long`",
+        "`normal`",
+        "One scheduler-selected exclusive node",
+        "All CPUs and all memory on that node",
+        "12 hours",
+        "A private directory under `/tmp`",
+    ):
+        assert value in quickstart
+
+
 def validate(
     repository: Path,
     *,

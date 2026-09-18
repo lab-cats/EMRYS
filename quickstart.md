@@ -22,7 +22,7 @@ alone is not a Viking terminal. Keep the Viking terminal open during setup.
 You need:
 
 - your normal writable Viking home directory and permission to download software;
-- the delivered six paired EV/PUM1 FASTQs and their checksums;
+- the delivered six paired EV/PUM1 FASTQs;
 - the delivered reference FASTA and its matching GTF annotation.
 
 The FASTA contains the reference sequences. The GTF describes features on those
@@ -82,11 +82,32 @@ Press Enter for the displayed `Projects` home and `viking` site. Leave the
 optional log root empty so each Project keeps its own application logs. Success
 creates a repository-root `.env`. If setup reports an error, stop there.
 
+New Projects created with the saved `viking` site use these supplied placement
+values; you do not enter them during guided initialization:
+
+| Setting | Supplied value |
+| --- | --- |
+| Account | `viking-users` |
+| Partition | `long` |
+| QoS | `normal` |
+| Node | One scheduler-selected exclusive node |
+| CPU and memory | All CPUs and all memory on that node |
+| Time limit | 12 hours |
+| Scratch space | A private directory under `/tmp` |
+
+These are requested limits, not a performance measurement or a promise that a
+particular Run will finish within them.
+
 ## 2. Gather the study inputs and scientific choices
 
 Keep the delivered FASTQs, FASTA and GTF at their existing absolute Viking
 paths. FASTQ names must end in `_R1`/`_R2` or `_1`/`_2`, followed by `.fastq`,
 `.fq`, or either extension plus `.gz`.
+
+If the data provider supplied checksums, retain them with the delivery records.
+This guided path does not ask you to enter them. Project creation records its
+own hashes of the FASTQ bytes it admits; those hashes do not establish the
+files' external provenance.
 
 This guide uses the following delivered EV/PUM1 assignments:
 
@@ -118,25 +139,9 @@ emrys init pum1-study
 ```
 
 Enter the absolute path to the reference FASTA, then the absolute path to its
-matching GTF. Next use these values:
-
-| Prompt | Enter |
-| --- | --- |
-| `sjdb overhang` | `149` |
-| `genome sa index nbases` | `14` |
-| `control condition` | `EV` |
-| `treatment condition` | `PUM1` |
-| `target change` | `A>G` |
-| `min sample dp (Press ENTER for 1)` | Press Enter |
-| `mean dp threshold (Press ENTER for 50)` | Press Enter |
-| `fdr threshold (Press ENTER for 0.05)` | Press Enter |
-| `common or threshold (Press ENTER for 1.2)` | Press Enter |
-| `absolute difference threshold (Press ENTER for 0.005)` | Press Enter |
-| `background max fraction (Press ENTER for 0.01)` | Press Enter; it is unused because no background cohort is selected |
-
-EMRYS then asks for the absolute FASTQ directory. Confirm that all six pairs
-were detected and enter the condition, pairing group and strandedness from the
-table in step 2.
+matching GTF. EMRYS next asks for the absolute FASTQ directory. Confirm that all
+six pairs were detected and enter the condition, pairing group and strandedness
+from the table in step 2.
 
 At `optional regions file`, press Enter. This study uses reference sequence
 names directly rather than a separate BED- or VCF-like regions file. At the
@@ -152,6 +157,22 @@ and a bounded list taken from the first words after `>` in its headers. The
 entered names are checked immediately and Project creation rechecks them. If the
 delivery uses different names, stop and confirm the intended selectors rather
 than guessing.
+
+After the partitions are selected, use these STAR and scientific values:
+
+| Prompt | Enter |
+| --- | --- |
+| `sjdb overhang` | `149` |
+| `genome sa index nbases` | `14` |
+| `control condition` | `EV` |
+| `treatment condition` | `PUM1` |
+| `target change` | `A>G` |
+| `min sample dp (Press ENTER for 1)` | Press Enter |
+| `mean dp threshold (Press ENTER for 50)` | Press Enter |
+| `fdr threshold (Press ENTER for 0.05)` | Press Enter |
+| `common or threshold (Press ENTER for 1.2)` | Press Enter |
+| `absolute difference threshold (Press ENTER for 0.005)` | Press Enter |
+| `background max fraction (Press ENTER for 0.01)` | Press Enter; it is unused because no background cohort is selected |
 
 The preview ends with `Preview complete; Project not created.` It then prints
 one long command under `Next action`. Review the interpretation immediately
@@ -337,7 +358,8 @@ cd "$EMRYS_SOURCE_ROOT/Projects"
 emrys init synthetic --output-dir "$EMRYS_SOURCE_ROOT/Projects/emrys-smoke" --execute
 ```
 
-Success ends with `Project ready:`. Enter it:
+Success prints `Synthetic Project: ready` followed by `Project:` and its path.
+Enter it:
 
 ```bash
 cd "$EMRYS_SOURCE_ROOT/Projects/emrys-smoke"

@@ -75,7 +75,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-03](#cv-03-scheduler-and-execution-failure-messages) | P0 | Verification pending | Separate submission, queue, execution, and finalization failures. |
 | [CV-04](#cv-04-workflow-startup-readiness) | P0 | Verification pending | Readiness exercises minimal actual Snakemake startup. |
 | [CV-05](#cv-05-reuse-versus-repeated-repair-work) | P0 | Completed | Explain reused state, repeated checks, and new repair work. |
-| [CV-06](#cv-06-actual-data-onboarding) | P0 | Open | Provide a novice actual-data setup path. |
+| [CV-06](#cv-06-actual-data-onboarding) | P0 | Verification pending | Provide a novice actual-data setup path. |
 | [CV-07](#cv-07-site-and-workload-profile-selection) | P0 | Verification pending | Replace manual Viking resource-profile construction. |
 | [CV-08](#cv-08-compatible-runtime-reuse) | P0 | Verification pending | Reuse an existing compatible managed runtime across Projects. |
 | [CV-09](#cv-09-qualification-scope-and-placement) | P0 | Verification pending | Explain and enforce the qualified execution environment. |
@@ -124,19 +124,19 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Verification pending |
 | [CV-U06](#cv-u06-available-resources) | Use all allocated workflow CPUs and memory | Verification pending |
 | [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Verification pending |
-| [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Open |
+| [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Verification pending |
 | [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Verification pending |
 | [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Completed |
-| [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Open |
+| [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Verification pending |
 | [CV-U12](#cv-u12-duplicate-submission-warning) | Warn before accidental duplicate submission | Open |
 | [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Verification pending |
 | [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Verification pending |
 | [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Verification pending |
 | [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Verification pending |
 | [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Verification pending |
-| [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Open |
+| [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Verification pending |
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Deferred |
-| [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Open |
+| [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
 | [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Open |
 | [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Open |
 | [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Verification pending |
@@ -590,6 +590,17 @@ them. The direct-to-data restructuring and optional-smoke explanation remain
 useful work, but these are documentation/product mismatches in the primary path,
 not evidence awaiting a Viking walkthrough. CV-U08 returns to **Open**.
 
+**September 18 approved alignment:** Quickstart now follows the implemented
+questionnaire once, in its literal reference, FASTQ, sample-assignment,
+partition, STAR and scientific-settings order. Provider checksums are no longer
+listed as a required guided input: the guide says to retain any supplied values
+with the delivery records and distinguishes them from EMRYS's own admitted-file
+hashes. No checksum interface or extra FASTQ pass was added. The guide also
+states the current synthetic-Project success signal and the complete built-in
+Viking placement values. Focused documentation and guided-onboarding checks
+pass locally; a fresh novice Viking walkthrough remains required, so CV-U08 is
+**Verification pending**.
+
 ### CV-U09 Synthetic-project explanation
 
 **Operator report:** “What ‘create the synthetic project’ is doing is NOT clear
@@ -699,6 +710,13 @@ deterministic synthetic Project (...)` followed by `Project:`. Prior improvement
 to separate command blocks and the preview-to-creation handoff remain valid, but
 a novice cannot use the documented prompts and expected output as literal checks.
 CV-U11 returns to **Open**.
+
+**September 18 approved alignment:** The single ordered questionnaire now puts
+the FASTQ, sample and partition prompts before the supplied STAR and scientific
+answers. The optional smoke path expects `Synthetic Project: ready` followed by
+`Project:` and its path, matching the current initializer. Focused local checks
+pass; literal novice use on Viking remains required, so CV-U11 is **Verification
+pending**.
 
 ### CV-U12 Duplicate submission warning
 
@@ -1074,6 +1092,13 @@ first documented value, `149`, at the FASTQ-directory prompt. Because an accurat
 guided journey is part of this card's functional outcome, this is documentation
 work rather than pending operator acceptance; CV-U18 returns to **Open**.
 
+**September 18 approved alignment:** Quickstart now leads the implemented guided
+interaction in its actual prompt order and retains the existing explicit sample
+assignments, mutually exclusive partition choices and review-before-publication
+handoff. The initializer itself did not change. Focused local checks pass; a
+novice Viking/PTY walkthrough remains required, so CV-U18 is **Verification
+pending**.
+
 ### CV-U19 Long-term interactive CLI
 
 **Operator direction:** “Eventually the whole setup and even run process should
@@ -1168,6 +1193,13 @@ limit and `/tmp` scratch policy exist in the packaged profile, but the guide onl
 says EMRYS supplies the settings. That does not satisfy the explicit requirement
 to provide all known values **in the Quickstart**. CV-U20 returns to **Open** for
 the promised inline values and reconciliation with the actual prompt order.
+
+**September 18 approved alignment:** Quickstart now names account
+`viking-users`, partition `long`, QoS `normal`, one scheduler-selected exclusive
+node, all-node CPU and memory requests, the 12-hour limit and private `/tmp`
+scratch. It labels these as supplied requests rather than measured performance,
+and the questionnaire order now matches the product. Focused local checks pass;
+novice Viking acceptance remains required, so CV-U20 is **Verification pending**.
 
 ### CV-U21 Technical parameter assistance
 
@@ -2221,6 +2253,16 @@ Watch and Inspect. Choosing the smoke exercise still provides site confidence
 and a compatible runtime-reuse opportunity, but skipping it does not skip the
 real Project's readiness or evidence checks. These are negative institutional
 onboarding observations; CV-06 remains **Open**.
+
+**September 18 approved alignment:** The maintained Quickstart now matches the
+implemented reference-first guided flow through FASTQ assignment, partition
+selection and scientific settings; it also gives the exact site values and
+current success signals inline. Provider checksums are retained as external
+delivery records rather than presented as an unsupported initializer input.
+Together with the previously implemented reference-informed selectors, visible
+defaults and explicit preview-to-publication handoff, this resolves the recorded
+source/documentation gaps. Focused local checks pass; institutional novice
+acceptance remains required, so CV-06 is **Verification pending**.
 
 ### CV-07 Site and workload profile selection
 
