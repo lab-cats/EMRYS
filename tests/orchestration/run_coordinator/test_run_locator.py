@@ -193,10 +193,37 @@ def test_watch_discovers_one_run_from_declared_projects_home(
     project.write_text("project\n", encoding="utf-8")
     monkeypatch.setenv("EMRYS_PROJECTS_ROOT", str(home))
 
-    assert control._select_projects_home_run(None, interactive=False) == (project, run)
-    assert control._select_projects_home_run(
-        "international-jackrabbit", interactive=False
-    ) == (project, run)
+    targets = control._projects_home_watch_targets()
+    assert targets == (control._WatchTarget(project, run_root=run),)
+    assert control._select_watch_target(
+        targets, "international-jackrabbit", interactive=False
+    ) == control._WatchTarget(project, run_root=run)
+
+
+def test_watch_discovers_pre_run_submission_from_projects_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "Projects"
+    project = home / "study" / "project.yaml"
+    project.parent.mkdir(parents=True)
+    project.write_text("project\n", encoding="utf-8")
+    request = SimpleNamespace(
+        request_root=project.parent / "logs" / "submission-exact",
+        recorded_job_id="41",
+    )
+    monkeypatch.setenv("EMRYS_PROJECTS_ROOT", str(home))
+    monkeypatch.setattr(
+        control.slurm_submission, "submission_requests", lambda _project: (request,)
+    )
+    monkeypatch.setattr(
+        control._submission_inspection,
+        "inspect_submission_application",
+        lambda _request: SimpleNamespace(run_root=None),
+    )
+
+    assert control._projects_home_watch_targets() == (
+        control._WatchTarget(project, request=request),
+    )
 
 
 def test_watch_uses_picker_for_runs_across_projects_home(
@@ -209,7 +236,7 @@ def test_watch_uses_picker_for_runs_across_projects_home(
         run = project.parent / "runs" / run_id
         run.mkdir(parents=True)
         project.write_text("project\n", encoding="utf-8")
-        expected.append((project, run))
+        expected.append(control._WatchTarget(project, run_root=run))
     monkeypatch.setenv("EMRYS_PROJECTS_ROOT", str(home))
 
     class Menu:
@@ -220,9 +247,10 @@ def test_watch_uses_picker_for_runs_across_projects_home(
             return 1
 
     monkeypatch.setattr(control, "TerminalMenu", Menu)
-    assert control._select_projects_home_run(None, interactive=True) == expected[1]
-    with pytest.raises(control.ControlError, match="Multiple Runs are available"):
-        control._select_projects_home_run(None, interactive=False)
+    targets = control._projects_home_watch_targets()
+    assert control._select_watch_target(targets, None, interactive=True) == expected[1]
+    with pytest.raises(control.ControlError, match="Multiple monitoring targets"):
+        control._select_watch_target(targets, None, interactive=False)
 
 
 def test_watch_routes_run_job_id_and_job_name_without_parallel_monitoring_owner(
@@ -262,73 +290,20 @@ def test_watch_routes_run_job_id_and_job_name_without_parallel_monitoring_owner(
     assert selected.project == project
     assert selected.submission == "submission-exact"
 
-
-def test_watch_selects_one_discovered_scheduler_job_without_a_project(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from emrys.orchestration.run_coordinator import dashboard
-
-    parser = argparse.ArgumentParser()
-    control.configure_watch_parser(parser)
-    captured = []
-
-    def inspect(arguments):
-        captured.append(arguments)
-        return 0
-
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.delenv("EMRYS_PROJECTS_ROOT", raising=False)
-    monkeypatch.delenv("EMRYS_DASHBOARD_JOB_ID", raising=False)
+    run = tmp_path / "runs" / ZERO_RUN_ID
+    run.mkdir(parents=True)
     monkeypatch.setattr(
-        dashboard,
-        "scheduler_candidates",
-        lambda: ({"job_id": 41},),
+        control._submission_inspection,
+        "inspect_submission_application",
+        lambda _request: SimpleNamespace(run_root=run),
     )
-    monkeypatch.setattr(control, "inspect_from_args", inspect)
-
     assert control.watch_from_args(parser.parse_args([])) == 0
-    assert captured[0].job_id == "41"
+    selected = captured.pop()
+    assert selected.submission == "submission-exact"
+    assert selected._watch_run_root == run
 
 
-def test_watch_offers_discovered_scheduler_jobs_in_existing_picker(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from emrys.orchestration.run_coordinator import dashboard
-
-    parser = argparse.ArgumentParser()
-    control.configure_watch_parser(parser)
-    captured = []
-
-    def inspect(arguments):
-        captured.append(arguments)
-        return 0
-
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.delenv("EMRYS_PROJECTS_ROOT", raising=False)
-    monkeypatch.delenv("EMRYS_DASHBOARD_JOB_ID", raising=False)
-    monkeypatch.setattr(control.sys.stdin, "isatty", lambda: True)
-    monkeypatch.setattr(control.sys.stderr, "isatty", lambda: True)
-    monkeypatch.setattr(
-        dashboard,
-        "scheduler_candidates",
-        lambda: ({"job_id": 41}, {"job_id": 42}),
-    )
-
-    class Menu:
-        def __init__(self, choices, **_kwargs):
-            assert tuple(choices) == ("Job 41", "Job 42")
-
-        def show(self):
-            return 1
-
-    monkeypatch.setattr(control, "TerminalMenu", Menu)
-    monkeypatch.setattr(control, "inspect_from_args", inspect)
-
-    assert control.watch_from_args(parser.parse_args([])) == 0
-    assert captured[0].job_id == "42"
-
-
-def test_watch_refuses_ambiguous_scheduler_jobs_without_a_terminal(
+def test_watch_does_not_discover_current_user_scheduler_jobs_without_a_project(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     from emrys.orchestration.run_coordinator import dashboard
@@ -338,32 +313,32 @@ def test_watch_refuses_ambiguous_scheduler_jobs_without_a_terminal(
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("EMRYS_PROJECTS_ROOT", raising=False)
     monkeypatch.delenv("EMRYS_DASHBOARD_JOB_ID", raising=False)
-    monkeypatch.setattr(control.sys.stdin, "isatty", lambda: False)
     monkeypatch.setattr(
         dashboard,
         "scheduler_candidates",
-        lambda: ({"job_id": 41}, {"job_id": 42}),
+        lambda: pytest.fail("ordinary watch must not enumerate scheduler jobs"),
     )
     monkeypatch.setattr(
         control,
         "inspect_from_args",
-        lambda _arguments: pytest.fail("ambiguous jobs must not open the dashboard"),
+        lambda _arguments: pytest.fail("missing Project target must not open watch"),
     )
 
     assert control.watch_from_args(parser.parse_args([])) == 2
-    assert "Multiple scheduler jobs are available; select one: Job 41, Job 42" in (
-        capsys.readouterr().err
-    )
+    assert "No admitted Project monitoring target" in capsys.readouterr().err
 
 
-def test_watch_ignores_submission_already_associated_with_sole_run(
+def test_watch_keeps_submission_identity_after_run_association(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     project = tmp_path / "project.yaml"
     project.write_text("project\n", encoding="utf-8")
     run = tmp_path / "runs" / ZERO_RUN_ID
     run.mkdir(parents=True)
-    request = SimpleNamespace(request_root=tmp_path / "logs" / "submission-exact")
+    request = SimpleNamespace(
+        request_root=tmp_path / "logs" / "submission-exact",
+        recorded_job_id="41",
+    )
     monkeypatch.setattr(
         control.slurm_submission, "submission_requests", lambda _project: (request,)
     )
@@ -373,10 +348,49 @@ def test_watch_ignores_submission_already_associated_with_sole_run(
         lambda _request: SimpleNamespace(run_root=run),
     )
 
-    assert control._select_project_watch_target(project, interactive=False) == (
-        "run",
-        run,
+    assert control._select_watch_target(
+        control._project_watch_targets(project), None, interactive=False
+    ) == control._WatchTarget(
+        project,
+        run_root=run,
+        request=request,
     )
+
+
+def test_watch_keeps_multiple_requests_for_one_run_distinct(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = tmp_path / "project.yaml"
+    project.write_text("project\n", encoding="utf-8")
+    run = tmp_path / "runs" / ZERO_RUN_ID
+    run.mkdir(parents=True)
+    requests = tuple(
+        SimpleNamespace(
+            request_root=tmp_path / "logs" / f"submission-{name}",
+            recorded_job_id=str(job_id),
+        )
+        for name, job_id in (("first", 41), ("second", 42))
+    )
+    monkeypatch.setattr(
+        control.slurm_submission, "submission_requests", lambda _project: requests
+    )
+    monkeypatch.setattr(
+        control._submission_inspection,
+        "inspect_submission_application",
+        lambda _request: SimpleNamespace(run_root=run),
+    )
+
+    targets = control._project_watch_targets(project)
+    assert [target.request for target in targets] == list(requests)
+    with pytest.raises(control.ControlError, match="Multiple monitoring targets"):
+        control._select_watch_target(targets, run.name, interactive=False)
+
+
+def test_watch_refuses_excess_candidate_inventory(tmp_path: Path) -> None:
+    project = tmp_path / "project.yaml"
+    targets = tuple(control._WatchTarget(project, request=object()) for _ in range(257))
+    with pytest.raises(control.ControlError, match="More than 256"):
+        control._select_watch_target(targets, None, interactive=False)
 
 
 def test_watch_requires_choice_between_historical_run_and_new_submission(
@@ -399,19 +413,23 @@ def test_watch_requires_choice_between_historical_run_and_new_submission(
     )
 
     with pytest.raises(control.ControlError, match="Multiple monitoring targets"):
-        control._select_project_watch_target(project, interactive=False)
+        control._select_watch_target(
+            control._project_watch_targets(project), None, interactive=False
+        )
 
     class Menu:
         def __init__(self, choices, **_kwargs):
-            assert tuple(choices)[1].startswith("Submission:")
+            assert "request submission-new" in tuple(choices)[1]
 
         def show(self):
             return 1
 
     monkeypatch.setattr(control, "TerminalMenu", Menu)
-    assert control._select_project_watch_target(project, interactive=True) == (
-        "submission",
-        request,
+    assert control._select_watch_target(
+        control._project_watch_targets(project), None, interactive=True
+    ) == control._WatchTarget(
+        project,
+        request=request,
     )
 
 

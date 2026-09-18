@@ -52,17 +52,18 @@ terminal offers an exact choice when several exist. Automation must provide an
 unambiguous selector. EMRYS never infers the latest Run. The human name is
 presentation only; the content-derived Run ID remains authority.
 
-`emrys watch` reuses this selector and inspection owner. From a Project it
-selects the sole Run or, before any Run exists, the sole retained submission;
-ambiguity opens the existing terminal picker and fails in noninteractive use.
-`EMRYS_PROJECTS_ROOT` permits the same Run selection from another directory by
-enumerating only immediate canonical Project children. It is not persistent
-selection state and never authorizes a newest-Run inference. When no Project
-Run is available, `emrys watch` selects a sole bounded current-user scheduler
-candidate or offers those candidates in the same picker; noninteractive
-ambiguity fails with the candidate IDs. Numeric selectors and exact scheduler
-names use diagnostic scheduler selection without admitting a Project or Run
-from scheduler text.
+`emrys watch` reuses this selector and inspection owner. Its bounded Project
+inventory contains each retained submission, with its admitted Run association
+when one exists, plus Runs that no exact request represents. A sole target is
+selected; ambiguity opens the existing terminal picker and fails in
+noninteractive use. Multiple exact requests for one Run remain distinct and no
+timestamp or directory order chooses one. `EMRYS_PROJECTS_ROOT` permits the
+same selection from another directory by enumerating only immediate canonical
+Project children. It is not persistent selection state and never authorizes a
+newest-Run inference. Ordinary no-argument watch does not fall through to all
+current-user scheduler jobs. Numeric selectors and exact scheduler names remain
+explicit diagnostic selections without admitting a Project or Run from
+scheduler text.
 
 `emrys setup` is dry-run-first and create-absent. With `--execute`, it publishes
 one mode-`0600` repository-root `.env` containing only its format version,
@@ -504,9 +505,8 @@ projection.
 `--job-id [JOB_ID]` selects a raw scheduler view without Project admission;
 omitting the ID uses bounded current-user discovery only when exactly one
 candidate exists. A raw caller with several candidates must provide an ID;
-`emrys watch` with no explicit selection and no current Project instead offers
-the bounded candidates in its existing interactive picker and fails with their
-IDs when noninteractive. Neither path infers the newest job.
+ordinary `emrys watch` does not invoke this expert discovery path. Neither path
+infers the newest job.
 Explicit IDs do not rediscover on failure. `--log-dir` supplies a historical
 scheduler root.
 `--offline` requires an exact ID and both explicit owned regular streams and
@@ -518,10 +518,14 @@ One daemon worker coalesces read-only refreshes. Painting performs no I/O.
 Timers update scheduler diagnostics and full workflow streams plus one bounded
 selected tail; explicit refresh rechecks association and full Run evidence.
 A terminal scheduler result is retained with its original date until explicit
-refresh. Exact-request resources come from the same admitted root record;
-batch usage additionally requires local binding before and after the sample.
-Root and usage dates reflect their actual replies, not later proof-query time.
-Missing usage preserves root state and reports usage unknown.
+refresh. Exact-request resources come from the same admitted root record. Live
+batch usage comes from the exact `sstat` batch step; final usage comes from the
+exact terminal `sacct` batch record. Both require matching root identity before
+and after the usage query. Duplicate or mismatched ID, UID or cluster rows and
+malformed metrics are rejected. Root and usage dates reflect their actual
+replies, not later proof-query time. Missing usage preserves the admitted root
+state and reports usage unknown. Rendering labels live samples and final
+accounting distinctly.
 
 When an exact scheduler observation is terminal and not `COMPLETED`, the
 dashboard freezes log-derived work as `INTERRUPTED`, `INCOMPLETE`, or

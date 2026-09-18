@@ -1504,10 +1504,21 @@ def test_request_resources_share_exact_root_and_usage_has_local_identity_bracket
         Partition="compute",
         NodeList="node[1-2]",
     )
-    replies = [b"", detailed] if state == "COMPLETED" else [detailed]
+    replies = [detailed]
     if state == "RUNNING":
-        replies += ([plain] if cluster is not None else []) + [
+        replies += [
+            plain,
             b"700123.batch|00:00:02|1024K|8M|0\n",
+            plain,
+        ]
+    elif state == "COMPLETED":
+        replies = [
+            b"",
+            detailed,
+            b"",
+            plain,
+            f"700123.batch|{os.getuid()}|alpha|00:00:02|1024K|8M|0\n".encode(),
+            b"",
             plain,
         ]
     monkeypatch.setenv("SLURM_CLUSTERS", "other")
@@ -1539,21 +1550,35 @@ def test_request_resources_share_exact_root_and_usage_has_local_identity_bracket
         "node[1-2]",
     ]
     assert result["time_limit" if state == "COMPLETED" else "left"] == "01:00:00"
-    if state == "RUNNING":
-        assert [call[0] for call in calls] == (
-            ["squeue", "sstat", "squeue"]
-            if cluster is None
-            else ["squeue", "squeue", "sstat", "squeue"]
+    if state in {"RUNNING", "COMPLETED"}:
+        expected = (
+            ["squeue", "squeue", "sstat", "squeue"]
+            if state == "RUNNING"
+            else ["squeue", "sacct", "squeue", "sacct", "sacct", "squeue", "sacct"]
         )
-        assert all(call[1] == "--local" for call in calls[1:] if call[0] == "squeue")
-        assert next(call for call in calls if call[0] == "sstat") == [
-            "sstat",
-            "-n",
-            "-P",
-            "-j",
-            "700123.batch",
-            "--format=JobID,AveCPU,MaxRSS,MaxDiskRead,MaxDiskWrite",
-        ]
+        assert [call[0] for call in calls] == expected
+        usage = calls[2 if state == "RUNNING" else 4]
+        assert usage == (
+            [
+                "sstat",
+                "-n",
+                "-P",
+                "-j",
+                "700123.batch",
+                "--format=JobID,AveCPU,MaxRSS,MaxDiskRead,MaxDiskWrite",
+            ]
+            if state == "RUNNING"
+            else [
+                "sacct",
+                "--local",
+                "--duplicates",
+                "-n",
+                "-P",
+                "-j",
+                "700123.batch",
+                "--format=JobIDRaw,UID,Cluster,AveCPU,MaxRSS,MaxDiskRead,MaxDiskWrite",
+            ]
+        )
         assert result["usage_diagnostic"] is None and result[
             "usage_observed_at"
         ].endswith("+00:00")
@@ -1561,12 +1586,10 @@ def test_request_resources_share_exact_root_and_usage_has_local_identity_bracket
             result[key] for key in ("ave_cpu", "max_rss", "disk_read", "disk_write")
         ] == ["00:00:02", "1024K", "8M", "0"]
     else:
-        assert [call[0] for call in calls] == (
-            ["squeue", "sacct"] if state == "COMPLETED" else ["squeue"]
-        )
+        assert [call[0] for call in calls] == ["squeue"]
         assert "ave_cpu" not in result and result["usage_diagnostic"]
-        if state == "COMPLETED":
-            assert "left" not in result
+    if state == "COMPLETED":
+        assert "left" not in result
 
 
 @pytest.mark.parametrize("boundary", ["initial", "before-usage", "after-usage"])
@@ -1642,15 +1665,64 @@ def test_request_resource_usage_rejects_identity_drift_without_erasing_root(
 def test_request_resource_usage_faults_preserve_exact_root_observation(
     monkeypatch, reply
 ):
+    root = f"700123|{os.getuid()}|RUNNING|alpha|/tmp/a%j.out|/tmp/a%j.err|None"
     result, command = _observe_scheduler(
         monkeypatch,
-        f"700123|{os.getuid()}|RUNNING|alpha|/tmp/a%j.out|/tmp/a%j.err|None|00:01|01:00|4|compute|node\n".encode(),
+        (root + "|00:01|01:00|4|compute|node\n").encode(),
+        (root + "\n").encode(),
         reply,
         include_resources=True,
     )
     assert result["state"] == "RUNNING" and result["cpus"] == "4"
     assert result["usage_diagnostic"] and "max_rss" not in result
-    assert [call.args[0][0] for call in command.call_args_list] == ["squeue", "sstat"]
+    assert [call.args[0][0] for call in command.call_args_list] == [
+        "squeue",
+        "squeue",
+        "sstat",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("defect", "batch"),
+    [
+        ("unavailable", None),
+        ("duplicate", "{row}{row}"),
+        ("id", "700124.batch|{uid}|alpha|00:00|1K|0|0\n"),
+        ("uid", "700123.batch|{wrong_uid}|alpha|00:00|1K|0|0\n"),
+        ("cluster", "700123.batch|{uid}|beta|00:00|1K|0|0\n"),
+        ("incomplete", "700123.batch|{uid}|alpha|00:00|1K|0\n"),
+        ("metric", "700123.batch|{uid}|alpha|bad|1K|0|0\n"),
+    ],
+)
+def test_terminal_batch_usage_faults_preserve_exact_root(monkeypatch, defect, batch):
+    root = _root_row(State="COMPLETED", ExitCode="0:0")
+    detailed = _root_row(
+        State="COMPLETED",
+        ExitCode="0:0",
+        Elapsed="00:01",
+        Timelimit="01:00",
+        AllocCPUS="4",
+        Partition="compute",
+        NodeList="node",
+    )
+    row = f"700123.batch|{os.getuid()}|alpha|00:00|1K|0|0\n"
+    reply = (
+        None
+        if batch is None
+        else batch.format(row=row, uid=os.getuid(), wrong_uid=os.getuid() + 1).encode()
+    )
+    result, command = _observe_scheduler(
+        monkeypatch, b"", detailed, b"", root, reply, include_resources=True
+    )
+    assert defect and result["state"] == "COMPLETED" and result["cpus"] == "4"
+    assert result["usage_diagnostic"] and "max_rss" not in result
+    assert [call.args[0][0] for call in command.call_args_list] == [
+        "squeue",
+        "sacct",
+        "squeue",
+        "sacct",
+        "sacct",
+    ]
 
 
 def test_request_resource_dates_precede_followup_identity_queries(monkeypatch) -> None:
@@ -1717,15 +1789,14 @@ def test_accounting_timing_is_one_exact_utc_observation(
     result, command = _observe_scheduler(
         monkeypatch,
         reply,
+        *([None] if resources else []),
         cluster=cluster,
         job_name="emrys-local-pilot",
         include_timing=True,
         include_resources=resources,
     )
-    argv, environment = (
-        command.call_args.args[0],
-        command.call_args.kwargs["environment"],
-    )
+    initial = command.call_args_list[0]
+    argv, environment = initial.args[0], initial.kwargs["environment"]
     assert argv[:8] == [
         "sacct",
         "--local" if cluster is None else "--clusters=alpha",
@@ -1736,7 +1807,7 @@ def test_accounting_timing_is_one_exact_utc_observation(
         "-j",
         "700123",
     ]
-    assert command.call_args.kwargs["timeout"] == 10
+    assert initial.kwargs["timeout"] == 10
     assert (
         environment["TZ"] == "UTC0"
         and environment["SLURM_TIME_FORMAT"] == "%Y-%m-%dT%H:%M:%SZ"
@@ -1746,7 +1817,9 @@ def test_accounting_timing_is_one_exact_utc_observation(
         assert ",Elapsed,Timelimit,AllocCPUS,Partition,NodeList," in argv[-1]
     assert argv[-1].endswith(",Submit,Eligible,Start,End,ElapsedRaw,Restarts,Suspended")
     assert (
-        command.call_count == 1 and result["terminal"] and result["source"] == "sacct"
+        command.call_count == 1 + resources
+        and result["terminal"]
+        and result["source"] == "sacct"
     )
     assert result["state"] == state.split(" by ")[0]
     assert result["timing_observed_at"].endswith("+00:00")

@@ -11,7 +11,7 @@ import uuid
 from collections import Counter
 from collections.abc import Callable, Mapping
 from contextlib import suppress
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
@@ -127,6 +127,15 @@ class _NoProjectRuns(ControlError):
     """The Project has no selectable Run at the time of inspection."""
 
 
+@dataclass(frozen=True, slots=True)
+class _WatchTarget:
+    """One admitted Project monitoring identity, with no scheduler observation."""
+
+    project: Path
+    run_root: Path | None = None
+    request: slurm_submission.SubmissionRequestObservation | None = None
+
+
 _CONTROL_ERRORS = (
     slurm_submission.SlurmSubmissionError,
     slurm_submission.scheduler_observation.DiscoveryError,
@@ -208,8 +217,28 @@ def _select_project_run(
     ]
 
 
-def _projects_home_runs() -> tuple[tuple[Path, Path], ...]:
-    """Locate immediate Project Runs beneath the declared Projects home."""
+def _project_watch_targets(project: Path) -> tuple[_WatchTarget, ...]:
+    """Inventory request identities and otherwise-unrepresented Runs once."""
+
+    runs = inspection.project_run_roots(project.parent)
+    associated = tuple(
+        (
+            request,
+            _submission_inspection.inspect_submission_application(request).run_root,
+        )
+        for request in slurm_submission.submission_requests(project)
+    )
+    represented = frozenset(run for _request, run in associated if run is not None)
+    return tuple(
+        _WatchTarget(project, run_root=run) for run in runs if run not in represented
+    ) + tuple(
+        _WatchTarget(project, run_root=run, request=request)
+        for request, run in associated
+    )
+
+
+def _projects_home_watch_targets() -> tuple[_WatchTarget, ...]:
+    """Locate immediate Project monitoring targets beneath Projects home."""
 
     selected = os.environ.get("EMRYS_PROJECTS_ROOT", "").strip()
     if not selected:
@@ -230,80 +259,60 @@ def _projects_home_runs() -> tuple[tuple[Path, Path], ...]:
         ) from exc
     if len(children) > 256:
         raise ControlError(f"EMRYS_PROJECTS_ROOT has more than 256 entries: {home}")
-    result = []
+    result: list[_WatchTarget] = []
     for child in children:
         project = child / "project.yaml"
         if child.is_symlink() or not child.is_dir() or not os.path.lexists(project):
             continue
-        admitted = onboarding.project_definition_path(project)
-        result.extend((admitted, run) for run in inspection.project_run_roots(child))
+        result.extend(
+            _project_watch_targets(onboarding.project_definition_path(project))
+        )
     return tuple(result)
 
 
-def _select_projects_home_run(
-    selector: str | None, *, interactive: bool
-) -> tuple[Path, Path] | None:
-    candidates = _projects_home_runs()
+def _watch_target_label(target: _WatchTarget) -> str:
+    parts = []
+    if target.run_root is not None:
+        parts.append(
+            f"Run {inspection.human_run_name(target.run_root.name)} "
+            f"({target.run_root.name[:16]}...)"
+        )
+    if target.request is not None:
+        parts.append(
+            f"request {target.request.request_root.name} "
+            f"(job {target.request.recorded_job_id or 'unconfirmed'})"
+        )
+    return f"{target.project.parent.name}: " + "; ".join(parts)
+
+
+def _select_watch_target(
+    candidates: tuple[_WatchTarget, ...],
+    selector: str | None,
+    *,
+    interactive: bool,
+) -> _WatchTarget | None:
+    if len(candidates) > 256:
+        raise ControlError("More than 256 monitoring targets are available")
     if selector is not None:
-        matches = []
-        for project, run in candidates:
-            try:
-                match = inspection.resolve_run_root((run,), selector)
-            except inspection.InspectionError as exc:
-                if str(exc).startswith("No Project Run matches"):
-                    continue
-                raise
-            matches.append((project, match))
-        candidates = tuple(matches)
+        run_roots = tuple(
+            dict.fromkeys(
+                target.run_root for target in candidates if target.run_root is not None
+            )
+        )
+        try:
+            selected = inspection.resolve_run_root(run_roots, selector)
+        except inspection.InspectionError as exc:
+            if str(exc).startswith("No Project Run matches"):
+                return None
+            raise
+        candidates = tuple(
+            target for target in candidates if target.run_root == selected
+        )
     if not candidates:
         return None
     if len(candidates) == 1:
         return candidates[0]
-    choices = tuple(
-        f"{project.parent.name}: {inspection.human_run_name(run.name)} ({run.name[:16]}...)"
-        for project, run in candidates
-    )
-    return candidates[
-        _terminal_selection(
-            choices,
-            interactive=interactive,
-            title="Select a Run:",
-            error="Multiple Runs are available; select one explicitly: ",
-            canceled="Run selection canceled; nothing was changed.",
-        )
-    ]
-
-
-def _select_project_watch_target(
-    project: Path, *, interactive: bool
-) -> tuple[str, Path | slurm_submission.SubmissionRequestObservation] | None:
-    runs = inspection.project_run_roots(project.parent)
-    requests = slurm_submission.submission_requests(project)
-    run_set = frozenset(runs)
-    requests = tuple(
-        request
-        for request in requests
-        if _submission_inspection.inspect_submission_application(request).run_root
-        not in run_set
-    )
-    candidates: tuple[
-        tuple[str, Path | slurm_submission.SubmissionRequestObservation], ...
-    ] = tuple(("run", run) for run in runs) + tuple(
-        ("submission", request) for request in requests
-    )
-    if not candidates:
-        return None
-    if len(candidates) == 1:
-        return candidates[0]
-    choices = tuple(
-        f"Run: {inspection.human_run_name(value.name)} ({value.name[:16]}...)"
-        if kind == "run" and isinstance(value, Path)
-        else (
-            f"Submission: {value.request_root.name}: "
-            f"job {value.recorded_job_id or 'unconfirmed'}"
-        )
-        for kind, value in candidates
-    )
+    choices = tuple(_watch_target_label(target) for target in candidates)
     return candidates[
         _terminal_selection(
             choices,
@@ -2388,6 +2397,7 @@ def inspect_from_args(
                 request = slurm_submission.select_submission_request(
                     project, submission_selector
                 )
+                action_run = getattr(arguments, "_watch_run_root", None)
                 return _inspection_presentation.watch(
                     project,
                     request=request,
@@ -2397,7 +2407,9 @@ def inspect_from_args(
                     snapshot_only=snapshot_only,
                     review_actions=(
                         _watch_review_actions(
-                            project, request.request_root, submission=True
+                            project,
+                            action_run or request.request_root,
+                            submission=action_run is None,
                         )
                         if actions
                         else ()
@@ -2415,9 +2427,16 @@ def inspect_from_args(
                 "Do not submit again solely because a Run is absent; retain the submission records."
             )
             return 0
+        watch_target = None
+        if watching and cli_log_root is None:
+            watch_target = _select_watch_target(
+                _project_watch_targets(_project_path),
+                run_root.name,
+                interactive=sys.stdin.isatty() and sys.stderr.isatty(),
+            )
         log_root = (
             None
-            if not explicit_run
+            if not explicit_run or (watch_target and watch_target.request is not None)
             else resolve_log_root(
                 cli_root=cli_log_root,
                 default_root=_project_path.parent / "logs" / "application",
@@ -2426,7 +2445,12 @@ def inspect_from_args(
         if watching:
             return _inspection_presentation.watch(
                 _project_path,
-                run_root=run_root,
+                request=None if watch_target is None else watch_target.request,
+                run_root=(
+                    run_root
+                    if watch_target is None or watch_target.request is None
+                    else None
+                ),
                 application_log_root=log_root,
                 inspect_run=inspection.inspect_run,
                 next_action=_next_supported_action,
@@ -2649,6 +2673,7 @@ def watch_from_args(arguments: argparse.Namespace) -> int:
     arguments.watch = True
     selector = getattr(arguments, "run", None)
     explicit_project = getattr(arguments, "project", None) is not None
+    interactive = sys.stdin.isatty() and sys.stderr.isatty()
     if selector is not None and getattr(arguments, "job_id", None) is not None:
         return _control_failure(
             ControlError("Select one positional Run/job or --job-id, not both")
@@ -2661,78 +2686,53 @@ def watch_from_args(arguments: argparse.Namespace) -> int:
         arguments.run = None
         arguments.job_id = selector
         return inspect_from_args(arguments)
+    if selector is None and any(
+        getattr(arguments, key, None)
+        for key in ("job_id", "job_name", "log_dir", "out", "err", "offline")
+    ):
+        return inspect_from_args(arguments)
     current_project = explicit_project or os.path.lexists("project.yaml")
-    if current_project:
-        project = onboarding.project_definition_path(
-            getattr(arguments, "project", None)
-        )
-        if selector is None:
-            try:
-                target = _select_project_watch_target(
-                    project,
-                    interactive=sys.stdin.isatty() and sys.stderr.isatty(),
-                )
-            except _CONTROL_ERRORS as exc:
-                return _control_failure(exc)
-            if target is None:
-                return inspect_from_args(arguments)
-            arguments.project = project
-            kind, selected = target
-            if kind == "run":
-                assert isinstance(selected, Path)
-                arguments.run = selected.name
-            else:
-                assert not isinstance(selected, Path)
-                arguments.submission = selected.request_root.name
-            return inspect_from_args(arguments)
-        if explicit_project:
-            return inspect_from_args(arguments)
-        try:
-            run = inspection.resolve_run_root(
-                inspection.project_run_roots(project.parent), selector
-            )
-        except inspection.InspectionError as exc:
-            if not str(exc).startswith("No Project Run matches"):
-                return _control_failure(exc)
-        else:
-            arguments.project, arguments.run = project, run.name
-            return inspect_from_args(arguments)
     try:
-        selected = _select_projects_home_run(
-            selector,
-            interactive=sys.stdin.isatty() and sys.stderr.isatty(),
-        )
-        if (
-            selected is None
-            and selector is None
-            and not os.environ.get("EMRYS_DASHBOARD_JOB_ID", "").strip()
-            and not any(
-                getattr(arguments, key, None)
-                for key in ("job_id", "log_dir", "out", "err", "offline")
+        target = None
+        if current_project:
+            project = onboarding.project_definition_path(
+                getattr(arguments, "project", None)
             )
-        ):
-            from . import dashboard
-
-            candidates = tuple(dashboard.scheduler_candidates())
-            if not candidates:
-                raise ControlError("No scheduler jobs are available; pass a job ID")
-            index = 0
-            if len(candidates) > 1:
-                index = _terminal_selection(
-                    tuple(f"Job {item['job_id']}" for item in candidates),
-                    interactive=sys.stdin.isatty() and sys.stderr.isatty(),
-                    title="Select a scheduler job:",
-                    error="Multiple scheduler jobs are available; select one: ",
-                    canceled="Scheduler job selection canceled; nothing was changed.",
+            target = _select_watch_target(
+                _project_watch_targets(project),
+                selector,
+                interactive=interactive,
+            )
+            if explicit_project and selector is not None and target is None:
+                return inspect_from_args(arguments)
+            if selector is None and target is None:
+                raise ControlError(
+                    f"Project has no admitted monitoring targets: {project.parent}"
                 )
-            arguments.job_id = str(candidates[index]["job_id"])
+        if target is None:
+            target = _select_watch_target(
+                _projects_home_watch_targets(),
+                selector,
+                interactive=interactive,
+            )
+        if target is not None:
+            arguments.project = target.project
+            arguments.run = None if target.request else target.run_root.name
+            arguments.submission = (
+                None if target.request is None else target.request.request_root.name
+            )
+            arguments._watch_run_root = target.run_root
+        elif selector is not None:
+            arguments.run, arguments.job_name = None, selector
+        elif os.environ.get("EMRYS_DASHBOARD_JOB_ID", "").strip():
+            return inspect_from_args(arguments)
+        else:
+            raise ControlError(
+                "No admitted Project monitoring target is available; pass an exact "
+                "job ID or scheduler job name for diagnostic monitoring"
+            )
     except _CONTROL_ERRORS as exc:
         return _control_failure(exc)
-    if selected is not None:
-        project, run = selected
-        arguments.project, arguments.run = project, run.name
-    elif selector is not None:
-        arguments.run, arguments.job_name = None, selector
     return inspect_from_args(arguments)
 
 

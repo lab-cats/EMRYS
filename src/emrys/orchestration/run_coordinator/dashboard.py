@@ -1453,7 +1453,7 @@ def wrapped_field(label, value, width, value_style="normal", indent=""):
     return lines
 
 
-def job_lines(slurm, identity, width, attrs):
+def _scheduler_state_line(slurm):
     state = slurm.get("state", "UNKNOWN")
     state_style = (
         "yellow_bold"
@@ -1464,15 +1464,20 @@ def job_lines(slurm, identity, width, attrs):
     )
     if state in _scheduler.TERMINAL_STATES - {"COMPLETED"}:
         state_style = "red"
+    return [
+        ("State: ", "label"),
+        (state, state_style),
+        (" | elapsed: ", "label"),
+        (slurm.get("elapsed", "-"), "value"),
+        (" | Slurm time left: ", "label"),
+        (slurm.get("left", "-"), "value"),
+    ]
+
+
+def job_lines(slurm, identity, width, attrs):
+    usage_scope = "Final batch" if slurm.get("source") == "sacct" else "Live batch"
     lines = [
-        [
-            ("State: ", "label"),
-            (state, state_style),
-            (" | elapsed: ", "label"),
-            (slurm.get("elapsed", "-"), "value"),
-            (" | Slurm time left: ", "label"),
-            (slurm.get("left", "-"), "value"),
-        ],
+        _scheduler_state_line(slurm),
         field_line(
             "Slurm placement",
             "%s CPUs | partition %s | node %s"
@@ -1484,7 +1489,7 @@ def job_lines(slurm, identity, width, attrs):
             "value",
         ),
         field_line(
-            "Batch per-task maxima",
+            usage_scope + " per-task maxima",
             slurm.get("usage_diagnostic")
             or "RSS %s | read %s | written %s"
             % (
@@ -1495,7 +1500,7 @@ def job_lines(slurm, identity, width, attrs):
             "value",
         ),
         field_line(
-            "Batch CPU / sample",
+            usage_scope + " CPU / sample",
             "average task CPU time %s; as of %s"
             % (
                 slurm.get("ave_cpu", "unknown"),
@@ -2019,31 +2024,15 @@ def terminal_failure_state(slurm):
 
 
 def overview_lines(slurm, identity, model, width):
-    state = slurm.get("state", "UNKNOWN")
-    state_style = (
-        "yellow_bold"
-        if state == "RUNNING"
-        else "green_bold"
-        if state == "COMPLETED"
-        else "yellow"
-    )
-    if state in _scheduler.TERMINAL_STATES - {"COMPLETED"}:
-        state_style = "red"
     phase_number, phase_title = workflow_phase(model)
+    usage_scope = "final" if slurm.get("source") == "sacct" else "live"
     progress = (
         (identity["verified_status"], "green_bold")
         if identity.get("verified_status")
         else (progress_line(model, width, terminal_failure_state(slurm)), "cyan")
     )
     return [
-        [
-            ("State: ", "label"),
-            (state, state_style),
-            (" | elapsed: ", "label"),
-            (slurm.get("elapsed", "-"), "value"),
-            (" | Slurm time left: ", "label"),
-            (slurm.get("left", "-"), "value"),
-        ],
+        _scheduler_state_line(slurm),
         progress,
         field_line(
             "Workflow phase", "%d/4 - %s" % (phase_number, phase_title), "value"
@@ -2054,7 +2043,7 @@ def overview_lines(slurm, identity, model, width):
             % (
                 "usage unknown"
                 if slurm.get("usage_diagnostic") or not slurm.get("max_rss")
-                else "per-task max RSS " + human_size(slurm["max_rss"]),
+                else usage_scope + " per-task max RSS " + human_size(slurm["max_rss"]),
                 slurm.get("cpus", "-"),
                 slurm.get("partition", "-"),
                 slurm.get("node", "-"),

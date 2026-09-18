@@ -1478,8 +1478,8 @@ def test_dashboard_rendering_supports_wide_compact_and_small_screens() -> None:
     for label in (
         "State:",
         "Slurm placement:",
-        "Batch per-task maxima:",
-        "Batch CPU / sample:",
+        "Live batch per-task maxima:",
+        "Live batch CPU / sample:",
         "Run:",
         "Code / attempt:",
         "Run root:",
@@ -1548,15 +1548,16 @@ def test_scheduler_command_transport_covers_success_and_failure(
     assert dashboard._scheduler.command_bytes(["fixture"]) is None
 
 
-@pytest.mark.parametrize("usage", ["complete", "unavailable"])
+@pytest.mark.parametrize("usage", ["live", "final", "unavailable"])
 def test_dashboard_resource_labels_preserve_batch_scope_and_unknown(usage):
     slurm = {
         "state": "PENDING" if usage == "unavailable" else "RUNNING",
+        "source": "sacct" if usage == "final" else "squeue",
         "cpus": "4",
         "partition": "compute",
         "node": "node1",
     }
-    if usage == "complete":
+    if usage != "unavailable":
         slurm.update(
             max_rss="1024K",
             disk_read="8M",
@@ -1574,16 +1575,17 @@ def test_dashboard_resource_labels_preserve_batch_scope_and_unknown(usage):
     for text in (detailed, overview):
         assert "Slurm placement" in text and "Allocation:" not in text
         assert "peak RSS" not in text and "I/O" not in text
-    if usage == "complete":
+    if usage != "unavailable":
+        label = "Final" if usage == "final" else "Live"
         assert (
-            "Batch per-task maxima: RSS 1.0 MiB | read 8.0 MiB | written 0.0 B"
+            f"{label} batch per-task maxima: RSS 1.0 MiB | read 8.0 MiB | written 0.0 B"
             in detailed
         )
         assert (
             "average task CPU time 00:00:02; as of 2026-09-15T12:00:00+00:00"
             in detailed
         )
-        assert "per-task max RSS 1.0 MiB" in overview
+        assert f"{label.lower()} per-task max RSS 1.0 MiB" in overview
     else:
         assert slurm["usage_diagnostic"] in detailed and "as of unknown" in detailed
         assert "usage unknown" in overview

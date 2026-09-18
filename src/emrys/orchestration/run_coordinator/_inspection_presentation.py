@@ -648,7 +648,7 @@ def refresh_snapshot(
             if snapshot.request is None
             else slurm_submission.observe_submission_request(
                 snapshot.request,
-                **({"include_resources": True} if stream_caches is not None else {}),
+                include_resources=True,
             )
         )
     )

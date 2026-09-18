@@ -416,6 +416,10 @@ def test_refresh_keeps_selected_request_and_only_reverifies_when_explicit(
         tmp_path / "project.yaml", str(request.request_root)
     )
     assert [call.args for call in calls.scheduler.call_args_list] == [(request,)] * 4
+    assert all(
+        call.kwargs == {"include_resources": True}
+        for call in calls.scheduler.call_args_list
+    )
     assert initial.observed is None
     text = view.render_snapshot(observed, now=NOW)
     for value in (
