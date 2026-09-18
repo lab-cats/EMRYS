@@ -50,7 +50,7 @@ Select a Run by name/ID or scheduler diagnostics by numeric ID/exact job name:
 ```bash
 emrys watch international-jackrabbit
 emrys watch 12345
-emrys watch emrys-local-pilot-EXACT_REQUEST_TOKEN
+emrys watch emrys-EXACT_REQUEST_TOKEN
 ```
 
 `EMRYS_PROJECTS_ROOT` enables the same read-only picker outside a Project;
@@ -73,7 +73,7 @@ requiring a Project:
 emrys inspect --watch --job-id
 emrys inspect --watch --job-id 12345
 emrys inspect --snapshot --job-id 12345 --log-dir /absolute/scheduler/logs
-emrys inspect --snapshot --job-id 12345 --offline --out /absolute/scheduler/logs/emrys-local-pilot-12345.out --err /absolute/scheduler/logs/emrys-local-pilot-12345.err
+emrys inspect --snapshot --job-id 12345 --offline --out /absolute/scheduler/logs/emrys-EXACT_REQUEST_TOKEN-12345.out --err /absolute/scheduler/logs/emrys-EXACT_REQUEST_TOKEN-12345.err
 ```
 
 Without Project context or an explicit selector, watch offers bounded owned
@@ -90,6 +90,13 @@ ID plus both streams.
 | `G`, count + `j` / `k`, `/`, `n` / `N` | Follow the bottom, counted movement, and regex search in logs. |
 | `r` | Read-only recheck of the fixed selection: refresh diagnostics, recheck association, and fully verify its Run evidence. |
 | `q` | Quit and restore the terminal. |
+
+The control strip shows the active view and selected log as `position/total`.
+Cyan keys and labels are distinct from their values; green marks verified
+success/following, yellow marks pending/warning/paused state, red marks failures,
+and dim text is secondary metadata. Log styling recognizes literal Snakemake and
+structured severity forms without rewriting retained text. `NO_COLOR`, redirected
+output and dumb terminals remain fully labeled and plain.
 
 Automatic diagnostic refresh defaults to 30 seconds; `--refresh` accepts at
 least five seconds. Workflow streams retain full diagnostic history; other

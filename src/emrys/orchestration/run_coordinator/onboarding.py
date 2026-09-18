@@ -1438,6 +1438,7 @@ def _draft_manifest_members(
 
 
 def configure_manifest_init_parser(parser: argparse.ArgumentParser) -> None:
+    add_verbose_argument(parser)
     parser.add_argument(
         "--output-dir",
         required=True,
@@ -1486,11 +1487,18 @@ def init_manifests_from_args(arguments: argparse.Namespace) -> int:
             arguments.regions_file,
             arguments.region,
         )
-        print(f"Output directory: {output}")
-        print("Draft manifests: " + ", ".join(sorted(members)))
-        print("Publication policy: create-absent; no file will be replaced or adopted.")
+        console_field("Output directory", output, file=sys.stdout)
+        console_field("Draft manifests", len(members), file=sys.stdout)
+        if getattr(arguments, "verbose", False):
+            console_field("Manifest files", ", ".join(sorted(members)), file=sys.stdout)
+            console_field(
+                "Publication policy",
+                "create-absent; no file will be replaced or adopted",
+                file=sys.stdout,
+            )
         if not arguments.execute:
-            print("Dry-run complete; no files were written.")
+            console_status("Publication", "planned", file=sys.stdout)
+            console_print("Dry-run complete; no files were written.", file=sys.stdout)
             return 0
         sample_bytes, _ = members["samples.tsv"]
         publish_create_absent_tree(
@@ -1499,7 +1507,7 @@ def init_manifests_from_args(arguments: argparse.Namespace) -> int:
             completion_name="samples.tsv",
             completion_bytes=sample_bytes,
         )
-        print(f"Published validated manifest drafts: {output}")
+        console_status("Manifest drafts", "ready", file=sys.stdout)
         return 0
     except (
         OSError,
@@ -1507,7 +1515,7 @@ def init_manifests_from_args(arguments: argparse.Namespace) -> int:
         orchestration_contracts.ContractValidationError,
         step08.ContractError,
     ) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        console_print(f"ERROR: {exc}", style="red", file=sys.stderr)
         return 2
 
 

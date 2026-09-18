@@ -608,6 +608,7 @@ def test_tail_handles_stream_generations_without_carrying_old_bytes(tmp_path, ch
         if change == "truncate"
         else "truncated" not in current.diagnostic
     )
+    assert current.generation_changed is (change != "grow")
 
 
 @pytest.mark.parametrize(
@@ -716,7 +717,11 @@ def test_watch_log_styles_preserve_every_literal_line(tmp_path):
             "[2026-09-16 12:00:00] WARNING: delayed\n"
             "2026-09-16T12:00:01Z ERROR: failed\n"
             '{"timestamp":"2026-09-16T12:00:02Z","level":"INFO","message":"checking"}\n'
-            "Finished job 7.\n"
+            "rule align_reads:\n"
+            "Finished jobid: 7 (rule: align_reads)\n"
+            "35 of 36 steps (97%) done\n"
+            "36 of 36 steps (100%) done\n"
+            "WorkflowError:\n"
             "unaltered text",
             diagnostic="Current diagnostic bytes; content not verified",
             observed_at=NOW,
@@ -724,20 +729,30 @@ def test_watch_log_styles_preserve_every_literal_line(tmp_path):
     )
     styled = view.render_watch_text(snapshot, now=NOW)
     assert styled.plain == view.render_snapshot(snapshot, now=NOW)
-    styled_fragments = {
-        styled.plain[span.start : span.end]: str(span.style) for span in styled.spans
-    }
-    assert styled_fragments["INFO: preparing"] == "cyan"
-    assert styled_fragments["[2026-09-16 12:00:00] WARNING: delayed"] == "yellow"
-    assert styled_fragments["2026-09-16T12:00:01Z ERROR: failed"] == "red"
-    assert (
-        styled_fragments[
-            '{"timestamp":"2026-09-16T12:00:02Z","level":"INFO","message":"checking"}'
-        ]
-        == "cyan"
-    )
-    assert styled_fragments["Finished job 7."] == "green"
-    assert "unaltered text" not in styled_fragments
+
+    def styles(fragment: str) -> set[str]:
+        start = styled.plain.index(fragment)
+        end = start + len(fragment)
+        return {
+            str(span.style)
+            for span in styled.spans
+            if span.start <= start and span.end >= end
+        }
+
+    assert "cyan" in styles("INFO")
+    assert "dim" in styles("[2026-09-16 12:00:00]")
+    assert "bold yellow" in styles("WARNING")
+    assert "bold red" in styles("ERROR")
+    assert "bold cyan" in styles('"level":')
+    assert "cyan" in styles('"INFO"')
+    assert "cyan" in styles("rule align_reads:")
+    assert "green" in styles("Finished jobid: 7")
+    assert "cyan" in styles("35 of 36 steps (97%) done")
+    assert "bold green" in styles("36 of 36 steps (100%) done")
+    assert "bold red" in styles("WorkflowError")
+    assert not styles("unaltered text")
+    assert "bold cyan" in styles("Scheduler:")
+    assert not styles("RUNNING")
 
 
 def test_watch_log_rows_are_tail_relative_and_search_literal_text(tmp_path):
@@ -1017,7 +1032,10 @@ raise SystemExit(result)
     importlib.util.find_spec("rich") is None,
     reason="Interactive rendering requires the existing Rich dependency",
 )
-def test_interactive_log_navigation_follows_pauses_counts_and_searches(tmp_path):
+@pytest.mark.parametrize("generation_change", ("replace", "truncate"))
+def test_interactive_log_navigation_follows_pauses_counts_and_searches(
+    tmp_path, generation_change
+):
     log = tmp_path / "stream.log"
     log.write_text(
         "\n".join(
@@ -1079,6 +1097,16 @@ raise SystemExit(result)
         os.write(session.master, b"/ERROR\r")
         session.read_until(b"PAUSED", b"ERROR target", b"Search: /ERROR")
         assert b"\x1b[" in session.output
+
+        if generation_change == "replace":
+            log.rename(tmp_path / "stream.previous.log")
+        log.write_text(f"{generation_change} generation\n", encoding="utf-8")
+        os.write(session.master, b"r")
+        session.read_until(
+            b"FOLLOWING",
+            f"{generation_change} generation".encode(),
+            b"Search: none",
+        )
 
         os.write(session.master, b"q")
         session.read_until(b"WATCH EXITED")

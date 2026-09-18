@@ -556,10 +556,7 @@ def parse_submission(text: str, log_dir: Path) -> Job:
     )
     if (
         job.stdout.parent != log_dir
-        or re.fullmatch(
-            rf"emrys-local-pilot-[0-9a-f]{{32}}-{job_id}\.out", job.stdout.name
-        )
-        is None
+        or re.fullmatch(rf"emrys-[0-9a-f]{{32}}-{job_id}\.out", job.stdout.name) is None
         or job.stderr != job.stdout.with_suffix(".err")
     ):
         raise DriverError("submit-slurm", "submission stream paths differ")
@@ -1064,7 +1061,7 @@ def _attempt_snapshot(
 
 
 def _assert_scheduler_streams(workspace: Path, jobs: tuple[Job, ...]) -> None:
-    observed = set(workspace.glob("logs/emrys-local-pilot-*"))
+    observed = set(workspace.glob("logs/emrys-[0-9a-f]*-*"))
     expected = {path for job in jobs for path in (job.stdout, job.stderr)}
     if observed != expected:
         raise DriverError("assert-parity", "Scheduler stream ownership differs")

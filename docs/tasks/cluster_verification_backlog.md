@@ -117,8 +117,8 @@ discussion. Open questions are not filled with inferred implementation decisions
 
 | ID | Finding | Status |
 | --- | --- | --- |
-| [CV-U01](#cv-u01-cli-color-and-readability) | CLI color, readability and Inspect interpretation | Open |
-| [CV-U02](#cv-u02-default-cli-verbosity) | Minimal default output, optional detail | Open |
+| [CV-U01](#cv-u01-cli-color-and-readability) | CLI color, readability and Inspect interpretation | Verification pending |
+| [CV-U02](#cv-u02-default-cli-verbosity) | Minimal default output, optional detail | Verification pending |
 | [CV-U03](#cv-u03-init-and-validate-summaries) | Init and Validate summaries | Verification pending |
 | [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Verification pending |
 | [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Verification pending |
@@ -130,9 +130,9 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Open |
 | [CV-U12](#cv-u12-duplicate-submission-warning) | Warn before accidental duplicate submission | Open |
 | [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Open |
-| [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Open |
+| [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Verification pending |
 | [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Verification pending |
-| [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Open |
+| [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Verification pending |
 | [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Verification pending |
 | [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Open |
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Deferred |
@@ -214,6 +214,14 @@ presentation work for Project Init, Validate, Run and Inspect remains valid, but
 Viking visual acceptance cannot close missing source wiring in the other Init
 callers. CV-U01 returns to **Open**.
 
+**September 17 caller-complete correction:** Synthetic and manifest Init now use
+the shared presentation owner and expose the same Boolean `--verbose` switch.
+Cyan keys remain distinct from neutral or semantic values; terminal success,
+pending and failure states use the shared restrained palette while redirected,
+`NO_COLOR` and dumb-terminal text remains literal. Focused onboarding and
+presentation checks passed locally. Standard CI and Viking visual acceptance
+remain, so CV-U01 is **Verification pending**.
+
 ### CV-U02 Default CLI verbosity
 
 **Operator report:** “Overall cli output is far too verbose by default, there
@@ -266,6 +274,14 @@ operator result from optional detail. The concise/default split already delivere
 for Project Init, Validate, Doctor, Run, Inspect and runtime discovery remains
 recorded, but the claimed common Init contract is not yet implemented across all
 public Init callers. CV-U02 returns to **Open**.
+
+**September 17 caller-complete correction:** Synthetic Init now defaults to its
+destination, dataset profile, library count, publication state and evidence
+boundary; read composition, reference size and publication mechanics are
+verbose. Manifest Init defaults to its destination, manifest count and
+publication state; exact members and policy are verbose. Both preserve errors
+and no-write outcomes. Focused local checks passed; standard CI and Viking
+terminal acceptance remain, so CV-U02 is **Verification pending**.
 
 ### CV-U03 Init and Validate summaries
 
@@ -824,6 +840,14 @@ styled content. The focused styling test instead uses the invented form
 remain monocolored despite passing tests. This is remaining implementation and
 fixture work; CV-U14 returns to **Open**.
 
+**September 17 literal-form correction:** Watch now styles the actual retained
+`Finished jobid:`, `WorkflowError:`, rule/checkpoint, warning/error, structured
+severity and partial/complete step-count forms. Timestamps and secondary stream
+metadata are dim, unclassified text remains neutral, and styling spans never
+rewrite literal bytes. The log view also identifies the selected stream by label
+and position. Exact-content/color tests passed locally; Viking/tmux visual
+acceptance remains, so CV-U14 is **Verification pending**.
+
 ### CV-U15 Dashboard action language
 
 **Operator question:** “What does verify/associate again mean in the dashboard?
@@ -892,6 +916,14 @@ automatic refresh can therefore retain navigation state against unrelated
 replacement bytes, contrary to the recorded claim that stream changes reset
 search and resume following. CV-U16 returns to **Open** for a generation-aware
 state reset and corresponding terminal coverage.
+
+**September 17 generation-aware correction:** The shared stream owner now
+exposes its existing replacement/truncation decision to installed watch. One
+observed generation change clears count/search/match/scroll state and resumes
+following without changing Run or stream selection. PTY coverage exercises both
+replacement and truncation after paused search navigation; bounded reads,
+sanitization and ignored mouse reports remain unchanged. Focused local checks
+passed; Viking/tmux acceptance remains, so CV-U16 is **Verification pending**.
 
 ### CV-U17 Completion communication
 
@@ -1787,6 +1819,12 @@ while `--verbose` retains them. Real narrow-PTY checks cover color and
 records:`, and readable zero-duration timing. Focused progress, submission and
 Slurm Doctor suites passed 418 tests locally. CV-UX-01 is **Verification pending**
 for Viking terminal acceptance; the integrated standard CI passed.
+
+**September 17 integrated presentation refinement:** The same serialized owner
+now colors the phase key cyan, elapsed time dim, and terminal outcome separately
+as success or failure. Plain output is unchanged and the narrow color/`NO_COLOR`
+PTY regression remains passing. This adds no higher evidence; CV-UX-01 remains
+**Verification pending** for Viking terminal acceptance.
 
 ## P0 outcomes
 

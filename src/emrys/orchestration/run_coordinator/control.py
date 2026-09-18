@@ -1070,7 +1070,7 @@ def _schedule(
     try:
         request_root.mkdir(mode=0o700)
         context = {
-            "schema_version": "emrys.submission-request.v3",
+            "schema_version": "emrys.submission-request.v4",
             "created_at": datetime.now(UTC).isoformat(),
             "submitter_uid": os.getuid(),
             "command": command,

@@ -70,7 +70,11 @@ def _request_record(
     project.touch(exist_ok=True)
     root = tmp_path / "logs" / ("submission-" + token * 32)
     root.mkdir(parents=True)
-    name = "emrys-local-pilot" + ("-" + token * 32 if version != "v1" else "")
+    name = (
+        "emrys-" + token * 32
+        if version == "v4"
+        else "emrys-local-pilot" + ("-" + token * 32 if version != "v1" else "")
+    )
     context = {
         "schema_version": f"emrys.submission-request.{version}",
         "created_at": "2026-09-15T12:00:00+00:00",
@@ -95,7 +99,7 @@ def _request_record(
         "scheduler_stdout_pattern": str(root.parent / f"{name}-%j.out"),
         "scheduler_stderr_pattern": str(root.parent / f"{name}-%j.err"),
     }
-    if version == "v3":
+    if version in ("v3", "v4"):
         context["scheduler_job_name"] = name
     context.update(context_overrides)
     (root / "request.json").write_bytes(
@@ -869,7 +873,7 @@ def test_request_context_retains_exact_requested_run(
 
 
 @pytest.mark.parametrize("command", ["run", "resume", "report"])
-@pytest.mark.parametrize("version", ["v2", "v3"])
+@pytest.mark.parametrize("version", ["v2", "v3", "v4"])
 def test_request_specific_streams_roundtrip_through_producer_and_reader(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str, version: str
 ) -> None:
@@ -885,13 +889,22 @@ def test_request_specific_streams_roundtrip_through_producer_and_reader(
         log_dir=project.parent / "logs",
         request_token="a" * 32,
     )
+    if version != "v4":
+        stem = "emrys-local-pilot-" + "a" * 32
+        plan = replace(
+            plan,
+            stdout_pattern=project.parent / "logs" / f"{stem}-%j.out",
+            stderr_pattern=project.parent / "logs" / f"{stem}-%j.err",
+            job_name=stem,
+        )
     context.update(
         scheduler_stdout_pattern=str(plan.stdout_pattern),
         scheduler_stderr_pattern=str(plan.stderr_pattern),
     )
-    if version == "v3":
+    if version in ("v3", "v4"):
         context["scheduler_job_name"] = plan.job_name
-        assert f"--job-name={plan.job_name}" in plan.argv
+        if version == "v4":
+            assert f"--job-name={plan.job_name}" in plan.argv
     admitted = slurm_submission.validate_request_context(context, project, root)
     (root / "request.json").write_bytes(
         slurm_submission.orchestration_contracts.canonical_json_bytes(admitted)
@@ -906,13 +919,13 @@ def test_request_specific_streams_roundtrip_through_producer_and_reader(
         "command_bytes",
         lambda *_args, **_kwargs: (
             f"700123|{os.getuid()}|RUNNING|alpha|{plan.stdout_pattern}|{plan.stderr_pattern}|None"
-            + (f"|{plan.job_name}" if version == "v3" else "")
+            + (f"|{plan.job_name}" if version in ("v3", "v4") else "")
             + "\n"
         ).encode(),
     )
     state = slurm_submission.observe_submission_request(observed)
     assert state["source"] == "squeue" and state["state"] == "RUNNING"
-    assert state.get("job_name") == (plan.job_name if version == "v3" else None)
+    assert state.get("job_name") == (plan.job_name if version in ("v3", "v4") else None)
 
 
 @pytest.mark.parametrize(
@@ -928,10 +941,12 @@ def test_request_specific_streams_roundtrip_through_producer_and_reader(
         "v2",
     ],
 )
-def test_v3_request_name_is_closed_and_bound_to_its_request_token(
-    tmp_path: Path, defect: str
+@pytest.mark.parametrize("version", ("v3", "v4"))
+def test_named_request_is_closed_and_bound_to_its_request_token(
+    tmp_path: Path, defect: str, version: str
 ) -> None:
-    project, root, context = _request_record(tmp_path, version="v3")
+    project, root, context = _request_record(tmp_path, version=version)
+    prefix = "emrys-local-pilot-" if version == "v3" else "emrys-"
     if defect == "missing":
         del context["scheduler_job_name"]
     elif defect == "extra":
@@ -940,10 +955,11 @@ def test_v3_request_name_is_closed_and_bound_to_its_request_token(
         context["schema_version"] = f"emrys.submission-request.{defect}"
     else:
         context["scheduler_job_name"] = {
-            "wrong-token": "emrys-local-pilot-" + "b" * 32,
-            "legacy-name": "emrys-local-pilot",
+            "wrong-token": prefix + "b" * 32,
+            "legacy-name": "emrys-local-pilot"
+            + ("-" + "a" * 32 if version == "v4" else ""),
             "empty": "",
-            "wrong-type": ["emrys-local-pilot-" + "a" * 32],
+            "wrong-type": [prefix + "a" * 32],
         }[defect]
     with pytest.raises(slurm_submission.SlurmSubmissionError):
         slurm_submission.validate_request_context(context, project, root)
@@ -1108,7 +1124,7 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(
     )
 
     assert sorted(path.relative_to(tmp_path) for path in tmp_path.rglob("*")) == before
-    stem = "emrys-local-pilot" + (f"-{request_token}" if request_token else "")
+    stem = f"emrys-{request_token}" if request_token else "emrys-doctor"
     assert plan.argv == (
         "/opt/slurm/bin/sbatch",
         "--parsable",
@@ -1457,7 +1473,7 @@ def test_recorded_submission_retains_raw_responses_without_waiting_for_the_job(
     assert transcript.with_suffix(".stderr").stat().st_mode & 0o777 == 0o600
 
 
-@pytest.mark.parametrize("version", ["v2", "v3"])
+@pytest.mark.parametrize("version", ["v2", "v3", "v4"])
 @pytest.mark.parametrize("cluster", [None, "alpha"])
 @pytest.mark.parametrize("state", ["PENDING", "RUNNING", "COMPLETED"])
 def test_request_resources_share_exact_root_and_usage_has_local_identity_brackets(
@@ -1475,8 +1491,10 @@ def test_request_resources_share_exact_root_and_usage_has_local_identity_bracket
         StdErr=context["scheduler_stderr_pattern"],
         ExitCode="0:0" if state == "COMPLETED" else "Priority",
     )
-    if version == "v3":
-        fields["JobName"] = "emrys-local-pilot-" + "a" * 32
+    if version in ("v3", "v4"):
+        fields["JobName"] = (
+            "emrys-local-pilot-" if version == "v3" else "emrys-"
+        ) + "a" * 32
     plain = _root_row(**fields)
     detailed = _root_row(
         **fields,

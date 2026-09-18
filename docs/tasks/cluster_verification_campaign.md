@@ -158,8 +158,9 @@ Campaign closure requires:
 - `SCHED-01` retains its narrower explicit-memory preflight acceptance; CV-11
   coordinates that prerequisite with heterogeneous-node resource fit.
 - The institutional owner accepted CV-16/CV-24's installed watch replacement on
-  2026-09-17. `DASHBOARD-RETIRE-01` retains only coordinated follow-up such as
-  new scheduler-stream naming and the separate evidence-deletion boundary.
+  2026-09-17. `DASHBOARD-RETIRE-01` has implemented new scheduler-stream naming
+  with legacy read compatibility; institutional verification and the separate
+  evidence-deletion boundary remain.
 - The [optimization campaign](optimization_campaign.md) owns resource-tuning
   measurements and existing hashing/probe investigations. CV-26 selects only
   the Doctor-operation duplication question; no speedup is claimed in advance.

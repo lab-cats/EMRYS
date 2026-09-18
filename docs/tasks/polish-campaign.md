@@ -429,7 +429,8 @@ that preserves watch behavior. The standalone curses/CLI wrapper, duplicate
 scheduler query, Make target, dedicated protections, and stale guidance retire
 together. Project-local inspection, strict scheduler accounting, sanitized
 streams, exact historical reads, and the shared watch parser/renderer remain.
-`DASHBOARD-RETIRE-01` retains the separate new-name and evidence-deletion work.
+`DASHBOARD-RETIRE-01` has implemented the new-name transition with historical
+read compatibility; institutional verification and evidence deletion remain.
 
 ## Development and CI tooling
 

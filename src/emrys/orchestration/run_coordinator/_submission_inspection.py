@@ -423,7 +423,11 @@ def inspect_submission_application(
         request.record_status != "recorded-response"
         or context is None
         or context["schema_version"]
-        not in ("emrys.submission-request.v2", "emrys.submission-request.v3")
+        not in (
+            "emrys.submission-request.v2",
+            "emrys.submission-request.v3",
+            "emrys.submission-request.v4",
+        )
     ):
         return SubmissionApplicationObservation(
             diagnostics=("Complete token-bound request evidence is unavailable",)

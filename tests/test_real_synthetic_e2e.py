@@ -46,7 +46,7 @@ def _plan(workspace: Path) -> str:
 
 
 def _submission(logs: Path, job_id: str = "42") -> str:
-    stem = logs / f"emrys-local-pilot-{'a' * 32}-{job_id}"
+    stem = logs / f"emrys-{'a' * 32}-{job_id}"
     return f"JOB_ID={job_id}\nOUT={stem}.out\nERR={stem}.err\n"
 
 
@@ -301,7 +301,7 @@ def test_submission_requires_matching_request_token_and_job_id(
     logs = tmp_path / "logs with spaces"
     job = driver.parse_submission(_submission(logs, job_id), logs)
     assert job.job_id == job_id
-    assert job.stdout == logs / f"emrys-local-pilot-{'a' * 32}-{job_id}.out"
+    assert job.stdout == logs / f"emrys-{'a' * 32}-{job_id}.out"
     assert job.stderr == job.stdout.with_suffix(".err")
 
 

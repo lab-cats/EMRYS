@@ -53,11 +53,13 @@ def _namespace(
     *,
     execute: bool,
     dataset_profile: str = synthetic_fixture.DEFAULT_DATASET_PROFILE,
+    verbose: bool = False,
 ) -> argparse.Namespace:
     return argparse.Namespace(
         output_dir=output,
         execute=execute,
         dataset_profile=dataset_profile,
+        verbose=verbose,
     )
 
 
@@ -825,6 +827,7 @@ def test_manifest_init_is_deterministic_validated_and_dry_run_first(
     tmp_path: Path,
     mate_marker: str,
     suffix: str,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     fastqs = _fastqs(
         tmp_path, "sample_b", "sample_a", mate_marker=mate_marker, suffix=suffix
@@ -844,6 +847,11 @@ def test_manifest_init_is_deterministic_validated_and_dry_run_first(
 
     assert cli.main(arguments) == 0
     assert not output.exists()
+    preview = capsys.readouterr().out
+    assert "Draft manifests: 2" in preview
+    assert "Manifest files:" not in preview
+    assert cli.main([*arguments, "--verbose"]) == 0
+    assert "Manifest files: partitions.tsv, samples.tsv" in capsys.readouterr().out
     assert cli.main([*arguments, "--execute"]) == 0
     assert set(_tree_bytes(output)) == {"samples.tsv", "partitions.tsv"}
     sample_table, sample_ids, _ = step08.validate_sample_manifest(
@@ -1384,6 +1392,19 @@ def test_production_like_profile_is_explicit_and_dry_run_skips_generation(
     assert not output.exists()
     stdout = capsys.readouterr().out
     assert "Dataset profile: production-like-v1" in stdout
+    assert "Read pairs per library" not in stdout
+    assert (
+        synthetic_fixture.init_from_args(
+            _namespace(
+                output,
+                execute=False,
+                dataset_profile=synthetic_fixture.PRODUCTION_LIKE_DATASET_PROFILE,
+                verbose=True,
+            )
+        )
+        == 0
+    )
+    stdout = capsys.readouterr().out
     assert "Read pairs per library: 100000" in stdout
     assert "Neutral unique/duplicate pairs per library: 89883/9987" in stdout
     assert "Reference length: 5000000" in stdout
@@ -1735,7 +1756,7 @@ def test_public_cli_routes_synthetic_init_and_project_validation(
         execution_profile.project_default_profile_bytes("viking")
     )
     stdout = capsys.readouterr().out
-    assert "Published deterministic synthetic Project" in stdout
+    assert "Synthetic Project: ready" in stdout
     assert "Project validation: PASS" in stdout
     assert "Analysis revision:" not in stdout
 

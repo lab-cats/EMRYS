@@ -52,6 +52,7 @@ from emrys.libraries.application_logging import (
     add_log_arguments,
     console_field,
     console_print,
+    console_status,
     event,
     field,
     open_attempt_log,
@@ -1366,9 +1367,12 @@ def _record_runtime_failures(
 
 def _print_result(result: DoctorResult, verbose: bool) -> None:
     _stderr("EMRYS Doctor", style="bold blue")
-    _stderr(f"  Project    PASS  {result.project.source_path.parent}", style="green")
-    _stderr(f"  Analysis   PASS  {result.analysis.name}", style="green")
-    _stderr("  Inputs     PASS", style="green")
+    for label, value in (
+        ("Project", result.project.source_path.parent),
+        ("Analysis", result.analysis.name),
+    ):
+        console_field(label, f"PASS  {value}", value_style="bold green", indent="  ")
+    console_status("Inputs", "PASS", indent="  ")
     for label, ready, requirement in (
         ("Storage", result.storage_ready, "NOT QUALIFIED"),
         (
@@ -1378,9 +1382,11 @@ def _print_result(result: DoctorResult, verbose: bool) -> None:
         ),
         ("Execution", result.execution_ready, "NOT ADMITTED"),
     ):
-        _stderr(
-            f"  {label:<10} {'PASS' if ready else requirement}",
-            style="green" if ready else "red",
+        console_field(
+            label,
+            "PASS" if ready else requirement,
+            value_style="bold green" if ready else "bold red",
+            indent="  ",
         )
     if verbose:
         package = result.installed_package
@@ -1408,14 +1414,11 @@ def _print_result(result: DoctorResult, verbose: bool) -> None:
             _stderr(
                 f"Binding {binding.check_id}: {binding.path} -> {binding.resolved_path} sha256:{binding.sha256}"
             )
-    _stderr(
-        "EMRYS is ready." if result.ready else "EMRYS is not ready.",
-        style="green" if result.ready else "yellow",
-    )
+    console_status("Doctor", "ready" if result.ready else "not ready")
     for blocker in result.blockers:
-        _stderr(f"EXECUTION REQUIREMENT: {blocker}", style="red")
+        console_field("Execution requirement", blocker, value_style="bold red")
     for remediation in result.remediations:
-        _stderr(f"REMEDIATION: {remediation}", style="yellow")
+        console_field("Remediation", remediation, value_style="bold yellow")
 
 
 def _print_repair_plan(plan: _RepairPlan, verbose: bool) -> None:
@@ -1423,8 +1426,8 @@ def _print_repair_plan(plan: _RepairPlan, verbose: bool) -> None:
     _stderr("First Doctor setup can take 5–25 minutes.", style="yellow")
     if not verbose:
         return
-    _stderr(f"  Project: {plan.project.source_path}")
-    _stderr(f"  Runtime work: {plan.runtime_work}")
+    console_field("Project", plan.project.source_path, indent="  ")
+    console_field("Runtime work", plan.runtime_work, indent="  ")
     if plan.execution is not None:
         for line in plan.execution.submission_summary():
             _stderr(f"  {line}")
