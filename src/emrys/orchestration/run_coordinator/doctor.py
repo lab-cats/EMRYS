@@ -501,6 +501,12 @@ def diagnose_project(
         try:
             execution_path = project_execution_profile_path(project, execution_profile)
             execution = load_execution_profile(config_path=execution_path)
+            if (
+                os.environ.get("EMRYS_SITE") == "viking"
+                and execution_profile is None
+                and (execution.placement.kind != "slurm")
+            ):
+                raise ExecutionProfileError("saved Viking site conflicts with direct")
             storage_requirement = execution.placement.kind
         except ExecutionProfileError as exc:
             execution_error = str(exc)
@@ -709,7 +715,10 @@ def diagnose_project(
             f"{selection} execution profile is not admitted: {execution_error}"
         )
         remediations.append(
-            "Restore a valid Project-owned runtime/profiles/default.yaml; "
+            "Create `viking` with `emrys profile create viking --site viking --execute`; "
+            "then use `--profile viking`, or explicitly use `--profile default`, for Doctor and Run."
+            if execution_error.startswith("saved Viking site")
+            else "Restore a valid Project-owned runtime/profiles/default.yaml; "
             "Doctor preserves operator execution policy."
             if execution_profile is None
             else "Select a valid execution profile with --profile; Doctor preserves operator execution policy."

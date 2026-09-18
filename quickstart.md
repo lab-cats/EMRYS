@@ -203,19 +203,9 @@ analysis or modify the Project.
 
 ## 5. Prepare the scientific tools and storage
 
-For the fastest route, let Doctor prepare and verify this Project directly:
-
-```bash
-emrys doctor --repair
-```
-
-Doctor first shows a no-write plan. Answer `y` once to approve it. First setup
-normally takes 5–25 minutes; Slurm queue time is separate and may extend the
-wait. Continue only after the distinct `EMRYS is ready.` message. If Doctor
-reports a blocker or failure, stop and retain the diagnostic and log path.
-
-If you completed the [optional smoke test](#optional-smoke-test), reuse its
-prepared tools instead. Preview the selection:
+If you skipped the [optional smoke test](#optional-smoke-test), continue to
+Doctor below. If you completed it, do not run Doctor yet: first preview the
+prepared tools for reuse in this Project:
 
 ```bash
 emrys runtime discover --from-project "$EMRYS_SOURCE_ROOT/Projects/emrys-smoke"
@@ -227,16 +217,26 @@ reuses that in-memory inspection and performs focused freshness checks before
 writing. Press Enter or answer `n` to leave the Project unchanged. Advanced
 noninteractive automation may add `--execute` to the same command.
 
-Continue after `Runtime inventory admitted:`. Doctor must still verify this
-Project, its storage and the intended compute placement:
+Continue after `Runtime inventory admitted:`. The reuse command installs
+nothing. If you skipped the smoke test, there is no source Project to select
+and no runtime-discovery command to run.
+
+Now let Doctor prepare or verify this Project, its storage and the intended
+compute placement:
 
 ```bash
 emrys doctor --repair
 ```
 
-This reuse path does not reinstall passing packages. Doctor creates a new
-generation if the shared owner later needs repair; it never changes the sealed
-generation already selected here.
+Doctor first shows a no-write plan. Answer `y` once to approve it. First setup
+normally takes 5–25 minutes; Slurm queue time is separate and may extend the
+wait. A selected smoke runtime does not reinstall passing packages. Doctor
+creates a new generation if the shared owner later needs repair; it never
+changes the sealed generation already selected here.
+
+Continue only after the distinct `EMRYS is ready.` message. If Doctor reports a
+blocker, including a saved-site/profile mismatch, stop and follow its exact
+remediation before running or submitting the Project.
 
 ## 6. Submit and watch the Run
 

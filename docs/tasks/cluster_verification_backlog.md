@@ -138,12 +138,12 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Deferred |
 | [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
 | [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Open |
-| [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Open |
+| [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Verification pending |
 | [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Verification pending |
 | [CV-U24](#cv-u24-persistent-cli-defaults) | Save site and other repeated CLI values | Verification pending |
 | [CV-U25](#cv-u25-repeated-fastq-hashing-during-init) | One full FASTQ hashing pass across preview and creation | Open |
 | [CV-U26](#cv-u26-manifests-inside-the-project) | Keep manifests inside their Project directory | Verification pending |
-| [CV-U27](#cv-u27-tested-smoke-to-real-resource-guidance) | Tested workload profile, Doctor checks and exact submission | Open |
+| [CV-U27](#cv-u27-tested-smoke-to-real-resource-guidance) | Tested workload profile, Doctor checks and exact submission | Verification pending |
 | [CV-U28](#cv-u28-historical-stage-configuration-and-wall-time) | Restore benchmark-derived stage settings and wall-time performance | Open |
 | [CV-U29](#cv-u29-early-inspect-and-dashboard-feedback) | Show useful information before monitoring fully populates | Verification pending |
 | [CV-U30](#cv-u30-dashboard-color-and-pane-layout) | Restore dashboard colors and readable pane layout | Verification pending |
@@ -1320,6 +1320,17 @@ checked. This does not satisfy the recorded discover/validate/reuse-before-
 install requirement or make smoke reuse the normal continuation when smoke was
 chosen. CV-U22 returns to **Open**.
 
+**September 18 approved correction:** Quickstart now asks whether the optional
+smoke Project was completed before presenting Doctor. When it was, runtime
+discovery, compatibility checking and selection occur first; Doctor is the one
+shared next step only after that admission. When smoke was skipped, the guide
+does not invent a source Project and Doctor prepares the real Project directly.
+The existing seal, freshness, explicit replacement and Project-readiness owners
+remain unchanged. A test-only reuse wrapper with no production caller was
+retired; the same plan and CLI protections remain exercised. Focused local
+checks pass; a fresh institutional smoke-to-study journey remains required, so
+CV-U22 is **Verification pending**.
+
 ### CV-U23 Repair restriction when sharing tools
 
 **Exact wording challenged:** “That optional operation permanently disables
@@ -1522,6 +1533,16 @@ site remains Viking, with no missing/incompatible-site diagnostic. Because
 identifying incompatible site settings is part of this card's required path,
 CV-U27 returns to **Open**. Existing hosted profile and submission checks remain
 valid evidence for the behavior they cover.
+
+**September 18 approved correction:** Doctor now checks the saved `viking` site
+when the Project's default profile is implicit. A direct default produces a
+no-write execution requirement with exact choices to create/select a Viking
+profile or explicitly retain direct placement for both Doctor and Run. An
+explicit `--profile` remains authoritative, and a matching implicit Viking
+profile passes through the existing profile and storage admission. No profile is
+rewritten and Run identity is unchanged. Focused local checks pass;
+institutional smoke-to-real execution and operator acceptance remain required,
+so CV-U27 is **Verification pending**.
 
 ### CV-U28 Historical stage configuration and wall time
 

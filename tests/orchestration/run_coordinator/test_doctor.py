@@ -515,6 +515,62 @@ def test_doctor_selects_execution_profile_without_writes(
     assert _snapshot(tmp_path) == before
 
 
+def test_saved_viking_site_rejects_an_implicit_direct_profile(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    project = _project(tmp_path)
+    _patch_foundations(monkeypatch, project)
+    monkeypatch.setenv("EMRYS_SITE", "viking")
+    before = _snapshot(tmp_path)
+
+    result = doctor.diagnose_project(project.source_path)
+
+    assert not result.execution_ready
+    mismatch = next(item for item in result.blockers if "saved Viking site" in item)
+    assert "saved Viking site conflicts with direct" in mismatch
+    assert "`--profile default`" in result.remediations[-1]
+    assert "Doctor and Run" in result.remediations[-1]
+    assert (
+        doctor.doctor_from_args(_arguments(["--project", str(project.source_path)]))
+        == 1
+    )
+    assert "Execution: NOT ADMITTED" in capsys.readouterr().err
+    assert _snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize(
+    ("selection", "profile_site", "placement"),
+    (("default", None, "direct"), (None, "viking", "slurm")),
+)
+def test_saved_site_accepts_an_explicit_or_matching_profile(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    selection: str | None,
+    profile_site: str | None,
+    placement: str,
+) -> None:
+    from emrys.orchestration.run_coordinator import execution_profile
+
+    project = _project(tmp_path)
+    qualified = _patch_foundations(monkeypatch, project)
+    monkeypatch.setenv("EMRYS_SITE", "viking")
+    profile = project.source_path.parent / "runtime/profiles/default.yaml"
+    profile.write_bytes(execution_profile.project_default_profile_bytes(profile_site))
+    monkeypatch.setattr(
+        doctor.storage_qualification,
+        "admit_final_qualification",
+        lambda *_args: qualified,
+    )
+
+    result = doctor.diagnose_project(project.source_path, execution_profile=selection)
+
+    assert result.execution_ready
+    assert result.execution_profile is not None
+    assert result.execution_profile.placement.kind == placement
+
+
 @pytest.mark.parametrize("selection", ("missing", "../escape", "invalid.yaml"))
 def test_invalid_selected_execution_profile_does_not_fall_back_to_default(
     tmp_path: Path,
