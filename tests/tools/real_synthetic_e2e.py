@@ -37,7 +37,7 @@ TERMINAL_STATES = frozenset(
     }
 )
 RUN_ROOT = re.compile(r"^Run root: (/.+/runs/run-[a-f0-9]{64})$", re.MULTILINE)
-JOB_ID = re.compile(r"^JOB_ID=([0-9]+)$", re.MULTILINE)
+JOB_ID = re.compile(r"^JOB_ID=([1-9][0-9]*)$", re.MULTILINE)
 OUT = re.compile(r"^OUT=(/.+)$", re.MULTILINE)
 ERR = re.compile(r"^ERR=(/.+)$", re.MULTILINE)
 STATE = re.compile(r"(?:^| )JobState=([A-Z_]+)")
@@ -63,7 +63,7 @@ STEP09_LOCAL_PATH_FIELDS = frozenset(
     }
 )
 TASK_ENTRY_EVIDENCE_FIELDS = (
-    "preentry_task_attempt_records",
+    "task_attempt_records",
     "task_start_records",
     "verified_tasks",
 )
@@ -390,6 +390,35 @@ def runtime_environment(paths: Paths, runtime: Runtime) -> dict[str, str]:
     }
 
 
+def symbolic_resource_document() -> dict[str, Any]:
+    """Explicit small budget for symbolic-admission tests and hosted E2E."""
+    from emrys.orchestration.run_coordinator.resource_policy import (
+        REPEATABLE_STAGE_IDS,
+        STAGE_IDS,
+    )
+
+    return {
+        "schema_version": "emrys.local-pilot-resources.v1",
+        "workflow_cores": 4,
+        "workflow_memory_mb": "allocation",
+        "stage_concurrency": {step_id: 1 for step_id in REPEATABLE_STAGE_IDS},
+        "step_threads": {
+            "00a": 4,
+            "00c": 1,
+            "01": 4,
+            "02": 1,
+            "02b": 1,
+            "04": 1,
+            "05": 1,
+            "06": 4,
+            "08": 1,
+            "09": 1,
+            "10": 1,
+        },
+        "stage_memory_mb": {step_id: "workflow" for step_id in STAGE_IDS},
+    }
+
+
 def slurm_execution_profile_bytes(
     *,
     account: str | None,
@@ -408,6 +437,7 @@ def slurm_execution_profile_bytes(
     try:
         document = {
             "schema_version": SCHEMA_VERSION,
+            "resources": symbolic_resource_document(),
             "placement": {
                 "kind": "slurm",
                 "account": account,
@@ -525,8 +555,12 @@ def parse_submission(text: str, log_dir: Path) -> Job:
         Path(_one(ERR, text, "stderr", "submit-slurm")),
     )
     if (
-        job.stdout != log_dir / f"emrys-local-pilot-{job_id}.out"
-        or job.stderr != log_dir / f"emrys-local-pilot-{job_id}.err"
+        job.stdout.parent != log_dir
+        or re.fullmatch(
+            rf"emrys-local-pilot-[0-9a-f]{{32}}-{job_id}\.out", job.stdout.name
+        )
+        is None
+        or job.stderr != job.stdout.with_suffix(".err")
     ):
         raise DriverError("submit-slurm", "submission stream paths differ")
     return job
@@ -576,8 +610,9 @@ def cancel_job(
 
 
 def wait_for_job(
-    job: Job,
+    submission: str,
     *,
+    log_dir: Path,
     scontrol: Path,
     scancel: Path,
     cwd: Path,
@@ -585,8 +620,11 @@ def wait_for_job(
     poll_seconds: float,
     expected: tuple[str, str] = ("COMPLETED", "0:0"),
 ) -> Job:
+    # A single reported job ID is required before any cancellation is safe.
+    job_id = _one(JOB_ID, submission, "job ID", "submit-slurm")
     deadline = time.monotonic() + timeout_seconds
     try:
+        job = parse_submission(submission, log_dir)
         while True:
             if time.monotonic() >= deadline:
                 raise DriverError("wait-slurm", "job timed out")
@@ -601,7 +639,7 @@ def wait_for_job(
             time.sleep(poll_seconds)
     except (DriverError, KeyboardInterrupt) as exc:
         disposition = cancel_job(
-            job.job_id,
+            job_id,
             scancel=scancel,
             scontrol=scontrol,
             cwd=cwd,
@@ -1284,6 +1322,17 @@ def run_driver(
         )
         transcripts.run(f"{label}-init-plan", init, cwd=repo)
         transcripts.run(f"{label}-init", [*init, "--execute"], cwd=repo)
+        # Pin the disposable fixture budget before Doctor or any Run exists.
+        (workspace / "runtime/profiles/default.yaml").write_bytes(
+            json.dumps(
+                {
+                    "schema_version": "emrys.execution-profile.v1",
+                    "resources": symbolic_resource_document(),
+                    "placement": {"kind": "direct"},
+                }
+            ).encode()
+            + b"\n",
+        )
         projects[label] = workspace / "project.yaml"
 
     slurm_settings = dict(
@@ -1366,8 +1415,7 @@ def run_driver(
             "run",
             "--project",
             str(projects["direct"]),
-            "--log-level",
-            "verbose",
+            "--verbose",
         )
         before_plan = _execution_state(paths.direct_workspace)
         planned = transcripts.run("run-plan", direct, cwd=repo)
@@ -1385,8 +1433,7 @@ def run_driver(
         str(projects["slurm"]),
         "--profile",
         "ci",
-        "--log-level",
-        "verbose",
+        "--verbose",
     )
     before_plan = _execution_state(paths.slurm_workspace)
     scheduler_plan = transcripts.run("slurm-plan", scheduled, cwd=repo)
@@ -1432,7 +1479,8 @@ def run_driver(
         cwd=repo,
     )
     initial_job = wait_for_job(
-        parse_submission(submission.stdout, paths.slurm_workspace / "logs"),
+        submission.stdout,
+        log_dir=paths.slurm_workspace / "logs",
         scontrol=scontrol,
         scancel=scancel,
         cwd=repo,
@@ -1472,8 +1520,7 @@ def run_driver(
                 direct_run_root.name,
                 "--project",
                 str(projects["direct"]),
-                "--log-level",
-                "verbose",
+                "--verbose",
                 "--execute",
             ),
             cwd=repo,
@@ -1488,17 +1535,14 @@ def run_driver(
                 str(projects["slurm"]),
                 "--profile",
                 "ci",
-                "--log-level",
-                "verbose",
+                "--verbose",
                 "--execute",
             ),
             cwd=repo,
         )
         resumed_job = wait_for_job(
-            parse_submission(
-                resume_submission.stdout,
-                paths.slurm_workspace / "logs",
-            ),
+            resume_submission.stdout,
+            log_dir=paths.slurm_workspace / "logs",
             scontrol=scontrol,
             scancel=scancel,
             cwd=repo,
@@ -1529,7 +1573,7 @@ def run_driver(
             for value in (
                 "Attempt outcome: succeeded",
                 "Scientific Results: complete",
-                "Reporting: complete",
+                "Reporting admission: complete",
             )
         ):
             raise DriverError(

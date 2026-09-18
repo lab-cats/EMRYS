@@ -11,7 +11,7 @@ inputs, outputs, locks, rollback, and recovery belong in that owner's
    A quiet command alone is not a reason to kill an active job.
 2. From the Project, run `emrys inspect RUN`, replacing `RUN` with its two-word
    name, full ID, or unique ID prefix. Omit it for the sole Run or terminal
-   picker; EMRYS never assumes latest. Add `--detail verbose` or `debug` for evidence.
+   picker; EMRYS never assumes latest. Add `--verbose` for evidence.
 3. Preserve the complete Run, Project definition, manifests, receipts, locks,
    task/reporting ledgers, logs, native artifacts, partials, backups, and recovery
    markers. Verify the installed package identity and runtime against admitted records.
@@ -117,15 +117,53 @@ Do not clear caches/libraries wholesale, modify a shared library, or relock
 during diagnosis. A stale lock requires manifest/lock review; workflow execution
 never installs dependencies.
 
+**Runtime maintenance claim remains.** `runtime/maintenance.lock` blocks another
+managed repair after interrupted or failed work. Keep it with the runtime and
+Doctor log. A missing process, elapsed time, or cancelled job does not establish
+that package-manager descendants stopped; do not delete the claim to retry.
+Resolve ownership and partial installation with the maintainer. Successful
+repair releases its exact claim before reporting success; a release durability
+error still reports failure, even if the pathname is already absent.
+Verification without package work does not acquire this claim and is not proof
+that the runtime is safe to modify or share.
+
+**Shared runtime needs replacement.** Keep the selected seal, its managed
+generation, the dependent Project's inventory, and any `maintenance.lock`.
+Missing or changed fixed tool/package content, unresolved claims and unavailable
+source paths block admission. Run Doctor in the Project that owns the shared
+tools. Doctor prepares a separate verified generation and preserves the old
+one. Then preview and apply the exact replacement from each dependent Project:
+
+```bash
+emrys runtime discover --from-project /absolute/source/project.yaml --replace
+emrys runtime discover --from-project /absolute/source/project.yaml --replace --execute
+```
+
+Replacement accepts only an existing shared selection from the same source
+Project. Preserve old and partial generations, seals, and claims for the
+maintainer; never edit their records to bypass admission.
+
 **Runtime inventory already exists.** Discovery preserves even identical-looking
-inventories. Use Doctor to inspect the admitted runtime; replacing it requires
-an explicit migration/recovery decision, not deletion followed by rediscovery.
+inventories. Use Doctor to inspect the admitted runtime. `--replace` changes only
+an existing shared selection to a freshly verified generation from the same
+source Project; other replacement decisions still require explicit migration or
+recovery rather than deletion followed by rediscovery.
+
+**Runtime qualification failed after installation.** Read the exact maintenance
+log printed as `diagnostics:`. Its `runtime_check_failed` records identify the
+check, target, expected and observed result, exit/error details, host, inventory
+digest, and phase. For automatic compute qualification, use the exact job's
+stderr path printed at submission; those checks retain their details there
+without a second maintenance log. Package installation success does not imply
+runtime qualification. Preserve these logs before retrying. For a new read-only
+diagnosis, `emrys doctor --verbose` shows individual failed checks;
+it observes the current environment and cannot reconstruct an older failure.
 
 ### Watching Doctor's installation log
 
 Doctor shows installation stages and elapsed time. Package-manager output is
 saved in `package-output.log`, beside the maintenance JSONL; it does not stream
-to Doctor's terminal, even with `--log-level verbose` or `debug`.
+to Doctor's terminal, even with `--verbose`.
 
 To watch those details while installation continues, leave Doctor running and
 open a second terminal on the same host: the Viking head node for the
@@ -164,7 +202,7 @@ review. Repeating `--execute` is not recovery or cleanup.
 
 **Rejected allocation or scratch.** Replace profile placeholders with authorized
 partition/account/QoS/node values and preview the submission with
-`--log-level debug </dev/null`. If CPU or memory is inadequate, revise the profile
+`--verbose </dev/null`. If CPU or memory is inadequate, revise the profile
 and create a new Run when its immutable resource envelope changes; do not lower
 owner requirements silently. `scratch_parent` must be an existing approved
 writable compute path with enough capacity; there is no silent `/tmp` fallback.
@@ -182,3 +220,30 @@ variables, requesting an exclusive node, or imposing an arbitrary memory request
 **Missing scheduler stream.** Check the exact job with the Runbook's
 [`squeue`/`sacct` commands](RUNBOOK.md#inspecting-a-slurm-run). Slurm may not have
 opened its stream yet; scheduler success does not establish Run completion.
+
+**Submission or waited-job error.** Read the operation and underlying error:
+failure to invoke `sbatch` differs from failure to prepare or read Doctor's
+submission records. Retain the printed scheduler diagnostics and, for Doctor,
+both submission transcripts. Escaped characters in the message represent the
+original scheduler text; full Doctor transcripts remain at the printed paths.
+
+If a job ID was confirmed, the job was accepted: inspect that exact ID and its
+printed stdout/stderr paths before another action. A nonzero
+[`sbatch --wait` exit](https://slurm.schedmd.com/sbatch.html#OPT_wait) can reflect
+job failure or signal termination. Preserve incomplete chains, logs, native
+partials, and locks; follow inspection's supported recovery decision. The
+[Task and Attempt contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
+owns interruption and writer-ownership semantics.
+If the response leaves the job ID unconfirmed, keep the command, submission
+time, and response, and resolve acceptance with the scheduler/operator before
+retrying. EMRYS does not automatically resubmit an uncertain request.
+
+**Job reached its wall-time limit.** Preserve the exact `sacct` row, scheduler
+streams, application log, Run directory, Attempt records, lock, partials, and
+native workspace. New submissions request a batch-only `TERM` warning five
+minutes before the limit and forward it to the EMRYS delegate, but the hard
+limit can still arrive before finalization closes. A dashboard `INTERRUPTED`,
+`INCOMPLETE`, or `NOT REACHED` label means only that the scheduler job stopped.
+Run `emrys inspect RUN` from the Project and follow its printed supported action.
+If inspection says `Do not resume` or `Recovery available: no`, retain the Run
+for integrity review; do not remove its lock or retry into that Run.

@@ -39,7 +39,6 @@ from emrys.orchestration.run_coordinator._inspection_admission import (
     expected_tasks,
     lock_tree_blockers,
     state_tree_blockers,
-    task_start_tree_blockers,
     verified_tree_blockers,
 )
 from emrys.orchestration.run_coordinator._inspection_attempts import (
@@ -53,6 +52,7 @@ from emrys.orchestration.run_coordinator._inspection_evidence import (
     TaskInspection,
     ValidatedReportingReceipt,
     inspect_evidence,
+    inspect_task_evidence,
 )
 
 AttemptOutcome = Literal[
@@ -66,6 +66,13 @@ AttemptOutcome = Literal[
 RunIntegrity = Literal["valid", "blocked"]
 ResultsStatus = Literal["incomplete", "complete", "blocked"]
 ReportingStatus = Literal["not applicable", "incomplete", "complete", "blocked"]
+LockObservation = Literal[
+    "no lock",
+    "local live owner",
+    "remote ownership unverified",
+    "local process not live",
+    "invalid or ambiguous lock",
+]
 _RUN_ID_PATTERN = re.compile(r"run-[0-9a-f]{64}\Z")
 _RUN_ID_PREFIX_PATTERN = re.compile(r"run-[0-9a-f]{1,64}\Z")
 
@@ -143,6 +150,7 @@ class RunInspection:
     results_blockers: tuple[str, ...]
     reporting_blockers: tuple[str, ...]
     authority: SuccessorRunAuthority
+    lock_observation: LockObservation = "invalid or ambiguous lock"
     verified_report_locations: tuple[tuple[str, Path], ...] = ()
     processing_source: ProcessingSourceAdmission | None = None
 
@@ -283,18 +291,19 @@ def _inspect_lock(
     latest_terminal: bool,
     ops: InspectionOps,
     allowed_next_attempt: Mapping[str, Any] | None = None,
-) -> tuple[bool, list[str]]:
+) -> tuple[LockObservation, list[str]]:
     locks_root = root / "locks"
     blockers = list(lock_tree_blockers(root))
-    if any("aggregate locks root" in item.lower() for item in blockers):
-        return False, blockers
+    if blockers:
+        return "invalid or ambiguous lock", blockers
     path = locks_root / "run.lock"
     if not path.exists() and not path.is_symlink():
-        return False, blockers
+        return "no lock", blockers
     try:
         record, _ = admit_canonical_record(path, root, "run-lock")
     except InspectionError as exc:
-        return False, [str(exc)]
+        return "invalid or ambiguous lock", [str(exc)]
+    observation: LockObservation = "invalid or ambiguous lock"
     if latest is None:
         blockers.append("Run lock exists without a workflow attempt")
     else:
@@ -316,20 +325,21 @@ def _inspect_lock(
                 blockers.append(f"Run lock does not bind its Attempt {field}")
         if latest_terminal and expected_lock_attempt is latest:
             blockers.append("Terminal workflow attempt retained its run lock")
+        if blockers:
+            return "invalid or ambiguous lock", blockers
         if record["host"] != ops.host_name():
+            observation = "remote ownership unverified"
             blockers.append(
                 "Run lock host is not this host; live ownership is unproved"
             )
         elif not ops.process_is_alive(int(record["process_id"])):
+            observation = "local process not live"
             blockers.append(
                 "Run lock process is not live; automatic recovery is forbidden"
             )
-    return (
-        not blockers
-        and latest is not None
-        and (not latest_terminal or expected_lock_attempt is not latest),
-        blockers,
-    )
+        else:
+            observation = "local live owner"
+    return observation, blockers
 
 
 def inspect_run(
@@ -393,13 +403,14 @@ def inspect_run(
                 integrity_blockers.append(
                     f"Latest attempt does not bind admitted {field}"
                 )
-    running, lock_blockers = _inspect_lock(
+    lock_observation, lock_blockers = _inspect_lock(
         root,
         latest=latest,
         latest_terminal=latest_receipt is not None,
         ops=active_ops,
         allowed_next_attempt=allowed_next_attempt,
     )
+    running = lock_observation == "local live owner"
     integrity_blockers.extend(lock_blockers)
     if not profile_present:
         if latest is not None:
@@ -432,6 +443,7 @@ def inspect_run(
             results_blockers=tuple(dict.fromkeys(results_blockers)),
             reporting_blockers=tuple(dict.fromkeys(reporting_blockers)),
             authority=authority,
+            lock_observation=lock_observation,
         )
     live_origin = (
         latest_id
@@ -488,6 +500,7 @@ def inspect_run(
         reporting_blockers=tuple(dict.fromkeys(reporting_blockers)),
         verified_report_locations=evidence.verified_report_locations,
         authority=authority,
+        lock_observation=lock_observation,
         processing_source=processing_source,
     )
 
@@ -510,7 +523,7 @@ def admit_processing_source(run_root: Path) -> ProcessingSourceAdmission:
         or state.reporting_status != "not applicable"
         or receipt is None
         or attempt is None
-        or receipt.get("schema_version") != "emrys.attempt-receipt.v2"
+        or receipt.get("schema_version") != "emrys.attempt-receipt.v3"
         or receipt.get("status") != "succeeded"
     ):
         raise InspectionError(
@@ -627,7 +640,7 @@ __all__ = (
     "inspect_run",
     "lock_tree_blockers",
     "state_tree_blockers",
-    "task_start_tree_blockers",
+    "inspect_task_evidence",
     "verified_tree_blockers",
     "validate_processing_source",
 )

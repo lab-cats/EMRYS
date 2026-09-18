@@ -1,13 +1,27 @@
 from __future__ import annotations
 
+import errno
+import fcntl
 import io
+import os
+import pty
+import re
+import struct
+import subprocess
+import sys
+import termios
 from pathlib import Path
+from textwrap import dedent
+from types import SimpleNamespace
 
 import pytest
 
+from emrys.libraries.application_logging import helpers
 from emrys.libraries.application_logging.helpers import (
     LogValueError,
+    console_field,
     console_print,
+    console_status,
     field,
     phase_progress,
     render_failure_summary,
@@ -39,18 +53,226 @@ def test_terminal_output_preserves_literal_text_and_plain_redirects(
     assert disabled.getvalue() == plain.getvalue()
 
 
-def test_phase_progress_reports_actual_completion_and_failure_without_percent() -> None:
+def test_fields_separate_labels_from_values_and_keep_plain_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Terminal(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    monkeypatch.setenv("TERM", "xterm-256color")
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    terminal = Terminal()
+    console_field("Project", "study[red]", file=terminal)
+    console_status("Readiness", "READY", file=terminal)
+    rendered = terminal.getvalue()
+    assert "\x1b[" in rendered
+    assert "Project" in rendered and "study[red]" in rendered
+    assert "Readiness" in rendered and "READY" in rendered
+    assert rendered.count("\x1b[") >= 4
+
+    plain = io.StringIO()
+    console_field("Project", "study[red]", file=plain)
+    console_status("Readiness", "READY", file=plain)
+    assert plain.getvalue() == "Project: study[red]\nReadiness: READY\n"
+
+
+def test_phase_progress_reports_actual_completion_and_failure_without_percent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     output = io.StringIO()
-    with phase_progress("Installing native tools", file=output):
+    ticks = iter((10.0, 10.125, 11.0, 13.5))
+    monkeypatch.setattr(helpers, "time", SimpleNamespace(monotonic=lambda: next(ticks)))
+    observations: list[tuple[str, float | None, str]] = []
+
+    def completed(name: str, elapsed: float | None, outcome: str) -> None:
+        observations.append((name, elapsed, outcome))
+
+    with phase_progress("Installing native tools", file=output, on_complete=completed):
         pass
     with pytest.raises(RuntimeError, match="package failure"):
-        with phase_progress("Restoring R packages", file=output):
+        with phase_progress("Restoring R packages", file=output, on_complete=completed):
             raise RuntimeError("package failure")
     rendered = output.getvalue()
-    assert "Installing native tools: complete (" in rendered
-    assert "Restoring R packages: interrupted or failed (" in rendered
+    assert "Installing native tools: complete (0m 00s)" in rendered
+    assert "Restoring R packages: interrupted or failed (0m 02s)" in rendered
     assert "Restoring R packages: complete" not in rendered
     assert "\x1b" not in rendered and "%" not in rendered
+    assert observations == [
+        ("Installing native tools", 0.125, "complete"),
+        ("Restoring R packages", 2.5, "interrupted or failed"),
+    ]
+
+
+@pytest.mark.parametrize("no_color", (False, True))
+def test_phase_progress_serializes_diagnostics_on_a_narrow_pty(
+    no_color: bool,
+) -> None:
+    master, slave = pty.openpty()
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 48, 0, 0))
+    environment = {**os.environ, "TERM": "xterm-256color"}
+    if no_color:
+        environment["NO_COLOR"] = "1"
+    else:
+        environment.pop("NO_COLOR", None)
+    program = dedent("""\
+        import sys
+        import time
+        sys.path.insert(0, sys.argv[1])
+        from emrys.libraries.application_logging.helpers import phase_progress
+        with phase_progress("Slurm submission-to-return wait"):
+            time.sleep(0.02)
+            print("Slurm submission records: /tmp/slurm-submit.stdout, /tmp/slurm-submit.stderr", file=sys.stderr, flush=True)
+        """)
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            program,
+            str(Path(helpers.__file__).resolve().parents[3]),
+        ],
+        stdout=slave,
+        stderr=slave,
+        env=environment,
+    )
+    os.close(slave)
+    chunks = []
+    while True:
+        try:
+            data = os.read(master, 4096)
+        except OSError as exc:
+            if exc.errno == errno.EIO:
+                break
+            raise
+        if not data:
+            break
+        chunks.append(data)
+    os.close(master)
+    assert process.wait(timeout=10) == 0
+    rendered = b"".join(chunks).decode("utf-8", "replace")
+    plain = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", rendered).replace("\r", "\n")
+    assert "Slurm submission-to-return wait" in plain
+    assert ("0m 00s" if no_color else "0:00:00") in plain
+    assert any(
+        line.startswith("Slurm submission records:") for line in plain.splitlines()
+    )
+    assert plain.index("Slurm submission records:") < plain.index(
+        "Slurm submission-to-return wait: complete"
+    )
+    assert ("\x1b[" not in rendered) is no_color
+
+
+@pytest.mark.parametrize("failed_clock_read", (None, 1, 2))
+@pytest.mark.parametrize("callback_error", (RuntimeError, OSError))
+@pytest.mark.parametrize("interrupted", (False, True))
+def test_phase_observation_failures_preserve_the_body(
+    monkeypatch: pytest.MonkeyPatch,
+    failed_clock_read: int | None,
+    callback_error: type[Exception],
+    interrupted: bool,
+) -> None:
+    reads = 0
+    observations: list[float | None] = []
+    body: list[str] = []
+    original = KeyboardInterrupt("body interrupted")
+
+    def monotonic() -> float:
+        nonlocal reads
+        reads += 1
+        if reads == failed_clock_read:
+            raise OSError("clock unavailable")
+        return reads + 0.25 * (reads - 1)
+
+    def completed(_name: str, elapsed: float | None, _outcome: str) -> None:
+        observations.append(elapsed)
+        raise callback_error("observation unavailable")
+
+    monkeypatch.setattr(helpers, "time", SimpleNamespace(monotonic=monotonic))
+
+    def execute() -> None:
+        with phase_progress("Checking", file=io.StringIO(), on_complete=completed):
+            body.append("ran")
+            if interrupted:
+                raise original
+
+    if interrupted:
+        with pytest.raises(KeyboardInterrupt) as failure:
+            execute()
+        assert failure.value is original
+    else:
+        execute()
+    assert body == ["ran"]
+    assert observations == [1.25 if failed_clock_read is None else None]
+    assert reads == (1 if failed_clock_read == 1 else 2)
+
+
+@pytest.mark.parametrize("boundary", ("clock_before", "clock_after", "observer"))
+@pytest.mark.parametrize("exception_type", (KeyboardInterrupt, SystemExit))
+def test_phase_timing_preserves_process_control_exceptions(
+    monkeypatch: pytest.MonkeyPatch,
+    boundary: str,
+    exception_type: type[BaseException],
+) -> None:
+    original = exception_type("stop requested")
+    calls: list[str] = []
+
+    def monotonic() -> float:
+        selected = "clock_after" if "body" in calls else "clock_before"
+        calls.append(selected)
+        if boundary == selected:
+            raise original
+        return 1.0
+
+    def completed(*_args: object) -> None:
+        calls.append("observer")
+        raise original
+
+    monkeypatch.setattr(helpers, "time", SimpleNamespace(monotonic=monotonic))
+    with pytest.raises(exception_type) as failure:
+        with phase_progress("Checking", file=io.StringIO(), on_complete=completed):
+            calls.append("body")
+        calls.append("continued")
+    assert failure.value is original
+    assert (
+        calls
+        == {
+            "clock_before": ["clock_before"],
+            "clock_after": ["clock_before", "body", "clock_after"],
+            "observer": ["clock_before", "body", "clock_after", "observer"],
+        }[boundary]
+    )
+
+
+def test_real_sigint_during_phase_observation_stops_execution(tmp_path: Path) -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            dedent("""\
+                import signal
+                import sys
+                sys.path.insert(0, sys.argv[1])
+                from emrys.libraries.application_logging.helpers import phase_progress
+                signal.signal(signal.SIGINT, signal.default_int_handler)
+                def observe(*_args):
+                    signal.raise_signal(signal.SIGINT)
+                try:
+                    with phase_progress("Checking", on_complete=observe):
+                        print("body")
+                    print("continued")
+                except KeyboardInterrupt:
+                    print("interrupted")
+                """),
+            str(Path(helpers.__file__).resolve().parents[3]),
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout == "body\ninterrupted\n"
 
 
 def test_unavailable_progress_display_preserves_interrupted_body() -> None:

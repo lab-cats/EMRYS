@@ -13,6 +13,7 @@ Usage: src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh \
   --input-alignment INPUT_ALIGNMENT \
   --output-dir OUTPUT_DIR \
   --threads THREADS \
+  --native-memory-mb NATIVE_MEMORY_MB \
   --samtools-bin SAMTOOLS_BIN
 
 Internal worker: requires an existing EMRYS_TASK_WORK_DIR supplied by the runner.
@@ -27,10 +28,11 @@ source "$script_dir/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$script_dir/../../libraries/file_checks.sh"
 
-declare_required_arguments sample_id input_alignment output_dir threads samtools_bin
+declare_required_arguments sample_id input_alignment output_dir threads samtools_bin native_memory_mb
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --native-memory-mb) assign_option_value "$1" "${2:-}" native_memory_mb; shift 2 ;;
         --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
         --input-alignment) assign_option_value "$1" "${2:-}" input_alignment; shift 2 ;;
         --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
@@ -42,6 +44,7 @@ while [[ $# -gt 0 ]]; do
 done
 require_arguments
 require_task_work_dir
+validate_positive_integer "--native-memory-mb" "$native_memory_mb"
 
 validate_bam_pair() {
     local bam="$1"
@@ -70,11 +73,11 @@ validate_bam_pair() {
     [[ "$rg_line" == *"PL:ILLUMINA"* ]] || die "$label @RG line is missing PL:ILLUMINA"
     grep -q '^@HD.*SO:coordinate' <<< "$header" || die "$label BAM header is not coordinate sorted"
 
-    total_records="$("$samtools_bin" view -c "$bam")"
+    total_records="$("$samtools_bin" view -@ "$((threads - 1))" -c "$bam")"
     [[ "$total_records" =~ ^[0-9]+$ ]] || die "$label total alignment count is not numeric: $total_records"
     [[ "$total_records" -gt 0 ]] || die "$label BAM contains no alignment records"
 
-    tagged_records="$("$samtools_bin" view -c -d "RG:$sample_id" "$bam")"
+    tagged_records="$("$samtools_bin" view -@ "$((threads - 1))" -c -d "RG:$sample_id" "$bam")"
     [[ "$tagged_records" =~ ^[0-9]+$ ]] || die "$label tagged alignment count is not numeric: $tagged_records"
     [[ "$tagged_records" -eq "$total_records" ]] || die "$label BAM has $tagged_records of $total_records records tagged RG:$sample_id"
 
@@ -97,9 +100,9 @@ input_has_canonical_bam_contract() {
     [[ "$rg_lines" == *"LB:$sample_id"* ]] || return 1
     [[ "$rg_lines" == *"PL:ILLUMINA"* ]] || return 1
 
-    total_records="$("$samtools_bin" view -c "$input_alignment")" || return 1
+    total_records="$("$samtools_bin" view -@ "$((threads - 1))" -c "$input_alignment")" || return 1
     [[ "$total_records" =~ ^[0-9]+$ && "$total_records" -gt 0 ]] || return 1
-    tagged_records="$("$samtools_bin" view -c -d "RG:$sample_id" "$input_alignment")" || return 1
+    tagged_records="$("$samtools_bin" view -@ "$((threads - 1))" -c -d "RG:$sample_id" "$input_alignment")" || return 1
     [[ "$tagged_records" =~ ^[0-9]+$ ]] || return 1
     [[ "$tagged_records" -eq "$total_records" ]]
 }
@@ -114,13 +117,15 @@ input_header="$("$samtools_bin" view -H "$input_alignment")" ||
 canonical_source="$input_alignment"
 if ! grep -q '^@HD.*SO:coordinate' <<< "$input_header"; then
     canonical_source="$EMRYS_TASK_WORK_DIR/sorted.bam"
-    "$samtools_bin" sort -@ "$threads" -o "$canonical_source" "$input_alignment"
+    sort_memory_mb=$((native_memory_mb / threads))
+    (( sort_memory_mb > 0 )) || die "Native memory must provide at least 1 MiB per sorting thread."
+    "$samtools_bin" sort -@ "$threads" -m "${sort_memory_mb}M" -o "$canonical_source" "$input_alignment"
 fi
 # Keep the no-rewrite path for an already canonical BAM when hard links work.
 if ! { input_has_canonical_bam_contract "$input_header" && ln -- "$input_alignment" "$output_bam"; }; then
-    "$samtools_bin" addreplacerg -@ "$threads" -m overwrite_all -w \
+    "$samtools_bin" addreplacerg -@ "$((threads - 1))" -m overwrite_all -w \
         -r "ID:$sample_id" -r "SM:$sample_id" -r "LB:$sample_id" -r PL:ILLUMINA \
         -o "$output_bam" "$canonical_source"
 fi
-"$samtools_bin" index "$output_bam"
+"$samtools_bin" index -@ "$((threads - 1))" "$output_bam"
 validate_bam_pair "$output_bam" "$output_bam.bai" "Canonical"

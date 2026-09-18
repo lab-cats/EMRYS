@@ -59,6 +59,10 @@ concurrency:
   group: phase-1-ci-${{ github.workflow }}-${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.run_id || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
 
+defaults:
+  run:
+    shell: bash
+
 env:
   ACTIONLINT_VERSION: "1.7.12"
   ACTIONLINT_LINUX_AMD64_SHA256: >-
@@ -78,7 +82,6 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Require at least one selected CI lane
-        shell: bash
         env:
           RUN_WORKFLOW_STATIC_DOCS_WHEEL: ${{ inputs.workflow_static_docs_wheel }}
           RUN_SHELL: ${{ inputs.shell }}
@@ -112,17 +115,20 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Check out the triggering commit
+      - &checkout
+        name: Check out the triggering commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
-      - name: Set up primary Python
+      - &setup_primary_python
+        name: Set up primary Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
 
-      - name: Set up locked uv version
+      - &setup_uv
+        name: Set up locked uv version
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           version: ${{ env.UV_VERSION }}
@@ -130,11 +136,9 @@ jobs:
           cache-dependency-glob: uv.lock
 
       - name: Restore locked development tools
-        shell: bash
         run: uv sync --locked --only-group dev --no-install-project --python python
 
       - name: Install checksum-verified actionlint
-        shell: bash
         run: |
           set -euo pipefail
           archive_name="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
@@ -149,7 +153,6 @@ jobs:
           "${RUNNER_TEMP}/actionlint" -version
 
       - name: Lint GitHub Actions workflows
-        shell: bash
         run: >-
           "${RUNNER_TEMP}/actionlint"
           -shellcheck="${GITHUB_WORKSPACE}/.venv/bin/shellcheck"
@@ -165,29 +168,16 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - name: Check out the triggering commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
+      - *checkout
 
-      - name: Set up primary Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
-        with:
-          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+      - *setup_primary_python
 
-      - name: Set up locked uv version
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          cache-dependency-glob: uv.lock
+      - *setup_uv
 
       - name: Restore locked Python environment
-        shell: bash
         run: uv sync --locked --group workflow --python python
 
       - name: Run static, lint, documentation, and wheel checks
-        shell: bash
         run: |
           set -euo pipefail
           make -s validation-static
@@ -201,29 +191,16 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
-      - name: Check out the triggering commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
+      - *checkout
 
-      - name: Set up primary Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
-        with:
-          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+      - *setup_primary_python
 
-      - name: Set up locked uv version
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          cache-dependency-glob: uv.lock
+      - *setup_uv
 
       - name: Restore locked Python environment
-        shell: bash
         run: uv sync --locked --group workflow --python python
 
       - name: Run direct shell-owner contracts
-        shell: bash
         run: make -s validation-shell-contracts
 
   guarded-r:
@@ -234,13 +211,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - name: Check out the triggering commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
+      - *checkout
 
       - name: Select isolated R cache and library paths
-        shell: bash
         run: |
           mkdir -p "${RUNNER_TEMP}/emrys-renv"
           {
@@ -249,17 +222,9 @@ jobs:
             printf 'RENV_PATHS_LIBRARY=%s/emrys-renv/library\n' "${RUNNER_TEMP}"
           } >> "${GITHUB_ENV}"
 
-      - name: Set up primary Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
-        with:
-          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+      - *setup_primary_python
 
-      - name: Set up locked uv version
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          cache-dependency-glob: uv.lock
+      - *setup_uv
 
       - name: Set up exact R version
         uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
@@ -268,7 +233,6 @@ jobs:
           use-public-rspm: false
 
       - name: Install locked R system requirements
-        shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
@@ -292,11 +256,9 @@ jobs:
             emrys-renv-${{ runner.os }}-${{ runner.arch }}-R-${{ env.R_VERSION }}-${{ hashFiles('src/emrys/renv.lock') }}
 
       - name: Restore locked Python environment
-        shell: bash
         run: uv sync --locked --group workflow --python python
 
       - name: Restore and select locked R environment
-        shell: bash
         run: |
           set -euo pipefail
           rscript_bin="$(command -v Rscript)"
@@ -315,7 +277,6 @@ jobs:
           printf 'RENV_LIBRARY=%s\n' "${renv_library}" >> "${GITHUB_ENV}"
 
       - name: Run guarded R environment and fixture checks
-        shell: bash
         run: make -s validation-guarded-r RSCRIPT_BIN="$(command -v Rscript)"
 
   managed-runtime-userspace:
@@ -349,18 +310,13 @@ jobs:
             glibc: "2.36"
     steps:
       - name: Select managed-runtime paths
-        shell: bash
         run: |
           printf 'PIXI_WORKSPACE=%s/emrys-managed-runtime\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
           printf 'PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
 
-      - name: Check out the triggering commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
+      - *checkout
 
       - name: Stage the reviewed lock outside the checkout
-        shell: bash
         run: |
           set -euo pipefail
           . /etc/os-release
@@ -378,7 +334,6 @@ jobs:
             "$(uname -r)"
 
       - name: Install the distro TLS trust bundle
-        shell: bash
         run: |
           set -euo pipefail
           . /etc/os-release
@@ -402,7 +357,6 @@ jobs:
           post-cleanup: true
 
       - name: Verify locked tools in this container userspace
-        shell: bash
         run: |
           set -euo pipefail
           native_prefix="${PIXI_WORKSPACE}/.pixi/envs/native"
@@ -459,17 +413,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up primary Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
-        with:
-          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+      - *setup_primary_python
 
-      - name: Set up locked uv version
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          cache-dependency-glob: uv.lock
+      - *setup_uv
 
       - name: Install Pixi without provisioning the scientific runtime
         uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
@@ -480,12 +426,203 @@ jobs:
 
       - name: Prepare a clean clone, environment, and synthetic Project
         id: golden
-        shell: bash
         run: |
           set -euo pipefail
           clean_clone="${RUNNER_TEMP}/emrys-golden-clone"
           evidence_root="${RUNNER_TEMP}/emrys-managed-golden"
           install -d -m 0700 "${evidence_root}"
+          cat > "${evidence_root}/measure-doctor.py" <<'PY'
+          """CI-only observation of one instrumented public-module invocation."""
+
+          import json
+          import os
+          import resource
+          import runpy
+          import sys
+          import time
+          from contextlib import suppress
+          from pathlib import Path
+
+
+          def clock():
+              with suppress(Exception):
+                  return time.monotonic()
+              return None
+
+
+          def usage():
+              result = {}
+              for name, who in (
+                  ("self", resource.RUSAGE_SELF),
+                  ("children", resource.RUSAGE_CHILDREN),
+              ):
+                  try:
+                      value = resource.getrusage(who)
+                      result[name] = {
+                          key: getattr(value, key)
+                          for key in ("ru_utime", "ru_stime", "ru_maxrss")
+                      }
+                  except Exception:
+                      result[name] = None
+              return result
+
+
+          def io_usage():
+              try:
+                  return {
+                      key: int(value)
+                      for key, value in (
+                          line.split(": ")
+                          for line in Path("/proc/self/io").read_text().splitlines()
+                      )
+                  }
+              except Exception:
+                  return None
+
+
+          def read_observer(original, counters, *, package=False):
+              def observed(*args, **kwargs):
+                  mode = (
+                      "package_payload"
+                      if package
+                      else "digest"
+                      if kwargs.get("digest_only")
+                      else "suffix"
+                      if kwargs.get("from_end")
+                      else "bytes"
+                  )
+                  try:
+                      bucket = counters.setdefault(
+                          mode,
+                          {
+                              "completed_calls": 0,
+                              "failed_calls": 0,
+                              "completed_bytes": 0,
+                              "elapsed_seconds": 0.0,
+                              "failed_partial_bytes": None,
+                          },
+                      )
+                  except Exception:
+                      return original(*args, **kwargs)
+                  started = clock()
+                  try:
+                      result = original(*args, **kwargs)
+                  except BaseException:
+                      with suppress(Exception):
+                          bucket["failed_calls"] += 1
+                      raise
+                  else:
+                      with suppress(Exception):
+                          size = (
+                              len(result)
+                              if package
+                              else result[1].st_size
+                              if mode == "digest"
+                              else len(result[0])
+                          )
+                          if mode == "digest" and kwargs.get("limit") is not None:
+                              size = min(size, kwargs["limit"])
+                          bucket["completed_calls"] += 1
+                          bucket["completed_bytes"] += size
+                      return result
+                  finally:
+                      finished = clock()
+                      with suppress(Exception):
+                          if started is None or finished is None:
+                              bucket["elapsed_seconds"] = None
+                          elif bucket["elapsed_seconds"] is not None:
+                              bucket["elapsed_seconds"] += finished - started
+
+              return observed
+
+
+          def measure(output, role, arguments):
+              # Sample before EMRYS imports; no initial reads/hashes are repeated.
+              started, before, io_before = clock(), usage(), io_usage()
+              counters, originals = {}, []
+              previous_argv = sys.argv
+              status, exception = None, None
+              try:
+                  from emrys.libraries.validation import inputs
+                  from emrys.libraries import installed_package_identity
+
+                  for module, name, package in (
+                      (inputs, "_read_file", False),
+                      (installed_package_identity, "_read_regular_file", True),
+                  ):
+                      original = getattr(module, name)
+                      originals.append((module, name, original))
+                      setattr(module, name, read_observer(original, counters, package=package))
+                  sys.argv = ["emrys", *arguments]
+                  runpy.run_module("emrys", run_name="__main__", alter_sys=True)
+                  status = 0
+              except BaseException as exc:
+                  exception = type(exc).__name__
+                  if isinstance(exc, SystemExit):
+                      status = (
+                          exc.code if isinstance(exc.code, int) else 0 if exc.code is None else 1
+                      )
+                  raise
+              finally:
+                  finished, after, io_after = clock(), usage(), io_usage()
+                  for module, name, original in originals:
+                      setattr(module, name, original)
+                  sys.argv = previous_argv
+                  # Observation failures never replace the public command's outcome.
+                  try:
+                      cpu = {
+                          name: {
+                              key: after[name][key] - before[name][key]
+                              for key in ("ru_utime", "ru_stime")
+                          }
+                          if before[name] is not None and after[name] is not None
+                          else None
+                          for name in before
+                      }
+                      payload = {
+                          "schema_version": "emrys.ci-doctor-measurement.v1",
+                          "scope": "instrumented public-module invocation; not console-bootstrap timing",
+                          "role": role,
+                          "checkout_sha": os.environ.get("GITHUB_SHA"),
+                          "python_version": sys.version.split()[0],
+                          "platform": sys.platform,
+                          "exit_status": status,
+                          "exception_type": exception,
+                          "elapsed_seconds": finished - started
+                          if started is not None and finished is not None
+                          else None,
+                          "cpu_seconds": cpu,
+                          "resource_before": before,
+                          "resource_after": after,
+                          "maxrss_units": "KiB"
+                          if sys.platform.startswith("linux")
+                          else "platform-dependent",
+                          "rss_scope": "self high-water and largest waited child separately; not peak process-tree RSS; never subtract or sum",
+                          "io_before": io_before,
+                          "io_after": io_after,
+                          "io_delta": {key: io_after[key] - io_before[key] for key in io_before}
+                          if io_before is not None and io_after is not None
+                          else None,
+                          "io_scope": "process and waited children; rchar includes pipes/cache; read_bytes is block-backed storage accounting, not NFS/device traffic; includes observer overhead",
+                          "targeted_reads": counters,
+                          "read_scope": "completed owner bytes only; failed partial bytes unknown; wall time includes failed calls; digest includes hashing; package_payload excludes subsequent hash",
+                          "targeted_read_gaps": "other Python reads, Pixi hashing, semantic/gzip reads, child/R/native reads",
+                          "resource_attribution_gap": "invocation totals do not attribute individual probe CPU/RSS/I/O",
+                      }
+                      with Path(output).open("x", encoding="utf-8") as handle:
+                          json.dump(payload, handle, sort_keys=True, indent=2)
+                          handle.write("\n")
+                  except Exception as exc:
+                      with suppress(Exception):
+                          print(
+                              f"Doctor measurement unavailable: {type(exc).__name__}",
+                              file=sys.stderr,
+                          )
+
+
+          if __name__ == "__main__":
+              measure(sys.argv[1], sys.argv[2], sys.argv[3:])
+          PY
           git clone --no-hardlinks "${GITHUB_WORKSPACE}" "${clean_clone}"
           git -C "${clean_clone}" checkout --detach "${GITHUB_SHA}"
           uv sync \
@@ -499,6 +636,20 @@ jobs:
           "${emrys[@]}" init synthetic \
             --output-dir "${project_root}" --execute \
             2>&1 | tee "${evidence_root}/01-init.log"
+          # The hosted fixture uses a four-core budget, independent of Viking defaults.
+          "${clean_clone}/.venv/bin/python" - "${project_root}" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          from tests.tools.real_synthetic_e2e import symbolic_resource_document
+
+          profile = Path(sys.argv[1]) / "runtime/profiles/default.yaml"
+          profile.write_text(json.dumps({
+              "schema_version": "emrys.execution-profile.v1",
+              "resources": symbolic_resource_document(),
+              "placement": {"kind": "direct"},
+          }) + "\n", encoding="utf-8")
+          PY
           printf 'clone=%s\n' "${clean_clone}" >> "${GITHUB_OUTPUT}"
           printf 'evidence=%s\n' "${evidence_root}" >> "${GITHUB_OUTPUT}"
 
@@ -510,7 +661,6 @@ jobs:
             emrys-managed-golden-renv-v1-${{ runner.os }}-${{ runner.arch }}-R-${{ env.R_VERSION }}-${{ hashFiles('src/emrys/renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
 
       - name: Repair and exercise the supported managed golden path
-        shell: bash
         run: |
           set -euo pipefail
           clean_clone="${{ steps.golden.outputs.clone }}"
@@ -521,7 +671,10 @@ jobs:
 
           "${emrys[@]}" validate \
             2>&1 | tee "${evidence_root}/02-validate.log"
-          "${emrys[@]}" doctor --repair --execute \
+          "${clean_clone}/.venv/bin/python" -X pycache_prefix=/dev/null -I \
+            "${evidence_root}/measure-doctor.py" \
+            "${evidence_root}/doctor-donor-measurement.json" donor_setup \
+            doctor --repair --execute \
             2>&1 | tee "${evidence_root}/03-doctor.log"
           "${emrys[@]}" run --execute \
             2>&1 | tee "${evidence_root}/04-run.log"
@@ -535,19 +688,161 @@ jobs:
           printf '%s\n' "${run_root}" > "${evidence_root}/run-root.txt"
           "${emrys[@]}" inspect \
             | tee "${evidence_root}/05-inspect.log"
-          grep --fixed-strings --line-regexp 'Run integrity: valid' \
+          grep --fixed-strings --line-regexp 'Run admission: valid' \
             "${evidence_root}/05-inspect.log"
           grep --fixed-strings --line-regexp 'Attempt outcome: succeeded' \
             "${evidence_root}/05-inspect.log"
           grep --fixed-strings --line-regexp 'Scientific Results: complete' \
             "${evidence_root}/05-inspect.log"
-          grep --fixed-strings --line-regexp 'Reporting: complete' \
+          grep --fixed-strings --line-regexp 'Reporting admission: complete' \
             "${evidence_root}/05-inspect.log"
           test "$(find "${run_root}/results/reports" -type f -name '*.html' | wc -l)" -eq 2
 
+      - name: Seal the completed donor and verify a separate borrower
+        run: |
+          set -euo pipefail
+          clean_clone="${{ steps.golden.outputs.clone }}"
+          evidence_root="${{ steps.golden.outputs.evidence }}"
+          donor_root="${evidence_root}/project"
+          borrower_root="${evidence_root}/borrower"
+          emrys=("${clean_clone}/.venv/bin/emrys")
+
+          # Preserve all non-managed bytes and the namespace/stable metadata.
+          # Directory timestamps change when the permanent seal is published.
+          # Doctor separately readmits the seal's fixed native/R content roster.
+          snapshot_donor() (
+            cd "${donor_root}"
+            find . -path './runtime/shared.json' -prune -o \
+              -type d -printf '%p\t%y\t%i\t%m\t%U\t%G\0' -o \
+              -printf '%p\t%y\t%i\t%m\t%U\t%G\t%s\t%T@\t%C@\t%l\0' \
+              | LC_ALL=C sort -z > "${evidence_root}/donor-$1.namespace.tsv"
+            find . \( -path './runtime/managed' -o -path './runtime/shared.json' \) \
+              -prune -o -type f -print0 \
+              | LC_ALL=C sort -z | xargs -0 sha256sum \
+              > "${evidence_root}/donor-$1.sha256"
+          )
+          test ! -e "${donor_root}/runtime/shared.json"
+          snapshot_donor before
+          "${emrys[@]}" init synthetic \
+            --output-dir "${borrower_root}" --execute \
+            2>&1 | tee "${evidence_root}/06-borrower-init.log"
+          cp "${donor_root}/runtime/profiles/default.yaml" \
+            "${borrower_root}/runtime/profiles/default.yaml"
+          "${emrys[@]}" inspect --project "${borrower_root}" \
+            | tee "${evidence_root}/07-borrower-inspect.log"
+          grep --fixed-strings --line-regexp 'Runs: none found at inspection time.' \
+            "${evidence_root}/07-borrower-inspect.log"
+          "${emrys[@]}" runtime discover --project "${borrower_root}" \
+            --from-project "${donor_root}" \
+            2>&1 | tee "${evidence_root}/08-borrower-preview.log"
+          test ! -e "${donor_root}/runtime/shared.json"
+          test ! -e "${donor_root}/runtime/maintenance.lock"
+          test ! -e "${borrower_root}/runtime/runtime.tsv"
+          snapshot_donor preview
+          cmp "${evidence_root}/donor-before.namespace.tsv" "${evidence_root}/donor-preview.namespace.tsv"
+          cmp "${evidence_root}/donor-before.sha256" "${evidence_root}/donor-preview.sha256"
+          "${emrys[@]}" runtime discover --project "${borrower_root}" \
+            --from-project "${donor_root}" --execute \
+            2>&1 | tee "${evidence_root}/09-borrower-select.log"
+          "${clean_clone}/.venv/bin/python" -X pycache_prefix=/dev/null -I \
+            "${evidence_root}/measure-doctor.py" \
+            "${evidence_root}/doctor-borrower-measurement.json" borrower_verification \
+            doctor --project "${borrower_root}" --repair --execute \
+            2>&1 | tee "${evidence_root}/10-borrower-doctor.log"
+          snapshot_donor after
+          cmp "${evidence_root}/donor-before.namespace.tsv" "${evidence_root}/donor-after.namespace.tsv"
+          cmp "${evidence_root}/donor-before.sha256" "${evidence_root}/donor-after.sha256"
+          "${clean_clone}/.venv/bin/python" -I - "${evidence_root}" <<'PY'
+          import csv
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          import yaml
+          from emrys.evidence.storage_inventory.qualification import admit_direct_qualification
+
+          evidence = Path(sys.argv[1])
+          donor, borrower = evidence / "project", evidence / "borrower"
+          logs = list((borrower / "logs/application").glob("maintenance-*/repair-*/emrys-doctor.jsonl"))
+          assert len(logs) == 1, logs
+          events = [json.loads(line) for line in logs[0].read_text().splitlines()]
+          started, = [item for item in events if item["event"] == "repair_started"]
+          terminal, = [item for item in events if item["phase"] == "terminal"]
+          assert started["message"] == "Project verification started."
+          assert started["fields"]["project"] == str(borrower / "project.yaml")
+          assert started["fields"]["runtime_work"] == (
+              "Selected runtime passed current checks; no package-manager work is needed."
+          )
+          assert not {"managed_root", "package_output"} & started["fields"].keys()
+          assert not any(item["event"].startswith("package_manager_") for item in events)
+          assert not list(borrower.rglob("package-output.log"))
+          assert not (borrower / "runtime/managed").exists()
+          assert terminal["event"] == "repair_requalified"
+          assert terminal["message"] == "Project verification completed."
+          assert all(terminal["fields"][key] is True for key in ("ready", "runtime_ready", "storage_ready"))
+          qualified, = [item for item in events if item["event"] == "storage_qualification_admitted"]
+          receipts = []
+          for project in (donor, borrower):
+              definition = yaml.safe_load((project / "project.yaml").read_text())
+              reference = (project / definition["reference"]["fasta"]).resolve(strict=True)
+              receipts.append(admit_direct_qualification(project, reference))
+          assert receipts[0].qualification_id != receipts[1].qualification_id
+          assert qualified["fields"]["receipt"] == str(receipts[1].receipt_path)
+          assert qualified["fields"]["sha256"] == receipts[1].receipt_sha256
+          with (borrower / "runtime/runtime.tsv").open(newline="") as stream:
+              reader = csv.DictReader(stream, delimiter="\t")
+              assert reader.fieldnames == ["seal_path", "seal_sha256", "python"]
+              selection, = list(reader)
+          seal = donor / "runtime/shared.json"
+          assert selection["seal_path"] == str(seal)
+          assert selection["seal_sha256"] == hashlib.sha256(seal.read_bytes()).hexdigest()
+          assert Path(selection["python"]).resolve(strict=True) == Path(sys.executable).resolve(strict=True)
+          assert not (donor / "runtime/maintenance.lock").exists()
+          assert not (borrower / "runtime/maintenance.lock").exists()
+          assert not list((borrower / "runs").glob("run-*"))
+          (evidence / "borrower-verification.json").write_text(json.dumps({
+              "scope": "Hosted direct runtime and storage verification; no borrower scientific Run",
+              "donor_preservation": "Non-managed bytes and namespace/stable metadata except seal; fixed native/R content admitted by Doctor",
+              "donor_seal": selection,
+              "doctor_log": str(logs[0]),
+              "donor_receipt": str(receipts[0].receipt_path),
+              "borrower_receipt": str(receipts[1].receipt_path),
+              "borrower_receipt_sha256": receipts[1].receipt_sha256,
+          }, indent=2) + "\n")
+          PY
+
+      - name: Verify Task descendant containment with the selected samtools
+        run: |
+          set -euo pipefail
+          clean_clone="${{ steps.golden.outputs.clone }}"
+          evidence_root="${{ steps.golden.outputs.evidence }}"
+          export EMRYS_TEST_SAMTOOLS="${evidence_root}/project/runtime/managed/.pixi/envs/native/bin/samtools"
+          export EMRYS_TEST_NATIVE_EVIDENCE="${evidence_root}/native-containment"
+          test -x "${EMRYS_TEST_SAMTOOLS}"
+          install -d -m 0700 "${EMRYS_TEST_NATIVE_EVIDENCE}"
+          cd "${clean_clone}"
+          PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
+            tests/orchestration/run_coordinator/test_task.py -k subreaper \
+            --junitxml="${EMRYS_TEST_NATIVE_EVIDENCE}/tests.xml" \
+            2>&1 | tee "${evidence_root}/native-containment.log"
+          .venv/bin/python -I - "${EMRYS_TEST_NATIVE_EVIDENCE}/tests.xml" <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          cases = [
+              case for case in ET.parse(sys.argv[1]).iter("testcase")
+              if case.attrib["name"].startswith("test_task_subreaper_real_canonical_")
+          ]
+          assert len(cases) == 4, [case.attrib for case in cases]
+          assert all(
+              case.find(tag) is None
+              for case in cases for tag in ("skipped", "failure", "error")
+          ), "All four real samtools containment cases must execute successfully"
+          PY
+
       - name: Require the clean clone to remain unchanged
         if: always() && steps.golden.outcome == 'success'
-        shell: bash
         run: |
           set -euo pipefail
           git -C "${{ steps.golden.outputs.clone }}" status \
@@ -564,6 +859,10 @@ jobs:
             ${{ runner.temp }}/emrys-managed-golden/*.log
             ${{ runner.temp }}/emrys-managed-golden/*.txt
             ${{ runner.temp }}/emrys-managed-golden/*.tsv
+            ${{ runner.temp }}/emrys-managed-golden/*.sha256
+            ${{ runner.temp }}/emrys-managed-golden/doctor-*-measurement.json
+            ${{ runner.temp }}/emrys-managed-golden/borrower-verification.json
+            ${{ runner.temp }}/emrys-managed-golden/native-containment
             ${{ runner.temp }}/emrys-managed-golden/project/project.yaml
             ${{ runner.temp }}/emrys-managed-golden/project/samples.tsv
             ${{ runner.temp }}/emrys-managed-golden/project/partitions.tsv
@@ -573,8 +872,21 @@ jobs:
             ${{ runner.temp }}/emrys-managed-golden/project/logs
             ${{ runner.temp }}/emrys-managed-golden/project/runs
             ${{ runner.temp }}/emrys-managed-golden/project/runtime/runtime.tsv
+            ${{ runner.temp }}/emrys-managed-golden/project/runtime/shared.json
+            ${{ runner.temp }}/emrys-managed-golden/project/runtime/maintenance.lock
             ${{ runner.temp }}/emrys-managed-golden/project/runtime/profiles
             ${{ runner.temp }}/emrys-managed-golden/project/runtime/.emrys-storage-qualification
+            ${{ runner.temp }}/emrys-managed-golden/borrower/project.yaml
+            ${{ runner.temp }}/emrys-managed-golden/borrower/samples.tsv
+            ${{ runner.temp }}/emrys-managed-golden/borrower/partitions.tsv
+            ${{ runner.temp }}/emrys-managed-golden/borrower/fixture.json
+            ${{ runner.temp }}/emrys-managed-golden/borrower/fixture.manifest.json
+            ${{ runner.temp }}/emrys-managed-golden/borrower/inputs
+            ${{ runner.temp }}/emrys-managed-golden/borrower/logs
+            ${{ runner.temp }}/emrys-managed-golden/borrower/runtime/runtime.tsv
+            ${{ runner.temp }}/emrys-managed-golden/borrower/runtime/maintenance.lock
+            ${{ runner.temp }}/emrys-managed-golden/borrower/runtime/profiles
+            ${{ runner.temp }}/emrys-managed-golden/borrower/runtime/.emrys-storage-qualification
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 14
@@ -591,29 +903,16 @@ jobs:
       matrix:
         shard: [0, 1, 2, 3]
     steps:
-      - name: Check out the triggering commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
+      - *checkout
 
-      - name: Set up primary Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
-        with:
-          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+      - *setup_primary_python
 
-      - name: Set up locked uv version
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          cache-dependency-glob: uv.lock
+      - *setup_uv
 
       - name: Restore locked Python environment
-        shell: bash
         run: uv sync --locked --group workflow --python python
 
       - name: Run complete-suite shard with live slow-test timings
-        shell: bash
         run: >-
           make -s python-coverage-shard
           PYTHON_TEST_SHARD_INDEX=${{ matrix.shard }}
@@ -642,25 +941,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - name: Check out the triggering commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
+      - *checkout
 
-      - name: Set up primary Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
-        with:
-          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+      - *setup_primary_python
 
-      - name: Set up locked uv version
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          cache-dependency-glob: uv.lock
+      - *setup_uv
 
       - name: Restore locked Python environment
-        shell: bash
         run: uv sync --locked --group workflow --python python
 
       - name: Download every coverage shard
@@ -671,24 +958,20 @@ jobs:
           merge-multiple: true
 
       - name: Verify complete and disjoint shard receipts
-        shell: bash
         run: >-
           .venv/bin/python tests/tools/python_test_shards.py verify
           --repo-root "${GITHUB_WORKSPACE}"
           --receipt-dir "${GITHUB_WORKSPACE}/.coverage-work/merged"
 
       - name: Require every behavioral shard to pass
-        shell: bash
         run: test "${{ needs.python314-coverage-shards.result }}" = "success"
 
       - name: Merge coverage and run isolated subprocess probes
-        shell: bash
         run: >-
           make -s python-coverage-finalize
           PYTHON_COVERAGE_ROOT="${GITHUB_WORKSPACE}/.coverage-work/merged"
 
       - name: Enforce reviewed Python coverage policy
-        shell: bash
         run: >-
           make -s python-coverage-enforce
           PYTHON_COVERAGE_ROOT="${GITHUB_WORKSPACE}/.coverage-work/merged"
@@ -701,29 +984,20 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - name: Check out the triggering commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
+      - *checkout
 
-      - name: Set up minimum supported Python
+      - &setup_minimum_python
+        name: Set up minimum supported Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: ${{ env.MINIMUM_PYTHON_VERSION }}
 
-      - name: Set up locked uv version
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          cache-dependency-glob: uv.lock
+      - *setup_uv
 
       - name: Restore locked Python environment
-        shell: bash
         run: uv sync --locked --group workflow --python python
 
       - name: Compile, package, and invoke the supported minimum
-        shell: bash
         run: |
           set -euo pipefail
           PYTHONDONTWRITEBYTECODE=1 \
@@ -744,29 +1018,16 @@ jobs:
       matrix:
         shard: [0, 1, 2, 3]
     steps:
-      - name: Check out the triggering commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
+      - *checkout
 
-      - name: Set up minimum supported Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
-        with:
-          python-version: ${{ env.MINIMUM_PYTHON_VERSION }}
+      - *setup_minimum_python
 
-      - name: Set up locked uv version
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          cache-dependency-glob: uv.lock
+      - *setup_uv
 
       - name: Restore locked Python environment
-        shell: bash
         run: uv sync --locked --group workflow --python python
 
       - name: Run complete-suite shard with live slow-test timings
-        shell: bash
         run: >-
           .venv/bin/python tests/tools/python_test_shards.py run
           --repo-root "${GITHUB_WORKSPACE}"
@@ -795,25 +1056,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - name: Check out the triggering commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
+      - *checkout
 
-      - name: Set up minimum supported Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
-        with:
-          python-version: ${{ env.MINIMUM_PYTHON_VERSION }}
+      - *setup_minimum_python
 
-      - name: Set up locked uv version
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          cache-dependency-glob: uv.lock
+      - *setup_uv
 
       - name: Restore locked Python environment
-        shell: bash
         run: uv sync --locked --group workflow --python python
 
       - name: Download every Python 3.11 shard receipt
@@ -824,14 +1073,12 @@ jobs:
           merge-multiple: true
 
       - name: Verify complete and disjoint shard receipts
-        shell: bash
         run: >-
           .venv/bin/python tests/tools/python_test_shards.py verify
           --repo-root "${GITHUB_WORKSPACE}"
           --receipt-dir "${RUNNER_TEMP}/emrys-python311-test-shards/merged"
 
       - name: Require every Python 3.11 shard to pass
-        shell: bash
         run: test "${{ needs.python311-full-shards.result }}" = "success"
 
   synthetic-e2e:
@@ -844,13 +1091,11 @@ jobs:
     timeout-minutes: 360
     steps:
       - name: Select managed-runtime paths
-        shell: bash
         run: |
           printf 'PIXI_WORKSPACE=%s/emrys-managed-runtime\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
           printf 'PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
 
       - name: Seed external evidence roots for selected profiles
-        shell: bash
         env:
           RUN_SYNTHETIC_130: ${{ github.event_name == 'schedule' || inputs.synthetic_130 }}
           RUN_SYNTHETIC_100000: ${{ (github.event_name == 'schedule' && github.event.schedule == '17 5 * * 0') || inputs.synthetic_100000 }}
@@ -884,20 +1129,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up primary Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
-        with:
-          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+      - *setup_primary_python
 
-      - name: Set up locked uv version
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          cache-dependency-glob: uv.lock
+      - *setup_uv
 
       - name: Stage the reviewed runtime lock outside the checkout
-        shell: bash
         run: |
           set -euo pipefail
           install -d -m 0700 "${PIXI_WORKSPACE}"
@@ -919,7 +1155,6 @@ jobs:
           post-cleanup: true
 
       - name: Install disposable Slurm
-        shell: bash
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
@@ -940,11 +1175,9 @@ jobs:
             emrys-real-e2e-pixi-renv-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src/emrys/renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
 
       - name: Restore locked Python environment
-        shell: bash
         run: uv sync --locked --group workflow --python python
 
       - name: Restore and select locked R environment
-        shell: bash
         run: |
           set -euo pipefail
           rscript_bin="$(command -v Rscript)"
@@ -972,7 +1205,6 @@ jobs:
           key: ${{ steps.renv-cache.outputs.cache-primary-key }}
 
       - name: Record exact runtime authorities outside the checkout
-        shell: bash
         run: |
           set -euo pipefail
           real_tools_prefix="${PIXI_WORKSPACE}/.pixi/envs/native"
@@ -1022,14 +1254,12 @@ jobs:
           test ! -s "${runtime_evidence}/checkout-before.tsv"
 
       - name: Configure and prove one disposable Slurm node
-        shell: bash
         run: bash tests/tools/configure_ci_slurm.sh "${E2E_EVIDENCE_ROOT}/slurm"
 
       - name: Run the selected 130-pair real synthetic E2E
         id: synthetic-130
         if: github.event_name == 'schedule' || inputs.synthetic_130
         continue-on-error: true
-        shell: bash
         run: |
           set -euo pipefail
           real_tools_prefix="${PIXI_WORKSPACE}/.pixi/envs/native"
@@ -1066,7 +1296,6 @@ jobs:
           (github.event_name == 'schedule' && github.event.schedule == '17 5 * * 0') ||
           inputs.synthetic_100000
         continue-on-error: true
-        shell: bash
         run: |
           set -euo pipefail
           real_tools_prefix="${PIXI_WORKSPACE}/.pixi/envs/native"
@@ -1100,7 +1329,6 @@ jobs:
 
       - name: Retain terminal scheduler diagnostics
         if: always()
-        shell: bash
         run: |
           set +e
           squeue --all --long > "${E2E_EVIDENCE_ROOT}/slurm/final-squeue.txt" 2>&1
@@ -1117,7 +1345,6 @@ jobs:
         id: checkout-unchanged
         if: always()
         continue-on-error: true
-        shell: bash
         run: |
           set -euo pipefail
           git status --porcelain=v1 --untracked-files=all \
@@ -1140,7 +1367,6 @@ jobs:
 
       - name: Require every selected synthetic lane and evidence upload to pass
         if: always()
-        shell: bash
         env:
           SELECT_130: ${{ github.event_name == 'schedule' || inputs.synthetic_130 }}
           SELECT_100000: ${{ (github.event_name == 'schedule' && github.event.schedule == '17 5 * * 0') || inputs.synthetic_100000 }}

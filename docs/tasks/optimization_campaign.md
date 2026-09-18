@@ -56,7 +56,7 @@ proposal. Step 08 retention and Step 07 hashing merit larger investigations.
 | 4 | Produce or reuse native BAM indexes | Wall time and I/O | Preserve indexed retrieval, validation, and publication. |
 | 5 | Bound Step 08 retained candidate tables | Memory; potentially wall time | Preserve candidate construction, order, counts, and serialized outputs. |
 | 6 | Reduce repeated whole-cohort hashing around Step 07 | Wall time and read I/O | Guarantee decision remains undecided across distinct mutation boundaries. |
-| 7 | Bind JVM heaps to admitted stage budgets | Memory and execution reliability | Environment-deferred; preserve successful processing and failure semantics. |
+| 7 | Bind JVM heaps to admitted stage budgets | Memory and execution reliability | Native limits implemented; workload measurements remain environment-deferred. |
 | 8 | Use qualified fast scratch for GATK spill | Shared-storage I/O and wall time | Environment-deferred; preserve capacity and recovery protections. |
 | 9 | Reduce Step 09 validation allocations | Memory | Preserve AF validation, pairing, global BH correction, and reconciliation. |
 | 10 | Evaluate compressed retained VCFs and tables | Persistent disk; potentially physical I/O | Undecided representation contract, requiring complete consumer migration. |
@@ -103,11 +103,14 @@ Any separately selected empty-header correction is a distinct behavior decision.
 
 ### 3. Tune existing resource profiles
 
-The [default profile][default-profile] reserves the entire workflow memory for
-every stage, preventing simultaneous tasks even when the DAG and CPU capacity
-permit them. The [Viking example][viking-profile] requests 256 CPUs but permits
-12 workflow cores. That is a configuration distinction, not measured CPU
-utilization; a large node may have been selected for memory.
+CV-U06/CV-U28 restore the historical EV/PUM1 per-stage allowances in the
+[default profile][default-profile], replacing the whole-workflow memory claims
+that serialized tasks. CV-U06 subsequently replaces the fixed workflow/STAR
+limits in the [Viking example][viking-profile] with allocation-based values and
+requests all CPUs and RAM on one exclusive node. Other stage settings retain
+the accepted historical policy; the measurements below concern further tuning,
+not a prerequisite for its restoration. Requested capacity remains distinct
+from measured utilization.
 
 Measure concurrent samples versus threads per task, realistic per-stage memory
 reservations, and Step 07 partition concurrency. Use existing profile controls
@@ -170,14 +173,16 @@ not eliminate these wrapper observations.
 
 ### 7. Bind JVM heaps to admitted stage budgets
 
-The [Picard invocation][step04-index] supplies no explicit heap bound;
-[GATK Java options][gatk-scratch] set temporary storage but not heap size.
-Snakemake memory reservations are scheduling admission, not per-process heap
-limits. No claim about the effective JVM maximum or observed RSS follows from
-the absence of an explicit command-line setting.
+The original finding was that the [Picard invocation][step04-index] supplied
+no explicit heap bound and [GATK Java options][gatk-scratch] set temporary
+storage but not heap size. CV-U28 now derives both heaps, STAR index/sort
+limits, and samtools sort buffers from the admitted stage budgets through
+[existing command construction](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning).
+This leaves overhead headroom; Snakemake reservations and native limits do
+not enforce total process RSS. No claim about the former effective JVM maximum
+or observed RSS follows from the absence of an explicit command-line setting.
 
-Evaluate native heap limits derived from admitted budgets with headroom for
-nonheap/native allocations. Measure representative concurrent jobs, spill
+Measure representative concurrent jobs, spill
 volume, garbage collection, peak memory, and task wall time. Smaller heaps may
 increase disk traffic or fail otherwise successful processing. Keep resource
 authority with the existing profile and owner command construction; avoid a

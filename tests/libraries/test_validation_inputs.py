@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 from collections.abc import Callable
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -34,26 +35,69 @@ def _read_sha256(path: Path, label: str) -> bytes:
     return INPUTS.sha256_with_identity(path, label)[0].encode()
 
 
+def _read_suffix(path: Path, label: str) -> bytes:
+    return INPUTS.read_suffix_with_identity(path, label, 4)[0]
+
+
 READERS = pytest.mark.parametrize(
     "reader",
-    (_read_all, _read_prefix, _read_sha256),
-    ids=("all-bytes", "prefix", "sha256"),
+    (_read_all, _read_prefix, _read_sha256, _read_suffix),
+    ids=("all-bytes", "prefix", "sha256", "suffix"),
 )
 
 
+@pytest.mark.parametrize("content", (b"", b"AB", b"prefix-ABCD"))
+def test_suffix_reads_only_bounded_trailing_bytes(tmp_path, monkeypatch, content):
+    source = tmp_path / "stream"
+    source.write_bytes(content)
+    original = INPUTS.os.read
+    offsets = []
+
+    def read(descriptor, size):
+        offsets.append((os.lseek(descriptor, 0, os.SEEK_CUR), size))
+        return original(descriptor, min(size, 1))
+
+    monkeypatch.setattr(INPUTS.os, "read", read)
+    data, identity = INPUTS.read_suffix_with_identity(source, "Stream", 4)
+
+    assert data == content[-4:]
+    assert identity.st_size == len(content)
+    assert offsets[0] == (max(0, len(content) - 4), 4)
+    assert all(size <= 4 for _, size in offsets)
+
+
+def test_suffix_rejects_symlinks_nonregular_files_and_invalid_lengths(tmp_path):
+    source = tmp_path / "stream"
+    source.write_bytes(b"fixture")
+    link = tmp_path / "alias"
+    link.symlink_to(source)
+    fifo = tmp_path / "fifo"
+    os.mkfifo(fifo)
+    for path in (link, fifo, tmp_path):
+        with pytest.raises(REPORT.ValidationError, match="regular non-symlink"):
+            INPUTS.read_suffix_with_identity(path, "Stream", 4)
+    for length in (None, True, 0, -1, 1.5):
+        with pytest.raises(ValueError, match="positive integer"):
+            INPUTS.read_suffix_with_identity(source, "Stream", length)
+
+
+@pytest.mark.parametrize("content", [b"", b"bound-prefix-and-unread-tail"])
 def test_read_bytes_with_identity_returns_bound_file_and_allows_declared_empty(
     tmp_path: Path,
+    content: bytes,
 ) -> None:
     source = tmp_path / "empty.lock"
-    source.touch()
+    source.write_bytes(content)
 
     data, identity = INPUTS.read_bytes_with_identity(
         source,
         "Empty lock",
         nonempty=False,
+        limit=5,
     )
 
-    assert data == b""
+    assert data == content[:5]
+    assert identity.st_size == len(content)
     assert (identity.st_dev, identity.st_ino) == (
         source.stat().st_dev,
         source.stat().st_ino,
@@ -108,6 +152,63 @@ def test_directory_entries_requires_no_follow_support(
 
     with pytest.raises(REPORT.ValidationError, match="symbolic-link protection"):
         INPUTS.directory_entries_with_identity(tmp_path, "Directory")
+
+
+@pytest.mark.parametrize("count", (3, 10))
+def test_directory_entry_limit_stops_enumeration_and_closes_iterator(
+    tmp_path, monkeypatch, count
+):
+    for index in range(count):
+        (tmp_path / str(index)).touch()
+    original = INPUTS.os.scandir
+    observed = []
+    closed = []
+
+    @contextmanager
+    def scan(descriptor):
+        try:
+            with original(descriptor) as entries:
+
+                def limited():
+                    for entry in entries:
+                        observed.append(entry.name)
+                        yield entry
+
+                yield limited()
+        finally:
+            closed.append(True)
+
+    monkeypatch.setattr(INPUTS.os, "scandir", scan)
+    if count == 3:
+        entries, _ = INPUTS.directory_entries_with_identity(
+            tmp_path, "Bounded directory", limit=3
+        )
+        assert entries == ("0", "1", "2")
+    else:
+        with pytest.raises(REPORT.ValidationError, match="3-entry inspection limit"):
+            INPUTS.directory_entries_with_identity(
+                tmp_path, "Bounded directory", limit=3
+            )
+    assert len(observed) == min(count, 4)
+    assert closed == [True]
+
+
+def test_bounded_directory_still_rejects_replacement(tmp_path, monkeypatch):
+    directory = tmp_path / "directory"
+    directory.mkdir()
+    (directory / "one").touch()
+    original = INPUTS.os.scandir
+
+    @contextmanager
+    def scan(descriptor):
+        with original(descriptor) as entries:
+            yield entries
+        directory.rename(tmp_path / "old")
+        directory.mkdir()
+
+    monkeypatch.setattr(INPUTS.os, "scandir", scan)
+    with pytest.raises(REPORT.ValidationError, match="changed while inspected"):
+        INPUTS.directory_entries_with_identity(directory, "Bounded directory", limit=2)
 
 
 def test_directory_entries_rejects_path_replacement_during_inspection(
@@ -272,7 +373,7 @@ def test_read_prefix_rejects_symlinks_and_invalid_lengths(tmp_path: Path) -> Non
 
     with pytest.raises(REPORT.ValidationError, match="regular non-symlink"):
         INPUTS.read_prefix(link, "Linked prefix fixture", 4)
-    for invalid in (True, 0, -1):
+    for invalid in (None, True, 0, -1):
         with pytest.raises(ValueError, match="positive integer"):
             INPUTS.read_prefix(source, "Invalid prefix fixture", invalid)
 

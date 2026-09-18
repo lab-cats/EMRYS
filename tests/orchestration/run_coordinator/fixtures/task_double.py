@@ -7,6 +7,7 @@ import argparse
 import base64
 import json
 import os
+import signal
 import sys
 import zlib
 from pathlib import Path
@@ -92,6 +93,31 @@ def _publish_payload(arguments: argparse.Namespace) -> int:
     )
     for entry in entries:
         _publish(Path(entry["path"]), base64.b64decode(entry["data_base64"]))
+        if arguments.native_ready is not None:
+            assert arguments.mode == "producer"
+            # The real Task wrapper must escalate and prove this native session absent.
+            signal.signal(signal.SIGTERM, signal.SIG_IGN)
+            parent = os.getppid()
+            _publish(
+                arguments.native_ready.with_suffix(".json"),
+                json.dumps(
+                    {
+                        "pid": os.getpid(),
+                        "pgid": os.getpgrp(),
+                        "parent_pid": parent,
+                        "parent_pgid": os.getpgid(parent),
+                        "working_output": entry["path"],
+                        "work_directory": os.environ["EMRYS_TASK_WORK_DIR"],
+                        "blocked_signals": sorted(
+                            signal.pthread_sigmask(signal.SIG_BLOCK, set())
+                        ),
+                    }
+                ).encode(),
+            )
+            with arguments.native_ready.open("wb", buffering=0) as ready:
+                ready.write(b"ready\n")
+            while True:
+                signal.pause()
     return 0
 
 
@@ -117,6 +143,7 @@ def _parser() -> argparse.ArgumentParser:
     payload = subparsers.add_parser("payload")
     payload.add_argument("mode", choices=("producer", "validator"))
     payload.add_argument("--payload-base64", required=True)
+    payload.add_argument("--native-ready", type=Path)
     payload.set_defaults(action=_publish_payload)
     return parser
 

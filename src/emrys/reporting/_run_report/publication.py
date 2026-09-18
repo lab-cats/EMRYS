@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from emrys.libraries.source_authority import admit_installed_package
+from emrys.libraries import exclusive_publication
 from emrys.reporting import _files, _signals
 
 from .context import recheck_evidence_context
@@ -142,7 +143,7 @@ def publish_report(context: ReportContext) -> None:
 
     try:
         handlers = _signals.install(ReportRenderError, "Report", "report publication")
-        ownership = _files.acquire_lock(
+        ownership = exclusive_publication.acquire_lock(
             context.lock_path, lock_payload, ReportRenderError
         )
         assert_directory()
@@ -155,7 +156,7 @@ def publish_report(context: ReportContext) -> None:
         projected = output_bytes(context)
         staged_paths = tuple(stage / path.name for path in context.stable_paths)
         for path, payload in zip(staged_paths, projected, strict=True):
-            _files.write_bytes_exclusive(path, payload)
+            exclusive_publication.write_bytes_exclusive(path, payload)
         validate_projected_outputs(context, staged_paths, projected)
         _recheck_inputs(context)
         assert_directory()
@@ -201,17 +202,15 @@ def publish_report(context: ReportContext) -> None:
             rollback_errors.append(str(rollback_exc))
         if rollback_errors:
             recovery_required = True
-            with contextlib.suppress(OSError, ReportRenderError):
-                assert_directory()
-                _files.write_bytes_exclusive(
-                    recovery,
-                    (
-                        "Report rollback was incomplete.\n"
-                        f"Original error: {original}\n"
-                        f"Rollback errors: {'; '.join(rollback_errors)}\n"
-                        f"Stage: {stage}\nLock: {context.lock_path}\n"
-                    ).encode("utf-8"),
-                )
+            _files.preserve_recovery(
+                recovery,
+                ReportRenderError,
+                assert_directory,
+                "Report rollback was incomplete.\n"
+                f"Original error: {original}\n"
+                f"Rollback errors: {'; '.join(rollback_errors)}\n"
+                f"Stage: {stage}\nLock: {context.lock_path}\n",
+            )
             raise ReportRenderError(
                 "Report publication failed and rollback was incomplete; preserve "
                 "the owned lock and recovery state"
@@ -237,7 +236,7 @@ def publish_report(context: ReportContext) -> None:
         if ownership is not None and not recovery_required and not cleanup_errors:
             try:
                 assert_directory()
-                _files.release_lock(
+                exclusive_publication.release_lock(
                     context.lock_path, ownership, lock_payload, ReportRenderError
                 )
             except BaseException as exc:
@@ -248,16 +247,14 @@ def publish_report(context: ReportContext) -> None:
             except BaseException as exc:
                 cleanup_errors.append(f"signal-handler restoration failed: {exc}")
         if cleanup_errors:
-            with contextlib.suppress(OSError, ReportRenderError):
-                assert_directory()
-                _files.write_bytes_exclusive(
-                    recovery,
-                    (
-                        "Report cleanup was incomplete.\n"
-                        f"Active error: {active}\n"
-                        f"Cleanup errors: {'; '.join(cleanup_errors)}\n"
-                    ).encode("utf-8"),
-                )
+            _files.preserve_recovery(
+                recovery,
+                ReportRenderError,
+                assert_directory,
+                "Report cleanup was incomplete.\n"
+                f"Active error: {active}\n"
+                f"Cleanup errors: {'; '.join(cleanup_errors)}\n",
+            )
             raise ReportRenderError(
                 "Report cleanup failed; preserve recovery evidence: "
                 + "; ".join(cleanup_errors)

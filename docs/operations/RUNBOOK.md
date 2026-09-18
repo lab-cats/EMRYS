@@ -1,5 +1,136 @@
 # Runbook
 
+Operational observations establish only the layer they directly check. Scheduler
+state, files, logs, receipts, reports, and local validation do not by themselves
+promote a Run, scientific, performance, or biological claim. The
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+owns exact semantics; this runbook owns operator procedures.
+
+## Retain a submission before its Run exists
+
+Run, resume, and report print an exact `Submission request:` directory after
+approval. Retain it with the printed job and stream paths; a request can exist
+before its Run. From the Project, `emrys inspect` lists retained requests,
+including partial or malformed records, without querying Slurm or application
+logs. `emrys inspect RUN` instead selects that Run.
+
+Query one request by its printed directory name or absolute path:
+
+```bash
+emrys inspect --submission "submission-REPLACE_WITH_THE_EXACT_REQUEST_TOKEN"
+```
+
+This prints that request's recorded streams, scheduler observation, matching
+application log, and any independently admitted Run/Attempt. Preserve
+`UNKNOWN`, partial, and legacy observations.
+
+An explicit Run selection also discovers its recorded application logs:
+
+```bash
+emrys inspect RUN --project "$EMRYS_PROJECT_ROOT" --verbose
+emrys inspect RUN --project "$EMRYS_PROJECT_ROOT" --log-root /absolute/historical/log/root --watch
+```
+
+The Run search uses `--log-root`, then `EMRYS_LOG_ROOT`, then the Project's
+`logs/application` directory. Supply an historical custom root explicitly. The
+[submission and inspection contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#resume-inspection-results-and-reporting)
+owns the exact admission, query, evidence, and recovery limits.
+
+## Watch one fixed selection
+
+The installed watch offers overview, detail, and dated evidence/log views. From
+a Project, it selects the sole request or Run; ambiguity opens a picker:
+
+```bash
+emrys watch
+```
+
+Select a Run by name/ID or scheduler diagnostics by numeric ID/exact job name:
+
+```bash
+emrys watch international-jackrabbit
+emrys watch 12345
+emrys watch emrys-local-pilot-EXACT_REQUEST_TOKEN
+```
+
+`EMRYS_PROJECTS_ROOT` enables the same read-only picker outside a Project;
+`--project` selects an exact Project from any directory.
+
+For a submitted Project request selected explicitly, including before its Run
+exists:
+
+```bash
+emrys inspect --project "$EMRYS_PROJECT_ROOT" --submission "submission-EXACT_TOKEN" --watch
+```
+
+Use `emrys inspect RUN --watch` for Run evidence and application/Task logs;
+select its retained request for scheduler identity and workflow diagnostics.
+
+Watch also supports scheduler discovery and historical selection without
+requiring a Project:
+
+```bash
+emrys inspect --watch --job-id
+emrys inspect --watch --job-id 12345
+emrys inspect --snapshot --job-id 12345 --log-dir /absolute/scheduler/logs
+emrys inspect --snapshot --job-id 12345 --offline --out /absolute/scheduler/logs/emrys-local-pilot-12345.out --err /absolute/scheduler/logs/emrys-local-pilot-12345.err
+```
+
+Without Project context or an explicit selector, watch offers bounded owned
+scheduler candidates. Command-line selection precedes
+`EMRYS_DASHBOARD_JOB_ID`/`EMRYS_DASHBOARD_LOG_DIR`. Offline mode needs an exact
+ID plus both streams.
+
+| Control | Behavior |
+| --- | --- |
+| `1` / `o`, `2` / `d`, Tab | Overview, details, or switch between them. |
+| `3` / `v` | Dated Run evidence and selected diagnostic log. |
+| `[` / `]` | Previous/next log; opens the evidence/log view. |
+| Arrows / `j` / `k`, Page Up/Down, Home / `g` | Scroll or return to the top. |
+| `G`, count + `j` / `k`, `/`, `n` / `N` | Follow the bottom, counted movement, and regex search in logs. |
+| `r` | Read-only recheck of the fixed selection: refresh diagnostics, recheck association, and fully verify its Run evidence. |
+| `q` | Quit and restore the terminal. |
+
+Automatic diagnostic refresh defaults to 30 seconds; `--refresh` accepts at
+least five seconds. Workflow streams retain full diagnostic history; other
+tails retain at most 64 KiB/256 lines. `--snapshot`, redirection, or a
+noninteractive terminal emits one snapshot. Use `--log-root` for a historical
+application-log root. See the
+[inspection contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#resume-inspection-results-and-reporting)
+for admission and recovery semantics.
+
+### Review CLI operations from watch
+
+For an interactive view, opt in to the shortcuts for one exact selection:
+
+```bash
+emrys inspect RUN --project "$EMRYS_PROJECT_ROOT" --watch --actions
+emrys inspect --submission REQUEST --project "$EMRYS_PROJECT_ROOT" --watch --actions
+```
+
+| Selection | Key | Operation after leaving watch |
+| --- | --- | --- |
+| Run | `p` | Ordinary resume plan and confirmation; decline to leave without starting work. |
+| Run | `b` | Report preview; does not generate or submit reporting work. |
+| Submission request | `s` | Stop preview for the exact retained request; does not cancel the job. |
+
+Each handoff restores the terminal and freshly admits the exact selection.
+Use the direct CLI to choose another profile or execute a report/stop plan.
+
+## Stop one exact Slurm request
+
+Use the exact retained request printed by Run, resume or report, with the
+Project that submitted it. Preview first:
+
+```bash
+emrys stop --project "$EMRYS_PROJECT_ROOT" --submission "submission-EXACT_TOKEN"
+```
+
+Review the displayed identity and scheduler observation. Add `--execute` to
+issue that stop request; retain its records if the result is uncertain. The
+[stop contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries)
+owns the exact identity, mutation, and evidence rules.
+
 Use the [quickstart](../../quickstart.md) for Viking installation, a first
 synthetic Project and your own study. For other setup needs, start with
 [a chosen release or commit](#install-a-chosen-release-or-commit) or
@@ -57,24 +188,27 @@ Record the printed full commit ID, including when you selected a tag. Leave
 the checkout and installed environment unchanged for the Project's Runs.
 Choosing a revision identifies the installation; it does not establish that
 it is qualified for your institution or scientific study. Viking users can
-continue at [quickstart step 2](../../quickstart.md#2-create-the-supplied-study).
+continue with the [optional smoke test](../../quickstart.md#optional-smoke-test).
 
 ## Standalone compute host with a managed runtime
 
 Use this route on an approved non-Slurm compute host, never on a cluster login
 node. Managed setup requires x86-64 Linux, kernel 4.18 or newer and glibc 2.28
-or newer. The default profile needs at least four visible CPUs. Confirm that
-the host's memory, disk space and permitted running time suit the study;
+or newer. The default workflow uses process-visible capacity; its retained
+concurrent-stage allowances require at least 12 CPUs and 240 GiB.
+Confirm that the host's memory, disk space and permitted running time suit the study;
 the tiny synthetic exercise is not a full-study capacity estimate.
 
 Use Bash with Git and curl available, permission and network access for package
-downloads, and separate writable source and durable Project locations. Install
-the tools and locked command with [the procedure above](#install-a-chosen-release-or-commit).
-Keep that environment active. Choose an absent Project directory beneath an
-existing writable parent outside the checkout, using its full physical path:
+downloads, and a writable durable checkout. Install the tools and locked command
+with [the procedure above](#install-a-chosen-release-or-commit). Keep that
+environment active. Enter the repository-supplied Projects home, then use an
+absent child for the supplied study:
 
 ```bash
-export EMRYS_PROJECT_ROOT="/absolute/durable/path/emrys-smoke"
+cd "$EMRYS_SOURCE_ROOT/Projects"
+export EMRYS_PROJECTS_ROOT="$(pwd -P)"
+export EMRYS_PROJECT_ROOT="${EMRYS_PROJECTS_ROOT:?Choose a Projects home first}/emrys-smoke"
 emrys init synthetic --output-dir "$EMRYS_PROJECT_ROOT" --execute
 cd "$EMRYS_PROJECT_ROOT"
 emrys validate
@@ -91,7 +225,8 @@ Prepare the Project's scientific runtime and storage:
 emrys doctor --repair
 ```
 
-Review the repair plan and answer `y` to approve installation and storage checks.
+Review the displayed repair-and-verification or verification plan and answer
+`y` to approve its listed actions.
 Doctor manages Project-owned native tools and R packages and retains a maintenance
 log; Python dependencies remain the package manager's responsibility. The
 ordinary command is correct on this non-Slurm host; `--compute` is for advanced
@@ -113,7 +248,7 @@ successful computation generates both reports automatically. Follow
 view the outputs or finish reporting without repeating completed computation.
 
 For your own study, use the quickstart's
-[input and manifest guidance](../../quickstart.md#gather-the-study-inputs-and-scientific-choices).
+[input and manifest guidance](../../quickstart.md#2-gather-the-study-inputs-and-scientific-choices).
 Create a new Project on this host using its Project-creation commands with
 `--site viking` omitted, then return to Doctor and Run above after validation.
 Confirm resources for the actual data using the
@@ -123,14 +258,31 @@ for incomplete Runs rather than deleting their files.
 
 ## Create a Project for your own data
 
-Follow the [quickstart's own-data continuation](../../quickstart.md#7-create-a-project-for-your-own-data)
+Follow the [Quickstart's real-data path](../../quickstart.md#3-create-the-project)
 for the complete Viking sequence: prepare study inputs, create the Project,
 run Doctor, submit the study, inspect it and open the reports.
+The ordinary `emrys init NAME` creates beneath the current directory, so first
+enter the repository-supplied `Projects/` parent. Synthetic `--output-dir` may
+select an external absolute destination when an advanced workflow requires it.
+These routes share the same absent-child and canonical-parent checks; neither
+moves or adopts an existing Project. Use `--project /absolute/Project/project.yaml`
+with Project-aware commands when working from another directory.
+
+Interactive named initialization discovers recognized FASTQ pairs in one
+directory, asks for their biological assignments and the study regions, and
+publishes `samples.tsv` and `partitions.tsv` inside the Project. Its preview
+checks paths and scientific structure without hashing FASTQ contents. The
+printed creation command carries every answer; creation hashes each FASTQ once
+and rejects an input whose filesystem identity changes through publication.
+Existing advanced manifests may be supplied together with `--sample-manifest`
+and `--partition-manifest`; EMRYS copies normalized manifest content into the
+new Project. Existing Projects remain supported at their current paths.
 
 For studies with additional input requirements:
 
-- For arbitrary FASTQ names, write the [sample manifest](../../configs/README.md#sample-manifest)
-  and [partition manifest](../../configs/README.md#partition-manifest) directly.
+- For arbitrary FASTQ names, prepare the [sample manifest](../../configs/README.md#sample-manifest)
+  and [partition manifest](../../configs/README.md#partition-manifest) directly,
+  then supply both advanced inputs during initialization.
   `samples.example.tsv` demonstrates ingestion fields; it is not a complete
   paired-CMH Project manifest.
 - For a background cohort, include its samples in the manifest and pass
@@ -152,7 +304,7 @@ Use this route when the institution supplies the exact versions in
 [`runtime_policy.tsv`](../../src/emrys/resources/runtime/runtime_policy.tsv):
 STAR 2.7.11b, Samtools 1.19.2, GATK 4.6.1.0, Picard 3.1.1, Bcftools 1.21,
 RSeQC 5.0.4, Java 17+, and R 4.6.1 with the locked R packages. For managed
-installation, use [Viking's Doctor procedure](../../quickstart.md#3-prepare-the-scientific-tools)
+installation, use [Viking's Doctor procedure](../../quickstart.md#5-prepare-the-scientific-tools-and-storage)
 or the [standalone procedure](#standalone-compute-host-with-a-managed-runtime).
 
 On the intended execution host, load the approved modules and reactivate the
@@ -174,17 +326,18 @@ instead be found on `PATH`. If the library is missing, complete
 ```bash
 emrys validate
 emrys runtime discover
-emrys runtime discover --execute
 emrys doctor
 ```
 
 Inside a real Slurm allocation, use `emrys doctor --compute` for that diagnosis.
 Ordinary head-node or non-Slurm diagnosis uses `emrys doctor` without the flag.
 
-The first discovery previews without writing; execute only after every required
-check passes. Success prints `Runtime inventory admitted.` and creates
-`runtime/runtime.tsv`. Discovery never replaces an inventory, loads modules,
-or installs software.
+Discovery previews first. In a terminal, answer `y` only after every required
+check passes; Enter or `n` leaves the Project unchanged. The confirmed command
+reuses its in-memory inspection and performs focused freshness checks before
+publication. Noninteractive automation uses `emrys runtime discover --execute`.
+Success prints `Runtime inventory admitted.` and creates `runtime/runtime.tsv`.
+Discovery never replaces an inventory, loads modules, or installs software.
 
 The inventory stores 12 selected paths in `check_id` and `target` columns.
 Version requirements and probe arguments come from the installed EMRYS policy;
@@ -218,7 +371,7 @@ For a ready Project with one Analysis and one Run:
 ```bash
 emrys validate
 emrys doctor
-emrys run --log-level verbose
+emrys run
 emrys inspect
 ```
 
@@ -228,30 +381,37 @@ execution profile for the intended host; see the
 and [configuration guide](../../configs/README.md).
 
 A direct Run asks `Execute this plan? [y/N]`: `y` executes and Enter declines.
-Preview without writing with `emrys run --log-level verbose </dev/null`;
+Its normal plan shows the Run name and location, pending/reusable work, and
+reporting disposition. A Slurm submission normally adds only placement and the
+allocation request. Add `--verbose` for profile limits, identities, commands,
+Task detail, and the evidence-boundary explanation. Preview without writing
+with `emrys run </dev/null`;
 automation executes with `emrys run --execute`. Full Runs generate reports
 unless `--no-report` is supplied. Use the [Slurm route](#slurm-setup-and-submission)
 for cluster submission.
 
-`emrys inspect` reads the sole Run or offers a terminal picker. To select one
-explicitly, use its two-word name, full ID, or unique ID prefix; EMRYS never
-assumes latest. `--detail verbose` adds Run/Attempt identities and reporting
-transactions; `--detail debug` adds paths, hashes, receipts, and task commands.
-Planning, execution, and Doctor instead use `--log-level verbose` or `debug`.
+`emrys inspect` reads the sole Run or offers a terminal picker. Select one by
+two-word name, full ID, or unique ID prefix. The normal view shows admission,
+outcome, blockers, recovery, next action, and verified reports; `--verbose`
+adds identities, milestones, timing, application associations, reporting
+transactions, Task records, authority hashes, receipts, and commands.
 For failed or interrupted Runs, follow [resume and recovery](TROUBLESHOOTING.md#run-and-reporting-state).
+
+Read printed blockers before choosing an action. `emrys watch` uses the same
+selection and inspection authority. The
+[inspection contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#resume-inspection-results-and-reporting)
+defines its Task, submission, and completion states.
 
 ### Inspect and open reports
 
-A successful full Run shows `Run integrity: valid`, `Attempt outcome: succeeded`,
-`Scientific Results: complete`, and `Reporting: complete`. Open the printed
+A successful full Run shows `Run admission: valid`, `Attempt outcome: succeeded`,
+`Scientific Results: complete`, and `Reporting admission: complete`. Open the printed
 `Scientific report` for candidate results and `Evidence report` for execution
-and provenance. Linked machine-readable tables contain the complete data;
-reports do not establish biological conclusions or validate editing sites.
+and provenance. Linked machine-readable tables contain the complete data.
 
-For the built-in Analysis, transfer the complete Run `results/` directory using
-an institution-approved method, preserving its structure so HTML and table links
-work. These files may contain study data. Open the copied HTML locally; retain
-the complete canonical Run at its original location for provenance and recovery.
+For the built-in Analysis, copy the complete Run `results/` directory, preserving
+its structure so HTML and table links work. Use your institution's file-transfer
+application or the [terminal procedure below](#retrieve-reports-from-a-terminal).
 A collaborator Analysis may have different transfer requirements.
 
 When scientific Results are complete but reporting was skipped, inspect first,
@@ -264,11 +424,68 @@ emrys report
 The command never prompts to write. Only when generation is admitted, run
 `emrys report --execute`, then inspect again. Complete bundles are verified and
 reused; partial or blocked bundles need [recovery](TROUBLESHOOTING.md#run-and-reporting-state).
+Preserve blocked or partial records and follow the printed supported action.
+
 Reporting does not overwrite arbitrary bundles, change scientific Results, or
 create another scientific Attempt. Generation follows the Project's default
 execution profile: Slurm placement submits it to a compute node, while direct
 placement executes on the current host. Use `--profile NAME` to select another
 existing profile; direct execution requires a permitted compute host.
+
+### Retrieve reports from a terminal
+
+1. On the cluster head node, select the exact completed Run from its Project:
+
+   ```bash
+   emrys inspect RUN --verbose
+   ```
+
+   Replace `RUN` with its name, full ID, or unique ID prefix. Continue after
+   inspection shows valid Run admission, a succeeded Attempt, complete Scientific
+   Results, and complete Reporting. Copy the printed report paths; their common
+   `results/` ancestor is the directory to transfer. Do not choose a directory
+   by modification time or copy a bundle still being published.
+
+2. Open a terminal **on your own computer**. The example uses SSH and rsync 3
+   on both computers; use your institution's transfer application if unavailable.
+   Set the approved login/transfer host and the exact remote results path, then
+   copy into a new local directory:
+
+   ```bash
+   report_host='YOUR_LOGIN@YOUR_TRANSFER_HOST'
+   report_results='/absolute/Project/runs/RUN_ID/results'
+   report_copy=$(mktemp -d "$HOME/emrys-report.XXXXXX")
+   rsync --protect-args -rlt -- "$report_host:$report_results/" \
+     "${report_copy:?Create the local report directory first}/"
+   ```
+
+   Replace both example values. The trailing slash copies the directory's
+   contents without flattening its folders. The files may contain study data;
+   use an approved computer and destination. If transfer fails, keep the paths
+   and error; rerun the same transfer after resolving the cause.
+
+3. Compare file contents with the original without changing either copy:
+
+   ```bash
+   rsync --protect-args -rlcni -- "$report_host:$report_results/" \
+     "${report_copy:?Create the local report directory first}/"
+   printf 'Local results: %s\n' "$report_copy"
+   ```
+
+   A successful comparison prints no file changes. Any listed missing/changed
+   file or error means the copy is not yet verified; resolve it and compare
+   again. This uses rsync's [checksum and dry-run options](https://download.samba.org/pub/rsync/rsync.1).
+   It checks transfer consistency, not Run integrity or scientific validity.
+
+4. In that local directory, open
+   `reports/RUN_ID/RUN_ID.scientific_report.html` and
+   `reports/RUN_ID/RUN_ID.evidence_report.html` in your browser. Replace `RUN_ID`
+   with the inspected full ID. Follow the links between reports and to candidate
+   tables; retain the complete copied tree. No web server or tunnel is needed.
+
+Keep the original Project, complete Run, inputs, runtime, and logs available for
+inspection and recovery. Record visual review separately, including Run identity,
+report names, and any broken links or unreadable figures.
 
 ### Reusable processing
 
@@ -292,18 +509,11 @@ Specialist commands validate existing outputs, reconcile reference provenance
 owner-validation report because validator exit zero alone does not establish
 semantic success.
 
-The CSU dashboard is stale and frozen pending separate replacement work.
-Use `emrys inspect` and exact Slurm accounting/streams for status and completion.
-
 ## Slurm setup and submission
 
-Viking users select `--site viking` when creating either a synthetic or a
-real-data Project. EMRYS writes the Project's default execution profile with
-account `viking-users`, partition `long`, QoS `normal`, four CPUs, eight hours,
-site-default memory and private temporary files beneath `/tmp`. These placement
-settings come from the September 2026 site walkthrough; they are not a
-full-dataset resource estimate. The retained EV/PUM1 profile describes a
-separate six-library computational policy.
+Viking users select `--site viking` when creating a Project. Existing Projects
+can select the current site defaults through
+[named profile creation](../../configs/README.md#create-a-named-profile-without-writing-yaml).
 
 From the head node, prepare the Project and submit its Analysis:
 
@@ -312,10 +522,11 @@ emrys doctor --repair
 emrys run
 ```
 
-Doctor installs the managed tools on the head node, then submits compute-side
-runtime and storage checks through Slurm and finishes the storage check on the
-head node. It retains the existing qualification evidence. A successful repair
-means these checks passed; it does not establish scientific completion.
+Doctor installs the managed tools on the head node, submits compute-side
+runtime and storage checks through Slurm, then finishes storage qualification
+on the head node. Read the
+[qualification scope](../../src/emrys/evidence/runtime_availability/README.md#what-qualification-establishes)
+for the exact checks and limits.
 
 Slurm runs the complete Analysis and its reports on one compute node. Normal
 Run, resume and report execution use the Project's default profile. Inspecting
@@ -346,9 +557,8 @@ available for investigating storage failures; their exact contract lives with
 Do not alter scheduler variables to imitate an allocation or erase existing
 qualification evidence to retry.
 
-For detailed submission diagnostics, use `--log-level debug`. Normal operator
-instructions use the default output level. Scheduler job success alone does
-not establish valid Results; use `emrys inspect` and the retained reports.
+For detailed submission diagnostics, use `--verbose`; use `emrys inspect` for
+the Run result.
 
 ## Inspecting a Slurm Run
 
@@ -361,12 +571,79 @@ tail -n +1 -F /exact/OUT /exact/ERR
 ```
 
 Replace the placeholders above. Control-C stops `tail`, not the allocation.
-`COMPLETED 0:0` establishes scheduler success; use `emrys inspect` for EMRYS
-completion. Keep the source commit, command, inputs, job ID, accounting,
-streams, outputs, validation records, and receipts tied to the same Attempt.
-See [Troubleshooting](TROUBLESHOOTING.md) before retry or cleanup.
+Use `emrys inspect` for the Run result and follow
+[Troubleshooting](TROUBLESHOOTING.md#storage-and-slurm) before retry or cleanup.
+
+## Reuse prepared managed tools
+
+Use this path after creating a new Project and before Doctor installs tools for
+it. Select a prepared source Project owned by the same UID. Its managed tool
+paths and R package trees must be inside one of its canonical managed runtime
+generations and visible from the new Project's intended nodes. Keep both Project
+locations stable. An existing runtime inventory is preserved unless `--replace`
+explicitly selects a newer generation from the same source Project.
+
+```bash
+emrys runtime discover --project /absolute/borrower/project.yaml --from-project /absolute/donor/project.yaml
+```
+
+This previews first. Add `--verbose` to review every observed tool check and the
+selected source seal; the normal view shows readiness and the no-write/admission
+outcome. Answer `y` to create the new Project's inventory only after the source
+generation and focused freshness checks succeed. The command installs nothing;
+`--execute` is the noninteractive equivalent. Then run:
+
+```bash
+emrys doctor --project /absolute/borrower/project.yaml --repair
+```
+
+Doctor still qualifies the new Project, storage and selected placement;
+inspect its plan before confirming. Continue only after borrower readiness
+passes. Keep both Projects and every selected runtime generation available; the
+[runtime owner](../../src/emrys/evidence/runtime_availability/README.md#sealed-managed-runtime-reuse)
+defines the seal, replacement, and qualification boundaries.
+
+Doctor never repairs a shared generation in place. If the source Project's
+selected tools fail, `emrys doctor --repair` prepares and verifies a new
+generation, then moves only that Project's current selection. Other Projects
+continue to name the old generation and must explicitly select the replacement:
+
+```bash
+emrys runtime discover --project /absolute/dependent/project.yaml --from-project /absolute/source/project.yaml --replace
+```
+
+Review the replacement and answer `y`; noninteractive automation adds
+`--execute` to that command. Preserve previous generations and any partial or
+locked publication for [recovery](TROUBLESHOOTING.md#project-and-runtime-checks).
 
 ## Dependency maintenance
+
+### Doctor status and timing
+
+Doctor's plan says **repair and verification** when package-manager work is
+needed and **verification** when the selected runtime already passes. The
+`Runtime work` line distinguishes a verified runtime, a missing managed
+inventory, and tools selected by a retained inventory. A missing inventory
+after interruption does not prove that packages need reinstalling. Pixi and
+renv record actual package reuse and changes in `package-output.log` beside
+the maintenance JSONL; see [installation logs](TROUBLESHOOTING.md#watching-doctors-installation-log).
+
+| Status | Meaning |
+| --- | --- |
+| Runtime `NOT PREPARED` | The default runtime inventory has not been created; review proposed setup actions. |
+| Runtime `CHECKS FAILED` | The selected runtime failed required checks; retain named diagnostics. |
+| Storage `NOT QUALIFIED` | Required storage proof is unavailable or invalid; read the observed problem. |
+| Execution `NOT ADMITTED` | The selected execution profile cannot be used; follow its diagnostic. |
+
+Declining the plan with Enter or `n` makes no repair. After an error, retain the
+diagnostics and selected runtime rather than clearing installation state.
+
+Doctor prints full invocation elapsed time and exit outcome; add `--verbose` for
+phase times and transcript paths. Allow for downloads, compilation, and queue
+waits; use the named phase and retained diagnostics rather than elapsed time
+alone. The
+[Doctor contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries)
+owns timing and admission semantics.
 
 Institutional R restoration below requires the installed EMRYS R guard and
 permission to install packages. The [engineering guide](ENGINEERING_CONVENTIONS.md#dependencies-and-environments)

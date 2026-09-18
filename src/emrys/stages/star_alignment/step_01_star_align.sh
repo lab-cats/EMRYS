@@ -15,6 +15,7 @@ Usage: src/emrys/stages/star_alignment/step_01_star_align.sh \
   --star-index STAR_INDEX \
   --output-dir OUTPUT_DIR \
   --threads THREADS \
+  --native-memory-mb NATIVE_MEMORY_MB \
   --star-bin STAR_BIN \
   --gunzip-bin GUNZIP_BIN
 
@@ -30,10 +31,11 @@ source "$script_dir/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$script_dir/../../libraries/file_checks.sh"
 
-declare_required_arguments sample_id r1_fastq r2_fastq star_index output_dir threads star_bin gunzip_bin
+declare_required_arguments sample_id r1_fastq r2_fastq star_index output_dir threads star_bin gunzip_bin native_memory_mb
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --native-memory-mb) assign_option_value "$1" "${2:-}" native_memory_mb; shift 2 ;;
         --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
         --r1-fastq) assign_option_value "$1" "${2:-}" r1_fastq; shift 2 ;;
         --r2-fastq) assign_option_value "$1" "${2:-}" r2_fastq; shift 2 ;;
@@ -48,6 +50,7 @@ while [[ $# -gt 0 ]]; do
 done
 require_arguments
 require_task_work_dir
+validate_positive_integer "--native-memory-mb" "$native_memory_mb"
 
 validate_safe_id "--sample-id" "$sample_id"
 validate_positive_integer "--threads" "$threads"
@@ -58,6 +61,8 @@ require_executable "STAR" "$star_bin"
 command=("$star_bin" --runThreadN "$threads" --genomeDir "$star_index"
     --readFilesIn "$r1_fastq" "$r2_fastq" --outFileNamePrefix "$output_dir/$sample_id."
     --outSAMtype BAM SortedByCoordinate
+    --outBAMsortingThreadN "$threads"
+    --limitBAMsortRAM "$((native_memory_mb * 1024 * 1024))"
     --outSAMattrRGline "ID:$sample_id" "SM:$sample_id" "LB:$sample_id" PL:ILLUMINA)
 if is_gzip_path "$r1_fastq" && is_gzip_path "$r2_fastq"; then
     require_executable "gunzip" "$gunzip_bin"

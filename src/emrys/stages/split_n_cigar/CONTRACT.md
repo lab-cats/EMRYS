@@ -42,6 +42,17 @@ that CIGAR-N transformation semantics occurred.
 [`step_05_split_n_cigar_reads.sh`](step_05_split_n_cigar_reads.sh) is an internal worker of the
 [Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
+The internal `--threads` allowance (one when omitted) also supplies
+`-XX:ActiveProcessorCount` so Java helper pools see the task's CPU share.
+This does not parallelize the main scientific traversal. Samtools indexing
+receives `threads - 1` additional I/O workers.
+
+The required internal `--native-memory-mb` argument supplies Java
+`-Xmx<N>m` through GATK `--java-options`, alongside the existing temporary
+directory option. The
+[Run planner](../../orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+derives this positive budget from the admitted stage allowance.
+
 The worker runs GATK with runner scratch supplied consistently as Java's
 `java.io.tmpdir`, GATK `--tmp-dir`, and `TMPDIR`. It retains the selected-Java
 17+ probe and isolated GATK environment, creates the canonical `.bam.bai`

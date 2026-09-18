@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import argparse
 import fcntl
 import hashlib
 import json
@@ -11,6 +12,7 @@ import signal
 import shutil
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
@@ -24,6 +26,7 @@ import pytest
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.evidence.runtime_availability.inspector import (
+    RuntimeBinding,
     RuntimeCheck,
     RuntimeInspection,
     RuntimeObservation,
@@ -33,6 +36,7 @@ from emrys.libraries.installed_package_identity import installed_package_tree_id
 from emrys.libraries.validation import inputs as validation_inputs
 from emrys.orchestration.run_coordinator import (
     _inspection_attempts,
+    control,
     doctor,
     inspection,
     lifecycle,
@@ -72,6 +76,125 @@ def test_successor_lifecycle_requires_symbolic_resource_policy() -> None:
         lifecycle._resource_plan_from_workflow(
             config,
         )
+
+
+@pytest.mark.parametrize(
+    ("boundary", "change"),
+    (
+        ("locked", None),
+        ("outer", "omit"),
+        ("outer", "repoint"),
+        ("locked", "omit"),
+        ("locked", "repoint"),
+        ("locked", "history"),
+    ),
+)
+def test_resume_preflights_recheck_exact_pending_retry_references(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, boundary: str, change: str | None
+) -> None:
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+
+    reference = {
+        "path": "attempts/previous/tasks/owner/retry/task-attempt.json",
+        "sha256": "a" * 64,
+    }
+    previous = {
+        "workflow_attempt_id": "previous",
+        "run_id": "run-fixture",
+        "execution_contract_sha256": "b" * 64,
+        "profile_sha256": "c" * 64,
+        "execution_mode": "local-science-tools",
+        "executor": "snakemake",
+    }
+    attempt = {
+        **previous,
+        "workflow_attempt_id": "next",
+        "supersedes_workflow_attempt_id": "previous",
+        "tasks": {
+            "owner": {
+                "retry": {"retry_task_attempt_record": dict(reference)},
+                "unentered": {"retry_task_attempt_record": None},
+                "verified": {
+                    "workflow_attempt_record": {
+                        "path": "attempts/previous/attempt.json",
+                        "sha256": "d" * 64,
+                    }
+                },
+            }
+        },
+    }
+
+    def scope(name, state, retry=None):
+        return SimpleNamespace(
+            expected=SimpleNamespace(machine_key="owner", scope_id=name),
+            state=state,
+            retry_task_attempt_record=retry,
+        )
+
+    observed = SimpleNamespace(
+        recovery_available=True,
+        latest_attempt=previous,
+        latest_receipt={"status": "interrupted"},
+        tasks=(
+            scope("retry", "pending", reference),
+            scope("unentered", "pending"),
+            scope("verified", "verified"),
+        ),
+    )
+    locks, observations = [], []
+
+    def inspect_run(root, *, ops, allowed_next_attempt=None):
+        assert root == tmp_path
+        observations.append(allowed_next_attempt)
+        return observed
+
+    monkeypatch.setattr(inspection, "state_tree_blockers", lambda _root: ())
+    monkeypatch.setattr(
+        inspection,
+        "lock_tree_blockers",
+        lambda _root, *, expected_run_lock: locks.append(expected_run_lock) or (),
+    )
+    monkeypatch.setattr(
+        inspection,
+        "inspect_attempt_tree",
+        lambda _root: ((tmp_path / "attempts/previous",), ()),
+    )
+    monkeypatch.setattr(inspection, "inspect_run", inspect_run)
+    ops = SimpleNamespace(
+        host_name=lambda: "fixture",
+        process_is_alive=lambda _pid: False,
+        validate_reporting_receipt=lambda *_a, **_k: None,
+    )
+
+    def mutate():
+        changed = {**reference, "sha256": "e" * 64}
+        if change == "history":
+            observed.tasks[0].retry_task_attempt_record = changed
+        else:
+            attempt["tasks"]["owner"]["retry"]["retry_task_attempt_record"] = (
+                None if change == "omit" else changed
+            )
+
+    if boundary == "outer":
+        mutate()
+    failure = lambda: pytest.raises(
+        lifecycle.LifecycleError, match="exact admitted history"
+    )
+    with failure() if boundary == "outer" else nullcontext():
+        lifecycle._operation_preflight("resume", tmp_path, attempt, ops)
+    if boundary == "outer":
+        assert locks == [False] and observations == [None]
+        return
+    if change is not None:
+        mutate()
+    with failure() if change is not None else nullcontext():
+        lifecycle._under_lock_attempt_preflight(
+            SimpleNamespace(operation="resume"), tmp_path, attempt, ops
+        )
+    assert locks == [False, True]
+    assert observations[0] is None and observations[1] is attempt
+    assert not tuple(tmp_path.iterdir())
 
 
 @pytest.mark.parametrize(
@@ -131,7 +254,7 @@ def test_storage_readmission_uses_normalized_reference_identity(
     )
 
     assert calls == [(workspace, normalized_fasta)]
-    assert binding == doctor.RuntimeBinding(
+    assert binding == RuntimeBinding(
         check_id="storage_qualification",
         path=receipt,
         resolved_path=receipt.resolve(strict=True),
@@ -363,6 +486,18 @@ class Harness:
             sync_directory=self.sync_directory,
         )
 
+    def inspection_ops(
+        self, *, host="fixture-host", process_is_alive=lambda _pid: True
+    ):
+        return inspection.InspectionOps(
+            lambda: host, process_is_alive, self.validate_reporting
+        )
+
+    def inspect(self, **observations):
+        return inspection.inspect_run(
+            self.built.run_root, ops=self.inspection_ops(**observations)
+        )
+
     def sync_directory(self, path: Path, label: str) -> None:
         self.events.append(f"sync:{path.relative_to(self.built.run_root)}")
         if (
@@ -393,7 +528,7 @@ class Harness:
         self,
         _attempt: dict[str, Any],
         _request: lifecycle.LifecycleRequest,
-        _storage_binding: doctor.RuntimeBinding | None,
+        _storage_binding: RuntimeBinding | None,
         _initial_inspection: RuntimeInspection | None,
     ) -> None:
         self.runtime_admissions += 1
@@ -473,14 +608,7 @@ class Harness:
         if self.materialize_start_only or self.inspect_live_transient:
             _materialize_start_only(self.built, attempt_path)
         if self.inspect_live_transient:
-            self.live_observation = inspection.inspect_run(
-                self.built.run_root,
-                ops=inspection.InspectionOps(
-                    lambda: "fixture-host",
-                    lambda _pid: True,
-                    self.validate_reporting,
-                ),
-            )
+            self.live_observation = self.inspect()
         if self.materialize_complete:
             _materialize_verified(
                 self.built,
@@ -554,7 +682,8 @@ def test_process_group_ambiguity_escalates_and_fails_closed() -> None:
     assert sent == [signal.SIGTERM, signal.SIGKILL]
 
 
-def test_process_group_poll_failure_still_forces_quiescence() -> None:
+@pytest.mark.parametrize("stopped_by", (signal.SIGTERM, signal.SIGKILL))
+def test_process_group_poll_failure_still_forces_quiescence(stopped_by: int) -> None:
     class Process:
         pid = 9003
 
@@ -572,7 +701,7 @@ def test_process_group_poll_failure_still_forces_quiescence() -> None:
     def send(_pgid: int, signum: int) -> None:
         nonlocal alive
         sent.append(signum)
-        if signum == signal.SIGTERM:
+        if signum == stopped_by:
             alive = False
 
     controller = lifecycle.TransactionSignalController(
@@ -586,12 +715,21 @@ def test_process_group_poll_failure_still_forces_quiescence() -> None:
         signal_group=send,
         monotonic=lambda: 0.0,
         sleep=lambda _seconds: None,
+        terminate_grace_seconds=0.0,
     )
 
-    with pytest.raises(OSError, match="poll failed"):
+    failure = (
+        OSError if stopped_by == signal.SIGTERM else lifecycle.ProcessGroupAmbiguity
+    )
+    message = "poll failed" if stopped_by == signal.SIGTERM else "quiescent"
+    with pytest.raises(failure, match=message):
         lifecycle._run_process_group(("fixture",), Path("/"), controller, ops=ops)
 
-    assert sent == [signal.SIGTERM]
+    assert sent == (
+        [signal.SIGTERM]
+        if stopped_by == signal.SIGTERM
+        else [signal.SIGTERM, signal.SIGKILL]
+    )
 
 
 @pytest.mark.parametrize(
@@ -740,6 +878,122 @@ def test_process_group_ambiguity_retains_public_lock_without_receipt(
     assert (attempt_root / "attempt.json").is_file()
     assert not (attempt_root / "released-run-lock.json").exists()
     assert not (attempt_root / "attempt-receipt.json").exists()
+
+
+def _nested_native_cancellation_child(root: Path, grace: str) -> None:
+    """Exercise lifecycle -> Task wrapper -> separate native session, without Snakemake."""
+    built = _build_harness(root / "lifecycle")
+    native_root = root / "task"
+    native_record = native_root / "native.json"
+    process: subprocess.Popen[bytes] | None = None
+    interrupted = False
+    deadline = time.monotonic() + 20
+    prior_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    prior_handlers = {
+        signum: signal.getsignal(signum) for signum in (signal.SIGINT, signal.SIGTERM)
+    }
+
+    def spawn(
+        _argv: tuple[str, ...], _cwd: Path, environment: Mapping[str, str]
+    ) -> subprocess.Popen[bytes]:
+        nonlocal process
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                "from pathlib import Path; import sys; "
+                "from tests.orchestration.run_coordinator.test_task import "
+                "_task_native_signal_child; "
+                "_task_native_signal_child(Path(sys.argv[1]), 'nested')",
+                str(native_root),
+            ],
+            cwd=Path(__file__).resolve().parents[3],
+            env=environment,
+            start_new_session=True,
+        )
+        return process
+
+    def poll(child: subprocess.Popen[bytes]) -> int | None:
+        nonlocal interrupted
+        assert time.monotonic() < deadline, "native fixture did not terminate in time"
+        if not interrupted and native_record.exists():
+            interrupted = True
+            if grace == "external-kill":
+                os.killpg(child.pid, signal.SIGKILL)
+            else:
+                os.kill(os.getpid(), signal.SIGTERM)
+        return child.poll()
+
+    process_ops = replace(lifecycle.WORKFLOW_PROCESS_GROUP_OPS, spawn=spawn, poll=poll)
+    if grace == "forced":
+        process_ops = replace(process_ops, terminate_grace_seconds=0.05)
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
+    attempt_root = built.built.run_root / "attempts" / identifier
+    try:
+        if grace != "default":
+            with pytest.raises(
+                lifecycle.ProcessGroupAmbiguity, match="separately owned native groups"
+            ):
+                _run_attempt(
+                    built.request,
+                    ops=replace(
+                        built.ops(), run_workflow=None, process_group_ops=process_ops
+                    ),
+                )
+            assert (built.built.run_root / "locks/run.lock").is_file()
+            assert (attempt_root / "attempt.json").is_file()
+            assert not (attempt_root / "attempt-receipt.json").exists()
+            assert not (attempt_root / "released-run-lock.json").exists()
+            assert not (native_root / "native-cleanup.json").exists()
+            os.kill(int(json.loads(native_record.read_text())["pid"]), 0)
+        else:
+            outcome = _run_attempt(
+                built.request,
+                ops=replace(
+                    built.ops(), run_workflow=None, process_group_ops=process_ops
+                ),
+            )
+            assert outcome.receipt["status"] == "interrupted"
+            assert outcome.receipt["termination_signal"] == signal.SIGTERM
+            assert (
+                outcome.receipt_path.is_file() and outcome.released_lock_path.is_file()
+            )
+            assert not outcome.lock_path.exists()
+            assert (native_root / "native-cleanup.json").is_file()
+        assert process is not None and process.returncode == (
+            -signal.SIGKILL if grace != "default" else 0
+        )
+        with pytest.raises(ProcessLookupError):
+            os.killpg(process.pid, 0)
+        assert signal.pthread_sigmask(signal.SIG_BLOCK, set()) == prior_mask
+        assert {
+            signum: signal.getsignal(signum) for signum in prior_handlers
+        } == prior_handlers
+    finally:
+        if process is not None and process.poll() is None:
+            lifecycle._signal_process_group(process.pid, signal.SIGKILL)
+            process.wait(timeout=5)
+        if native_record.is_file():
+            lifecycle._signal_process_group(
+                int(json.loads(native_record.read_text())["pid"]), signal.SIGKILL
+            )
+
+
+@pytest.mark.parametrize("grace", ("default", "forced", "external-kill"))
+def test_nested_native_cancellation_requires_wrapper_cleanup_proof(
+    tmp_path: Path, grace: str
+) -> None:
+    try:
+        completed = workflow_fixture.run_child(
+            _nested_native_cancellation_child, tmp_path, grace, timeout=40
+        )
+        assert completed.returncode == 0, (completed.stdout, completed.stderr)
+    finally:
+        native_record = tmp_path / "task/native.json"
+        if native_record.is_file():
+            lifecycle._signal_process_group(
+                int(json.loads(native_record.read_text())["pid"]), signal.SIGKILL
+            )
 
 
 def test_signal_forwarding_failure_is_nonraising_then_fails_closed() -> None:
@@ -1045,18 +1299,8 @@ def _first_task_context(
     return expected, plan
 
 
-def _materialize_start_only(
-    built: workflow_fixture.WorkflowFixture,
-    attempt_path: Path,
-) -> Path:
-    expected, plan = _first_task_context(built, attempt_path)
-    attempt = plan.attempt_record
-    start_path = plan.task_start_path
-    start_path.parent.mkdir(parents=True, exist_ok=True)
-    task_root = plan.task_attempt_path.parent
-    task_root.mkdir(parents=True, exist_ok=True)
-    start = {
-        "schema_version": "emrys.task-start.v2",
+def _task_identity(built, expected, plan) -> dict[str, Any]:
+    return {
         "run_id": built.execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(
             (built.run_root / "contract" / "run.json").read_bytes()
@@ -1064,17 +1308,65 @@ def _materialize_start_only(
         "profile_sha256": hashlib.sha256(
             (built.run_root / "contract" / "profile.json").read_bytes()
         ).hexdigest(),
-        "workflow_attempt_id": attempt["workflow_attempt_id"],
+        "workflow_attempt_id": plan.attempt_record["workflow_attempt_id"],
         "task_attempt_id": plan.task_attempt_id,
         "machine_key": expected.machine_key,
         "scope": expected.scope,
         "owner_run_token": plan.owner_run_token,
-        "workflow_attempt_record": _record_reference(attempt_path, built.run_root),
+    }
+
+
+def _task_start_record(built, plan, identity) -> dict[str, Any]:
+    return {
+        "schema_version": "emrys.task-start.v3",
+        **identity,
+        "workflow_attempt_record": _record_reference(plan.path, built.run_root),
         "run_lock": inspection.admit_attempt_run_lock(
-            built.run_root, attempt, require_active=True
+            built.run_root, plan.attempt_record, require_active=True
         ),
         "created_at": "2026-08-12T12:01:00Z",
+        "inputs": [
+            _bound("workflow_attempt", plan.path),
+            _bound("execution_contract", plan.execution_path),
+            _bound("workflow_profile", plan.profile_path),
+            *(_bound(item.role, item.path) for item in plan.inputs),
+        ],
     }
+
+
+def _task_terminal_record(built, plan, identity, **changes) -> dict[str, Any]:
+    return {
+        "schema_version": "emrys.task-attempt.v4",
+        "abort_closure": None,
+        **identity,
+        "task_start_record": None,
+        "status": "failed",
+        "started_at": "2026-08-12T12:01:00Z",
+        "finished_at": "2026-08-12T12:01:01Z",
+        "producer": None,
+        "validator": None,
+        "semantic_all_pass": None,
+        "stable_inputs_rechecked": False,
+        "validation_report": None,
+        "stdout_log": _record_reference(plan.stdout_path, built.run_root),
+        "stderr_log": _record_reference(plan.stderr_path, built.run_root),
+        "failure_message": "fixture preentry admission failure",
+        "inputs": [],
+        "outputs": [],
+        **changes,
+    }
+
+
+def _materialize_start_only(
+    built: workflow_fixture.WorkflowFixture,
+    attempt_path: Path,
+) -> Path:
+    expected, plan = _first_task_context(built, attempt_path)
+    start_path = plan.task_start_path
+    start_path.parent.mkdir(parents=True, exist_ok=True)
+    task_root = plan.task_attempt_path.parent
+    task_root.mkdir(parents=True, exist_ok=True)
+    start = _task_start_record(built, plan, _task_identity(built, expected, plan))
     orchestration_contracts.validate_record("task-start", start)
     start_path.write_bytes(orchestration_contracts.canonical_json_bytes(start))
     return start_path
@@ -1088,49 +1380,23 @@ def _materialize_preentry_failure(
     stderr_data: bytes,
 ) -> Path:
     expected, plan = _first_task_context(built, attempt_path)
-    attempt = plan.attempt_record
     task_attempt_path = plan.task_attempt_path
     task_attempt_path.parent.mkdir(parents=True, exist_ok=True)
     stdout = plan.stdout_path
     stderr = plan.stderr_path
     stdout.write_bytes(stdout_data)
     stderr.write_bytes(stderr_data)
-    record = {
-        "schema_version": "emrys.task-attempt.v3",
-        "run_id": built.execution["run_id"],
-        "execution_contract_sha256": hashlib.sha256(
-            (built.run_root / "contract" / "run.json").read_bytes()
-        ).hexdigest(),
-        "profile_sha256": hashlib.sha256(
-            (built.run_root / "contract" / "profile.json").read_bytes()
-        ).hexdigest(),
-        "workflow_attempt_id": attempt["workflow_attempt_id"],
-        "task_attempt_id": plan.task_attempt_id,
-        "machine_key": expected.machine_key,
-        "scope": expected.scope,
-        "owner_run_token": plan.owner_run_token,
-        "task_start_record": None,
-        "status": "failed",
-        "started_at": "2026-08-12T12:01:00Z",
-        "finished_at": "2026-08-12T12:01:01Z",
-        "producer": None,
-        "validator": None,
-        "semantic_all_pass": None,
-        "stable_inputs_rechecked": False,
-        "validation_report": None,
-        "stdout_log": _record_reference(stdout, built.run_root),
-        "stderr_log": _record_reference(stderr, built.run_root),
-        "failure_message": "fixture preentry admission failure",
-        "inputs": [],
-        "outputs": [],
-    }
+    record = _task_terminal_record(built, plan, _task_identity(built, expected, plan))
     orchestration_contracts.validate_record("task-attempt", record)
     task_attempt_path.write_bytes(orchestration_contracts.canonical_json_bytes(record))
     return task_attempt_path
 
 
 def _materialize_verified(
-    built: workflow_fixture.WorkflowFixture, attempt_path: Path
+    built: workflow_fixture.WorkflowFixture,
+    attempt_path: Path,
+    *,
+    skip: tuple[str, str] | None = None,
 ) -> None:
     execution_hash = hashlib.sha256(
         (built.run_root / "contract" / "run.json").read_bytes()
@@ -1141,12 +1407,13 @@ def _materialize_verified(
         attempt_path, "workflow-attempt"
     )
     attempt_reference = _record_reference(attempt_path, built.run_root)
-    workflow_id = str(workflow_attempt["workflow_attempt_id"])
     for expected in inspection.expected_tasks(
         inspection.admit_successor_run(built.run_root), built.profile
     ):
         machine = expected.machine_key
         scope_id = expected.scope_id
+        if (machine, scope_id) == skip:
+            continue
         marker = built.verified_root / machine / f"{scope_id}.json"
         if marker.is_file() and not marker.is_symlink():
             continue
@@ -1158,8 +1425,10 @@ def _materialize_verified(
             machine_key=machine,
             scope_id=scope_id,
         )
-        task_id = plan.task_attempt_id
-        owner_token = plan.owner_run_token
+        identity = _task_identity(built, expected, plan)
+        identity.update(
+            execution_contract_sha256=execution_hash, profile_sha256=profile_hash
+        )
         task_root = plan.task_attempt_path.parent
         task_root.mkdir(parents=True, exist_ok=True)
         artifact_root = (
@@ -1181,22 +1450,7 @@ def _materialize_verified(
         )
         task_start_path = plan.task_start_path
         task_start_path.parent.mkdir(parents=True, exist_ok=True)
-        start = {
-            "schema_version": "emrys.task-start.v2",
-            "run_id": built.execution["run_id"],
-            "execution_contract_sha256": execution_hash,
-            "profile_sha256": profile_hash,
-            "workflow_attempt_id": workflow_id,
-            "task_attempt_id": task_id,
-            "machine_key": machine,
-            "scope": expected.scope,
-            "owner_run_token": owner_token,
-            "workflow_attempt_record": _record_reference(attempt_path, built.run_root),
-            "run_lock": inspection.admit_attempt_run_lock(
-                built.run_root, workflow_attempt, require_active=True
-            ),
-            "created_at": "2026-08-12T12:01:00Z",
-        }
+        start = _task_start_record(built, plan, identity)
         orchestration_contracts.validate_record("task-start", start)
         start_bytes = orchestration_contracts.canonical_json_bytes(start)
         if task_start_path.exists() or task_start_path.is_symlink():
@@ -1208,34 +1462,25 @@ def _materialize_verified(
         (task_root / "stdout.log").write_bytes(b"fixture owner stdout\n")
         (task_root / "stderr.log").write_bytes(b"fixture owner stderr\n")
         report_reference = _record_reference(report_path, built.run_root)
-        task_attempt = {
-            "schema_version": "emrys.task-attempt.v3",
-            "run_id": built.execution["run_id"],
-            "execution_contract_sha256": execution_hash,
-            "profile_sha256": profile_hash,
-            "workflow_attempt_id": workflow_id,
-            "task_attempt_id": task_id,
-            "machine_key": machine,
-            "scope": expected.scope,
-            "owner_run_token": owner_token,
-            "task_start_record": task_start_reference,
-            "status": "succeeded",
-            "started_at": "2026-08-12T12:01:00Z",
-            "finished_at": "2026-08-12T12:02:00Z",
-            "producer": {"argv": list(plan.backend.producer_argv), "exit_code": 0},
-            "validator": {"argv": list(plan.backend.validator_argv), "exit_code": 0},
-            "semantic_all_pass": {
+        task_attempt = _task_terminal_record(
+            built,
+            plan,
+            identity,
+            task_start_record=task_start_reference,
+            status="succeeded",
+            finished_at="2026-08-12T12:02:00Z",
+            producer={"argv": list(plan.backend.producer_argv), "exit_code": 0},
+            validator={"argv": list(plan.backend.validator_argv), "exit_code": 0},
+            semantic_all_pass={
                 "argv": list(task._semantic_argv(plan, str(owner["step_id"]))),
                 "exit_code": 0,
             },
-            "stable_inputs_rechecked": True,
-            "validation_report": report_reference,
-            "stdout_log": _record_reference(task_root / "stdout.log", built.run_root),
-            "stderr_log": _record_reference(task_root / "stderr.log", built.run_root),
-            "failure_message": None,
-            "inputs": [_bound("fixture_input", input_path)],
-            "outputs": [_bound(output.role, output.path) for output in plan.outputs],
-        }
+            stable_inputs_rechecked=True,
+            validation_report=report_reference,
+            failure_message=None,
+            inputs=start["inputs"],
+            outputs=[_bound(output.role, output.path) for output in plan.outputs],
+        )
         orchestration_contracts.validate_record("task-attempt", task_attempt)
         task_attempt_path.write_bytes(
             orchestration_contracts.canonical_json_bytes(task_attempt)
@@ -1257,12 +1502,13 @@ def _attempt_tasks(
         for scope_id in by_scope:
             verified = built.verified_root / machine / f"{scope_id}.json"
             if verified.is_file() and not verified.is_symlink():
+                marker = orchestration_contracts.load_record(verified, "verified-task")
+                terminal = orchestration_contracts.load_record(
+                    built.run_root / marker["task_attempt_record"]["path"],
+                    "task-attempt",
+                )
                 start = orchestration_contracts.load_record(
-                    built.run_root
-                    / "state"
-                    / "task-starts"
-                    / machine
-                    / f"{scope_id}.json",
+                    built.run_root / terminal["task_start_record"]["path"],
                     "task-start",
                 )
                 by_scope[scope_id] = {
@@ -1279,53 +1525,20 @@ def _attempt(
     supersedes: str | None,
     argv: tuple[str, ...],
 ) -> dict[str, Any]:
-    execution_bytes = (built.run_root / "contract" / "run.json").read_bytes()
-    profile_bytes = (built.run_root / "contract" / "profile.json").read_bytes()
-    created = identifier.split("-")[1]
-    created_at = datetime.strptime(created, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
-    normalizer, required_tools = workflow_fixture._attempt_runtime_identities(
-        built.root
+    return workflow_fixture.attempt_record(
+        built.run_root,
+        identifier,
+        (built.root / "intake/project.yaml").resolve(),
+        operation=operation,
+        supersedes_workflow_attempt_id=supersedes,
+        snakemake_argv=list(argv),
+        request_label="fixture lifecycle",
+        workflow=json.loads(built.attempt_record_bytes)["workflow"],
+        tasks=_attempt_tasks(built),
+        host="fixture-host",
+        process_id=4242,
+        owner_token=f"owner-{identifier[-8:]}",
     )
-    return {
-        "schema_version": "emrys.workflow-attempt.v3",
-        "run_id": built.execution["run_id"],
-        "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
-        "profile_sha256": hashlib.sha256(profile_bytes).hexdigest(),
-        "workflow_attempt_id": identifier,
-        "supersedes_workflow_attempt_id": supersedes,
-        "operation": operation,
-        "created_at": created_at.isoformat(timespec="seconds").replace("+00:00", "Z"),
-        "request": {
-            "path": str(built.run_root / "attempts" / identifier / "request.yaml"),
-            "size_bytes": (built.root / "intake" / "project.yaml").stat().st_size,
-            "sha256": hashlib.sha256(
-                (built.root / "intake" / "project.yaml").read_bytes()
-            ).hexdigest(),
-        },
-        "request_label": "fixture lifecycle",
-        "authored_paths": {
-            "request": str((built.root / "intake" / "project.yaml").resolve()),
-            "sample_manifest": "samples.tsv",
-            "partition_manifest": "partitions.tsv",
-            "reference_fasta": "reference/genome.fa",
-            "reference_gtf": "reference/genome.gtf",
-            "analysis_policy": None,
-        },
-        "normalizer": normalizer,
-        "workspace": str(built.run_root.parent.parent),
-        "scratch": None,
-        "installed_package": admit_installed_package().record,
-        "executor": "local",
-        "execution_mode": "local-science-tools",
-        "snakemake_argv": list(argv),
-        "workflow": json.loads(built.attempt_record_bytes)["workflow"],
-        "tasks": _attempt_tasks(built),
-        "host": "fixture-host",
-        "process_id": 4242,
-        "owner_token": f"owner-{identifier[-8:]}",
-        "cores": 1,
-        "required_tools": required_tools,
-    }
 
 
 def _build_harness(
@@ -1336,9 +1549,9 @@ def _build_harness(
     identifier: str | None = None,
     result: lifecycle.WorkflowResult | None = None,
 ) -> Harness:
-    built = workflow_fixture.build(tmp_path / "workspace" / "fixture")
-    # Replace the fixture's initial Attempt with the lifecycle Attempt under test.
-    shutil.rmtree(built.workflow_attempt_path.parent)
+    built = workflow_fixture.build(
+        tmp_path / "workspace" / "fixture", materialize_attempt=False
+    )
     (built.run_root / "attempts").mkdir(exist_ok=True)
     (built.run_root / "locks").mkdir(exist_ok=True)
     workflow_id = identifier or "workflow-20260812T140000Z-" + "d" * 32
@@ -1424,7 +1637,7 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
     outcome = _run_attempt(built.request, ops=built.ops())
 
     assert outcome.receipt["status"] == "succeeded"
-    assert outcome.receipt["schema_version"] == "emrys.attempt-receipt.v2"
+    assert outcome.receipt["schema_version"] == "emrys.attempt-receipt.v3"
     assert "reporting_completion_records" not in outcome.receipt
     assert "local_pipeline_complete" not in outcome.receipt
     expected_task_count = len(
@@ -1459,18 +1672,15 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
     assert storage_admissions[0] < workflow_index < storage_admissions[1]
     (built.built.run_root / ".snakemake").mkdir()
     (built.built.run_root / ".snakemake" / "foreign").write_text("junk\n")
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
     assert observed.integrity == "valid", observed.blockers
     assert observed.attempt_outcome == "succeeded"
     assert observed.results_status == "complete"
     assert observed.reporting_status == "incomplete"
+    assert {
+        control._inspection_presentation.task_observation(item)
+        for item in observed.tasks
+    } == {"Verified complete"}
 
 
 def test_application_event_observer_exceptions_cannot_alter_receipt(
@@ -1672,25 +1882,28 @@ def test_clean_failure_and_interruption_are_resume_available(
     built = _build_harness(tmp_path, result=result)
     outcome = _run_attempt(built.request, ops=built.ops())
     assert outcome.receipt["status"] == expected
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
     assert observed.attempt_outcome == expected
+    assert observed.lock_observation == "no lock"
     assert observed.results_status == "incomplete"
     assert observed.reporting_status == "incomplete"
     assert observed.recovery_available
+
+    outcome.lock_path.write_bytes(
+        outcome.attempt_path.with_name("released-run-lock.json").read_bytes()
+    )
+    retained = built.inspect()
+    assert retained.lock_observation == "invalid or ambiguous lock"
+    assert retained.integrity == "blocked"
+    assert "Terminal workflow attempt retained its run lock" in retained.blockers
+    assert not retained.recovery_available
 
 
 def test_complete_results_do_not_replace_latest_scientific_attempt_outcome() -> None:
     assert (
         inspection._attempt_outcome(
             latest={"workflow_attempt_id": "latest"},
-            receipt={"schema_version": "emrys.attempt-receipt.v2", "status": "failed"},
+            receipt={"schema_version": "emrys.attempt-receipt.v3", "status": "failed"},
             running=False,
             integrity_blockers=(),
             results_status="complete",
@@ -1710,7 +1923,7 @@ def test_rederived_results_blocker_does_not_block_run_integrity_by_wording(
         attempt_outcome="blocked",
         latest_attempt={"workflow_attempt_id": "latest"},
         latest_receipt={
-            "schema_version": "emrys.attempt-receipt.v2",
+            "schema_version": "emrys.attempt-receipt.v3",
             "status": "blocked",
             "blockers": ["Could not admit task-start record"],
         },
@@ -1737,14 +1950,7 @@ def test_reporting_residue_does_not_gate_failed_science_recovery(
     residue.mkdir(parents=True)
 
     outcome = _run_attempt(built.request, ops=built.ops())
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
 
     assert outcome.receipt["status"] == "failed"
     assert outcome.receipt["blockers"] == []
@@ -1760,14 +1966,7 @@ def test_complete_results_survive_failed_scientific_receipt(
     )
     built.materialize_complete = True
     outcome = _run_attempt(built.request, ops=built.ops())
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
 
     assert outcome.receipt["status"] == "failed"
     assert observed.attempt_outcome == "failed"
@@ -1812,6 +2011,166 @@ def test_verified_mutation_blocks(tmp_path: Path) -> None:
     outcome = _run_attempt(mutation.request, ops=mutation.ops())
     assert outcome.receipt["status"] == "blocked"
     assert any("content binding" in item for item in outcome.receipt["blockers"])
+    observed = mutation.inspect()
+    assert "Verification not admitted" in {
+        control._inspection_presentation.task_observation(item)
+        for item in observed.tasks
+    }
+    assert observed.results_status == "blocked" and not observed.recovery_available
+
+
+@pytest.mark.parametrize("recorded_status", ("failed", "succeeded"))
+@pytest.mark.parametrize("malformed_start", (False, True))
+def test_terminal_task_observation_does_not_admit_unverified_results(
+    tmp_path: Path,
+    recorded_status: str,
+    malformed_start: bool,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    built = _build_harness(tmp_path, result=lifecycle.WorkflowResult(9, None))
+    built.materialize_complete = True
+    plans = []
+
+    def without_verification(
+        argv: tuple[str, ...], cwd: Path
+    ) -> lifecycle.WorkflowResult:
+        result = built.run_workflow(argv, cwd)
+        attempt_id = str(_attempt_record(built.request)["workflow_attempt_id"])
+        attempt_path = built.built.run_root / "attempts" / attempt_id / "attempt.json"
+        _expected, plan = _first_task_context(built.built, attempt_path)
+        plans.append(plan)
+        record = orchestration_contracts.load_record(
+            plan.task_attempt_path, "task-attempt"
+        )
+        record["status"] = recorded_status
+        record["failure_message"] = (
+            "fixture postentry failure\x1b[31m" if recorded_status == "failed" else None
+        )
+        orchestration_contracts.validate_record("task-attempt", record)
+        plan.task_attempt_path.write_bytes(
+            orchestration_contracts.canonical_json_bytes(record)
+        )
+        plan.verified_task_path.unlink()
+        return result
+
+    outcome = _run_attempt(
+        built.request, ops=replace(built.ops(), run_workflow=without_verification)
+    )
+    plan = plans[0]
+    if malformed_start:
+        record = orchestration_contracts.load_record(
+            plan.task_attempt_path, "task-attempt"
+        )
+        start_path = plan.run_root / record["task_start_record"]["path"]
+        start_path.write_bytes(b'{"malformed":true}')
+        record["task_start_record"] = _record_reference(start_path, plan.run_root)
+        orchestration_contracts.validate_record("task-attempt", record)
+        plan.task_attempt_path.write_bytes(
+            orchestration_contracts.canonical_json_bytes(record)
+        )
+    before = {
+        path: path.read_bytes()
+        for path in built.built.run_root.rglob("*")
+        if path.is_file()
+    }
+    observed = built.inspect()
+    inspected = next(
+        item
+        for item in observed.tasks
+        if (item.expected.machine_key, item.expected.scope_id)
+        == (plan.machine_key, plan.scope["scope_id"])
+    )
+    assert inspected.state == ("pending" if malformed_start else "blocked")
+    assert inspected.record is None
+    assert inspected.record_reference is None
+    terminal_reference = _record_reference(plan.task_attempt_path, plan.run_root)
+    if malformed_start:
+        assert inspected.start_reference is None
+        assert inspected.terminal_attempts == ()
+        assert any(
+            "Could not close attempt task state" in item for item in observed.blockers
+        )
+    else:
+        assert inspected.start_reference is not None
+        assert len(inspected.terminal_attempts) == 1
+        terminal = inspected.terminal_attempts[0]
+        assert terminal.record["status"] == recorded_status
+        assert terminal.record_reference == terminal_reference
+        assert terminal.record["stdout_log"] == _record_reference(
+            plan.stdout_path, plan.run_root
+        )
+        assert terminal.record["stderr_log"] == _record_reference(
+            plan.stderr_path, plan.run_root
+        )
+    assert observed.results_status == "blocked" and not observed.recovery_available
+    assert outcome.receipt["status"] == "blocked"
+    assert not any(
+        item["record"] == terminal_reference
+        for item in outcome.receipt["verified_tasks"]
+    )
+    snapshots = []
+
+    def snapshot(root):
+        snapshots.append(root)
+        return observed
+
+    monkeypatch.setattr(control.inspection, "inspect_run", snapshot)
+    monkeypatch.setattr(
+        control,
+        "_resolve_run_argument",
+        lambda _args: (built.request.request_source_path, plan.run_root),
+    )
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    capsys.readouterr()
+    for detail in ("normal", "verbose"):
+        assert (
+            control.inspect_from_args(
+                parser.parse_args(
+                    [
+                        plan.run_root.name,
+                        *(["--verbose"] if detail == "verbose" else []),
+                    ]
+                )
+            )
+            == 0
+        )
+        output = capsys.readouterr().out
+        assert "Scientific Results: blocked" in output
+        assert ("Recovery available: no" in output) is (detail == "verbose")
+        assert "Recorded Task attempts:" not in output
+        assert ("Recorded Task outcomes and logs:" in output) is (
+            detail == "verbose"
+            and any(task.terminal_attempts for task in observed.tasks)
+        )
+        if detail == "verbose" and malformed_start:
+            assert f"    record: {plan.task_attempt_path}" not in output
+        elif detail == "verbose":
+            assert (
+                f"recorded {recorded_status}; Attempt {terminal.record['workflow_attempt_id']}"
+                in output
+            )
+            assert f"    record: {plan.task_attempt_path}" in output
+            assert (
+                "Task diagnostic streams (paths do not establish existence or liveness):"
+                in output
+            )
+            stream_label = (
+                f"  Task {plan.machine_key}/{plan.scope['scope_id']} "
+                f"({terminal.record['workflow_attempt_id']}; recorded {recorded_status})"
+            )
+            assert f"{stream_label} stdout: {plan.stdout_path}" in output
+            assert f"{stream_label} stderr: {plan.stderr_path}" in output
+            if recorded_status == "failed":
+                assert "fixture postentry failure\\x1b[31m" in output
+        assert "\x1b" not in output
+    assert snapshots == [plan.run_root] * 2
+    assert {
+        path: path.read_bytes()
+        for path in built.built.run_root.rglob("*")
+        if path.is_file()
+    } == before
 
 
 @pytest.mark.parametrize("shape", ["unexpected_owner", "deep_path", "symlink_marker"])
@@ -1843,14 +2202,7 @@ def test_verified_tree_residue_blocks_lifecycle_and_inspection(
     assert any(
         "verified task" in value.lower() for value in outcome.receipt["blockers"]
     )
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
     assert observed.results_status == "blocked"
     assert any("verified task" in value.lower() for value in observed.blockers)
 
@@ -1865,14 +2217,7 @@ def test_post_child_runtime_identity_change_blocks(tmp_path: Path) -> None:
         "Runtime identity changed" in item for item in outcome.receipt["blockers"]
     )
     assert built.runtime_admissions == 2
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
     assert observed.integrity == "blocked"
     assert any("Runtime identity changed" in item for item in observed.receipt_blockers)
     assert not observed.recovery_available
@@ -1983,14 +2328,7 @@ def test_foreign_attempt_directory_race_is_refused_after_lock_acquisition(
     assert not (built.built.run_root / "locks" / "run.lock").exists()
     released = built.built.run_root / "locks" / f"released-{identifier}-run-lock.json"
     assert released.is_file()
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
     assert observed.integrity == "blocked"
     assert any("retained aggregate lock" in value for value in observed.blockers)
 
@@ -2242,14 +2580,7 @@ def test_inspection_blocks_empty_or_foreign_attempt_state(tmp_path: Path) -> Non
         built.built.run_root / "attempts" / ("workflow-20260812T170000Z-" + "a" * 32)
     )
     empty.mkdir()
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
     assert observed.integrity == "blocked"
     assert any(str(empty / "attempt.json") in item for item in observed.blockers)
 
@@ -2268,14 +2599,7 @@ def test_attempts_root_must_be_pre_materialized_and_real(
         attempts_root.rename(real_root)
         attempts_root.symlink_to(real_root, target_is_directory=True)
 
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
     assert observed.integrity == "blocked"
     assert any("attempts root" in item for item in observed.blockers)
 
@@ -2298,14 +2622,7 @@ def test_nonattempt_entry_and_unexpected_attempt_child_block_before_lock(
     attempt_root.mkdir()
     (attempt_root / "foreign.txt").write_text("foreign\n", encoding="utf-8")
 
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
     assert observed.integrity == "blocked"
     assert any(
         "Unexpected aggregate attempt state" in item for item in observed.blockers
@@ -2327,7 +2644,7 @@ def test_lying_runtime_authority_fails_before_attempt_publication(
     def reject(
         _attempt: dict[str, Any],
         _request: lifecycle.LifecycleRequest,
-        _storage_binding: doctor.RuntimeBinding | None,
+        _storage_binding: RuntimeBinding | None,
         _initial_inspection: RuntimeInspection | None,
     ) -> None:
         raise lifecycle.LifecycleError("declared checkout differs from observed")
@@ -2374,14 +2691,7 @@ def test_success_receipt_with_verified_subset_is_blocked_on_inspection(
     outcome.receipt_path.write_bytes(
         orchestration_contracts.canonical_json_bytes(receipt)
     )
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
     assert observed.results_status == "blocked"
     assert any("cumulative verified tasks" in item for item in observed.blockers)
 
@@ -2425,33 +2735,243 @@ def test_completed_run_refuses_rerun_and_resume(tmp_path: Path) -> None:
 
 def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     built = _build_harness(
         tmp_path, result=lifecycle.WorkflowResult(9, None, "fixture stop")
     )
     built.inspect_live_transient = True
-    outcome = _run_attempt(built.request, ops=built.ops())
+    root = built.built.run_root
+    remote_states: list[inspection.RunInspection] = []
+
+    def display(state: inspection.RunInspection) -> None:
+        before = {path: path.read_bytes() for path in root.rglob("*") if path.is_file()}
+        calls = []
+        started = next(item for item in state.tasks if item.start_reference is not None)
+        expected_root = (
+            root
+            / "attempts"
+            / started.start_origin
+            / "tasks"
+            / started.expected.machine_key
+            / started.expected.scope_id
+        )
+        expected_paths = (expected_root / "stderr.log", expected_root / "stdout.log")
+        streams = control._inspection_presentation.task_stream_sources(state)
+        assert tuple(source.path for source in streams) == expected_paths
+        assert all(
+            "expected diagnostic from admitted start" in source.label
+            for source in streams
+        )
+
+        def snapshot(selected: Path) -> inspection.RunInspection:
+            assert selected == root
+            calls.append(selected)
+            return state
+
+        with monkeypatch.context() as public:
+            public.setattr(inspection, "inspect_run", snapshot)
+            public.setattr(
+                control,
+                "_resolve_run_argument",
+                lambda _args: (built.request.request_source_path, root),
+            )
+            for verbose in (False, True):
+                capsys.readouterr()
+                assert (
+                    control.inspect_from_args(
+                        argparse.Namespace(run=root.name, verbose=verbose)
+                    )
+                    == 0
+                )
+                output = capsys.readouterr().out
+                assert ("Scientific task observations:" in output) is verbose
+                observation = (
+                    "Started; completion unverified"
+                    if state.attempt_outcome == "running"
+                    else "Verification not admitted"
+                )
+                assert (f"  {observation}: 1" in output) is verbose
+                assert f"Scientific Results: {state.results_status}" in output
+                assert (f"Run lock: {state.lock_observation}" in output) is (
+                    verbose or state.lock_observation != "no lock"
+                )
+                assert ("Recovery available: no" in output) is verbose
+                for path in expected_paths:
+                    assert (str(path) in output) is verbose
+                if verbose:
+                    assert "paths do not establish existence or liveness" in output
+                    assert f"; start={root / started.start_reference['path']}" in output
+                if state.attempt_outcome == "blocked":
+                    assert "Do not resume." in output
+                    assert "RESULTS BLOCKER:" in output
+        assert calls == [root] * 2
+        assert {
+            path: path.read_bytes() for path in root.rglob("*") if path.is_file()
+        } == before
+
+    def run_workflow(argv: tuple[str, ...], cwd: Path) -> lifecycle.WorkflowResult:
+        result = built.run_workflow(argv, cwd)
+        assert built.live_observation is not None
+        display(built.live_observation)
+        remote = built.inspect(
+            host="head-node",
+            process_is_alive=lambda _pid: pytest.fail("remote PID was probed"),
+        )
+        remote_states.append(remote)
+        display(remote)
+        return result
+
+    outcome = _run_attempt(
+        built.request, ops=replace(built.ops(), run_workflow=run_workflow)
+    )
 
     assert built.live_observation is not None
     assert built.live_observation.attempt_outcome == "running"
+    assert built.live_observation.lock_observation == "local live owner"
     assert not built.live_observation.recovery_available
+    assert all(not item.terminal_attempts for item in built.live_observation.tasks)
     assert outcome.receipt["status"] == "blocked"
     assert len(outcome.receipt["task_start_records"]) == 1
 
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
     assert observed.integrity == "valid"
     assert observed.attempt_outcome == "blocked"
     assert observed.results_status == "blocked"
+    display(observed)
+    remote = remote_states[0]
+    assert remote.lock_observation == "remote ownership unverified"
+    assert remote.integrity == remote.results_status == "blocked"
+    assert (
+        [item.start_reference for item in observed.tasks]
+        == [item.start_reference for item in remote.tasks]
+        == [item.start_reference for item in built.live_observation.tasks]
+    )
 
 
-def test_task_start_crash_and_deletion_remain_blocked(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("condition", "expected", "process_checks"),
+    (
+        ("local", "local live owner", 1),
+        ("remote", "remote ownership unverified", 0),
+        ("dead", "local process not live", 1),
+        ("malformed", "invalid or ambiguous lock", 0),
+        ("mismatched", "invalid or ambiguous lock", 0),
+        ("namespace", "invalid or ambiguous lock", 0),
+    ),
+)
+def test_live_lock_observation_preserves_admission_and_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    condition: str,
+    expected: str,
+    process_checks: int,
+) -> None:
+    built = _build_harness(tmp_path, result=lifecycle.WorkflowResult(9, None))
+    root = built.built.run_root
+    lock = root / "locks/run.lock"
+    foreign = root / "locks/foreign.lock"
+    observed_states = []
+    checked_processes = []
+    lock_reads = []
+    read_counts = []
+    displays = []
+    original_admit = inspection.admit_canonical_record
+
+    def admit_record(path, *args, **kwargs):
+        if path == lock:
+            lock_reads.append(path)
+        return original_admit(path, *args, **kwargs)
+
+    monkeypatch.setattr(inspection, "admit_canonical_record", admit_record)
+
+    def inspect_during_workflow(argv, cwd):
+        original_bytes = lock.read_bytes()
+        if condition == "malformed":
+            lock.write_bytes(b"malformed fixture lock\n")
+        elif condition == "mismatched":
+            record = json.loads(original_bytes)
+            record["process_id"] = 9999
+            lock.write_bytes(orchestration_contracts.canonical_json_bytes(record))
+        elif condition == "namespace":
+            foreign.write_bytes(b"ambiguous fixture lock\n")
+        before = {path: path.read_bytes() for path in root.rglob("*") if path.is_file()}
+        inspect_ops = built.inspection_ops(
+            host="head-node" if condition == "remote" else "fixture-host",
+            process_is_alive=lambda pid: (
+                checked_processes.append(pid) is None and condition != "dead"
+            ),
+        )
+        previous_reads = len(lock_reads)
+        observed_states.append(inspection.inspect_run(root, ops=inspect_ops))
+        read_counts.append(len(lock_reads) - previous_reads)
+        with monkeypatch.context() as public:
+            public.setattr(inspection, "default_inspection_ops", lambda: inspect_ops)
+            public.setattr(
+                control,
+                "_resolve_run_argument",
+                lambda _arguments: (built.request.request_source_path, root),
+            )
+            for verbose in (False, True):
+                capsys.readouterr()
+                previous_reads = len(lock_reads)
+                assert (
+                    control.inspect_from_args(
+                        argparse.Namespace(
+                            project=built.request.request_source_path,
+                            run=root.name,
+                            verbose=verbose,
+                        )
+                    )
+                    == 0
+                )
+                displays.append(capsys.readouterr().out)
+                read_counts.append(len(lock_reads) - previous_reads)
+        assert {
+            path: path.read_bytes() for path in root.rglob("*") if path.is_file()
+        } == before
+        if condition in {"malformed", "mismatched"}:
+            lock.write_bytes(original_bytes)
+        elif condition == "namespace":
+            foreign.unlink()
+        return built.run_workflow(argv, cwd)
+
+    _run_attempt(
+        built.request, ops=replace(built.ops(), run_workflow=inspect_during_workflow)
+    )
+    observed = observed_states[0]
+    assert observed.lock_observation == expected
+    assert observed.attempt_outcome == (
+        "running" if condition == "local" else "blocked"
+    )
+    assert observed.integrity == ("valid" if condition == "local" else "blocked")
+    assert not observed.recovery_available
+    assert len(checked_processes) == process_checks * 3
+    assert read_counts == [0 if condition == "namespace" else 1] * 3
+    for index, display in enumerate(displays):
+        assert f"Run lock: {expected}" in display
+        assert f"Run admission: {observed.integrity}" in display
+        assert f"Attempt outcome: {observed.attempt_outcome}" in display
+        assert ("Recovery available: no" in display) is bool(index % 2)
+        if condition in {"local", "remote", "dead"}:
+            assert "Recorded lock host: fixture-host; scheduler job: none" in display
+        else:
+            assert "Recorded lock host:" not in display
+        if condition != "local":
+            assert "Do not resume." in display
+    if condition == "remote":
+        assert (
+            "Run lock host is not this host; live ownership is unproved"
+            in observed.blockers
+        )
+
+
+@pytest.mark.parametrize("damage", ("missing", "malformed"))
+def test_task_start_crash_and_damage_remain_blocked(
+    tmp_path: Path, damage: str
+) -> None:
     built = _build_harness(
         tmp_path, result=lifecycle.WorkflowResult(17, None, "fixture crash")
     )
@@ -2462,18 +2982,21 @@ def test_task_start_crash_and_deletion_remain_blocked(tmp_path: Path) -> None:
         built.built.run_root
         / outcome.receipt["task_start_records"][0]["record"]["path"]
     )
-    start.unlink()
+    if damage == "missing":
+        start.unlink()
+    else:
+        start.write_bytes(b"malformed task-start fixture\n")
 
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
     assert observed.results_status == "blocked"
-    assert any("task-start" in blocker for blocker in observed.blockers)
+    assert any(
+        "Could not close attempt task state" in blocker for blocker in observed.blockers
+    )
+    assert {
+        control._inspection_presentation.task_observation(item)
+        for item in observed.tasks
+    } == {"No admitted start"}
+    assert control._inspection_presentation.task_stream_sources(observed) == ()
 
 
 @pytest.mark.parametrize("tamper", ["extra", "deep", "symlink"])
@@ -2497,18 +3020,21 @@ def test_historical_task_tree_is_recursively_closed(
         stdout.unlink()
         stdout.symlink_to(scope_root / "stderr.log")
 
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
     assert observed.integrity == "valid"
     assert observed.results_status == "blocked"
     assert not observed.recovery_available
     assert any("task" in blocker.lower() for blocker in observed.blockers)
+    affected = next(
+        item
+        for item in observed.tasks
+        if (item.expected.machine_key, item.expected.scope_id)
+        == (scope_root.parent.name, scope_root.name)
+    )
+    assert affected.terminal_attempts == ()
+    assert any(
+        item.terminal_attempts for item in observed.tasks if item is not affected
+    )
 
 
 def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
@@ -2555,14 +3081,30 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
 
     monkeypatch.setattr(validation_inputs.os, "read", track_os_read)
     monkeypatch.setattr(_inspection_attempts, "_read_bytes", reject_full_log_read)
-    inspect_ops = inspection.InspectionOps(
-        lambda: "fixture-host",
-        lambda _pid: True,
-        first.validate_reporting,
-    )
+    inspect_ops = first.inspection_ops()
 
     observed = inspection.inspect_run(first.built.run_root, ops=inspect_ops)
     assert observed.recovery_available
+    terminals = [
+        terminal for item in observed.tasks for terminal in item.terminal_attempts
+    ]
+    assert len(terminals) == 1
+    terminal = terminals[0]
+    assert (
+        terminal.record["status"] == "failed"
+        and terminal.record["task_start_record"] is None
+    )
+    assert terminal.record_reference == _record_reference(
+        task_attempt, first.built.run_root
+    )
+    assert terminal.record["stdout_log"] == {
+        "path": stdout_path.relative_to(first.built.run_root).as_posix(),
+        "sha256": hashlib.sha256(stdout_data).hexdigest(),
+    }
+    assert terminal.record["stderr_log"] == {
+        "path": stderr_path.relative_to(first.built.run_root).as_posix(),
+        "sha256": hashlib.sha256(stderr_data).hexdigest(),
+    }
     for path, expected_size in (
         (stdout_path, len(stdout_data)),
         (stderr_path, len(stderr_data)),
@@ -2638,19 +3180,19 @@ def test_task_log_mutation_blocks_completed_run_inspection(
     else:
         log_path.write_bytes(b"")
 
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
     assert observed.results_status == "blocked"
     assert any(
         "SHA-256 no longer matches" in blocker and file_name.split(".")[0] in blocker
         for blocker in observed.blockers
     )
+    affected = next(
+        item
+        for item in observed.tasks
+        if (item.expected.machine_key, item.expected.scope_id)
+        == (log_path.parent.parent.name, log_path.parent.name)
+    )
+    assert affected.terminal_attempts == ()
 
 
 @pytest.mark.parametrize("file_name", ["stdout.log", "stderr.log"])
@@ -2674,16 +3216,10 @@ def test_preentry_task_log_mutation_blocks_resume(
     else:
         log_path.write_bytes(b"")
 
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
+    observed = built.inspect()
     assert observed.results_status == "blocked"
     assert observed.recovery_available is False
+    assert all(not item.terminal_attempts for item in observed.tasks)
     assert any(
         "SHA-256 no longer matches" in blocker and file_name.split(".")[0] in blocker
         for blocker in observed.blockers
@@ -2695,17 +3231,26 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
         tmp_path, result=lifecycle.WorkflowResult(23, None, "preentry failure")
     )
     first.materialize_preentry_failure = True
-    first_outcome = _run_attempt(first.request, ops=first.ops())
+
+    def partial_workflow(argv: tuple[str, ...], cwd: Path) -> lifecycle.WorkflowResult:
+        result = first.run_workflow(argv, cwd)
+        attempt_id = str(_attempt_record(first.request)["workflow_attempt_id"])
+        attempt_path = first.built.run_root / "attempts" / attempt_id / "attempt.json"
+        expected, _plan = _first_task_context(first.built, attempt_path)
+        _materialize_verified(
+            first.built, attempt_path, skip=(expected.machine_key, expected.scope_id)
+        )
+        return result
+
+    first_outcome = _run_attempt(
+        first.request, ops=replace(first.ops(), run_workflow=partial_workflow)
+    )
     assert first_outcome.receipt["status"] == "failed"
-    assert len(first_outcome.receipt["preentry_task_attempt_records"]) == 1
-    assert inspection.inspect_run(
-        first.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            first.validate_reporting,
-        ),
-    ).recovery_available
+    task_count = sum(
+        len(scopes) for scopes in _attempt_record(first.request)["tasks"].values()
+    )
+    assert len(first_outcome.receipt["task_attempt_records"]) == task_count
+    assert first.inspect().recovery_available
 
     first_id = str(_attempt_record(first.request)["workflow_attempt_id"])
     second_id = "workflow-20260812T140500Z-" + "a" * 32
@@ -2720,15 +3265,8 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
     first.materialize_complete = True
     second_outcome = _run_attempt(first.request, ops=first.ops())
     assert second_outcome.receipt["status"] == "succeeded"
-    assert len(second_outcome.receipt["preentry_task_attempt_records"]) == 1
-    complete_observation = inspection.inspect_run(
-        first.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            first.validate_reporting,
-        ),
-    )
+    assert len(second_outcome.receipt["task_attempt_records"]) == task_count + 1
+    complete_observation = first.inspect()
     assert (
         complete_observation.integrity,
         complete_observation.attempt_outcome,
@@ -2738,26 +3276,63 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
     ) == ("valid", "succeeded", "complete", "incomplete", False), (
         complete_observation.blockers
     )
+    retried = next(
+        item for item in complete_observation.tasks if len(item.terminal_attempts) == 2
+    )
+    assert [
+        item.record["workflow_attempt_id"] for item in retried.terminal_attempts
+    ] == [first_id, second_id]
+    assert [item.record["status"] for item in retried.terminal_attempts] == [
+        "failed",
+        "succeeded",
+    ]
+    reused = [item for item in complete_observation.tasks if item is not retried]
+    assert reused and all(len(item.terminal_attempts) == 1 for item in reused)
+    assert all(
+        item.terminal_attempts[0].record["workflow_attempt_id"] == first_id
+        for item in reused
+    )
+    for item in complete_observation.tasks:
+        for terminal in item.terminal_attempts:
+            assert terminal.record_reference == _record_reference(
+                first.built.run_root / terminal.record_reference["path"],
+                first.built.run_root,
+            )
+
+    historical = retried.terminal_attempts[0]
+    historical_path = first.built.run_root / historical.record_reference["path"]
+    historical_bytes = historical_path.read_bytes()
+    wrong_start = copy.deepcopy(historical.record)
+    wrong_start["task_start_record"] = retried.start_reference
+    orchestration_contracts.validate_record("task-attempt", wrong_start)
+    historical_path.write_bytes(
+        orchestration_contracts.canonical_json_bytes(wrong_start)
+    )
+    wrong_origin = first.inspect()
+    affected = next(
+        item for item in wrong_origin.tasks if item.expected == retried.expected
+    )
+    assert affected.start_origin == second_id
+    assert affected.start_reference == retried.start_reference
+    assert [
+        item.record["workflow_attempt_id"] for item in affected.terminal_attempts
+    ] == [second_id]
+    assert wrong_origin.results_status == "blocked"
+    assert wrong_origin.blockers and not wrong_origin.recovery_available
+    historical_path.write_bytes(historical_bytes)
 
     original_first_receipt = orchestration_contracts.load_record(
         first_outcome.receipt_path, "attempt-receipt"
     )
     omitted = copy.deepcopy(original_first_receipt)
-    omitted["preentry_task_attempt_records"] = []
+    omitted["task_attempt_records"] = []
     first_outcome.receipt_path.write_bytes(
         orchestration_contracts.canonical_json_bytes(omitted)
     )
-    omitted_observation = inspection.inspect_run(
-        first.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            first.validate_reporting,
-        ),
-    )
+    omitted_observation = first.inspect()
     assert omitted_observation.results_status == "blocked"
     assert any(
-        "cumulative preentry evidence" in blocker
+        "cumulative Task attempts" in blocker
         for blocker in omitted_observation.blockers
     )
     first_outcome.receipt_path.write_bytes(
@@ -2771,19 +3346,13 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
         status="blocked",
         blockers=["forged future binding"],
         message="forged future binding",
-        task_start_records=[second_outcome.receipt["task_start_records"][0]],
+        task_start_records=second_outcome.receipt["task_start_records"],
     )
+    orchestration_contracts.validate_record("attempt-receipt", forged)
     first_outcome.receipt_path.write_bytes(
         orchestration_contracts.canonical_json_bytes(forged)
     )
-    forged_observation = inspection.inspect_run(
-        first.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            first.validate_reporting,
-        ),
-    )
+    forged_observation = first.inspect()
     assert forged_observation.integrity == "blocked"
     assert forged_observation.results_status == "blocked"
     assert any(

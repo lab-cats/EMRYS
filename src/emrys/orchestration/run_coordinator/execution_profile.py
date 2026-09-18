@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Any, Literal
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import (
+    resolve_computational_resources,
+)
 from emrys.libraries.validation.errors import ValidationError
 from emrys.libraries.validation.inputs import read_bytes
 from emrys.orchestration.run_coordinator.resource_policy import (
@@ -20,7 +23,6 @@ from emrys.orchestration.run_coordinator.resource_policy import (
     ResourcePolicy,
     admit_resource_policy,
     is_canonical_slurm_job_id,
-    resume_resource_policy,
 )
 
 SCHEMA_VERSION = "emrys.execution-profile.v1"
@@ -43,11 +45,21 @@ class ExecutionProfileError(ValueError):
     """One execution-profile source or resolved value is inadmissible."""
 
 
+def execution_profile_binding_sha256(
+    effective_sha256: str, source_raw_sha256: str
+) -> str:
+    """Bind effective profile semantics to the exact selected source bytes."""
+    return hashlib.sha256(
+        f"{effective_sha256}\0{source_raw_sha256}".encode()
+    ).hexdigest()
+
+
 def add_site_argument(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--site",
         choices=("viking",),
-        help="Use Viking's built-in Slurm placement for this Project.",
+        default=os.environ.get("EMRYS_SITE") or None,
+        help="Use Viking's built-in Slurm placement.",
     )
 
 
@@ -64,10 +76,10 @@ placement:
   account: viking-users
   partition: long
   qos: normal
-  cpus_per_task: 4
-  memory_mb: null
-  time: "08:00:00"
-  exclusive: false
+  cpus_per_task: node
+  memory_mb: 0
+  time: "12:00:00"
+  exclusive: true
   nodelist: null
   scratch_parent: /tmp
   modules:
@@ -127,7 +139,7 @@ class SlurmPlacement:
     account: str | None
     partition: str | None
     qos: str | None
-    cpus_per_task: int
+    cpus_per_task: int | Literal["node"]
     memory_mb: int | None
     time: str
     exclusive: bool
@@ -173,6 +185,95 @@ class ExecutionProfile:
     source_raw_sha256: str
     computational_resources_explicit: bool
 
+    def validate_reservation(self) -> None:
+        """Reject known reservation conflicts without changing symbolic policy."""
+        if isinstance(self.placement, SlurmPlacement):
+            if self.placement.cpus_per_task == "node" and not self.placement.exclusive:
+                raise ExecutionProfileError(
+                    "Whole-node CPUs require exclusive placement"
+                )
+            try:
+                resolve_computational_resources(
+                    self.resource_policy.declaration.identity_document(),
+                    None
+                    if self.placement.cpus_per_task == "node"
+                    else self.placement.cpus_per_task,
+                    self.placement.memory_mb or None,
+                    limit_source="Slurm reservation",
+                    # A reservation must fit at least one automatic task.
+                    workload={"samples": 1, "partitions": 1},
+                )
+            except orchestration_contracts.ContractValidationError as exc:
+                raise ExecutionProfileError(str(exc)) from exc
+
+    def submission_summary(self) -> tuple[str, ...]:
+        """Describe admitted requests and limits without observing an allocation."""
+
+        placement, resources = self.placement, self.resource_policy.declaration
+        lines = [f"Execution placement: {placement.kind.capitalize()}"]
+        if isinstance(placement, SlurmPlacement):
+            lines.extend(
+                (
+                    f"Node request: 1; requested host(s): {placement.nodelist or 'scheduler-selected; exact host unknown'}",
+                    "Exclusive allocation: "
+                    + (
+                        "requested"
+                        if placement.exclusive
+                        else "not requested; site policy applies"
+                    ),
+                    f"Allocation request: {'all node' if placement.cpus_per_task == 'node' else placement.cpus_per_task} CPUs, {placement.time}; memory: "
+                    + (
+                        "site default (unknown)"
+                        if placement.memory_mb is None
+                        else "all node memory (unknown until execution)"
+                        if placement.memory_mb == 0
+                        else f"{placement.memory_mb} MiB"
+                    ),
+                    f"Account: {placement.account or 'site default'}; "
+                    f"partition: {placement.partition or 'site default'}; "
+                    f"QoS: {placement.qos or 'site default'}",
+                    f"Scratch parent: {str(placement.scratch_parent)!r}; modules: {placement.module_mode}; "
+                    f"initialization: {str(placement.module_init) if placement.module_init else 'none'!r}; "
+                    f"load in order: {', '.join(placement.modules) or 'none'}",
+                )
+            )
+        lines.extend(
+            (
+                "Workflow CPU ceiling: "
+                + (
+                    "allocation capacity (unknown until execution)"
+                    if resources.workflow_cores == "allocation"
+                    else str(resources.workflow_cores)
+                )
+                + "; memory ceiling: "
+                + (
+                    "allocation capacity (unknown until execution)"
+                    if resources.workflow_memory_mb == "allocation"
+                    else f"{resources.workflow_memory_mb} MiB"
+                ),
+                "Stage thread caps: "
+                + ", ".join(f"{step}={count}" for step, count in resources.step_threads)
+                + "; other stages=1",
+                "Repeated-stage concurrency caps: "
+                + ", ".join(
+                    f"{step}={count}" for step, count in resources.stage_concurrency
+                ),
+                "Stage memory: workflow ceiling; explicit MiB limits/shares: "
+                + (
+                    ", ".join(
+                        f"{step}=auto (minimum {memory['minimum_mb']} MiB)"
+                        if isinstance(memory, Mapping)
+                        else f"{step}={memory}"
+                        for step, memory in resources.stage_memory_mb
+                        if memory != "workflow"
+                    )
+                    or "none"
+                ),
+                "Actual allocation capacity is unknown until execution; reservations and limits do not guarantee utilization.",
+            )
+        )
+        return tuple(lines)
+
     def document(self) -> dict[str, Any]:
         """Return the complete effective profile without source locators."""
 
@@ -192,9 +293,7 @@ class ExecutionProfile:
     def binding_sha256(self) -> str:
         """Bind effective semantics to the exact selected source bytes."""
 
-        return hashlib.sha256(
-            f"{self.sha256}\0{self.source_raw_sha256}".encode()
-        ).hexdigest()
+        return execution_profile_binding_sha256(self.sha256, self.source_raw_sha256)
 
     def attempt_placement(self, slurm_job_id: str | None = None) -> dict[str, Any]:
         """Project closed Attempt-local placement provenance."""
@@ -239,16 +338,13 @@ def _validate_profile(document: Mapping[str, Any]) -> None:
         raise ExecutionProfileError(f"Invalid execution profile: {exc}") from exc
 
 
-def _read_profile(path: Path, label: str) -> tuple[Path, bytes, dict[str, Any]]:
-    resolved, data = _read_admitted_regular_file(path, label)
+def _parse_profile(data: bytes, path: Path, label: str) -> dict[str, Any]:
     try:
         value = orchestration_contracts.load_yaml_object_bytes(data, label)
     except orchestration_contracts.ContractValidationError as exc:
-        raise ExecutionProfileError(
-            f"Could not parse {label} {resolved}: {exc}"
-        ) from exc
+        raise ExecutionProfileError(f"Could not parse {label} {path}: {exc}") from exc
     _validate_profile(value)
-    return resolved, data, value
+    return value
 
 
 def _merge_profile(target: dict[str, Any], fragment: Mapping[str, Any]) -> None:
@@ -293,33 +389,33 @@ def _admit_placement(document: Any) -> Placement:
     )
 
 
-def load_execution_profile(
-    config_path: Path | None = None,
+def admit_execution_profile_bytes(
+    default_data: bytes,
+    source_path: Path | None = None,
+    source_data: bytes | None = None,
     resource_overrides: ResourceOverrides = ResourceOverrides(),
-    expected_binding_sha256: str | None = None,
 ) -> ExecutionProfile:
-    """Load packaged defaults, one selected profile fragment, and resource overrides."""
+    """Admit supplied default and selected bytes without reading files or capacity."""
 
-    if (
-        expected_binding_sha256 is not None
-        and _SHA256.fullmatch(expected_binding_sha256) is None
-    ):
-        raise ExecutionProfileError("expected_binding_sha256 must be 64 lowercase hex")
-    source_path, source_data, default = _read_profile(
-        DEFAULT_PROFILE_PATH,
-        "built-in execution profile",
+    if (source_path is None) != (source_data is None):
+        raise ExecutionProfileError(
+            "Selected profile path and bytes must be supplied together"
+        )
+    default = _parse_profile(
+        default_data, DEFAULT_PROFILE_PATH, "built-in execution profile"
     )
     default_resource_sha256 = orchestration_contracts.canonical_sha256(
         default["resources"]
     )
     document = default
     selected_fragment: dict[str, Any] = {}
-    if config_path is not None:
-        source_path, source_data, selected_fragment = _read_profile(
-            Path(config_path),
-            "execution profile",
+    if source_data is not None and source_path is not None:
+        selected_fragment = _parse_profile(
+            source_data, source_path, "execution profile"
         )
         _merge_profile(document, selected_fragment)
+    else:
+        source_path, source_data = DEFAULT_PROFILE_PATH, default_data
 
     _validate_profile(document)
     source_sha256 = hashlib.sha256(source_data).hexdigest()
@@ -339,17 +435,42 @@ def load_execution_profile(
             default_sha256=default_resource_sha256,
             config_path=resource_config_path,
             config_sha256=resource_config_sha256,
+            overrides=resource_overrides,
         )
-        policy = resume_resource_policy(policy, overrides=resource_overrides)
     except ResourceConfigError as exc:
         raise ExecutionProfileError(str(exc)) from exc
 
-    profile = ExecutionProfile(
+    return ExecutionProfile(
         resource_policy=policy,
         placement=_admit_placement(document["placement"]),
         source_path=source_path,
         source_raw_sha256=source_sha256,
         computational_resources_explicit=bool(explicit_resource_fields),
+    )
+
+
+def load_execution_profile(
+    config_path: Path | None = None,
+    resource_overrides: ResourceOverrides = ResourceOverrides(),
+    expected_binding_sha256: str | None = None,
+) -> ExecutionProfile:
+    """Load packaged defaults, one selected profile fragment, and resource overrides."""
+
+    if (
+        expected_binding_sha256 is not None
+        and _SHA256.fullmatch(expected_binding_sha256) is None
+    ):
+        raise ExecutionProfileError("expected_binding_sha256 must be 64 lowercase hex")
+    _, default_data = _read_admitted_regular_file(
+        DEFAULT_PROFILE_PATH, "built-in execution profile"
+    )
+    source_path, source_data = (
+        (None, None)
+        if config_path is None
+        else _read_admitted_regular_file(Path(config_path), "execution profile")
+    )
+    profile = admit_execution_profile_bytes(
+        default_data, source_path, source_data, resource_overrides
     )
     if (
         expected_binding_sha256 is not None
@@ -370,6 +491,7 @@ __all__ = (
     "SCHEMA_VERSION",
     "SlurmPlacement",
     "add_site_argument",
+    "admit_execution_profile_bytes",
     "load_execution_profile",
     "project_default_profile_bytes",
     "project_execution_profile_path",

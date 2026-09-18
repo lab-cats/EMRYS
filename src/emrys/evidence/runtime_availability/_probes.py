@@ -1,4 +1,4 @@
-"""Read-only availability probes for runtime-preflight evidence."""
+"""Runtime availability probes that leave Projects and Runs unchanged."""
 
 from __future__ import annotations
 
@@ -6,12 +6,14 @@ import os
 import re
 import stat
 import subprocess
+import tempfile
 import time
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from emrys.libraries.process_environment import (
     ProcessEnvironmentError,
+    command_flags,
     gatk_subprocess_environment,
     guarded_rscript_argv,
 )
@@ -134,15 +136,70 @@ def _probe_tool(
         )
     if code != expected_code:
         return RuntimeObservation(
-            check, "fail", output or f"exit {code}", "Version probe failed"
+            check,
+            "fail",
+            output or f"exit {code}",
+            f"Version probe failed; exit_status={code}; expected_exit_status={expected_code}",
         )
     if re.search(check.expected, output) is None:
         return RuntimeObservation(
-            check, "fail", output, "Version output did not match expected regex"
+            check,
+            "fail",
+            output,
+            "Version output did not match expected regex; "
+            f"exit_status={code}; expected_exit_status={expected_code}",
         )
-    return RuntimeObservation(
-        check, "pass", output, f"Resolved executable: {executable}"
+    detail = (
+        f"Resolved executable: {executable}; version probe: "
+        f"{_timing_detail(elapsed, TOOL_PROBE_TIMEOUT_SECONDS)}"
     )
+    if check.check_id == "snakemake":
+        try:
+            with tempfile.TemporaryDirectory(
+                prefix="emrys-snakemake-", dir=environment.get("TMPDIR")
+            ) as scratch:
+                code, startup_output, elapsed, timed_out = run_command(
+                    [
+                        *controlled_python_argv(executable, "-m", "snakemake"),
+                        *command_flags(
+                            ("snakefile", os.devnull),
+                            ("profile", "none"),
+                            ("workflow-profile", "none"),
+                            ("directory", scratch),
+                            ("executor", "local"),
+                            ("scheduler", "greedy"),
+                            ("cores", 1),
+                            ("runtime-source-cache-path", f"{scratch}/source-cache"),
+                        ),
+                        "--nocolor",
+                    ],
+                    None,
+                    {
+                        **environment,
+                        "HOME": scratch,
+                        "TMPDIR": scratch,
+                        "XDG_CACHE_HOME": f"{scratch}/cache",
+                    },
+                    TOOL_PROBE_TIMEOUT_SECONDS,
+                )
+        except OSError as exc:
+            return RuntimeObservation(
+                check,
+                "fail",
+                "unavailable",
+                "Snakemake startup temporary state failed: " + _single_line(str(exc)),
+            )
+        startup_detail = _timing_detail(elapsed, TOOL_PROBE_TIMEOUT_SECONDS)
+        if timed_out or code != 0:
+            reason = "timed out" if timed_out else f"failed; exit_status={code}"
+            return RuntimeObservation(
+                check,
+                "fail",
+                startup_output or reason,
+                f"Snakemake startup {reason}; expected_exit_status=0; {startup_detail}",
+            )
+        detail += f"; minimal local Snakemake startup passed: {startup_detail}"
+    return RuntimeObservation(check, "pass", output, detail)
 
 
 def _probe_r_namespace(
@@ -161,14 +218,15 @@ def _probe_r_namespace(
         "libs <- normalizePath(.libPaths(), winslash='/', mustWork=TRUE); "
         "if (length(libs) < 1L || !identical(libs[[1L]], lib)) quit(status=43); "
         "pkg <- tryCatch(find.package(p, lib.loc=lib, quiet=TRUE), "
-        "error=function(e) ''); if (!nzchar(pkg)) quit(status=42); "
+        "error=function(e) {message(conditionMessage(e)); ''}); "
+        "if (!nzchar(pkg)) quit(status=42); "
         "declared <- file.path(lib, p); "
         "expected <- normalizePath(declared, winslash='/', "
         "mustWork=TRUE); "
         "pkg <- normalizePath(pkg, winslash='/', mustWork=TRUE); "
         "if (!identical(pkg, expected)) quit(status=44); "
         "ns <- tryCatch(suppressWarnings(loadNamespace(p, lib.loc=lib)), "
-        "error=function(e) NULL); "
+        "error=function(e) {message(conditionMessage(e)); NULL}); "
         "if (is.null(ns)) quit(status=42); "
         "where <- normalizePath(getNamespaceInfo(ns, 'path'), winslash='/', "
         "mustWork=TRUE); "
@@ -202,7 +260,10 @@ def _probe_r_namespace(
             43: "R did not select the admitted library first",
             44: "R namespace did not resolve to its exact selected package root",
         }
-        detail = f"{details.get(code, 'R namespace probe failed')}; {elapsed_detail}"
+        detail = (
+            f"{details.get(code, 'R namespace probe failed')}; "
+            f"exit_status={code}; expected_exit_status=0; {elapsed_detail}"
+        )
         return RuntimeObservation(check, "fail", output or f"exit {code}", detail)
     parsed = _guarded_namespace_output(output)
     if parsed is None:
@@ -211,7 +272,7 @@ def _probe_r_namespace(
             "fail",
             output,
             "R namespace probe did not report its exact canonical root; "
-            + elapsed_detail,
+            f"exit_status={code}; expected_exit_status=0; " + elapsed_detail,
         )
     version_output, resolved_root = parsed
     if re.fullmatch(check.expected, version_output) is None:
@@ -219,7 +280,8 @@ def _probe_r_namespace(
             check,
             "fail",
             version_output,
-            "Namespace version did not match expected regex; " + elapsed_detail,
+            "Namespace version did not match expected regex; "
+            f"exit_status={code}; expected_exit_status=0; " + elapsed_detail,
         )
     detail = f"Resolved R package root: {resolved_root}; {elapsed_detail}"
     return RuntimeObservation(
@@ -265,14 +327,24 @@ def _probe_hash_utility(
         )
     if code != 0:
         return RuntimeObservation(
-            check, "fail", output or f"exit {code}", "SHA-256 probe failed"
+            check,
+            "fail",
+            output or f"exit {code}",
+            f"SHA-256 probe failed; exit_status={code}; expected_exit_status=0",
         )
     if observed != HASH_EXPECTED:
         return RuntimeObservation(
-            check, "fail", observed or "empty", "SHA-256 digest mismatch"
+            check,
+            "fail",
+            observed or "empty",
+            f"SHA-256 digest mismatch; exit_status={code}; expected_exit_status=0",
         )
     return RuntimeObservation(
-        check, "pass", observed, f"Resolved executable: {executable}"
+        check,
+        "pass",
+        observed,
+        f"Resolved executable: {executable}; SHA-256 tiny known-payload utility probe "
+        f"(not runtime-file hashing): {_timing_detail(elapsed, TOOL_PROBE_TIMEOUT_SECONDS)}",
     )
 
 

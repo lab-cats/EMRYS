@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ from typing import Any
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import validate_successor_run
 from emrys.orchestration.run_coordinator._inspection_admission import (
+    ExpectedTask,
     InspectionError,
     SuccessorRunAuthority,
     _read_bytes,
@@ -34,6 +36,25 @@ _ATTEMPT_CHILD_NAMES = frozenset(
         "tasks",
     }
 )
+
+
+@dataclass(frozen=True, slots=True)
+class TaskAttemptObservation:
+    """One admitted terminal record and its exact reference, without Results authority."""
+
+    record: dict[str, Any]
+    record_reference: dict[str, str]
+
+
+@dataclass(frozen=True, slots=True)
+class TaskHistoryEntry:
+    """One admitted per-Attempt scope, including an active incomplete entry."""
+
+    expected: ExpectedTask
+    workflow_attempt_id: str
+    start_record: dict[str, Any] | None
+    start_reference: dict[str, str] | None
+    terminal: TaskAttemptObservation | None
 
 
 def inspect_attempt_tree(root: Path) -> tuple[tuple[Path, ...], tuple[str, ...]]:
@@ -300,20 +321,17 @@ def inspect_attempt_task_trees(
     *,
     allow_incomplete_origin: str | None = None,
     authority: SuccessorRunAuthority | None = None,
-) -> tuple[list[dict[str, Any]], list[str]]:
-    from emrys.orchestration.run_coordinator import task  # noqa: PLC0415
+    selected_task: tuple[str, str] | None = None,
+) -> tuple[tuple[TaskHistoryEntry, ...], tuple[str, ...]]:
+    """Admit each exact per-Attempt task tree once, without retry freshness checks."""
 
-    """Close all task trees from earlier Attempts and bind exact preentry diagnostics."""
+    from emrys.orchestration.run_coordinator import task  # noqa: PLC0415
 
     expected = {
         (item.machine_key, item.scope_id): item
         for item in expected_tasks(authority or admit_successor_run(root), profile)
     }
-    attempt_order = {
-        str(attempt["workflow_attempt_id"]): index
-        for index, attempt in enumerate(attempts)
-    }
-    preentry: list[dict[str, Any]] = []
+    entries: list[TaskHistoryEntry] = []
     blockers: list[str] = []
     for attempt in attempts:
         identifier = str(attempt["workflow_attempt_id"])
@@ -323,15 +341,17 @@ def inspect_attempt_task_trees(
         if tasks_root.is_symlink() or not tasks_root.is_dir():
             blockers.append(f"Attempt task root is not a real directory: {tasks_root}")
             continue
-        owner_paths = tuple(tasks_root.iterdir())
-        for owner_path in owner_paths:
+        for owner_path in tasks_root.iterdir():
+            if selected_task is not None and owner_path.name != selected_task[0]:
+                continue
             if owner_path.is_symlink() or not owner_path.is_dir():
                 blockers.append(
                     f"Attempt task owner is not a real directory: {owner_path}"
                 )
                 continue
-            scope_paths = tuple(owner_path.iterdir())
-            for scope_path in scope_paths:
+            for scope_path in owner_path.iterdir():
+                if selected_task is not None and scope_path.name != selected_task[1]:
+                    continue
                 item = expected.get((owner_path.name, scope_path.name))
                 if item is None:
                     blockers.append(f"Unexpected attempt task scope: {scope_path}")
@@ -341,68 +361,87 @@ def inspect_attempt_task_trees(
                         f"Attempt task scope is not a real directory: {scope_path}"
                     )
                     continue
-                children = {child.name: child for child in scope_path.iterdir()}
-                exact = {"task-attempt.json", "stdout.log", "stderr.log"}
-                if set(children) != exact:
-                    if identifier == allow_incomplete_origin and set(children) <= exact:
-                        continue
-                    blockers.append(
-                        f"Attempt task scope has incomplete or unexpected state: {scope_path}"
-                    )
-                    continue
+                start_record = None
+                start_reference = None
+                terminal = None
                 try:
-                    record, record_reference = task._admit_task_attempt(
-                        run_root=root,
-                        execution=execution,
-                        profile=profile,
-                        workflow_attempt_id=identifier,
-                        machine_key=item.machine_key,
-                        scope=item.scope,
-                    )
-                    start_path = (
-                        root
-                        / "state"
-                        / "task-starts"
-                        / item.machine_key
-                        / f"{item.scope_id}.json"
-                    )
-                    if record["task_start_record"] is None:
-                        if start_path.exists() or start_path.is_symlink():
-                            start = task.validate_task_start(
-                                start_path,
-                                run_root=root,
-                                execution=execution,
-                                profile=profile,
-                                machine_key=item.machine_key,
-                                scope=item.scope,
+                    definition = attempt["tasks"][item.machine_key][item.scope_id]
+                    if "workflow_attempt_record" in definition:
+                        raise InspectionError(
+                            "Retained task owns a new attempt task tree"
+                        )
+                    children = {child.name for child in scope_path.iterdir()}
+                    allowed = {
+                        "task-start.json",
+                        "task-attempt.json",
+                        "stdout.log",
+                        "stderr.log",
+                    }
+                    start_path = scope_path / "task-start.json"
+                    if "task-start.json" in children:
+                        admitted_start = task.validate_task_start(
+                            start_path,
+                            run_root=root,
+                            execution=execution,
+                            profile=profile,
+                            machine_key=item.machine_key,
+                            scope=item.scope,
+                        )
+                        admitted_reference = _record_reference(
+                            start_path, root, "task start"
+                        )
+                        if admitted_reference[
+                            "sha256"
+                        ] != orchestration_contracts.canonical_sha256(admitted_start):
+                            raise InspectionError("Task start changed during admission")
+                        if admitted_start["workflow_attempt_id"] != identifier:
+                            raise InspectionError(
+                                "Task start belongs to another Attempt"
                             )
-                            later_origin = str(start["workflow_attempt_id"])
-                            if (
-                                later_origin not in attempt_order
-                                or attempt_order[later_origin]
-                                <= attempt_order[identifier]
-                            ):
-                                raise InspectionError(
-                                    "Preentry task attempt has a same-or-earlier task-start"
-                                )
-                        preentry.append(
-                            {
-                                "workflow_attempt_id": identifier,
-                                "machine_key": item.machine_key,
-                                "scope": item.scope,
-                                "record": record_reference,
-                            }
+                        start_record = admitted_start
+                        start_reference = admitted_reference
+                    if not children <= allowed:
+                        raise InspectionError("Task scope contains unexpected state")
+                    if any(
+                        (scope_path / name).is_symlink()
+                        or not (scope_path / name).is_file()
+                        for name in children
+                    ):
+                        raise InspectionError("Task state is not a regular file")
+                    if "task-attempt.json" in children:
+                        record, reference = task._admit_task_attempt(
+                            run_root=root,
+                            execution=execution,
+                            profile=profile,
+                            workflow_attempt_id=identifier,
+                            machine_key=item.machine_key,
+                            scope=item.scope,
+                        )
+                        exact = {"task-attempt.json", "stdout.log", "stderr.log"}
+                        if record["task_start_record"] is not None:
+                            exact.add("task-start.json")
+                        if (
+                            children != exact
+                            or record["task_start_record"] != start_reference
+                        ):
+                            raise InspectionError(
+                                "Task terminal does not close its exact entry tree"
+                            )
+                        terminal = TaskAttemptObservation(record, reference)
+                    elif identifier != allow_incomplete_origin:
+                        blockers.append(
+                            f"Could not close attempt task state {scope_path}: "
+                            "Task scope has no terminal result"
                         )
                 except Exception as exc:
                     blockers.append(
                         f"Could not close attempt task state {scope_path}: {exc}"
                     )
-    preentry.sort(
-        key=lambda item: (
-            item["workflow_attempt_id"],
-            item["machine_key"],
-            item["scope"]["scope_type"],
-            item["scope"]["scope_id"],
-        )
-    )
-    return preentry, blockers
+                    if start_reference is None:
+                        continue
+                entries.append(
+                    TaskHistoryEntry(
+                        item, identifier, start_record, start_reference, terminal
+                    )
+                )
+    return tuple(entries), tuple(blockers)

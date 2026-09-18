@@ -7,11 +7,6 @@
     "\t\t--jobs \"3\" \\",
     "\t\t--python-workers \"2\" "
   ],
-  "dashboard": [
-    "\"/usr/bin/python3\" -I -B \\",
-    "\t\t\"<REPO_ROOT>/src/emrys/orchestration/run_coordinator/dashboard.py\" \\",
-    "\t\t--refresh \"$EMRYS_DASHBOARD_REFRESH\""
-  ],
   "documentation-check": [
     "\"<REPO_ROOT>/.venv/bin/python\" ./scripts/documentation/validate_structure.py --repo \"<REPO_ROOT>\""
   ],

@@ -394,6 +394,7 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         (("resume", "--help"), "usage: emrys resume"),
         (("report", "--help"), "usage: emrys report"),
         (("inspect", "--help"), "usage: emrys inspect"),
+        (("watch", "--help"), "usage: emrys watch"),
     ):
         public_help = run_command(
             [str(environment_python), "-I", "-m", "emrys", *command],

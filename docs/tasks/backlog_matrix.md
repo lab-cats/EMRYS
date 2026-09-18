@@ -1,6 +1,6 @@
 # EMRYS backlog matrix
 
-Last reconciled: **2026-09-14**
+Last reconciled: **2026-09-17**
 
 This is EMRYS's main work backlog. It owns accepted current outcomes, status,
 cursory Importance and Complexity, and acceptance. Unfinished accepted outcomes
@@ -66,6 +66,7 @@ authority or impose ordering.
 | ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
 |---|---|---|---:|---:|---|---|
 | `SITE-PARITY-01` | Site qualification | Open | `4` | `5` | Qualify the current whole-Run path on CSU Viking or another named institutional site. | A novice operator without repository-development context follows only the maintained quickstart from a fresh Viking clone through one head-node path: Project creation with built-in Viking placement, Doctor-managed setup and automatic Slurm qualification, validation, submitted execution, inspection, and completed Results and reports. Normal output is concise and Doctor exposes its phases and elapsed time; every undocumented prerequisite or confusing step becomes a finding. Retain and resolve the [Viking walkthrough findings](#viking-walkthrough-findings) at their stated evidence level. Exact site modules/tools, Project storage semantics, locking/rename/durability, failure/recovery, resource and scheduler provenance, one-log ownership, and direct/Slurm scientific parity are evidenced at one exact revision. Hosted single-node proof is not promoted to institutional, multi-node, production, scientific-review, or biological proof. |
+| `CLUSTER-VERIFY-01` | Cluster verification campaign | Open | `4` | `5` | Resolve the recorded cluster-walkthrough failures and operator gaps while preserving scientific and recovery authority. | The [campaign charter](cluster_verification_campaign.md) owns scope and evidence; this matrix explicitly delegates `CV-01` through `CV-27`, `CV-U01` through `CV-U33`, and `CV-UX-01` statuses and acceptance, plus assigned priorities, to the [cluster verification backlog](cluster_verification_backlog.md). Preserve operator P0–P3 priorities, characterize unknown causes, extend the managed golden path and exact-revision site exercises, and reconcile each card with its production owner. Synthetic completion is operator-reported, report viewing is deferred, and the actual-data Run remains unfinished at capture. Recording this campaign does not authorize its implementation or alter the active cluster Run. Close only under the charter's disposition and evidence criteria. |
 | `SCHED-01` | Scheduler preflight | Open | `3` | `2` | Reject an explicitly undersized Slurm memory request before submission. | When both placement memory and the applicable workflow or stage minimum are explicit, admission rejects insufficient capacity before `sbatch`; unknown capacity remains unknown, the existing CPU check remains authoritative, and no generalized resource solver or duplicate scheduler policy is introduced. |
 | `CONTAINER-01` | Managed platform | Open | `3` | `5` | Evaluate and, if justified, provide a supported broadly compatible Linux container without coupling it to project setup. | Compare against the existing Pixi-managed path; cover architecture/ABI support, Slurm and storage integration, security, reproducibility, licenses, tool and R identities, updates, provenance, site coexistence, and escape hatches. Any implementation has explicit local and site evidence and replaces rather than duplicates setup/runtime authority. |
 | `OPS-03` | Maintenance | Open | `3` | `4` | Settle the remaining responsibilities of retained diagnostics and execution helpers. | The [runner migration](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution) is delivered through PR #169: producers retain science; the runner owns execution and recovery. Remaining work concerns the [FASTQ byte and diagnostic contract](../../src/emrys/ingestion/sample_manifest_admission/README.md) and surviving scripts, inline programs, and R bootstraps. R argument parsing is already shared; wrappers differ in script location, package admission, diagnostics, and error precedence. Prove equivalent behavior and caller-complete savings before sharing more. These concerns require separate selection; no compression tranche remains active. Preserve independent scientific checks and retained evidence. `INLINE-OWNERS-01` remains absorbed here. |
@@ -74,9 +75,16 @@ authority or impose ordering.
 | `FUT-DATA-02` | Acquisition | Deferred | `2` | `5` | Provide retryable public-reference and SRA-read acquisition. | Reference and read acquisition remain separate and record accession/version, source, hashes, cache, retry, partial-transfer, and storage identity without scraping, silent updates, or implicit trust. |
 | `PERF-01` | Performance research | Deferred | `2` | `4` | Test whether cross-node execution materially improves independent-work wall time. | A bounded representative experiment uses explicit per-job resources and never treats scheduler success as production or scientific proof. |
 | `PROFILE-CONTRACT-01` | Contract reduction | Deferred | `3` | `4` | Remove derivable backend adapter fields during an independently justified workflow-profile contract transition. | Audit every current reader and generated profile, then determine whether the consumed `owner_tasks[].rule_name` projection and redundant scope selectors can be derived from one semantic authority; retain graph, uniqueness, scope, artifact admission and inventory/group ordering, Execution-Plan identity, and direct/Slurm parity; remove duplicate validators/tests rather than adding an adapter or compatibility writer. Do not create a version bump solely for cleanup, and dismiss the row if the fields prove independently semantic or the migration is not meaningfully net-negative. |
-| `DASHBOARD-RETIRE-01` | Major retirement | Deferred | `3` | `4` | Retire the stale dashboard only after a replacement dashboard is implemented and validated. | Replacement is required before retirement; expert command access alone does not satisfy this gate. Preserve the [dashboard replacement requirements](../../src/emrys/orchestration/run_coordinator/README.md#frozen-dashboard-and-replacement). Confirm no supported caller or unique retained evidence depends on it; remove dashboard product code, text parsers, dedicated tests, targets, and stale docs together. Complete the caller-wide retirement of `emrys-local-pilot` from newly generated Slurm job/stream names under the current version-support policy. Preserve Project-local `inspect` as status authority and retain scheduler accounting and sanitized raw-stream access through existing expert surfaces or the smallest justified replacement. Evidence deletion remains separately approval-gated. |
+| `DASHBOARD-RETIRE-01` | Major retirement | Open | `3` | `4` | Finish retirement of superseded dashboard surfaces and new `emrys-local-pilot` naming. | The institutional owner accepted the [installed watch](../../src/emrys/orchestration/run_coordinator/README.md#installed-watch) as the replacement on 2026-09-17. The standalone curses/CLI wrapper, Make target, duplicate scheduler query, dedicated protections, and stale guidance retire together; shared parsing/rendering remains because it implements current watch. Complete caller-wide retirement of `emrys-local-pilot` from newly generated Slurm job/stream names under the current version-support policy while preserving historical names, Project-local `inspect`, strict scheduler accounting, and sanitized raw-stream access. Evidence deletion remains separately approval-gated. |
 
 ### Viking walkthrough findings
+
+The following retains the earlier setup decisions and evidence. Remaining
+walkthrough work is now coordinated by the
+[cluster verification campaign](cluster_verification_campaign.md) and its
+[delegated CV backlog](cluster_verification_backlog.md), created at the user's
+request on 2026-09-14. Earlier implementation allowances below do not extend
+automatically to new campaign cards.
 
 The September 14, 2026 walkthrough selected `7c427f0c`. The user reported
 successful fresh installation and synthetic Project validation. Batch job
@@ -127,9 +135,9 @@ evidence accounting remain separate.
   complete-node CPU requirement. The shared capacity observer now applies that
   fallback while preserving observed cgroup limits, declared scheduler limits,
   CPU constraints, and source attribution. After the published correction the
-  operator reported Doctor `READY`; complete scientific execution remains
-  pending. The earlier generic runtime failures are not explained by this
-  memory-policy correction.
+  operator reported Doctor `READY`; complete scientific execution was still
+  pending at that point. The earlier generic runtime failures are not explained
+  by this memory-policy correction.
 - **Batch username missing before science.** A submitted Run failed while
   Snakemake built its startup header: no login-name environment variable
   survived the explicit submission export list, and the compute node could not
@@ -141,14 +149,27 @@ evidence accounting remain separate.
   fixture exercises each variable with passwd lookup unavailable. The export
   list is rendered directly instead of through an intermediate tuple; no new
   product owner, file, dependency, or identity authority is introduced.
-  CI and a resumed Viking Run must establish their respective evidence levels.
+  The operator subsequently reported a successful synthetic resume with all
+  scientific milestones and reporting complete. CV-01 retains the broader
+  managed-golden and institutional evidence requirements.
+
+The later synthetic inspection reported a valid Run, a succeeded Attempt,
+complete Scientific Results and Reporting, 151 inventoried artifacts, and
+an Attempt elapsed time of 3:52. Viewing the HTML reports was explicitly
+deferred. An actual-data Run was subsequently cancelled through Slurm and
+remained blocked without a terminal receipt; a fresh Project reused the
+installed runtime and began a replacement Run. That actual-data Run was still
+active at the last supplied observation. The campaign's evidence register
+preserves these distinctions, the unresolved first qualification failure, and
+the transient reporting/remote-inspection findings without claiming new
+independent site or scientific validation.
 
 The existing real-Slurm CI journey now uses head-node Doctor preparation in
 place of its manual storage-phase commands, preserving the scientific parity
 and controlled recovery checks. That [hosted journey passed on `e25b10c6`](https://github.com/lab-cats/EMRYS/actions/runs/34885186045).
 Local checks and hosted disposable Slurm do not establish Viking qualification.
-Resume the fresh-clone walkthrough on the
-published revision to validate automated setup and the whole Run with reports.
+Continue the actual-data walkthrough and the selected campaign regressions on
+an identified revision; the reported synthetic success does not close site parity.
 The retained six-library Viking profile has a different resource policy and is
 not a capacity requirement for this tiny fixture.
 

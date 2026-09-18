@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from emrys.libraries.exclusive_publication import stable_file_identity
 from emrys.libraries.validation.errors import fail
 
 
@@ -63,10 +64,23 @@ def read_bytes_with_identity(
     label: str,
     *,
     nonempty: bool = True,
+    limit: int | None = None,
 ) -> tuple[bytes, os.stat_result]:
-    """Read stable bytes and return the bound descriptor identity."""
+    """Read stable bytes, optionally bounded, with the bound descriptor identity."""
 
-    data, state = _read_file(path, label, nonempty=nonempty)
+    data, state = _read_file(path, label, nonempty=nonempty, limit=limit)
+    assert isinstance(data, bytes)
+    return data, state
+
+
+def read_suffix_with_identity(
+    path: Path, label: str, length: int
+) -> tuple[bytes, os.stat_result]:
+    """Read at most length trailing bytes through one stable no-follow binding."""
+
+    if length is None:
+        raise ValueError("read limit must be a positive integer")
+    data, state = _read_file(path, label, nonempty=False, limit=length, from_end=True)
     assert isinstance(data, bytes)
     return data, state
 
@@ -87,9 +101,13 @@ def sha256_with_identity(
 def directory_entries_with_identity(
     path: Path,
     label: str,
+    *,
+    limit: int | None = None,
 ) -> tuple[tuple[str, ...], os.stat_result]:
     """List one stable real directory through a no-follow descriptor."""
 
+    if limit is not None and (type(limit) is not int or limit < 1):
+        raise ValueError("directory entry limit must be a positive integer")
     no_follow = getattr(os, "O_NOFOLLOW", None)
     if no_follow is None:
         fail(f"{label} cannot be admitted without symbolic-link protection: {path}")
@@ -101,7 +119,18 @@ def directory_entries_with_identity(
         before = os.fstat(descriptor)
         if stat.S_ISLNK(before.st_mode) or not stat.S_ISDIR(before.st_mode):
             fail(f"{label} must be a real directory: {path}")
-        entries = tuple(sorted(os.listdir(descriptor)))
+        if limit is None:
+            entries = tuple(sorted(os.listdir(descriptor)))
+        else:
+            names = []
+            with os.scandir(descriptor) as items:
+                for item in items:
+                    if len(names) == limit:
+                        fail(
+                            f"{label} exceeds the {limit}-entry inspection limit: {path}"
+                        )
+                    names.append(item.name)
+            entries = tuple(sorted(names))
         after = os.fstat(descriptor)
         current = os.stat(path, follow_symlinks=False)
     except OSError as exc:
@@ -120,11 +149,9 @@ def directory_entries_with_identity(
 
 def read_prefix(path: Path, label: str, length: int) -> bytes:
     """Read at most ``length`` bytes through a stable, no-follow binding."""
-    if isinstance(length, bool) or not isinstance(length, int) or length < 1:
+    if length is None:
         raise ValueError("prefix length must be a positive integer")
-    data, _state = _read_file(path, label, limit=length)
-    assert isinstance(data, bytes)
-    return data
+    return read_bytes_with_identity(path, label, limit=length)[0]
 
 
 def _read_file(
@@ -134,9 +161,12 @@ def _read_file(
     limit: int | None = None,
     nonempty: bool = True,
     digest_only: bool = False,
+    from_end: bool = False,
 ) -> tuple[bytes | str, os.stat_result]:
-    """Read a stable complete file or fixed prefix from one bound descriptor."""
+    """Read a stable complete file or bounded range from one bound descriptor."""
 
+    if limit is not None and (type(limit) is not int or limit < 1):
+        raise ValueError("read limit must be a positive integer")
     no_follow = getattr(os, "O_NOFOLLOW", None)
     if no_follow is None:
         fail(f"{label} cannot be admitted without symbolic-link protection: {path}")
@@ -151,6 +181,9 @@ def _read_file(
         if nonempty and before.st_size == 0:
             fail(f"{label} must be nonempty: {path}")
         _require_descriptor_path_binding(path, before, label)
+        if from_end:
+            assert limit is not None
+            os.lseek(descriptor, max(0, before.st_size - limit), os.SEEK_SET)
         chunks: list[bytes] = []
         digest = hashlib.sha256() if digest_only else None
         observed_size = 0
@@ -180,22 +213,11 @@ def _read_file(
             os.close(descriptor)
     expected_size = before.st_size if limit is None else min(before.st_size, limit)
     if (
-        _stable_file_state(before) != _stable_file_state(after)
+        stable_file_identity(before) != stable_file_identity(after)
         or observed_size != expected_size
     ):
         fail(f"{label} changed while read: {path}")
     return (digest.hexdigest() if digest is not None else b"".join(chunks)), after
-
-
-def _stable_file_state(value: os.stat_result) -> tuple[int, ...]:
-    return (
-        value.st_dev,
-        value.st_ino,
-        value.st_mode,
-        value.st_size,
-        value.st_mtime_ns,
-        value.st_ctime_ns,
-    )
 
 
 def _stable_directory_state(value: os.stat_result) -> tuple[int, ...]:
@@ -217,9 +239,9 @@ def _require_descriptor_path_binding(
         path_state = os.stat(path, follow_symlinks=False)
     except OSError as exc:
         fail(f"{label} pathname changed while read: {path}: {exc}")
-    if stat.S_ISLNK(path_state.st_mode) or _stable_file_state(
+    if stat.S_ISLNK(path_state.st_mode) or stable_file_identity(
         path_state
-    ) != _stable_file_state(descriptor_state):
+    ) != stable_file_identity(descriptor_state):
         fail(f"{label} pathname changed while read: {path}")
 
 

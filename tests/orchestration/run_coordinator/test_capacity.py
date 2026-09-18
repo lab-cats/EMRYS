@@ -85,7 +85,10 @@ def test_slurm_without_cpu_declaration_is_rejected(
     monkeypatch.setattr(capacity, "_affinity_cores", lambda: 4)
     monkeypatch.setattr(capacity, "_memory_limit_mb", lambda: 8192)
 
-    with pytest.raises(ResourceConfigError, match="SLURM_CPUS_PER_TASK is required"):
+    with pytest.raises(
+        ResourceConfigError,
+        match="SLURM_CPUS_PER_TASK or SLURM_CPUS_ON_NODE is required",
+    ):
         capacity.observe_allocation(
             {"SLURM_JOB_ID": "567", "SLURM_MEM_PER_NODE": "8192"}
         )
@@ -96,7 +99,7 @@ def test_slurm_without_cpu_declaration_is_rejected(
     (
         ("SLURM_CPUS_PER_TASK", "0"),
         ("SLURM_CPUS_PER_TASK", "not-an-integer"),
-        ("SLURM_MEM_PER_NODE", "0"),
+        ("SLURM_MEM_PER_NODE", "-1"),
         ("SLURM_MEM_PER_NODE", "not-an-integer"),
         ("SLURM_MEM_PER_CPU", "0"),
         ("SLURM_MEM_PER_CPU", "not-an-integer"),
@@ -154,6 +157,66 @@ def test_slurm_full_node_without_memory_declaration_uses_process_visibility(
     assert observed.cores == 256
     assert observed.memory_mb == 1_547_848
     assert "process-visible memory; Slurm memory limit unspecified" in observed.source
+
+
+@pytest.mark.parametrize("cores,visible,expected", ((96, 96, 96), (256, 128, 128)))
+def test_whole_node_request_resolves_actual_batch_capacity(
+    monkeypatch: pytest.MonkeyPatch, cores: int, visible: int, expected: int
+) -> None:
+    monkeypatch.setattr(capacity, "_affinity_cores", lambda: visible)
+    monkeypatch.setattr(capacity, "_memory_limit_mb", lambda: 524288)
+    observed = capacity.observe_allocation(
+        {
+            "SLURM_JOB_ID": "123",
+            "SLURM_CPUS_ON_NODE": str(cores),
+            "SLURM_MEM_PER_NODE": "0",
+        }
+    )
+    assert (observed.cores, observed.memory_mb) == (expected, 524288)
+    assert "all process-visible node memory" in observed.source
+
+
+@pytest.mark.parametrize("version", (1, 2))
+def test_whole_node_memory_honors_nested_cgroup_and_parent_limits(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, version: int
+) -> None:
+    membership = tmp_path / "cgroup"
+    membership.write_text(
+        "0::/slurm/job123/step_batch\n"
+        if version == 2
+        else "4:cpu,cpuacct:/slurm/job123/step_batch\n5:memory:/slurm/job123/step_batch\n"
+    )
+    root = tmp_path / "unified"
+    leaf = root / "slurm/job123/step_batch"
+    leaf.mkdir(parents=True)
+    memory_file = "memory.max" if version == 2 else "memory.limit_in_bytes"
+    (root / memory_file).write_text("max\n" if version == 2 else str(2**63 - 4096))
+    (leaf / memory_file).write_text(str(131072 * 1024 * 1024))
+    (leaf.parent / memory_file).write_text(str(65536 * 1024 * 1024))
+    if version == 2:
+        (leaf.parent / "cpu.max").write_text("800000 100000\n")
+    else:
+        (leaf.parent / "cpu.cfs_quota_us").write_text("800000\n")
+        (leaf.parent / "cpu.cfs_period_us").write_text("100000\n")
+    monkeypatch.setattr(capacity, "_CGROUP_MEMBERSHIP", membership)
+    monkeypatch.setattr(capacity, "_CGROUP_MEMORY_FILES", (root / memory_file,))
+    monkeypatch.setattr(capacity, "_CGROUP_V2_CPU_FILE", root / "cpu.max")
+    monkeypatch.setattr(
+        capacity,
+        "_CGROUP_V1_CPU_FILES",
+        (
+            root / "cpu.cfs_quota_us",
+            root / "cpu.cfs_period_us",
+        ),
+    )
+    monkeypatch.setattr(capacity, "_host_memory_mb", lambda: 524288)
+    monkeypatch.setattr(
+        capacity.os, "sched_getaffinity", lambda _: set(range(96)), raising=False
+    )
+    observed = capacity.observe_allocation(
+        {"SLURM_JOB_ID": "123", "SLURM_CPUS_ON_NODE": "96", "SLURM_MEM_PER_NODE": "0"}
+    )
+    assert (observed.cores, observed.memory_mb) == (8, 65536)
 
 
 @pytest.mark.parametrize("affinity_cores", (3, 4, 256))

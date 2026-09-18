@@ -7,15 +7,17 @@ import hashlib
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -81,13 +83,9 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
         candidate.analysis.revision.scope_id("cohort") if prepublication else SCOPE_ID
     )
     step_id = "08" if prepublication else "01"
-    execution = candidate.run_binding.record
-    execution_bytes = candidate.run_binding.canonical_bytes
     profile = candidate.analysis.profile
     run_root = tmp_path / "runs" / candidate.run_id
     fixture.publish_run(candidate, run_root)
-    contract = run_root / "contract"
-    profile_path = contract / "profile.json"
 
     files, reporting_config, _ = reporting_boundary._attempt_reporting_materialization(
         {**candidate.analysis.workflow_inputs, "run_id": candidate.run_id},
@@ -105,8 +103,6 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
     mutable_input.write_bytes(b"stable owner input\n")
     verified_path = run_root / "state" / "verified" / machine_key / f"{scope_id}.json"
     (run_root / "attempts" / WORKFLOW_ATTEMPT_ID).mkdir(parents=True)
-    task_start = run_root / "state" / "task-starts" / machine_key / f"{scope_id}.json"
-    task_start.parent.mkdir(parents=True)
     verified_path.parent.mkdir(parents=True)
 
     first_output = run_root / "results" / "samples" / scope_id / "aligned.bam"
@@ -144,6 +140,7 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
     definition = {
         "task_attempt_id": TASK_ATTEMPT_ID,
         "owner_run_token": "owner-run-ev-1",
+        "retry_task_attempt_record": None,
         "scope_type": "cohort" if prepublication else "sample",
         "producer_argv": producer,
         "validator_argv": validator,
@@ -174,55 +171,29 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
     request_snapshot = attempt_path.parent / "request.yaml"
     request_bytes = b"task-fixture: true\n"
     request_snapshot.write_bytes(request_bytes)
-    attempt = {
-        "schema_version": "emrys.workflow-attempt.v3",
-        "run_id": execution["run_id"],
-        "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
-        "profile_sha256": hashlib.sha256(profile_path.read_bytes()).hexdigest(),
-        "workflow_attempt_id": WORKFLOW_ATTEMPT_ID,
-        "supersedes_workflow_attempt_id": None,
-        "operation": "execute",
-        "created_at": "2026-08-12T12:00:00Z",
-        "request": {
-            "path": str(request_snapshot),
-            "size_bytes": len(request_bytes),
-            "sha256": hashlib.sha256(request_bytes).hexdigest(),
-        },
-        "request_label": "generic task fixture",
-        "authored_paths": {
-            "request": str(request_snapshot),
-            "sample_manifest": "samples.tsv",
-            "partition_manifest": "partitions.tsv",
-            "reference_fasta": "reference.fa",
-            "reference_gtf": "reference.gtf",
-            "analysis_policy": None,
-        },
-        "normalizer": normalizer,
-        "workspace": str(tmp_path.resolve()),
-        "scratch": None,
-        "installed_package": admit_installed_package().record,
-        "executor": "local",
-        "execution_mode": "local-science-tools",
-        "snakemake_argv": list(
+    attempt = workflow_fixture.attempt_record(
+        run_root,
+        WORKFLOW_ATTEMPT_ID,
+        request_snapshot,
+        runtime=(normalizer, required_tools),
+        request_label="generic task fixture",
+        snakemake_argv=list(
             controlled_python_argv(
-                sys.executable,
-                "-m",
-                "snakemake",
-                "--",
-                "cohort_slice",
+                sys.executable, "-m", "snakemake", "--", "cohort_slice"
             )
         ),
-        "workflow": {
+        workflow={
             **reporting_config,
             "resource_policy": workflow_fixture._resource_policy(),
         },
-        "tasks": {machine_key: {scope_id: definition}},
-        "host": "task-fixture",
-        "process_id": 1,
-        "owner_token": "task-fixture-owner",
-        "cores": 1,
-        "required_tools": required_tools,
-    }
+        tasks={machine_key: {scope_id: definition}},
+        host="task-fixture",
+        process_id=1,
+        owner_token="task-fixture-owner",
+    )
+    attempt["authored_paths"].update(
+        reference_fasta="reference.fa", reference_gtf="reference.gtf"
+    )
     orchestration_contracts.validate_record("workflow-attempt", attempt)
     _publish_json(attempt_path, attempt)
     _materialize_active_lock(run_root, attempt_path)
@@ -233,6 +204,32 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
         scope_id=scope_id,
     )
     return TaskFixture(run_root, attempt_path, definition, mutable_input, plan)
+
+
+def _observe(operation, *, before=None, after=None):
+    """Keep the real operation between boundary-specific fixture observations."""
+
+    def observed(*arguments):
+        if before is not None:
+            before(*arguments)
+        result = operation(*arguments)
+        if after is not None:
+            after(*arguments)
+        return result
+
+    return observed
+
+
+def _record_command(calls, operation=None):
+    def command(argv, *arguments):
+        calls.append(argv)
+        return (
+            task.CommandResult(argv, 0)
+            if operation is None
+            else operation(argv, *arguments)
+        )
+
+    return command
 
 
 def _fixed_ops() -> task.TaskOps:
@@ -481,13 +478,10 @@ def _validate_verified(
     return task.validate_verified_task(Path(built.plan.verified_task_path), **arguments)
 
 
-def _step00c_with_existing_sidecars(
+def _step00c_plan(
     tmp_path: Path,
 ) -> tuple[
-    workflow_fixture.WorkflowFixture,
-    task.TaskPlan,
-    dict[str, Any],
-    tuple[Path, Path],
+    workflow_fixture.WorkflowFixture, task.TaskPlan, dict[str, Any], dict[str, Any]
 ]:
     built = workflow_fixture.build(tmp_path)
     workflow_fixture.materialize_active_run_lock(built)
@@ -498,6 +492,18 @@ def _step00c_with_existing_sidecars(
     plan = _load_task(
         built.workflow_attempt_path, machine_key=machine_key, scope_id=scope_id
     )
+    return built, plan, manifest, record
+
+
+def _step00c_with_existing_sidecars(
+    tmp_path: Path,
+) -> tuple[
+    workflow_fixture.WorkflowFixture,
+    task.TaskPlan,
+    dict[str, Any],
+    tuple[Path, Path],
+]:
+    built, plan, _manifest, record = _step00c_plan(tmp_path)
     outputs = tuple(Path(item["path"]) for item in record["outputs"])
     assert len(outputs) == 2
     publication = task._NativePublication(plan)
@@ -621,52 +627,90 @@ def test_success_publishes_schema_valid_content_bound_records(tmp_path: Path) ->
     assert verified_path.read_bytes() == predecessor
 
 
+@pytest.mark.parametrize("producer_fails", (False, True))
+def test_producer_relative_files_stay_in_owned_scratch(
+    tmp_path: Path, producer_fails: bool
+) -> None:
+    built = _task_fixture(tmp_path)
+    if producer_fails:
+        built.definition["producer_argv"].extend(["--fail-after", "1"])
+    built.definition["producer_argv"] = list(
+        controlled_python_argv(
+            sys.executable,
+            "-c",
+            "import os, pathlib, sys; "
+            "pathlib.Path('incidental.log').write_bytes(b'producer scratch'); "
+            "os.execv(sys.argv[1], sys.argv[1:])",
+            *built.definition["producer_argv"],
+        )
+    )
+    _rewrite_task(built)
+    defaults = _fixed_ops()
+    producer_argv = tuple(built.definition["producer_argv"])
+    working = Path(built.definition["outputs"][0]["working_path"]).parent
+    scratch = working.with_name(working.name + ".scratch")
+    phases = []
+
+    def command(argv, cwd, environment, *descriptors):
+        phase = "producer" if argv == producer_argv else "validator"
+        phases.append(phase)
+        assert cwd == (scratch if phase == "producer" else built.run_root)
+        result = defaults.run_command(argv, cwd, environment, *descriptors)
+        if phase == "producer":
+            assert (
+                environment["EMRYS_TASK_WORK_DIR"]
+                == environment["TMPDIR"]
+                == str(scratch)
+            )
+            assert (scratch / "incidental.log").read_bytes() == b"producer scratch"
+            assert not (built.run_root / "incidental.log").exists()
+        return result
+
+    def semantic(argv, cwd, environment, *descriptors):
+        phases.append("semantic")
+        assert cwd == built.run_root
+        return defaults.run_semantic_all_pass(argv, cwd, environment, *descriptors)
+
+    ops = replace(defaults, run_command=command, run_semantic_all_pass=semantic)
+    if producer_fails:
+        with pytest.raises(task.TaskBoundaryError, match="Producer command exited"):
+            _execute_task(built.plan, ops=ops)
+        assert phases == ["producer"]
+    else:
+        _execute_task(built.plan, ops=ops)
+        assert phases == ["producer", "validator", "semantic"]
+        _validate_verified(built)
+    assert not working.exists()
+    assert not scratch.exists()
+    assert not (built.run_root / "incidental.log").exists()
+
+
 def test_stream_capture_preserves_exact_opaque_bytes_and_per_stream_order(
     tmp_path: Path,
 ) -> None:
     built = _task_fixture(tmp_path)
     defaults = _fixed_ops()
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
-        label = b"producer" if "producer" in argv else b"validator"
-        os.write(stdout_descriptor, b"\x00\xff" + label + b":before\n")
-        os.write(stderr_descriptor, b"\xfe\x00" + label + b":before\n")
-        result = defaults.run_command(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
-        os.write(stdout_descriptor, b"\x80" + label + b":after\n")
-        os.write(stderr_descriptor, b"\x81" + label + b":after\n")
-        return result
+    def capture(operation, semantic=False):
+        def command(argv, cwd, environment, stdout_descriptor, stderr_descriptor):
+            label = (
+                b"semantic"
+                if semantic
+                else (b"producer" if "producer" in argv else b"validator")
+            )
+            os.write(stdout_descriptor, b"\x00\xff" + label + b":before\n")
+            os.write(stderr_descriptor, b"\xfe\x00" + label + b":before\n")
+            result = operation(
+                argv, cwd, environment, stdout_descriptor, stderr_descriptor
+            )
+            os.write(stdout_descriptor, b"\x80" + label + b":after\n")
+            os.write(stderr_descriptor, b"\x81" + label + b":after\n")
+            return result
 
-    def semantic(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
-        os.write(stdout_descriptor, b"\x00\xffsemantic:before\n")
-        os.write(stderr_descriptor, b"\xfe\x00semantic:before\n")
-        result = defaults.run_semantic_all_pass(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
-        os.write(stdout_descriptor, b"\x80semantic:after\n")
-        os.write(stderr_descriptor, b"\x81semantic:after\n")
-        return result
+        return command
+
+    command = capture(defaults.run_command)
+    semantic = capture(defaults.run_semantic_all_pass, semantic=True)
 
     _execute_task(
         built.plan,
@@ -789,11 +833,11 @@ def test_native_publication_preserves_unowned_state_and_rolls_back_owned_files(
         else:
             original_link(source, destination, **kwargs)
 
-    def command(*arguments: Any) -> task.CommandResult:
-        result = defaults.run_command(*arguments)
+    def command(*_arguments):
         if fault == "owner_loss":
             (lock / "owner").write_bytes(b"foreign owner\n")
-        return result
+
+    command = _observe(defaults.run_command, after=command)
 
     if fault == "residue":
         (first.parent / ".owner.recovery").write_bytes(b"retained recovery\n")
@@ -851,8 +895,7 @@ def test_star_publication_and_input_directory_roster_are_content_bound(
     _rewrite_task(built)
     defaults = _fixed_ops()
 
-    def command(*arguments: Any) -> task.CommandResult:
-        result = defaults.run_command(*arguments)
+    def command(*arguments):
         if mutation == "replace_input":
             replacement = inputs / "replacement"
             replacement.write_bytes(member.read_bytes())
@@ -863,7 +906,8 @@ def test_star_publication_and_input_directory_roster_are_content_bound(
             member.write_bytes(b"")
         elif arguments[0] == tuple(built.definition["producer_argv"]):
             (working / "Log.progress.out").touch()
-        return result
+
+    command = _observe(defaults.run_command, after=command)
 
     if mutation != "none":
         with pytest.raises(task.TaskBoundaryError, match="input directory"):
@@ -914,6 +958,1117 @@ def test_catchable_task_termination_kills_worker_group_and_preserves_attempt(
     assert not Path(built.definition["outputs"][0]["working_path"]).parent.exists()
 
 
+def _task_native_signal_child(
+    root: Path, fault: str, *, subreaper: bool = False
+) -> None:
+    """Run a real separately owned native group inside an isolated Task process."""
+    built = _task_fixture(root)
+    descendants = task._TaskChildren() if subreaper else None
+    defaults = _fixed_ops()
+    if descendants is not None:
+        runners = task.default_task_ops(descendants=descendants)
+        defaults = replace(
+            defaults,
+            run_command=runners.run_command,
+            run_semantic_all_pass=runners.run_semantic_all_pass,
+        )
+    native_record = root / "native.json"
+    native_script = """
+import json, os, signal, sys, time
+from pathlib import Path
+watched = (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
+for signum in watched:
+    signal.signal(signum, signal.SIG_IGN)
+blocked = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+if sys.argv[2] == 'closed-streams':
+    os.close(1)
+    os.close(2)
+Path(sys.argv[1]).write_text(json.dumps({'pid': os.getpid(), 'blocked': list(blocked)}))
+if sys.argv[2] not in ('post-spawn', 'nested'):
+    os.kill(os.getppid(), signal.SIGTERM)
+time.sleep(60)
+"""
+    argv = controlled_python_argv(
+        sys.executable, "-c", native_script, str(native_record), fault
+    )
+    built.definition["producer_argv"] = list(argv)
+    _rewrite_task(built)
+    signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGUSR1})
+    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    previous_handlers = {
+        signum: signal.getsignal(signum) for signum in task._TASK_SIGNALS
+    }
+    process: subprocess.Popen[bytes] | None = None
+    original_spawn = subprocess.Popen
+    original_ops = lifecycle.DEFAULT_PROCESS_GROUP_OPS
+    original_signal_ops = lifecycle.DEFAULT_SIGNAL_OPS
+    original_quiesce = lifecycle.quiesce_process_group
+    original_ambiguity = task._process_group_ambiguity
+    original_close = task._NativePublication.close
+    repeated: list[int] = []
+    ambiguity_checks = 0
+    cleanup_calls = 0
+
+    def spawn(*args: Any, **kwargs: Any) -> subprocess.Popen[bytes]:
+        nonlocal process
+        process = original_spawn(*args, **kwargs)
+        if fault == "post-spawn":
+            deadline = time.monotonic() + 10
+            while not native_record.exists():
+                assert process.poll() is None and time.monotonic() < deadline
+                time.sleep(0.01)
+            os.kill(os.getpid(), signal.SIGTERM)
+        return process
+
+    def repeat_during_cleanup(seconds: float) -> None:
+        for signum in task._TASK_SIGNALS:
+            repeated.append(signum)
+            os.kill(os.getpid(), signum)
+        time.sleep(seconds)
+
+    def unproved(*_args: Any) -> bool:
+        assert process is not None and process.poll() is None
+        raise lifecycle.ProcessGroupAmbiguity("fixture native writer still alive")
+
+    def restore(previous: Mapping[int, Any], mask: set[signal.Signals]) -> None:
+        if fault == "ambiguous-restore-signal":
+            signal.pthread_sigmask(signal.SIG_BLOCK, set(previous))
+            os.kill(os.getpid(), signal.SIGTERM)
+        original_signal_ops.restore_handlers(previous, mask)
+        if fault == "ambiguous-restore-error":
+            raise OSError("fixture handler restoration failure")
+
+    def ambiguity(*errors: BaseException | None) -> BaseException | None:
+        nonlocal ambiguity_checks
+        ambiguity_checks += 1
+        result = original_ambiguity(*errors)
+        if (fault == "ambiguous-conversion-signal" and ambiguity_checks == 1) or (
+            fault == "ambiguous-cleanup-signal" and ambiguity_checks == 2
+        ):
+            if fault == "ambiguous-cleanup-signal":
+                assert task._TASK_SIGNALS.issubset(
+                    signal.pthread_sigmask(signal.SIG_BLOCK, set())
+                )
+            os.kill(os.getpid(), signal.SIGTERM)
+        return result
+
+    def close(publication: task._NativePublication) -> None:
+        nonlocal cleanup_calls
+        cleanup_calls += 1
+        assert not task._TASK_SIGNALS.intersection(
+            signal.pthread_sigmask(signal.SIG_BLOCK, set())
+        )
+        original_close(publication)
+
+    task.subprocess.Popen = spawn
+    task._NativePublication.close = close
+    lifecycle.DEFAULT_PROCESS_GROUP_OPS = replace(
+        original_ops, sleep=repeat_during_cleanup
+    )
+    if fault.startswith("ambiguous-"):
+        lifecycle.quiesce_process_group = unproved
+        lifecycle.DEFAULT_SIGNAL_OPS = replace(
+            original_signal_ops, restore_handlers=restore
+        )
+        task._process_group_ambiguity = ambiguity
+    error = None
+    try:
+        try:
+            _execute_task(built.plan, ops=defaults)
+        except task.TaskBoundaryError as exc:
+            error = str(exc)
+        assert error is not None and process is not None
+        assert not task._TASK_SIGNALS.intersection(_record(native_record)["blocked"])
+        assert signal.pthread_sigmask(signal.SIG_BLOCK, set()) == previous_mask
+        assert {
+            signum: signal.getsignal(signum) for signum in task._TASK_SIGNALS
+        } == previous_handlers
+        assert not built.plan.verified_task_path.exists()
+        ambiguous = fault.startswith("ambiguous-")
+        expected_error = (
+            "fixture native writer still alive"
+            if ambiguous and fault != "ambiguous-cleanup-signal"
+            else "Task interrupted by signal 15"
+        )
+        assert expected_error in error
+        assert (
+            Path(built.definition["outputs"][0]["working_path"]).parent.exists()
+            is ambiguous
+        )
+        assert Path(built.definition["publication"]["locks"][0]).exists() is ambiguous
+        if ambiguous:
+            assert process.poll() is None and cleanup_calls == 0
+            os.killpg(process.pid, 0)
+        else:
+            assert process.returncode == -signal.SIGKILL and cleanup_calls == 1
+            with pytest.raises(ProcessLookupError):
+                os.killpg(process.pid, 0)
+            assert set(repeated) == task._TASK_SIGNALS
+        if fault == "ambiguous-cleanup-signal":
+            assert not built.plan.task_attempt_path.exists()
+        else:
+            attempt = _record(built.plan.task_attempt_path)
+            assert attempt["status"] == "failed"
+            assert expected_error in attempt["failure_message"]
+            assert attempt["validator"] is None and attempt["semantic_all_pass"] is None
+        (root / "native-cleanup.json").write_text(json.dumps({"error": error}))
+    finally:
+        task.subprocess.Popen = original_spawn
+        lifecycle.DEFAULT_PROCESS_GROUP_OPS = original_ops
+        lifecycle.DEFAULT_SIGNAL_OPS = original_signal_ops
+        lifecycle.quiesce_process_group = original_quiesce
+        task._process_group_ambiguity = original_ambiguity
+        task._NativePublication.close = original_close
+        if process is not None and process.poll() is None:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.wait(timeout=5)
+
+
+@pytest.mark.parametrize(
+    "fault",
+    (
+        "repeated",
+        "post-spawn",
+        "closed-streams",
+        "ambiguous-restore-signal",
+        "ambiguous-restore-error",
+        "ambiguous-conversion-signal",
+        "ambiguous-cleanup-signal",
+    ),
+)
+def test_native_signal_ownership_survives_spawn_and_cleanup(
+    tmp_path: Path, fault: str
+) -> None:
+    try:
+        completed = workflow_fixture.run_child(
+            _task_native_signal_child, tmp_path, fault
+        )
+        assert completed.returncode == 0, (completed.stdout, completed.stderr)
+        assert (tmp_path / "native-cleanup.json").is_file()
+    finally:
+        native_record = tmp_path / "native.json"
+        if native_record.is_file():
+            lifecycle._signal_process_group(
+                _record(native_record)["pid"], signal.SIGKILL
+            )
+
+
+def _subreaper_native_script() -> str:
+    return """
+import ctypes, json, os, signal, sys, time
+from pathlib import Path
+root, mode = Path(sys.argv[1]), sys.argv[2]
+def record():
+    fd = os.open(root / 'pids.jsonl', os.O_CREAT | os.O_APPEND | os.O_WRONLY, 0o600)
+    os.write(fd, (json.dumps({'pid': os.getpid()}) + '\\n').encode())
+    os.close(fd)
+record()
+if mode not in ('cancel', 'worker-loss') and not mode.startswith('fault-'):
+    if os.fork():
+        while not (root / 'ready').exists():
+            time.sleep(0.005)
+        os._exit(7 if mode == 'failed-leader' else 0)
+    os.setsid()
+    record()
+    if mode in ('double-fork', 'nested-subreaper'):
+        if mode == 'nested-subreaper':
+            assert ctypes.CDLL(None).prctl(36, 1, 0, 0, 0) == 0
+        if os.fork():
+            if mode == 'double-fork':
+                os._exit(0)
+            signal.signal(signal.SIGTERM, signal.SIG_IGN)
+            while True:
+                time.sleep(1)
+        record()
+for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
+    signal.signal(signum, signal.SIG_IGN)
+if mode == 'closed-streams':
+    os.close(1)
+    os.close(2)
+(root / 'partial').write_text('unfinished native output\\n')
+(root / 'ready').write_text('ready\\n')
+while True:
+    time.sleep(1)
+"""
+
+
+def _task_subreaper_child(root: Path, mode: str) -> None:
+    """A fresh supervisor, never the pytest process or its other children."""
+    descendants = task._TaskChildren()
+    runner = task.default_task_ops(descendants=descendants).run_command
+    command = (
+        sys.executable,
+        "-c",
+        _subreaper_native_script(),
+        str(root),
+        mode,
+    )
+    with (
+        (root / "native.stdout").open("wb") as stdout,
+        (root / "native.stderr").open("wb") as stderr,
+    ):
+        try:
+            result = runner(command, root, os.environ, stdout.fileno(), stderr.fileno())
+            outcome = {"exit_code": result.exit_code}
+        except task.TaskBoundaryError as exc:
+            outcome = {"error": str(exc)}
+    assert descendants.empty
+    with pytest.raises(ChildProcessError):
+        os.waitpid(-1, os.WNOHANG | 0x40000000)
+    (root / "closed.json").write_text(json.dumps(outcome))
+
+
+def _subreaper_evidence_root(tmp_path: Path, name: str) -> Path:
+    retained = os.environ.get("EMRYS_TEST_NATIVE_EVIDENCE")
+    root = Path(retained) / name if retained else tmp_path / name
+    root.mkdir(parents=True)
+    return root
+
+
+def _kill_subreaper_fixture(root: Path) -> None:
+    if not (root / "pids.jsonl").exists() or (root / "closed.json").exists():
+        return
+    for line in (root / "pids.jsonl").read_text().splitlines():
+        pid = json.loads(line)["pid"]
+        try:
+            descriptor = os.pidfd_open(pid)
+        except ProcessLookupError:
+            continue
+        try:
+            if str(root).encode() in Path(f"/proc/{pid}/cmdline").read_bytes().split(
+                b"\0"
+            ):
+                signal.pidfd_send_signal(descriptor, signal.SIGKILL)
+        except (ProcessLookupError, FileNotFoundError):
+            pass
+        finally:
+            os.close(descriptor)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux child-subreaper proof")
+@pytest.mark.parametrize(
+    "mode",
+    (
+        "detached",
+        "double-fork",
+        "nested-subreaper",
+        "closed-streams",
+        "failed-leader",
+        "cancel",
+        "worker-loss",
+    ),
+)
+def test_task_subreaper_owns_detached_children(tmp_path: Path, mode: str) -> None:
+    root = _subreaper_evidence_root(tmp_path, mode)
+    with (
+        subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(60)"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ) as sibling,
+        (root / "supervisor.stdout").open("wb") as stdout,
+        (root / "supervisor.stderr").open("wb") as stderr,
+    ):
+        process = subprocess.Popen(
+            workflow_fixture.child_command(_task_subreaper_child, root, mode),
+            cwd=REPO_ROOT,
+            stdout=stdout,
+            stderr=stderr,
+        )
+        try:
+            deadline = time.monotonic() + 15
+            while not (root / "ready").exists():
+                assert process.poll() is None, (root / "supervisor.stderr").read_text()
+                assert time.monotonic() < deadline
+                time.sleep(0.01)
+            if mode in ("cancel", "worker-loss"):
+                os.kill(
+                    process.pid,
+                    signal.SIGKILL if mode == "worker-loss" else signal.SIGTERM,
+                )
+            process.wait(timeout=15)
+            assert sibling.poll() is None
+            if mode == "worker-loss":
+                assert process.returncode == -signal.SIGKILL
+                assert not (root / "closed.json").exists()
+                for line in (root / "pids.jsonl").read_text().splitlines():
+                    os.kill(json.loads(line)["pid"], 0)
+            else:
+                assert process.returncode == 0, (root / "supervisor.stderr").read_text()
+                outcome = _record(root / "closed.json")
+                if mode == "cancel":
+                    assert "interrupted by signal 15" in outcome["error"]
+                else:
+                    assert outcome["exit_code"] == (7 if mode == "failed-leader" else 0)
+                for line in (root / "pids.jsonl").read_text().splitlines():
+                    with pytest.raises(ProcessLookupError):
+                        os.kill(json.loads(line)["pid"], 0)
+            assert (root / "partial").read_text() == "unfinished native output\n"
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=5)
+            _kill_subreaper_fixture(root)
+            sibling.terminate()
+            sibling.wait(timeout=5)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux child-subreaper proof")
+@pytest.mark.parametrize(
+    "fault", ("post-spawn", "closed-streams", "ambiguous-cleanup-signal")
+)
+def test_task_subreaper_cancellation_preserves_task_publication(
+    tmp_path: Path, fault: str
+) -> None:
+    completed = workflow_fixture.run_child(
+        _task_native_signal_child, tmp_path, fault, subreaper=True
+    )
+    assert completed.returncode == 0, (completed.stdout, completed.stderr)
+
+
+def _task_subreaper_fault_child(root: Path, fault: str) -> None:
+    built = _task_fixture(root)
+    descendants = task._TaskChildren()
+    runners = task.default_task_ops(descendants=descendants)
+    built.definition["producer_argv"] = list(
+        controlled_python_argv(
+            sys.executable, "-c", _subreaper_native_script(), str(root), "fault-native"
+        )
+    )
+    _rewrite_task(built)
+    original_spawn = subprocess.Popen
+    original_check = descendants._check_owner
+    process = None
+
+    def spawn(*args: Any, **kwargs: Any) -> subprocess.Popen[bytes]:
+        nonlocal process
+        process = original_spawn(*args, **kwargs)
+        deadline = time.monotonic() + 10
+        while not (root / "ready").exists():
+            assert process.poll() is None and time.monotonic() < deadline
+            time.sleep(0.01)
+        if fault == "spawn-oserror":
+            raise OSError(errno.EIO, "injected post-fork launch fault")
+        if fault == "spawn-unexpected":
+            raise RuntimeError("injected post-fork launch fault")
+        return process
+
+    def check() -> None:
+        original_check()
+        if descendants.process is not None:
+            raise OSError("injected child observation fault")
+
+    subprocess.Popen = spawn
+    if fault == "observation":
+        descendants._check_owner = check
+    try:
+        with pytest.raises(task.TaskBoundaryError) as failure:
+            _execute_task(
+                built.plan,
+                ops=replace(
+                    _fixed_ops(),
+                    run_command=runners.run_command,
+                    run_semantic_all_pass=runners.run_semantic_all_pass,
+                ),
+            )
+        assert task._process_group_ambiguity(failure.value) is not None
+        assert process is not None and process.poll() is None
+        assert not descendants.empty and not built.plan.verified_task_path.exists()
+        assert Path(built.definition["outputs"][0]["working_path"]).parent.exists()
+        assert Path(built.definition["publication"]["locks"][0]).exists()
+        assert (root / "partial").exists()
+        (root / "blocked.json").write_text(json.dumps({"error": str(failure.value)}))
+    finally:
+        subprocess.Popen = original_spawn
+        descendants._check_owner = original_check
+        if process is not None and process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux child-subreaper proof")
+@pytest.mark.parametrize("fault", ("spawn-oserror", "spawn-unexpected", "observation"))
+def test_task_subreaper_faults_preserve_live_writer_state(
+    tmp_path: Path, fault: str
+) -> None:
+    root = _subreaper_evidence_root(tmp_path, fault)
+    completed = workflow_fixture.run_child(_task_subreaper_fault_child, root, fault)
+    assert completed.returncode == 0, (completed.stdout, completed.stderr)
+    assert (root / "blocked.json").is_file()
+
+
+def _subreaper_real_samtools() -> Path:
+    selected = os.environ.get("EMRYS_TEST_SAMTOOLS")
+    if selected is None:
+        pytest.skip("Real native proof requires explicit EMRYS_TEST_SAMTOOLS")
+    path = Path(selected)
+    assert path.is_absolute() and path.is_file() and os.access(path, os.X_OK)
+    return path.resolve()
+
+
+def _task_subreaper_real_child(root: Path, mode: str, threads: str) -> None:
+    samtools = _subreaper_real_samtools()
+    descendants = task._TaskChildren()
+    runner = task.default_task_ops(descendants=descendants).run_command
+    source = root / "input.sam"
+    script = REPO_ROOT / "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"
+    for phase in ("sort", "reuse") if mode == "success" else ("sort",):
+        work = root / phase / "work"
+        output = root / phase / "output"
+        work.mkdir(parents=True)
+        output.mkdir()
+        argv = (
+            "/bin/bash",
+            str(script),
+            "--sample-id",
+            "sample",
+            "--input-alignment",
+            str(source),
+            "--output-dir",
+            str(output),
+            "--native-memory-mb",
+            "800",
+            "--threads",
+            threads,
+            "--samtools-bin",
+            str(samtools),
+        )
+        with (
+            (root / f"{phase}.stdout").open("wb") as stdout,
+            (root / f"{phase}.stderr").open("wb") as stderr,
+        ):
+            try:
+                result = runner(
+                    argv,
+                    root,
+                    {**os.environ, "EMRYS_TASK_WORK_DIR": str(work)},
+                    stdout.fileno(),
+                    stderr.fileno(),
+                )
+            except task.TaskBoundaryError as exc:
+                assert mode == "cancel" and "interrupted by signal 15" in str(exc)
+                assert descendants.empty
+                (root / "closed.json").write_text(
+                    json.dumps(
+                        {
+                            "error": str(exc),
+                            "outputs": sorted(
+                                str(p.relative_to(root))
+                                for p in (root / "sort").rglob("*")
+                                if p.is_file()
+                            ),
+                        }
+                    )
+                )
+                return
+        assert result.exit_code == 0 and descendants.empty
+        bam = output / "sample.sorted.bam"
+        assert bam.stat().st_size > 0
+        assert (output / "sample.sorted.bam.bai").stat().st_size > 0
+        if phase == "reuse":
+            assert bam.stat().st_ino == source.stat().st_ino
+        source = bam
+    (root / "closed.json").write_text(json.dumps({"success": True}))
+
+
+def _prepare_subreaper_sam(root: Path, samtools: Path) -> None:
+    with (root / "input.sam").open("w") as stream:
+        stream.write("@HD\tVN:1.6\tSO:unsorted\n@SQ\tSN:chr1\tLN:100\n")
+        for index in range(32768):
+            stream.write(
+                f"read{index}\t0\tchr1\t{90 - index % 90}\t60\t8M\t*\t0\t0\tACGTACGT\tIIIIIIII\n"
+            )
+    version = subprocess.run(
+        [str(samtools), "--version"], check=True, capture_output=True, text=True
+    )
+    (root / "samtools-version.txt").write_text(version.stdout)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux real native proof")
+@pytest.mark.parametrize("threads", (1, 2))
+def test_task_subreaper_real_canonical_success(tmp_path: Path, threads: int) -> None:
+    samtools = _subreaper_real_samtools()
+    root = _subreaper_evidence_root(tmp_path, f"real-success-{threads}")
+    _prepare_subreaper_sam(root, samtools)
+    completed = workflow_fixture.run_child(
+        _task_subreaper_real_child, root, "success", str(threads)
+    )
+    assert completed.returncode == 0, (completed.stdout, completed.stderr)
+    assert _record(root / "closed.json") == {"success": True}
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux real native proof")
+@pytest.mark.parametrize("threads", (1, 2))
+def test_task_subreaper_real_canonical_cancellation(
+    tmp_path: Path, threads: int
+) -> None:
+    samtools = _subreaper_real_samtools()
+    root = _subreaper_evidence_root(tmp_path, f"real-cancel-{threads}")
+    _prepare_subreaper_sam(root, samtools)
+    with (
+        (root / "supervisor.stdout").open("wb") as stdout,
+        (root / "supervisor.stderr").open("wb") as stderr,
+    ):
+        process = subprocess.Popen(
+            workflow_fixture.child_command(
+                _task_subreaper_real_child, root, "cancel", str(threads)
+            ),
+            cwd=REPO_ROOT,
+            stdout=stdout,
+            stderr=stderr,
+        )
+        stopped_pid = None
+        stopped_descriptor = None
+        try:
+            deadline = time.monotonic() + 15
+            while stopped_pid is None:
+                assert process.poll() is None, (root / "supervisor.stderr").read_text()
+                assert time.monotonic() < deadline, "No live samtools sort observed"
+                pending = [process.pid]
+                while pending and stopped_pid is None:
+                    pid = pending.pop()
+                    try:
+                        pending.extend(
+                            int(child)
+                            for child in Path(f"/proc/{pid}/task/{pid}/children")
+                            .read_text()
+                            .split()
+                        )
+                        descriptor = os.pidfd_open(pid)
+                    except (ProcessLookupError, FileNotFoundError):
+                        continue
+                    try:
+                        executable = Path(f"/proc/{pid}/exe").resolve(strict=True)
+                        argv = Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
+                        if (
+                            executable == samtools
+                            and len(argv) > 1
+                            and argv[1] == b"sort"
+                        ):
+                            signal.pidfd_send_signal(descriptor, signal.SIGSTOP)
+                            stopped_pid = pid
+                            stopped_descriptor = descriptor
+                            (root / "observed-samtools.json").write_text(
+                                json.dumps(
+                                    {
+                                        "pid": pid,
+                                        "exe": str(executable),
+                                        "argv": [arg.decode() for arg in argv if arg],
+                                    }
+                                )
+                            )
+                    except (ProcessLookupError, FileNotFoundError):
+                        pass
+                    finally:
+                        if descriptor != stopped_descriptor:
+                            os.close(descriptor)
+                time.sleep(0.001)
+            os.kill(process.pid, signal.SIGTERM)
+            process.wait(timeout=15)
+            assert process.returncode == 0, (root / "supervisor.stderr").read_text()
+            assert "interrupted by signal 15" in _record(root / "closed.json")["error"]
+            with pytest.raises(ProcessLookupError):
+                os.kill(stopped_pid, 0)
+            assert not (root / "sort/output/sample.sorted.bam").exists()
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=5)
+            if stopped_descriptor is not None:
+                try:
+                    signal.pidfd_send_signal(stopped_descriptor, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                finally:
+                    os.close(stopped_descriptor)
+
+
+def _task_subreaper_abort_child(root: Path, mode: str) -> None:
+    built = _task_fixture(root)
+    if mode == "launch":
+        built.definition["producer_argv"] = [str(root / "absent-producer")]
+        _rewrite_task(built)
+    elif mode != "publication":
+        built.definition["producer_argv"].extend(["--fail-after", "1"])
+        _rewrite_task(built)
+    descendants = None if mode == "inline" else task._TaskChildren()
+    defaults = task.default_task_ops(descendants=descendants)
+    produced = False
+    original_publish = task._NativePublication.publish
+    original_close = task._NativePublication.close
+    final = Path(built.definition["outputs"][0]["path"])
+    scratch = Path(built.definition["outputs"][0]["working_path"]).parent
+    scratch = scratch.with_name(scratch.name + ".scratch")
+
+    def command(argv, *arguments):
+        nonlocal produced
+        result = defaults.run_command(argv, *arguments)
+        if "producer" in argv:
+            produced = True
+            if mode == "input":
+                built.mutable_input.write_bytes(b"changed before cleanup\n")
+            elif mode == "report":
+                report = Path(built.definition["validation_report_path"])
+                report.parent.mkdir(parents=True, exist_ok=True)
+                report.write_bytes(b"retained validation report\n")
+        return result
+
+    def now():
+        if produced and mode == "terminal-input":
+            built.mutable_input.write_bytes(b"changed before terminal publication\n")
+        elif produced and mode == "terminal-output":
+            final.write_bytes(b"foreign destination before terminal publication\n")
+        return defaults.now()
+
+    def publish(publication, *arguments):
+        result = original_publish(publication, *arguments)
+        if mode == "publication":
+            raise task.TaskBoundaryError("fixture failure after native publication")
+        return result
+
+    def close(publication):
+        if mode == "cleanup":
+            raise task.TaskBoundaryError("fixture incomplete cleanup")
+        return original_close(publication)
+
+    def unknown():
+        raise task.TaskProcessGroupAmbiguity("fixture lost descendant observation")
+
+    ops = replace(
+        defaults,
+        run_command=command,
+        now=now,
+        require_descendants_reaped=(
+            unknown if mode == "observation" else defaults.require_descendants_reaped
+        ),
+    )
+    with (
+        patch.object(task._NativePublication, "publish", publish),
+        patch.object(task._NativePublication, "close", close),
+        pytest.raises(task.TaskBoundaryError) as failure,
+    ):
+        _execute_task(built.plan, ops=ops)
+    if mode == "observation":
+        assert task._process_group_ambiguity(failure.value) is not None
+    terminal = _record(built.plan.task_attempt_path)
+    assert terminal["status"] == "failed"
+    assert terminal["abort_closure"] == (
+        "linux-task-prepublication.v1" if mode == "closed" else None
+    )
+    assert scratch.exists() == (mode in {"cleanup", "observation"})
+    if mode == "publication":
+        assert not final.exists()
+    if mode == "closed":
+        assert terminal["stable_inputs_rechecked"]
+        assert terminal["inputs"] == _record(built.plan.task_start_path)["inputs"]
+        identity = {
+            "run_root": built.run_root,
+            "execution": _record(built.plan.execution_path),
+            "profile": _record(built.plan.profile_path),
+            "machine_key": built.plan.machine_key,
+            "scope": built.plan.scope,
+        }
+        reference = task._record_reference(built.plan.task_attempt_path, built.run_root)
+        assert task.recheck_aborted_task(
+            **identity, record_reference=reference
+        ) == _load_task(built.manifest_path)
+        final.write_bytes(b"later successful native output\n")
+        historical, bound = task._admit_task_attempt(
+            **identity, workflow_attempt_id=built.plan.workflow_attempt_id
+        )
+        assert historical == terminal and bound == reference
+        with pytest.raises(task.TaskBoundaryError, match="destination or residue"):
+            task.recheck_aborted_task(**identity, record_reference=reference)
+        built.mutable_input.write_bytes(b"later changed scientific input\n")
+        assert (
+            task._admit_task_attempt(
+                **identity, workflow_attempt_id=built.plan.workflow_attempt_id
+            )[0]
+            == terminal
+        )
+        with pytest.raises(task.TaskBoundaryError, match="content binding"):
+            task.recheck_aborted_task(**identity, record_reference=reference)
+    (root / "abort-checked.json").write_text(json.dumps({"mode": mode}))
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux", reason="requires dedicated Linux Task worker"
+)
+@pytest.mark.parametrize(
+    "mode",
+    (
+        "closed",
+        "inline",
+        "launch",
+        "input",
+        "report",
+        "publication",
+        "cleanup",
+        "observation",
+        "terminal-input",
+        "terminal-output",
+    ),
+)
+def test_task_subreaper_abort_closure_requires_every_prepublication_proof(
+    tmp_path: Path, mode: str
+) -> None:
+    root = _subreaper_evidence_root(tmp_path, f"abort-{mode}")
+    completed = workflow_fixture.run_child(_task_subreaper_abort_child, root, mode)
+    assert completed.returncode == 0, (completed.stdout, completed.stderr)
+    assert _record(root / "abort-checked.json") == {"mode": mode}
+
+
+@pytest.mark.parametrize(
+    "outcome", ("closed", "live", "unregistered", "ownership", "wait-error")
+)
+def test_task_subreaper_closure_requires_fresh_exclusive_wait(monkeypatch, outcome):
+    descendants = task._TaskChildren.__new__(task._TaskChildren)
+    descendants.process = None if outcome == "unregistered" else Mock(returncode=0)
+    descendants.empty = True
+    descendants._check_owner = Mock(
+        side_effect=OSError("fixture owner read") if outcome == "ownership" else None
+    )
+    wait = Mock(
+        side_effect=(
+            ChildProcessError()
+            if outcome == "closed"
+            else OSError("fixture wait error")
+            if outcome == "wait-error"
+            else None
+        ),
+        return_value=None,
+    )
+    monkeypatch.setattr(task.os, "waitid", wait, raising=False)
+    for name in ("P_ALL", "WEXITED", "WNOHANG", "WNOWAIT"):
+        monkeypatch.setattr(task.os, name, 1, raising=False)
+    if outcome == "closed":
+        descendants.require_reaped()
+    else:
+        with pytest.raises(
+            task.TaskBoundaryError
+            if outcome == "unregistered"
+            else task.TaskProcessGroupAmbiguity
+        ):
+            descendants.require_reaped()
+    assert task.default_task_ops().require_descendants_reaped is None
+
+
+def test_abort_revalidation_remains_interruptible_before_terminal_publication():
+    publish = Mock()
+    streams = Mock()
+    streams.finalize.return_value = ({}, {})
+
+    def interrupted():
+        assert not task._TASK_SIGNALS.intersection(
+            signal.pthread_sigmask(signal.SIG_BLOCK, set())
+        )
+        raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        task._publish_attempt(
+            Mock(),
+            ops=replace(_fixed_ops(), publish_bytes=publish),
+            identity={},
+            started_at="2026-08-12T12:01:00Z",
+            producer=None,
+            validator=None,
+            semantic=None,
+            stable_inputs_rechecked=False,
+            task_start_reference=None,
+            failure_message="fixture producer failure",
+            streams=streams,
+            inputs=(),
+            outputs=(),
+            prove_abort=interrupted,
+        )
+    publish.assert_not_called()
+
+
+@pytest.mark.parametrize("observation", ("closed", "live", "busy", "leader-live"))
+def test_task_subreaper_requires_positive_wait_evidence(monkeypatch, observation):
+    descendants = task._TaskChildren.__new__(task._TaskChildren)
+    descendants.process = Mock(
+        pid=12345, returncode=None if observation == "leader-live" else 0
+    )
+    descendants.empty = False
+    descendants.children = Mock()
+    descendants.children.read_text.return_value = ""
+    descendants._check_owner = lambda: None
+    waits = []
+
+    def waitpid(pid, flags):
+        waits.append((pid, flags))
+        assert len(waits) <= 64, "reaping exceeded one bounded poll"
+        if observation == "closed":
+            raise ChildProcessError
+        return (12346, 0) if observation == "busy" else (0, 0)
+
+    monkeypatch.setattr(task.os, "waitpid", waitpid)
+    monkeypatch.setattr(
+        task.os, "kill", lambda *_args: pytest.fail("observation sent a signal")
+    )
+    ops = descendants.process_ops(
+        replace(
+            lifecycle.DEFAULT_PROCESS_GROUP_OPS, poll=lambda child: child.returncode
+        )
+    )
+    assert ops.poll(descendants.process) == descendants.process.returncode
+    assert descendants.empty == (observation == "closed")
+    assert ops.group_exists(12345) == (observation != "closed")
+    assert all(pid == -1 and flags & 0x40000000 for pid, flags in waits)
+    assert bool(waits) == (observation != "leader-live")
+
+
+@pytest.mark.parametrize("fault", ("wait", "read", "malformed", "owner", "signal"))
+def test_task_subreaper_observation_faults_cannot_authorize_cleanup(monkeypatch, fault):
+    descendants = task._TaskChildren.__new__(task._TaskChildren)
+    descendants.process = Mock(pid=12345, returncode=0)
+    descendants.empty = False
+    descendants.children = Mock()
+    descendants.children.read_text.return_value = (
+        "invalid" if fault == "malformed" else "12346"
+    )
+    descendants._check_owner = lambda: None
+    if fault == "owner":
+        descendants._check_owner = Mock(
+            side_effect=task.TaskProcessGroupAmbiguity("ownership changed")
+        )
+    if fault == "read":
+        descendants.children.read_text.side_effect = OSError("procfs unavailable")
+    monkeypatch.setattr(
+        task.os,
+        "waitpid",
+        Mock(side_effect=OSError("wait failed"))
+        if fault == "wait"
+        else lambda *_a: (0, 0),
+    )
+    sent = []
+
+    def signal_child(pid, signum):
+        sent.append((pid, signum))
+        raise PermissionError("child signal refused")
+
+    monkeypatch.setattr(task.os, "kill", signal_child)
+    ops = descendants.process_ops(
+        replace(
+            lifecycle.DEFAULT_PROCESS_GROUP_OPS, poll=lambda child: child.returncode
+        )
+    )
+    with pytest.raises(lifecycle.ProcessGroupAmbiguity):
+        lifecycle.quiesce_process_group(12345, descendants.process, ops)
+    assert not descendants.empty
+    assert sent == ([(12346, signal.SIGTERM)] if fault == "signal" else [])
+
+
+@pytest.mark.parametrize("children", ("live", "waitable"))
+def test_task_subreaper_refuses_existing_children_without_reaping(
+    monkeypatch, children
+):
+    descendants = task._TaskChildren.__new__(task._TaskChildren)
+    descendants.children = Mock()
+    descendants.children.read_text.return_value = "12346"
+    descendants._check_owner = lambda: None
+    marker = object()
+    descendants.process = marker
+    monkeypatch.setattr(
+        task.os, "waitid", lambda *_args: None if children == "live" else object()
+    )
+    monkeypatch.setattr(
+        task.os, "waitpid", lambda *_args: pytest.fail("reaped unrelated child")
+    )
+    monkeypatch.setattr(
+        task.os, "kill", lambda *_args: pytest.fail("signaled unrelated child")
+    )
+    with pytest.raises(task.TaskProcessGroupAmbiguity, match="preexisting child"):
+        descendants.prepare()
+    assert descendants.process is marker
+
+
+@pytest.mark.parametrize("ownership", ("pid", "thread", "sigchld"))
+def test_task_subreaper_refuses_changed_reaping_owner(monkeypatch, ownership):
+    descendants = task._TaskChildren.__new__(task._TaskChildren)
+    descendants.owner = os.getpid() + (ownership == "pid")
+    descendants.children = Mock()
+    descendants.children.parent.parent.iterdir.return_value = [
+        Path(str(os.getpid()))
+    ] + ([Path(str(os.getpid() + 1))] if ownership == "thread" else [])
+    monkeypatch.setattr(
+        task.signal,
+        "getsignal",
+        lambda _signal: signal.SIG_IGN if ownership == "sigchld" else signal.SIG_DFL,
+    )
+    monkeypatch.setattr(
+        task.os, "waitid", lambda *_args: pytest.fail("waited after ownership changed")
+    )
+    with pytest.raises(task.TaskProcessGroupAmbiguity, match="ownership changed"):
+        descendants.prepare()
+    descendants.children.read_text.assert_not_called()
+
+
+def test_task_subreaper_keeps_kill_escalation_for_later_adoptions(monkeypatch):
+    descendants = task._TaskChildren.__new__(task._TaskChildren)
+    descendants.process = Mock(pid=12345, returncode=0)
+    descendants.empty = False
+    descendants.children = Mock()
+    descendants.children.read_text.side_effect = ["12346", "12347", "12348"]
+    descendants._check_owner = lambda: None
+    monkeypatch.setattr(task.os, "waitpid", lambda *_args: (0, 0))
+    sent = []
+    monkeypatch.setattr(task.os, "kill", lambda pid, signum: sent.append((pid, signum)))
+    monkeypatch.setattr(
+        task.os, "killpg", lambda *_args: pytest.fail("stale process group signal")
+    )
+    ops = descendants.process_ops(
+        replace(
+            lifecycle.DEFAULT_PROCESS_GROUP_OPS, poll=lambda child: child.returncode
+        )
+    )
+    ops.signal_group(12345, signal.SIGKILL)
+    ops.signal_group(12345, signal.SIGTERM)
+    ops.poll(descendants.process)
+    assert sent == [(pid, signal.SIGKILL) for pid in (12346, 12347, 12348)]
+    assert not descendants.empty
+
+
+def _task_signal_publication_child(root: Path, fault: str) -> None:
+    """Exercise real process signals without changing the pytest process."""
+    built = _task_fixture(root)
+    defaults = _fixed_ops()
+    watched = {signal.SIGHUP, signal.SIGINT, signal.SIGTERM}
+    signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGUSR1})
+    if fault == "blocked":
+        signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGTERM})
+    prior_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    prior_handlers = {signum: signal.getsignal(signum) for signum in watched}
+    reached: list[str] = []
+    print(
+        json.dumps(
+            {
+                "attempt": str(built.plan.task_attempt_path),
+                "verified": str(built.plan.verified_task_path),
+            }
+        ),
+        flush=True,
+    )
+
+    def command(*arguments: Any) -> task.CommandResult:
+        assert not watched.intersection(signal.pthread_sigmask(signal.SIG_BLOCK, set()))
+        reached.append("command")
+        result = defaults.run_command(*arguments)
+        if fault in {"producer", "failed-attempt"}:
+            os.kill(os.getpid(), signal.SIGTERM)
+        return result
+
+    def publish(path: Path, data: bytes) -> None:
+        destination = (
+            "attempt"
+            if path == built.plan.task_attempt_path
+            else "verified"
+            if path == built.plan.verified_task_path
+            else None
+        )
+        if destination is not None:
+            reached.append(destination)
+        if fault in {destination, f"{destination}-failure"} or (
+            fault in {"kill", "failed-attempt"} and destination == "attempt"
+        ):
+            os.kill(os.getpid(), signal.SIGKILL if fault == "kill" else signal.SIGTERM)
+            assert watched.issubset(signal.pthread_sigmask(signal.SIG_BLOCK, set()))
+            if fault.endswith("-failure"):
+                raise OSError("injected record publication failure")
+        defaults.publish_bytes(path, data)
+
+    revalidate = task._TaskStreamCapture.revalidate_after_attempt_publication
+
+    def between(streams: task._TaskStreamCapture) -> None:
+        assert not watched.intersection(signal.pthread_sigmask(signal.SIG_BLOCK, set()))
+        revalidate(streams)
+        if fault == "between":
+            os.kill(os.getpid(), signal.SIGTERM)
+
+    task._TaskStreamCapture.revalidate_after_attempt_publication = between
+    error = None
+    context = None
+    try:
+        _execute_task(
+            built.plan,
+            ops=replace(defaults, run_command=command, publish_bytes=publish),
+        )
+        if fault == "reentry":
+            _execute_task(built.plan, ops=defaults)
+    except (task.TaskBoundaryError, OSError) as exc:
+        error = str(exc)
+        context = str(exc.__context__)
+    finally:
+        task._TaskStreamCapture.revalidate_after_attempt_publication = revalidate
+    assert {signum: signal.getsignal(signum) for signum in watched} == prior_handlers
+    assert signal.pthread_sigmask(signal.SIG_BLOCK, set()) == prior_mask
+    verified = built.plan.verified_task_path.exists()
+    if verified:
+        assert _validate_verified(built)["status"] == "succeeded"
+    print(json.dumps({"error": error, "context": context, "reached": reached}))
+
+
+@pytest.mark.parametrize(
+    "fault",
+    (
+        "none",
+        "producer",
+        "failed-attempt",
+        "attempt",
+        "between",
+        "verified",
+        "attempt-failure",
+        "verified-failure",
+        "kill",
+        "blocked",
+        "reentry",
+    ),
+)
+def test_task_signals_preserve_exact_finalization_boundary(
+    tmp_path: Path, fault: str
+) -> None:
+    completed = workflow_fixture.run_child(
+        _task_signal_publication_child, tmp_path, fault
+    )
+    assert completed.returncode == (-signal.SIGKILL if fault == "kill" else 0), (
+        completed.stdout,
+        completed.stderr,
+    )
+    records = [json.loads(line) for line in completed.stdout.splitlines()]
+    paths = records[0]
+    attempt_exists = fault not in {"attempt-failure", "kill", "blocked"}
+    assert Path(paths["attempt"]).exists() is attempt_exists
+    assert Path(paths["verified"]).exists() is (
+        fault in {"none", "verified", "reentry"}
+    )
+    if attempt_exists:
+        attempt = _record(paths["attempt"])
+        assert attempt["status"] == (
+            "failed" if fault in {"producer", "failed-attempt"} else "succeeded"
+        )
+        if fault in {"producer", "failed-attempt"}:
+            assert "interrupted by signal" in attempt["failure_message"]
+            assert attempt["validator"] is None and attempt["semantic_all_pass"] is None
+    if fault == "kill":
+        assert len(records) == 1
+        return
+    result = records[1]
+    if fault == "none":
+        assert result["error"] is None
+    elif fault == "blocked":
+        assert "ambient mask" in result["error"]
+        assert result["reached"] == []
+    elif fault == "reentry":
+        assert "existing" in result["error"]
+    else:
+        assert "interrupted by signal" in result["error"]
+        if fault.endswith("-failure"):
+            assert "injected record publication failure" in result["context"]
+    if fault in {"producer", "failed-attempt"}:
+        assert result["reached"] == ["command", "attempt"]
+
+
 def test_historical_attempt_is_rejected_before_task_mutation(
     tmp_path: Path,
 ) -> None:
@@ -943,6 +2098,18 @@ def test_uncertain_worker_group_preserves_workspace_and_owner_lock(
     assert Path(built.definition["publication"]["locks"][0]).is_dir()
     assert not Path(built.definition["outputs"][0]["path"]).exists()
     assert not Path(built.plan.verified_task_path).exists()
+
+
+def test_ambiguity_survives_distinct_failures_and_cyclic_exception_context() -> None:
+    earlier = task.TaskBoundaryError("earlier task failure")
+    earlier.__context__ = earlier
+    replacement = task.TaskBoundaryError("signal during handler restoration")
+    replacement.__context__ = replacement
+    ambiguity = lifecycle.ProcessGroupAmbiguity("native writer still alive")
+    replacement.__cause__ = ambiguity
+
+    assert task._process_group_ambiguity(earlier, replacement) is ambiguity
+    assert task._process_group_ambiguity(earlier) is None
 
 
 def test_unexpected_interruption_preserves_and_closes_partial_task_logs(
@@ -1090,6 +2257,12 @@ def test_processing_source_binding_is_closed_and_input_only(
 
 def test_dispatch_is_closed_and_binds_exact_owner_scope(tmp_path: Path) -> None:
     built = _task_fixture(tmp_path)
+    root = task.task_attempt_root(
+        built.run_root, WORKFLOW_ATTEMPT_ID, MACHINE_KEY, SCOPE_ID
+    )
+    assert built.plan.task_attempt_path == root / "task-attempt.json"
+    assert built.plan.stdout_path == root / "stdout.log"
+    assert built.plan.stderr_path == root / "stderr.log"
     built.definition["unexpected"] = True
     _rewrite_task(built)
     with pytest.raises(
@@ -1136,15 +2309,7 @@ def test_dispatch_hash_is_bound_before_parsing_or_producer_execution(
     _publish_json(changed.manifest_path, modified_attempt)
     calls: list[tuple[str, ...]] = []
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        _environment: Mapping[str, str],
-        _stdout_descriptor: int,
-        _stderr_descriptor: int,
-    ) -> task.CommandResult:
-        calls.append(argv)
-        return task.CommandResult(argv, 0)
+    command = _record_command(calls)
 
     defaults = _fixed_ops()
     ops = task.TaskOps(
@@ -1170,22 +2335,15 @@ def test_task_start_publication_failure_after_link_never_enters_producer(
     calls: list[tuple[str, ...]] = []
     injected = False
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        _environment: Mapping[str, str],
-        _stdout_descriptor: int,
-        _stderr_descriptor: int,
-    ) -> task.CommandResult:
-        calls.append(argv)
-        return task.CommandResult(argv, 0)
+    command = _record_command(calls)
 
-    def publish(path: Path, data: bytes) -> None:
+    def publish(path, _data):
         nonlocal injected
-        defaults.publish_bytes(path, data)
         if path == Path(built.plan.task_start_path) and not injected:
             injected = True
             raise task.TaskBoundaryError("injected after task-start link")
+
+    publish = _observe(defaults.publish_bytes, after=publish)
 
     ops = replace(
         defaults,
@@ -1249,10 +2407,11 @@ def test_task_streams_are_fsynced_and_closed_before_attempt_publication(
             events.append(f"close-{label}")
         original_close(descriptor)
 
-    def publish(path: Path, data: bytes) -> None:
+    def publish(path, _data):
         if path == Path(built.plan.task_attempt_path):
             events.append("publish-attempt")
-        defaults.publish_bytes(path, data)
+
+    publish = _observe(defaults.publish_bytes, before=publish)
 
     monkeypatch.setattr(task.os, "fsync", tracked_fsync)
     monkeypatch.setattr(task.os, "close", tracked_close)
@@ -1277,21 +2436,8 @@ def test_same_byte_log_replacement_while_descriptor_open_is_not_admitted(
     field = f"{label}_path"
     replacement_bytes = b""
 
-    def semantic(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
+    def semantic(_argv, _cwd, _environment, stdout_descriptor, stderr_descriptor):
         nonlocal replacement_bytes
-        result = defaults.run_semantic_all_pass(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
         descriptor = stdout_descriptor if label == "stdout" else stderr_descriptor
         target = Path(getattr(built.plan, field))
         original_state = os.fstat(descriptor)
@@ -1303,7 +2449,8 @@ def test_same_byte_log_replacement_while_descriptor_open_is_not_admitted(
         still_open_state = os.fstat(descriptor)
         assert os.path.samestat(still_open_state, original_state)
         assert not os.path.samestat(current_state, still_open_state)
-        return result
+
+    semantic = _observe(defaults.run_semantic_all_pass, after=semantic)
 
     with pytest.raises(
         task.TaskBoundaryError,
@@ -1342,11 +2489,12 @@ def test_evidence_change_during_terminal_publication_blocks_verified_marker(
         else getattr(built.plan, field)
     )
 
-    def publish(path: Path, data: bytes) -> None:
-        defaults.publish_bytes(path, data)
+    def publish(path, _data):
         if path == Path(built.plan.task_attempt_path):
             with target.open("ab") as stream:
                 stream.write(b"foreign evidence bytes\n")
+
+    publish = _observe(defaults.publish_bytes, after=publish)
 
     with pytest.raises(task.TaskBoundaryError, match=message):
         _execute_task(
@@ -1427,21 +2575,13 @@ def test_task_log_symlink_injected_at_stream_open_is_never_followed(
     outside.write_bytes(b"foreign bytes\n")
     calls: list[tuple[str, ...]] = []
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
-        del cwd, environment, stdout_descriptor, stderr_descriptor
-        calls.append(argv)
-        return task.CommandResult(argv, 0)
+    command = _record_command(calls)
 
-    def publish(path: Path, data: bytes) -> None:
-        defaults.publish_bytes(path, data)
+    def publish(path, _data):
         if path == Path(built.plan.task_start_path):
             Path(built.plan.stdout_path).symlink_to(outside)
+
+    publish = _observe(defaults.publish_bytes, after=publish)
 
     with pytest.raises(task.TaskBoundaryError, match="canonical|replace existing"):
         _execute_task(
@@ -1525,25 +2665,14 @@ def test_task_log_hashing_uses_shared_streaming_hasher_without_full_log_reads(
             raise AssertionError(f"task log was fully read: {label}")
         return original_read(path, label)
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
+    def command(argv, _cwd, _environment, stdout_descriptor, _stderr_descriptor):
         if "producer" in argv:
             large_chunk = b"x" * (1024 * 1024)
             assert os.write(stdout_descriptor, large_chunk) == len(large_chunk)
             assert os.write(stdout_descriptor, large_chunk) == len(large_chunk)
             assert os.write(stdout_descriptor, b"tail") == 4
-        return defaults.run_command(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
+
+    command = _observe(defaults.run_command, before=command)
 
     monkeypatch.setattr(task, "sha256_with_identity", tracked_hash)
     monkeypatch.setattr(task, "_read_bound_file", reject_full_log_read)
@@ -1700,23 +2829,11 @@ def test_semantic_gate_cannot_change_the_report_it_approves(tmp_path: Path) -> N
     built = _task_fixture(tmp_path)
     defaults = _fixed_ops()
 
-    def semantic(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
-        result = defaults.run_semantic_all_pass(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
+    def semantic(*_arguments):
         with Path(built.definition["validation_report_path"]).open("ab") as stream:
             stream.write(b"post-gate mutation\n")
-        return result
+
+    semantic = _observe(defaults.run_semantic_all_pass, after=semantic)
 
     ops = replace(defaults, run_semantic_all_pass=semantic)
     with pytest.raises(task.TaskBoundaryError, match="report changed"):
@@ -1728,24 +2845,12 @@ def test_validator_cannot_change_a_producer_output(tmp_path: Path) -> None:
     built = _task_fixture(tmp_path)
     defaults = _fixed_ops()
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
-        result = defaults.run_command(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
+    def command(argv, *_arguments):
         if "validator" in argv:
             with Path(built.definition["outputs"][0]["path"]).open("ab") as stream:
                 stream.write(b"validator mutation\n")
-        return result
+
+    command = _observe(defaults.run_command, after=command)
 
     ops = replace(defaults, run_command=command)
     with pytest.raises(task.TaskBoundaryError, match="producer output changed"):
@@ -1775,15 +2880,7 @@ def test_symlinked_output_and_contract_ancestors_fail_closed(tmp_path: Path) -> 
 def test_step00c_symlinked_stationary_reference_blocks_before_producer(
     tmp_path: Path,
 ) -> None:
-    built = workflow_fixture.build(tmp_path / "workflow-fixture")
-    workflow_fixture.materialize_active_run_lock(built)
-    machine_key = "emrys.stage.construct_FASTA_sidecars.v1"
-    scope_id = str(built.execution["reference"]["reference_id"])
-    manifest = orchestration_contracts.load_json_object(built.workflow_attempt_path)
-    record = manifest["tasks"][machine_key][scope_id]
-    plan = _load_task(
-        built.workflow_attempt_path, machine_key=machine_key, scope_id=scope_id
-    )
+    built, plan, manifest, record = _step00c_plan(tmp_path / "workflow-fixture")
     fasta = Path(str(built.execution["reference"]["fasta"]["path"]))
     original_parent = fasta.parent
     real_parent = original_parent.with_name("reference-real")
@@ -1797,15 +2894,7 @@ def test_step00c_symlinked_stationary_reference_blocks_before_producer(
 
     calls: list[tuple[str, ...]] = []
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        _environment: Mapping[str, str],
-        _stdout_descriptor: int,
-        _stderr_descriptor: int,
-    ) -> task.CommandResult:
-        calls.append(argv)
-        return task.CommandResult(argv, 0)
+    command = _record_command(calls)
 
     defaults = _fixed_ops()
     ops = replace(
@@ -1826,27 +2915,11 @@ def test_step00c_symlinked_stationary_reference_blocks_before_producer(
 def test_step00c_parent_permission_drift_blocks_before_task_start(
     tmp_path: Path,
 ) -> None:
-    built = workflow_fixture.build(tmp_path / "workflow-fixture")
-    workflow_fixture.materialize_active_run_lock(built)
-    machine_key = "emrys.stage.construct_FASTA_sidecars.v1"
-    scope_id = str(built.execution["reference"]["reference_id"])
-    manifest = orchestration_contracts.load_json_object(built.workflow_attempt_path)
-    record = manifest["tasks"][machine_key][scope_id]
-    plan = _load_task(
-        built.workflow_attempt_path, machine_key=machine_key, scope_id=scope_id
-    )
+    built, plan, _manifest, _record = _step00c_plan(tmp_path / "workflow-fixture")
     parent = Path(str(built.execution["reference"]["fasta"]["path"])).parent
     calls: list[tuple[str, ...]] = []
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        _environment: Mapping[str, str],
-        _stdout_descriptor: int,
-        _stderr_descriptor: int,
-    ) -> task.CommandResult:
-        calls.append(argv)
-        return task.CommandResult(argv, 0)
+    command = _record_command(calls)
 
     defaults = _fixed_ops()
     parent_checks = 0
@@ -1908,23 +2981,13 @@ def test_complete_step00c_sidecar_pair_is_reused_and_content_bound(
     defaults = _fixed_ops()
     calls: list[tuple[str, ...]] = []
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
+    def command(argv, cwd, environment, stdout_descriptor, stderr_descriptor):
         calls.append(argv)
         if argv == producer_argv:
             os.write(stdout_descriptor, b"reused existing sidecars\n")
             return task.CommandResult(argv, 0)
         return defaults.run_command(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
+            argv, cwd, environment, stdout_descriptor, stderr_descriptor
         )
 
     outcome = _execute_task(
@@ -1959,21 +3022,7 @@ def test_partial_step00c_sidecar_pair_blocks_before_producer(tmp_path: Path) -> 
     calls: list[tuple[str, ...]] = []
     defaults = _fixed_ops()
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
-        calls.append(argv)
-        return defaults.run_command(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
+    command = _record_command(calls, defaults.run_command)
 
     with pytest.raises(task.TaskBoundaryError, match="partial pre-existing Step 00c"):
         _execute_task(
@@ -1998,22 +3047,10 @@ def test_reused_step00c_sidecar_mutation_during_validation_fails_closed(
     producer_argv = tuple(record["producer_argv"])
     defaults = _fixed_ops()
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
+    def command(argv, *arguments):
         if argv == producer_argv:
             return task.CommandResult(argv, 0)
-        result = defaults.run_command(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
+        result = defaults.run_command(argv, *arguments)
         with outputs[1].open("ab") as stream:
             stream.write(b"foreign mutation\n")
         return result
@@ -2036,29 +3073,18 @@ def test_reused_step00c_sidecar_rechecked_before_verified_publication(
     original = outputs[0].read_bytes()
     defaults = _fixed_ops()
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
+    def command(argv, *arguments):
         if argv == producer_argv:
             return task.CommandResult(argv, 0)
-        return defaults.run_command(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
+        return defaults.run_command(argv, *arguments)
 
-    def publish(path: Path, data: bytes) -> None:
-        defaults.publish_bytes(path, data)
+    def publish(path, _data):
         if path == Path(plan.task_attempt_path):
             replacement = outputs[0].with_name(f".{outputs[0].name}.late-replacement")
             replacement.write_bytes(original)
             replacement.replace(outputs[0])
+
+    publish = _observe(defaults.publish_bytes, after=publish)
 
     with pytest.raises(task.TaskBoundaryError, match="before verified publication"):
         _execute_task(
