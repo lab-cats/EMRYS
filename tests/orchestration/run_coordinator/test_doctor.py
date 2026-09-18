@@ -454,10 +454,10 @@ def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
         == 1
     )
     output = capsys.readouterr().err
-    assert "Runtime    NOT PREPARED" in output
-    assert "Storage    PASS" in output
-    assert "Execution  PASS" in output
-    assert f"EXECUTION REQUIREMENT: {result.blockers[-1]}" in output
+    assert "Runtime: NOT PREPARED" in output
+    assert "Storage: PASS" in output
+    assert "Execution: PASS" in output
+    assert f"Execution requirement: {result.blockers[-1]}" in output
     assert _snapshot(tmp_path) == before
 
 
@@ -511,7 +511,7 @@ def test_doctor_selects_execution_profile_without_writes(
     assert result.execution_profile == expected
     assert result.execution_ready and result.storage_ready
     assert expected.placement.kind == ("direct" if selection is None else "slurm")
-    assert "Execution  PASS" in capsys.readouterr().err
+    assert "Execution: PASS" in capsys.readouterr().err
     assert _snapshot(tmp_path) == before
 
 
@@ -534,7 +534,7 @@ def test_invalid_selected_execution_profile_does_not_fall_back_to_default(
     )
 
     output = capsys.readouterr().err
-    assert "Execution  NOT ADMITTED" in output
+    assert "Execution: NOT ADMITTED" in output
     assert "selected execution profile is not admitted" in output
     assert "Select a valid execution profile with --profile" in output
     assert (
@@ -607,10 +607,10 @@ def test_existing_invalid_storage_evidence_is_not_assumed_to_be_fresh_setup(
     )
     doctor._print_result(result, False)
     output = capsys.readouterr().err
-    assert "Storage    NOT QUALIFIED" in output
-    assert "Storage    NOT PREPARED" not in output
+    assert "Storage: NOT QUALIFIED" in output
+    assert "Storage: NOT PREPARED" not in output
     assert all(
-        f"EXECUTION REQUIREMENT: {blocker}" in output for blocker in result.blockers
+        f"Execution requirement: {blocker}" in output for blocker in result.blockers
     )
     assert _snapshot(tmp_path) == before
 
@@ -645,7 +645,7 @@ def test_doctor_rejects_an_unusable_default_execution_profile_without_repair(
         == 1
     )
     output = capsys.readouterr().err
-    assert "Execution  NOT ADMITTED" in output
+    assert "Execution: NOT ADMITTED" in output
     assert "DOCTOR BLOCKED: Doctor preserves execution profiles" in output
     assert _snapshot(tmp_path) == before
 
@@ -865,11 +865,11 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
             == 1
         )
         output = capsys.readouterr().err
-        assert "EXECUTION REQUIREMENT: bash: fail (unavailable)" in output
-        assert "Runtime    CHECKS FAILED" in output
-        assert "Runtime    NOT PREPARED" not in output
-        assert f"Storage    {'PASS' if storage_ready else 'NOT QUALIFIED'}" in output
-        assert "Execution  NOT ADMITTED" in output
+        assert "Execution requirement: bash: fail (unavailable)" in output
+        assert "Runtime: CHECKS FAILED" in output
+        assert "Runtime: NOT PREPARED" not in output
+        assert f"Storage: {'PASS' if storage_ready else 'NOT QUALIFIED'}" in output
+        assert "Execution: NOT ADMITTED" in output
         assert ('"expected": ".*"' in output) == (level != "normal")
         assert ("Executable was not found" in output) == (level != "normal")
         assert ("elapsed_seconds=0.125" in output) == (level != "normal")
@@ -1093,7 +1093,7 @@ def test_scheduler_timing_observation_is_optional_buffered_and_escaped(
         environment={},
         stdout_pattern=tmp_path / "maintenance-%j.out",
         stderr_pattern=tmp_path / "maintenance-%j.err",
-        job_name="emrys-local-pilot",
+        job_name="emrys-doctor",
     )
     timing = doctor._DoctorTiming()
     timing.detail = True
@@ -2976,7 +2976,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         assert compute.read_bytes() == original
         qualification.admit_final_qualification(project.source_path.parent, fasta)
         repeated_output = capsys.readouterr().err
-        assert "EMRYS is ready." in repeated_output
+        assert "Doctor: ready" in repeated_output
         assert "EMRYS Doctor verification plan" in repeated_output
         assert "Checking/updating native tools and R" not in repeated_output
         _repeated_log_path, repeated_events = _repair_log(project, previous=log_path)

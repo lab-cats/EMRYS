@@ -15,6 +15,7 @@ from typing import Any
 
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.table import Column
 from rich.text import Text
 
 _MAX_FIELD_BYTES = 16 * 1024
@@ -99,9 +100,9 @@ def phase_progress(
         console = _console(file)
         live = console.is_terminal and not console.no_color
         progress = Progress(
-            SpinnerColumn(),
-            TextColumn("{task.description}", markup=False),
-            TimeElapsedColumn(),
+            SpinnerColumn(style="cyan"),
+            TextColumn("{task.description}", style="bold cyan", markup=False),
+            TimeElapsedColumn(table_column=Column(style="dim")),
             console=console,
             transient=True,
             disable=not live,
@@ -134,9 +135,10 @@ def phase_progress(
             if elapsed is not None:
                 seconds = int(elapsed)
                 duration = f"{seconds // 60}m {seconds % 60:02d}s"
-            console_print(
-                f"{message}: {outcome} ({duration})",
-                style="green" if outcome == "complete" else "red",
+            console_field(
+                message,
+                f"{outcome} ({duration})",
+                value_style="green" if outcome == "complete" else "red",
                 file=file,
             )
 

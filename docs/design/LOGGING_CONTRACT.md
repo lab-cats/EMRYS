@@ -51,13 +51,17 @@ open or append to the operation log.
 
 | Level | Console projection | Durable log |
 | --- | --- | --- |
-| `normal` | Run identity, work/reporting summary, meaningful phases, verified Results, warnings, errors, failure log path, and bounded failure summary | complete observed event set |
+| `normal` | command outcome, essential destination/profile/count, Run identity, work/reporting summary, meaningful phases, verified Results, warnings, errors, failure log path, and bounded failure summary | complete observed event set |
 | `verbose` | `normal` plus Run root, resources/allocation, profile, scheduler streams, resolved operational paths, exact safe commands, timing, and recovery identities | same event semantics |
 
-Rich styles human terminal output only. Status remains understandable from its
-text labels. Redirected output, `NO_COLOR`, and dumb terminals have no color or
-animation. Doctor progress names the active phase and elapsed time; it does not
-invent a completion percentage or a guaranteed remaining duration.
+Rich styles human terminal output only. Cyan keys/labels remain visually
+distinct from neutral or semantically colored values. Green is reserved for
+verified success/readiness, yellow for pending/warning/unverified state, red for
+failure/blocking state, and dim text for secondary metadata. Status remains
+understandable from its text labels. Redirected output, `NO_COLOR`, and dumb
+terminals have no color or animation. Doctor progress names the active phase
+and elapsed time; it does not invent a completion percentage or a guaranteed
+remaining duration.
 
 A repair that invokes package managers creates one exclusive, mode-0600
 `package-output.log` beside its maintenance JSONL. It retains both child streams
@@ -191,17 +195,17 @@ directory pinning and synchronization; partial output is retained on failure.
 The terminal diagnostic records transport and scheduler observations without
 claiming native quiescence or recovery eligibility. Preview opens no log.
 
-Slurm compatibility streams live under `<project-root>/logs` as
-`emrys-local-pilot-<request-uuid>-%j.out` and
-`emrys-local-pilot-<request-uuid>-%j.err` for ordinary Run/resume/report
-submission. The request token is frozen before confirmation and bound to its
-retained request record. New v3 requests also retain the exact scheduler name
-`emrys-local-pilot-<request-uuid>`; selected observation checks it against live
-metadata in addition to the stream paths. Legacy and Doctor qualification streams retain
-`emrys-local-pilot-%j.out` and `.err`. Scheduler streams are not
-application logs. Submission dry-run creates neither those paths nor an
-application log. The compute delegate receives the resolved controls, opens
-the operation's one application attempt, records scheduler identity only as
+Slurm compatibility streams live under `<project-root>/logs`. Current v4
+Run/resume/report requests use `emrys-<request-uuid>-%j.out` and `.err` with the
+exact scheduler name `emrys-<request-uuid>`; Doctor qualification uses
+`emrys-doctor-%j.out` and `.err` with scheduler name `emrys-doctor`. The request
+token is frozen before confirmation and bound to its retained request record.
+Selected observation checks the retained name and paths against live metadata.
+Historical v1-v3 readers retain the exact `emrys-local-pilot` names and paths
+their records require; new writers never generate them. Scheduler streams are
+not application logs. Submission dry-run creates neither those paths nor an
+application log. The compute delegate receives the resolved controls, opens the
+operation's one application attempt, records scheduler identity only as
 correlation metadata, and projects human output to scheduler stderr.
 
 Ordinary token-bound delegates also emit `submission_context` immediately after

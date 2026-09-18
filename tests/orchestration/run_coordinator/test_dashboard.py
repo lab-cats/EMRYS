@@ -57,14 +57,12 @@ def _blocked_stream_reader(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.parametrize("matching_token", [True, False])
+@pytest.mark.parametrize("prefix", ["emrys-local-pilot-", "emrys-"])
 def test_request_specific_scheduler_stream_pair_admission(
-    tmp_path: Path, matching_token: bool
+    tmp_path: Path, matching_token: bool, prefix: str
 ) -> None:
-    stdout = tmp_path / f"emrys-local-pilot-{'a' * 32}-{JOB_ID}.out"
-    stderr = (
-        tmp_path
-        / f"emrys-local-pilot-{('a' if matching_token else 'b') * 32}-{JOB_ID}.err"
-    )
+    stdout = tmp_path / f"{prefix}{'a' * 32}-{JOB_ID}.out"
+    stderr = tmp_path / f"{prefix}{('a' if matching_token else 'b') * 32}-{JOB_ID}.err"
     stdout.write_bytes(b"")
     stderr.write_bytes(b"")
     if matching_token:
@@ -75,6 +73,15 @@ def test_request_specific_scheduler_stream_pair_admission(
             dashboard._scheduler.DiscoveryError, match="stderr does not match"
         ):
             dashboard.validate_log_selection(JOB_ID, str(stdout), str(stderr))
+
+
+def test_doctor_scheduler_stream_pair_admission(tmp_path: Path) -> None:
+    stdout = tmp_path / f"emrys-doctor-{JOB_ID}.out"
+    stderr = tmp_path / f"emrys-doctor-{JOB_ID}.err"
+    stdout.write_bytes(b"")
+    stderr.write_bytes(b"")
+    selected = dashboard.validate_log_selection(JOB_ID, stdout, stderr)
+    assert (selected["out"], selected["err"]) == (str(stdout), str(stderr))
 
 
 @pytest.mark.parametrize("job_name", ["", "a,b", "-other", "unsafe\n", True, "x" * 129])
@@ -551,6 +558,7 @@ def test_stream_cache_resets_changed_generations(tmp_path: Path, change: str) ->
     path.write_bytes(replacement)
     os.utime(path, ns=(path.stat().st_atime_ns, path.stat().st_mtime_ns + 1000000))
     assert cache.sync() and cache.data == replacement
+    assert cache.generation_changed
     assert {"replace": "replaced", "truncate": "truncated", "rewrite": "changed"}[
         change
     ] in cache.diagnostic

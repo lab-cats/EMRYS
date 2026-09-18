@@ -18,6 +18,12 @@ from types import MappingProxyType
 from typing import cast
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.libraries.application_logging import (
+    add_verbose_argument,
+    console_field,
+    console_print,
+    console_status,
+)
 from emrys.orchestration.run_coordinator.execution_profile import (
     PROJECT_PROFILE_DIRECTORY,
     add_site_argument,
@@ -696,6 +702,7 @@ def _completion_bytes(members: dict[str, tuple[bytes, int]]) -> bytes:
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
     add_site_argument(parser)
+    add_verbose_argument(parser)
     parser.add_argument(
         "--output-dir",
         required=True,
@@ -735,20 +742,30 @@ def init_from_args(arguments: argparse.Namespace) -> int:
             raise OnboardingError(
                 f"unsupported synthetic dataset profile: {profile_name}"
             ) from exc
-        print(f"Dataset profile: {profile.name}")
-        print(f"Output directory: {output}")
-        print(f"Libraries: {len(SAMPLES)}")
-        print(f"Read pairs per library: {profile.pair_count_per_library}")
-        print(f"Engineered/core pairs per library: {CORE_PAIR_COUNT_PER_LIBRARY}")
-        print(
-            "Neutral unique/duplicate pairs per library: "
-            f"{profile.neutral_unique_template_pair_count_per_library}/"
-            f"{profile.neutral_duplicate_pair_count_per_library}"
-        )
-        print(f"Reference length: {profile.contig_length}")
-        print("Publication policy: create-absent; fixture manifest is written last.")
+        console_field("Output directory", output, file=sys.stdout)
+        console_field("Dataset profile", profile.name, file=sys.stdout)
+        console_field("Libraries", len(SAMPLES), file=sys.stdout)
+        if getattr(arguments, "verbose", False):
+            details = (
+                ("Read pairs per library", profile.pair_count_per_library),
+                ("Engineered/core pairs per library", CORE_PAIR_COUNT_PER_LIBRARY),
+                (
+                    "Neutral unique/duplicate pairs per library",
+                    f"{profile.neutral_unique_template_pair_count_per_library}/"
+                    f"{profile.neutral_duplicate_pair_count_per_library}",
+                ),
+                ("Reference length", profile.contig_length),
+            )
+            for label, value in details:
+                console_field(label, value, file=sys.stdout)
+            console_field(
+                "Publication policy",
+                "create-absent; fixture manifest is written last",
+                file=sys.stdout,
+            )
         if not arguments.execute:
-            print("Dry-run complete; no files were written.")
+            console_status("Publication", "planned", file=sys.stdout)
+            console_print("Dry-run complete; no files were written.", file=sys.stdout)
             return 0
 
         members = fixture_members(profile, site=getattr(arguments, "site", None))
@@ -764,10 +781,11 @@ def init_from_args(arguments: argparse.Namespace) -> int:
             directories=PROJECT_DIRECTORIES,
             before_completion=validate_before_completion,
         )
-        print(f"Published deterministic synthetic Project ({profile.name}): {output}")
-        print(f"Project: {output / 'project.yaml'}")
-        print(
-            "Evidence boundary: synthetic workflow smoke input; not biological evidence."
+        console_status("Synthetic Project", "ready", file=sys.stdout)
+        console_field("Project", output / "project.yaml", file=sys.stdout)
+        console_print(
+            "Evidence boundary: synthetic workflow smoke input; not biological evidence.",
+            file=sys.stdout,
         )
         return 0
     except (
@@ -776,7 +794,7 @@ def init_from_args(arguments: argparse.Namespace) -> int:
         orchestration_contracts.ContractValidationError,
         ValueError,
     ) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        console_print(f"ERROR: {exc}", style="red", file=sys.stderr)
         return 2
 
 

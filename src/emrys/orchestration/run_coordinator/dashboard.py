@@ -19,6 +19,9 @@ import textwrap
 
 from . import scheduler_observation as _scheduler
 
+_JOB_NAME_RE = re.compile(
+    r"(?:emrys-doctor|emrys-[0-9a-f]{32}|emrys-local-pilot(?:-[0-9a-f]{32})?)"
+)
 
 STAGES = [
     (
@@ -337,7 +340,7 @@ def _read_stream(path, offset, previous, root=None, tail_bytes=None):
             )
         ):
             raise ValueError("Stream or ancestor changed while read")
-        return start, data, after, time.time(), reason
+        return start, data, after, time.time(), reason, reset
     finally:
         for descriptor in reversed(descriptors):
             os.close(descriptor)
@@ -359,6 +362,7 @@ class StreamCache:
         self.diagnostic = "Not yet read"
         self.observed_at = None
         self.state = previous_state
+        self.generation_changed = False
         self._reader = None
         self._result = None
         self._closed = False
@@ -415,7 +419,16 @@ class StreamCache:
                 self.observed_at = None
                 self.diagnostic = result or "Unavailable: reader did not complete"
                 return False
-            start, data, self.state, self.observed_at, self.diagnostic = result
+            previous = self.state
+            (
+                start,
+                data,
+                self.state,
+                self.observed_at,
+                self.diagnostic,
+                reset,
+            ) = result
+            self.generation_changed = previous is not None and reset
             if start == 0 or self.tail_bytes is not None:
                 self.data.clear()
             self.data.extend(data)
@@ -443,10 +456,13 @@ def accounting_log_selection(job_id, log_dir, metadata=None):
     if metadata is None:
         metadata = _scheduler.slurm_accounting_metadata(job_id)
     _scheduler.validate_accounting_identity(job_id, metadata)
+    stem = metadata.get("JobName") or ""
+    if not _JOB_NAME_RE.fullmatch(stem):
+        stem = "emrys-local-pilot"
     selection = validate_log_selection(
         job_id,
-        os.path.join(log_dir, "emrys-local-pilot-%s.out" % job_id),
-        os.path.join(log_dir, "emrys-local-pilot-%s.err" % job_id),
+        os.path.join(log_dir, "%s-%s.out" % (stem, job_id)),
+        os.path.join(log_dir, "%s-%s.err" % (stem, job_id)),
     )
     selection["selection_source"] = "sacct+explicit-log-dir"
     return selection
@@ -488,10 +504,8 @@ def validate_log_selection(job_id, out_path, err_path, allow_missing=False):
         raise _scheduler.DiscoveryError("scheduler log paths must be absolute")
     out_path = os.path.abspath(out_path)
     err_path = os.path.abspath(err_path)
-    if not re.fullmatch(
-        r"emrys-local-pilot-(?:[0-9a-f]{32}-)?%s\.out" % re.escape(str(job_id)),
-        os.path.basename(out_path),
-    ):
+    stem = os.path.basename(out_path).removesuffix("-%s.out" % job_id)
+    if not _JOB_NAME_RE.fullmatch(stem):
         raise _scheduler.DiscoveryError(
             "stdout does not match the EMRYS wrapper contract: %s" % out_path
         )
@@ -714,10 +728,13 @@ def scheduler_selection(
         raise _scheduler.DiscoveryError(
             "Slurm did not report stdout/stderr; pass JOB_ID and LOG_DIR explicitly"
         )
+    stem = metadata.get("JobName") or ""
+    if not _JOB_NAME_RE.fullmatch(stem):
+        stem = "emrys-local-pilot"
     return validate_log_selection(
         job_id,
-        os.path.join(log_dir, "emrys-local-pilot-%s.out" % job_id),
-        os.path.join(log_dir, "emrys-local-pilot-%s.err" % job_id),
+        os.path.join(log_dir, "%s-%s.out" % (stem, job_id)),
+        os.path.join(log_dir, "%s-%s.err" % (stem, job_id)),
         allow_missing=allow_missing,
     )
 
@@ -2289,7 +2306,7 @@ def dashboard_view(
     """Build the shared overview/detail view without reading external state."""
     now = time.time() if now is None else now
     header = (
-        (" EMRYS LIVE DASHBOARD v4.9 ", "title"),
+        (" EMRYS WATCH ", "title"),
         (
             "| %s | job %s | %s"
             % (view.upper(), job_id, time.strftime("%a %b %d %I:%M:%S %p %Z %Y")),

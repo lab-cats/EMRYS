@@ -346,7 +346,7 @@ transport error at their public failure boundary without repeated translation.
 
 After approval and before ordinary Run/resume/report submission, Control creates
 one private `logs/submission-<uuid>/` request directory. Its immutable
-`request.json` uses `emrys.submission-request.v3` and retains UTC creation time,
+`request.json` uses `emrys.submission-request.v4` and retains UTC creation time,
 numeric submitter UID, command, absolute Project, requested Run/Analysis,
 resolved application-log root, profile binding, exact delegate arguments, and
 scheduler stream patterns. This is correlation context, not a Run/Attempt or
@@ -355,12 +355,15 @@ are synchronized before invoking `sbatch`; failure preserves partial records
 and prevents that invocation.
 
 The request UUID is chosen before submission planning and confirmation. The
-same frozen token appears in `submission-<uuid>` and both scheduler stream
-patterns, `emrys-local-pilot-<uuid>-%j.out` and `.err`. A v2 reader requires
-both patterns to match that exact request directory. Distinct requests therefore
-keep distinct stream destinations even if Slurm reuses a job number. Legacy
-v1 contexts remain readable diagnostic records, but their shared `%j` paths do
-not supply request identity. Doctor's private qualification streams are unchanged.
+same frozen token appears in `submission-<uuid>`, scheduler name
+`emrys-<uuid>`, and both scheduler stream patterns, `emrys-<uuid>-%j.out` and
+`.err`. Distinct requests therefore keep distinct stream destinations even if
+Slurm reuses a job number. Readers keep v1-v3 records bound to their historical
+`emrys-local-pilot` paths and, for v3, exact job name. Legacy v1 contexts remain
+readable diagnostic records, but their shared `%j` paths do not supply request
+identity. New Doctor qualification uses `emrys-doctor` and
+`emrys-doctor-%j.out`/`.err`; retained historical qualification streams remain
+admissible through exact scheduler metadata or explicit offline paths.
 
 Before a new Run submission, Control compares its scientific request and
 execution-profile binding with retained Project requests and observes each exact

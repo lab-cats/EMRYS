@@ -3303,6 +3303,7 @@ def test_watch_resume_handoff_fresh_plan_and_decline_preserve_every_record(
 def test_public_preflight_failure_closes_log_without_run_mutation(
     tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, command: str
 ) -> None:
+    monkeypatch.delenv("EMRYS_LOG_ROOT", raising=False)
     if command == "run":
         _ready, _resources, project, workspace = _readiness(tmp_path)
         message, error = "injected Doctor failure", doctor.DoctorInputError
@@ -4430,14 +4431,8 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
         ).submission_summary()
     )
     assert f"Execution profile: {arguments.profile}" in verbose
-    assert (
-        f"Scheduler stdout: {workspace}/logs/emrys-local-pilot-{token}-%j.out"
-        in verbose
-    )
-    assert (
-        f"Scheduler stderr: {workspace}/logs/emrys-local-pilot-{token}-%j.err"
-        in verbose
-    )
+    assert f"Scheduler stdout: {workspace}/logs/emrys-{token}-%j.out" in verbose
+    assert f"Scheduler stderr: {workspace}/logs/emrys-{token}-%j.err" in verbose
     assert "Scheduler command:" in verbose
 
 
@@ -4471,13 +4466,13 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
 
     def submit(plan, *, record_path):
         context = json.loads(record_path.with_name("request.json").read_bytes())
-        assert context["schema_version"] == "emrys.submission-request.v3"
+        assert context["schema_version"] == "emrys.submission-request.v4"
         assert context["scheduler_job_name"] == plan.job_name
-        assert plan.job_name == f"emrys-local-pilot-{tokens[0]}"
+        assert plan.job_name == f"emrys-{tokens[0]}"
         assert f"--job-name={plan.job_name}" in plan.argv
         assert record_path.parent.name == f"submission-{tokens[0]}"
-        assert plan.stdout_pattern.name == f"emrys-local-pilot-{tokens[0]}-%j.out"
-        assert plan.stderr_pattern.name == f"emrys-local-pilot-{tokens[0]}-%j.err"
+        assert plan.stdout_pattern.name == f"emrys-{tokens[0]}-%j.out"
+        assert plan.stderr_pattern.name == f"emrys-{tokens[0]}-%j.err"
         assert context["command"] == "run"
         assert context["project"] == str(arguments.project)
         assert context["requested_run"] is None
@@ -4519,9 +4514,9 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     assert len(tokens) == 1
     assert captured.out == (
         "JOB_ID=812345\n"
-        f"JOB_NAME=emrys-local-pilot-{tokens[0]}\n"
-        f"OUT={workspace}/logs/emrys-local-pilot-{tokens[0]}-812345.out\n"
-        f"ERR={workspace}/logs/emrys-local-pilot-{tokens[0]}-812345.err\n"
+        f"JOB_NAME=emrys-{tokens[0]}\n"
+        f"OUT={workspace}/logs/emrys-{tokens[0]}-812345.out\n"
+        f"ERR={workspace}/logs/emrys-{tokens[0]}-812345.err\n"
         "Submitted Slurm job 812345; completion is not yet verified.\n"
         "Watch progress: emrys watch 812345\n"
     )

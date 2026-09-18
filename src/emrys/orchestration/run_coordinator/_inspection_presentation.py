@@ -365,6 +365,7 @@ class StreamTail:
     state: os.stat_result | None = None
     diagnostic: str = ""
     observed_at: datetime | None = None
+    generation_changed: bool = False
 
 
 def read_tail(source: StreamSource, previous: StreamTail | None = None) -> StreamTail:
@@ -388,6 +389,7 @@ def read_tail(source: StreamSource, previous: StreamTail | None = None) -> Strea
         datetime.fromtimestamp(cache.observed_at, UTC)
         if cache.observed_at is not None
         else datetime.now(UTC),
+        cache.generation_changed,
     )
 
 
@@ -978,27 +980,39 @@ def render_watch_text(snapshot, *, now):
     from rich.text import Text
 
     result = Text(render_snapshot(snapshot, now=now))
-    prefix = r"(?:\[[^\]\n]{1,80}\]\s*|20\d\d-\d\d-\d\d(?:T|\s)\S+\s+)*"
+    result.highlight_regex(r"(?m)^EMRYS inspection — read-only$", "bold cyan")
+    result.highlight_regex(
+        r"(?m)^(?:  )?(?:Project|Scheduler job|Request|Recorded job|Scheduler|"
+        r"Diagnostic trace as of|Application association as of|Recorded preparation|"
+        r"Run evidence as of|Attempt|Scientific Results|Reporting|Recovery available|"
+        r"Verified reports|Tasks|Recorded Task outcomes|Results|"
+        r"Next supported action at last verification|Stream|Tail observed|cluster|"
+        r"reason|exit_code|diagnostic|elapsed|left|time_limit|cpus|partition|node|"
+        r"max_rss|disk_read|disk_write|ave_cpu|usage_observed_at|usage_diagnostic):",
+        "bold cyan",
+    )
     for pattern, style in (
-        (r"(?m)^EMRYS inspection — read-only$", "bold cyan"),
-        (r"(?m)^(?:Scheduler:|Run evidence as of:|Stream:).*$", "bold cyan"),
         (
-            rf"(?im)^{prefix}(?:error|fatal|exception|traceback|failed)\b.*$",
-            "red",
+            r"(?m)^\s*\[(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+|"
+            r"20\d\d-\d\d-\d\d)[^\]\n]{0,70}\]",
+            "dim",
         ),
-        (rf"(?im)^{prefix}(?:warning|warn)\b.*$", "yellow"),
+        (r"(?im)^\s*(?:\[[^\]\n]{1,80}\]\s*)?20\d\d-\d\d-\d\d(?:T|\s)\S+", "dim"),
         (
-            rf"(?im)^{prefix}(?:finished job|run complete|project ready|"
-            r"emrys is ready|complete|succeeded|done)\b.*$",
-            "green",
+            r"(?im)\b(?:ERROR|FATAL|WorkflowError|Traceback|Exception)(?=\b|:)",
+            "bold red",
         ),
-        (rf"(?im)^{prefix}(?:info|debug|rule |localrule |checkpoint ).*$", "cyan"),
-        (r"""(?im)^.*"(?:level|severity)"\s*:\s*"(?:error|fatal)".*$""", "red"),
-        (
-            r"""(?im)^.*"(?:level|severity)"\s*:\s*"(?:warning|warn)".*$""",
-            "yellow",
-        ),
-        (r"""(?im)^.*"(?:level|severity)"\s*:\s*"(?:info|debug)".*$""", "cyan"),
+        (r"(?im)\b(?:Error in rule|Exiting because a job execution failed)\b", "red"),
+        (r"(?im)\b(?:WARNING|WARN)(?=\b|:)", "bold yellow"),
+        (r"(?im)\b(?:INFO|DEBUG)(?=\b|:)", "cyan"),
+        (r"(?im)\b(?:rule|localrule|checkpoint)\s+[A-Za-z0-9_.-]+:", "cyan"),
+        (r"(?im)\bFinished jobid:\s*\d+", "green"),
+        (r"(?im)\b\d+ of \d+ steps \(100%\) done\b", "bold green"),
+        (r"(?im)\b\d+ of \d+ steps \((?!100%)\d+%\) done\b", "cyan"),
+        (r"(?i)\"(?:level|severity)\"\s*:", "bold cyan"),
+        (r"(?i)\"(?:error|fatal)\"(?=\s*[,}])", "bold red"),
+        (r"(?i)\"(?:warning|warn)\"(?=\s*[,}])", "bold yellow"),
+        (r"(?i)\"(?:info|debug)\"(?=\s*[,}])", "cyan"),
     ):
         result.highlight_regex(pattern, style)
     return result
@@ -1152,6 +1166,7 @@ def watch(
         view="evidence" if run_root is not None and request is None else "overview"
     )
     selected_review = None
+    observed_tail_generation = None
     reviews = {key: callback for key, _label, callback in review_actions}
     deadline = time.monotonic() + refresh_seconds
     worker.request(verify=True, stream_index=navigation.stream_index)
@@ -1178,7 +1193,33 @@ def watch(
                     worker.request(verify=False, stream_index=navigation.stream_index)
                     deadline = now + refresh_seconds
                 snapshot = worker.snapshot
-                controls = "Views: 1/o overview | 2/d details | 3/v evidence/logs | Tab switch | [/] stream | Scroll: arrows/j/k PgUp/PgDn Home/g | r recheck selection/evidence (read-only) | q quit"
+                tail = snapshot.tail
+                if (
+                    tail is not None
+                    and tail.generation_changed
+                    and tail.state is not None
+                ):
+                    generation = (
+                        str(tail.source.path),
+                        tail.state.st_dev,
+                        tail.state.st_ino,
+                        tail.state.st_size,
+                        tail.state.st_mtime_ns,
+                        tail.state.st_ctime_ns,
+                    )
+                    if generation != observed_tail_generation:
+                        navigation = replace(
+                            navigation,
+                            scroll=0,
+                            follow=True,
+                            count="",
+                            search_input=None,
+                            search_query="",
+                            search_error="",
+                            match_line=None,
+                        )
+                        observed_tail_generation = generation
+                controls = "Views: [1] Overview | [2] Details | [3] Logs | Tab switch | [/] stream | Scroll: arrows/j/k PgUp/PgDn Home/g | r recheck selection/evidence (read-only) | q quit"
                 controls += f"\nDiagnostic trace: {snapshot.trace_at or 'unavailable'} (unverified log identity/progress) | Scheduler: {snapshot.scheduler_at or 'unavailable'}"
                 if navigation.view == "evidence":
                     state = "FOLLOWING" if navigation.follow else "PAUSED"
@@ -1189,9 +1230,19 @@ def watch(
                         if navigation.search_query
                         else "none"
                     )
+                    stream_count = len(snapshot.streams)
+                    stream_number = (
+                        navigation.stream_index % stream_count + 1
+                        if stream_count
+                        else 0
+                    )
+                    stream_label = (
+                        tail.source.label if tail is not None else "unavailable"
+                    )
                     controls += (
-                        f"\nLog: {state}; tail-relative lines; count+j/k; G bottom; "
-                        f"/ search; n/N matches | Search: {search}"
+                        f"\nLog stream: {stream_number}/{stream_count} {stream_label} | "
+                        f"State: {state} | Lines: tail-relative | Search: {search} | "
+                        "Keys: count+j/k, G bottom, / search, n/N matches"
                     )
                     if navigation.count:
                         controls += f" | Count: {navigation.count}"
@@ -1207,6 +1258,19 @@ def watch(
                         "\nRefresh in progress; displayed observations are dated"
                     )
                 controls_text = Text(controls, style="dim")
+                controls_text.highlight_regex(
+                    r"(?m)^(?:Views|Diagnostic trace|Log stream|Leave view):",
+                    "bold cyan",
+                )
+                controls_text.highlight_regex(
+                    r"(?<=\| )(?:Scheduler|State|Lines|Search|Keys|Count):",
+                    "bold cyan",
+                )
+                controls_text.highlight_regex(r"\[(?:1|2|3|/)\]", "bold cyan")
+                selected_view = navigation.view.replace("evidence", "logs").title()
+                controls_text.highlight_regex(
+                    rf"(?<=\] ){selected_view}\b", "bold white"
+                )
                 controls_text.highlight_regex(r"\bFOLLOWING\b", "bold green")
                 controls_text.highlight_regex(r"\bPAUSED\b", "bold yellow")
                 layout["controls"].size = min(

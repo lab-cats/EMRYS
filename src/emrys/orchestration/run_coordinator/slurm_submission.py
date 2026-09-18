@@ -52,6 +52,11 @@ class SlurmSubmissionError(RuntimeError):
 
 
 _REQUEST_CONTEXT_LIMIT = 64 * 1024
+_CURRENT_REQUEST_SCHEMA = "emrys.submission-request.v4"
+_REQUEST_SCHEMAS = tuple(
+    f"emrys.submission-request.v{version}" for version in range(1, 5)
+)
+_NAMED_REQUEST_SCHEMAS = _REQUEST_SCHEMAS[2:]
 
 
 def _validate_request_token(request_token: object) -> None:
@@ -64,17 +69,23 @@ def _validate_request_token(request_token: object) -> None:
         )
 
 
-def _scheduler_job_name(request_token: str | None) -> str:
+def _scheduler_job_name(
+    request_token: str | None, schema_version: str = _CURRENT_REQUEST_SCHEMA
+) -> str:
     _validate_request_token(request_token)
+    if schema_version == _CURRENT_REQUEST_SCHEMA:
+        return f"emrys-{request_token}" if request_token else "emrys-doctor"
     return "emrys-local-pilot" + (f"-{request_token}" if request_token else "")
 
 
 def _scheduler_stream_patterns(
-    log_dir: Path, request_token: str | None = None
+    log_dir: Path,
+    request_token: str | None = None,
+    schema_version: str = _CURRENT_REQUEST_SCHEMA,
 ) -> tuple[Path, Path]:
     if "%" in os.fspath(log_dir):
         raise SlurmSubmissionError("scheduler log directory must not contain '%'")
-    stem = _scheduler_job_name(request_token)
+    stem = _scheduler_job_name(request_token, schema_version)
     return log_dir / f"{stem}-%j.out", log_dir / f"{stem}-%j.err"
 
 
@@ -96,17 +107,12 @@ def validate_request_context(
         "scheduler_stdout_pattern",
         "scheduler_stderr_pattern",
     }
-    if context.get("schema_version") == "emrys.submission-request.v3":
+    if context.get("schema_version") in _NAMED_REQUEST_SCHEMAS:
         fields.add("scheduler_job_name")
     if set(context) != fields:
         raise SlurmSubmissionError("Submission request context fields differ")
     if (
-        context["schema_version"]
-        not in (
-            "emrys.submission-request.v1",
-            "emrys.submission-request.v2",
-            "emrys.submission-request.v3",
-        )
+        context["schema_version"] not in _REQUEST_SCHEMAS
         or type(context["submitter_uid"]) is not int
         or context["submitter_uid"] != os.getuid()
         or context["project"] != str(project)
@@ -172,13 +178,14 @@ def validate_request_context(
                 "Submission request root differs from the Project"
             )
         token = request_root.name.removeprefix("submission-")
-    if context["schema_version"] == "emrys.submission-request.v3" and context[
+    schema_version = str(context["schema_version"])
+    if schema_version in _NAMED_REQUEST_SCHEMAS and context[
         "scheduler_job_name"
-    ] != _scheduler_job_name(token):
+    ] != _scheduler_job_name(token, schema_version):
         raise SlurmSubmissionError("Submission scheduler name differs from its token")
     for stream, expected in zip(
         ("stdout", "stderr"),
-        _scheduler_stream_patterns(project.parent / "logs", token),
+        _scheduler_stream_patterns(project.parent / "logs", token, schema_version),
         strict=True,
     ):
         if context[f"scheduler_{stream}_pattern"] != str(expected):
@@ -219,8 +226,7 @@ def observe_submission_request(
     if (
         request.record_status != "recorded-response"
         or context is None
-        or context["schema_version"]
-        not in ("emrys.submission-request.v2", "emrys.submission-request.v3")
+        or context["schema_version"] not in _REQUEST_SCHEMAS[1:]
     ):
         return scheduler_observation.unknown_observation(
             "Complete request-specific stream identity is unavailable"
@@ -232,7 +238,7 @@ def observe_submission_request(
         request.recorded_cluster,
         job_name=(
             context["scheduler_job_name"]
-            if context["schema_version"] == "emrys.submission-request.v3"
+            if context["schema_version"] in _NAMED_REQUEST_SCHEMAS
             else None
         ),
         include_resources=include_resources,
@@ -295,14 +301,16 @@ def _stop_client_binding(path: Path) -> tuple[object, ...]:
 
 
 def plan_stop(project: Path, selector: str) -> SlurmStopPlan:
-    """Read an exact v3 request and positively admit controller-filter support."""
+    """Read an exact named request and admit controller-filter support."""
     request = select_submission_request(project, selector)
     if (
         request.record_status != "recorded-response"
         or request.context is None
-        or request.context["schema_version"] != "emrys.submission-request.v3"
+        or request.context["schema_version"] not in _NAMED_REQUEST_SCHEMAS
     ):
-        raise SlurmSubmissionError("Stop requires one complete v3 submission request")
+        raise SlurmSubmissionError(
+            "Stop requires one complete named submission request"
+        )
     observation = MappingProxyType(observe_submission_request(request))
     if observation["state"] == "UNKNOWN":
         raise SlurmSubmissionError(
