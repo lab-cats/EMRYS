@@ -284,7 +284,6 @@ def observe_job(
                         job_id,
                         stdout_pattern,
                         stderr_pattern,
-                        cluster,
                         job_name,
                         result,
                         environment,
@@ -350,32 +349,35 @@ def _accounting_timing(metadata):
 
 
 def _observe_batch_usage(
-    job_id, stdout_pattern, stderr_pattern, cluster, job_name, root, environment
+    job_id, stdout_pattern, stderr_pattern, job_name, root, environment
 ):
-    """Observe one local batch step between exact root checks, without authority."""
+    """Observe one exact batch step between exact local root checks."""
     active = {"RUNNING", "SUSPENDED", "COMPLETING"}
 
-    def local_matches():
+    def root_matches():
         current = observe_job(job_id, stdout_pattern, stderr_pattern, job_name=job_name)
-        return (
-            current["source"] == "squeue"
-            and current["state"] in active
-            and current["cluster"] == root["cluster"]
-        )
+        return all(current[key] == root[key] for key in ("source", "state", "cluster"))
 
-    unavailable = {"usage_diagnostic": "Exact local batch-step usage is unavailable"}
-    if root["source"] != "squeue" or root["state"] not in active:
+    unavailable = {"usage_diagnostic": "Exact batch-step usage is unavailable"}
+    if not (
+        (root["source"] == "squeue" and root["state"] in active)
+        or (root["source"] == "sacct" and root["terminal"])
+    ):
         return unavailable
-    if cluster is not None and not local_matches():
+    if not root_matches():
         return unavailable
+    batch_id = str(job_id) + ".batch"
+    terminal = root["source"] == "sacct"
+    client = ["sacct", "--local", "--duplicates"] if terminal else ["sstat"]
+    identity = "JobIDRaw,UID,Cluster" if terminal else "JobID"
     reply = command_bytes(
         [
-            "sstat",
+            *client,
             "-n",
             "-P",
             "-j",
-            str(job_id) + ".batch",
-            "--format=JobID,AveCPU,MaxRSS,MaxDiskRead,MaxDiskWrite",
+            batch_id,
+            f"--format={identity},AveCPU,MaxRSS,MaxDiskRead,MaxDiskWrite",
         ],
         environment=environment,
     )
@@ -388,27 +390,31 @@ def _observe_batch_usage(
         return unavailable
     if (
         len(rows) != 1
-        or len(rows[0]) != 5
-        or rows[0][0] != str(job_id) + ".batch"
-        or any(
-            len(value) > 256 or any(ord(char) < 32 or ord(char) > 126 for char in value)
-            for value in rows[0][1:]
+        or len(rows[0]) != (7 if terminal else 5)
+        or rows[0][0] != batch_id
+    ):
+        return unavailable
+    metrics = rows[0][-4:]
+    if terminal and (rows[0][1] != str(os.getuid()) or rows[0][2] != root["cluster"]):
+        return unavailable
+    patterns = (
+        r"(?:(?:[0-9]+-)?[0-9]+:)?[0-9]{2}:[0-9]{2}(?:[.][0-9]+)?",
+        *(r"[0-9]+(?:[.][0-9]+)?[KMGTPE]?",) * 3,
+    )
+    if (
+        any(
+            len(value) > 256
+            or any(ord(char) < 32 or ord(char) > 126 for char in value)
+            or (value not in ("", "N/A") and re.fullmatch(pattern, value) is None)
+            for value, pattern in zip(metrics, patterns)
         )
-        or any(
-            value not in ("", "N/A") and re.fullmatch(pattern, value) is None
-            for value, pattern in zip(
-                rows[0][1:],
-                (r"(?:(?:[0-9]+-)?[0-9]+:)?[0-9]{2}:[0-9]{2}(?:[.][0-9]+)?",)
-                + (r"[0-9]+(?:[.][0-9]+)?[KMGTPE]?",) * 3,
-            )
-        )
-        or not local_matches()
+        or not root_matches()
     ):
         return unavailable
     values = {
         name: value
         for name, value in zip(
-            ("ave_cpu", "max_rss", "disk_read", "disk_write"), rows[0][1:]
+            ("ave_cpu", "max_rss", "disk_read", "disk_write"), metrics
         )
         if value and value != "N/A"
     }

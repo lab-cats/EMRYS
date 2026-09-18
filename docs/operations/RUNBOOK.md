@@ -39,7 +39,9 @@ owns the exact admission, query, evidence, and recovery limits.
 ## Watch one fixed selection
 
 The installed watch offers overview, detail, and dated evidence/log views. From
-a Project, it selects the sole request or Run; ambiguity opens a picker:
+a Project, it selects the sole retained request or otherwise-unrepresented Run;
+an associated request keeps supplying exact scheduler identity after its Run
+appears. Ambiguity, including multiple requests for one Run, opens a picker:
 
 ```bash
 emrys watch
@@ -63,8 +65,10 @@ exists:
 emrys inspect --project "$EMRYS_PROJECT_ROOT" --submission "submission-EXACT_TOKEN" --watch
 ```
 
-Use `emrys inspect RUN --watch` for Run evidence and application/Task logs;
-select its retained request for scheduler identity and workflow diagnostics.
+Use `emrys inspect RUN --watch` for Run evidence and application/Task logs. If
+one retained request identifies that Run, watch keeps it selected for scheduler
+state and resource usage; multiple matching requests require an explicit
+choice.
 
 Watch also supports scheduler discovery and historical selection without
 requiring a Project:
@@ -76,10 +80,17 @@ emrys inspect --snapshot --job-id 12345 --log-dir /absolute/scheduler/logs
 emrys inspect --snapshot --job-id 12345 --offline --out /absolute/scheduler/logs/emrys-EXACT_REQUEST_TOKEN-12345.out --err /absolute/scheduler/logs/emrys-EXACT_REQUEST_TOKEN-12345.err
 ```
 
-Without Project context or an explicit selector, watch offers bounded owned
-scheduler candidates. Command-line selection precedes
+`emrys inspect --watch --job-id` is the expert bounded current-user discovery
+form. Ordinary no-argument `emrys watch` selects only admitted Project targets
+and refuses to enumerate unrelated scheduler jobs when none exists. Explicit
+command-line diagnostic selection precedes
 `EMRYS_DASHBOARD_JOB_ID`/`EMRYS_DASHBOARD_LOG_DIR`. Offline mode needs an exact
 ID plus both streams.
+
+The resource panel labels active `sstat` values as a live sample and terminal
+`sacct` values as final accounting. Either may be unavailable without erasing
+the admitted root scheduler state; usage is diagnostic and does not establish
+Run completion, recovery safety, or a wall-time improvement.
 
 | Control | Behavior |
 | --- | --- |

@@ -85,7 +85,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-13](#cv-13-expected-setup-versus-blockers) | P1 | Verification pending | Distinguish expected initial setup needs from failures. |
 | [CV-14](#cv-14-project-directory-layout) | P1 | Verification pending | Supply the tracked Projects home inside the source checkout. |
 | [CV-15](#cv-15-cross-node-active-run-status) | P1 | Verification pending | Show remote active state without implying proven corruption. |
-| [CV-16](#cv-16-monitoring-dashboard) | P1 | Open | Restore an integrated view of scheduler, progress, and logs. |
+| [CV-16](#cv-16-monitoring-dashboard) | P1 | Verification pending | Restore an integrated view of scheduler, progress, and logs. |
 | [CV-17](#cv-17-project-creation-progress) | P1 | Verification pending | Explain lengthy input validation during Project creation. |
 | [CV-18](#cv-18-safe-emrys-stop) | P1 | Open | Provide an operator stop action with safe recovery semantics. |
 | [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Verification pending | Name verification-only work accurately. |
@@ -129,7 +129,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Completed |
 | [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Open |
 | [CV-U12](#cv-u12-duplicate-submission-warning) | Warn before accidental duplicate submission | Open |
-| [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Open |
+| [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Verification pending |
 | [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Verification pending |
 | [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Verification pending |
 | [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Verification pending |
@@ -147,9 +147,9 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U28](#cv-u28-historical-stage-configuration-and-wall-time) | Restore benchmark-derived stage settings and wall-time performance | Open |
 | [CV-U29](#cv-u29-early-inspect-and-dashboard-feedback) | Show useful information before monitoring fully populates | Verification pending |
 | [CV-U30](#cv-u30-dashboard-color-and-pane-layout) | Restore dashboard colors and readable pane layout | Verification pending |
-| [CV-U31](#cv-u31-dashboard-automatic-run-selection) | Select the current Run without parameters; record lost functionality | Open |
-| [CV-U32](#cv-u32-dashboard-independent-of-working-directory) | Open the dashboard from outside the Project directory | Open |
-| [CV-U33](#cv-u33-dashboard-resource-usage) | Restore resource-usage display and preserve the wall-time objective | Open |
+| [CV-U31](#cv-u31-dashboard-automatic-run-selection) | Select the current Run without parameters; record lost functionality | Verification pending |
+| [CV-U32](#cv-u32-dashboard-independent-of-working-directory) | Open the dashboard from outside the Project directory | Verification pending |
+| [CV-U33](#cv-u33-dashboard-resource-usage) | Restore resource-usage display and preserve the wall-time objective | Verification pending |
 
 ### September 17 adversarial implementation audit
 
@@ -800,6 +800,18 @@ starts from all current-user scheduler jobs rather than an admitted EMRYS roster
 These are remaining source-selection defects, not merely unperformed Viking
 acceptance. CV-U13 returns to **Open** and shares the required caller-complete
 correction with CV-U31 and CV-U32.
+
+**September 18 caller-complete correction:** Ordinary watch now builds one
+bounded inventory from admitted Project Runs and every retained submission,
+including submissions that have already produced a Run. The same immutable
+target record and picker serve current-Project and declared Projects-home use.
+A sole target is automatic; ambiguity is explicit; noninteractive use fails;
+and no timestamp, directory order or scheduler query chooses a target. The
+ordinary no-argument command no longer falls through to all current-user Slurm
+jobs. Exact job IDs, exact job names and the expert raw `inspect --job-id`
+surface remain available. Focused selector, request, scheduler, renderer and
+watch checks pass locally; standard CI and Viking/operator use
+remain required, so CV-U13 is **Verification pending**.
 
 ### CV-U14 Dashboard logs
 
@@ -1705,6 +1717,15 @@ Project Run exists and begins from the current user's scheduler roster rather
 than an admitted EMRYS request roster. The intended current-target selection is
 therefore not source-complete; CV-U31 returns to **Open**.
 
+**September 18 caller-complete correction:** One Project inventory now treats
+each retained submission as the scheduler identity and carries its admitted Run
+association in the same target. A Run is offered separately only when no exact
+request represents it. Multiple requests for one Run remain distinct picker
+choices instead of collapsing to the newest or silently becoming Run-only.
+Both `emrys watch` and Run-selected `inspect --watch` use this selection path.
+The focused local suite passes; standard CI and the intended Viking terminal
+exercise remain pending, so CV-U31 is **Verification pending**.
+
 ### CV-U32 Dashboard independent of working directory
 
 **Operator instruction:** “Should not need to be in the specific project dir to
@@ -1749,6 +1770,14 @@ remains invisible; with request-only state, selection falls back to raw
 scheduler discovery without the Project/request binding. General no-parameter
 use outside the Project is incomplete; CV-U32 returns to **Open**.
 
+**September 18 caller-complete correction:** Projects-home discovery now
+inventories retained submissions as well as Runs under each immediate admitted
+Project. It applies the same 256-target refusal and picker as Project-local use,
+creates no registry or current pointer, and performs no scheduler query while
+enumerating candidates. Exact `--project` remains available. Focused local
+selection checks pass; standard CI and institutional filesystem/terminal use
+remain pending, so CV-U32 is **Verification pending**.
+
 ### CV-U33 Dashboard resource usage
 
 **Operator requirement:** “I want resource usage back in the dashboard”. The
@@ -1779,6 +1808,18 @@ accounting observer also invokes `sstat` only for roots still active in `squeue`
 making completed-job usage unavailable by construction. Preserving resource
 rows in the renderer does not restore their data path; CV-U33 returns to
 **Open**.
+
+**September 18 identity and accounting correction:** Watch retains the exact
+submission request after Run creation, so scheduler state and resource usage no
+longer disappear at that transition. Active roots use the exact `sstat` batch
+step; terminal roots use the exact `sacct` batch record. Both paths share metric
+validation and require matching root observations before and after the usage
+query. Duplicate rows, wrong ID/UID/cluster, malformed metrics and identity
+drift leave the admitted root state visible while reporting usage unknown. The
+shared renderer labels live samples and final accounting distinctly, and both
+interactive and snapshot request watches ask for resources. Focused local fault
+and rendering matrices pass; standard CI, institutional accounting/display and
+wall-time measurement remain pending, so CV-U33 is **Verification pending**.
 
 ## Additional Viking UX findings — 2026-09-16
 
@@ -2773,6 +2814,18 @@ counted `j`/`k` motion such as `99j`/`99k`, `/pattern` search with highlighting,
 and `n`/`p` next/previous matches. Missing/rotated/truncated-log and reconnect
 protections remain required. These operator observations return CV-16 to
 **Open** despite prior hosted parity checks.
+
+**September 18 integrated-watch correction:** The accepted color, log
+navigation and evidence renderer remains intact while one watch-target model now
+serves Project-local and Projects-home selection. Exact request identity survives
+Run association, ordinary watch no longer enumerates unrelated scheduler jobs,
+and active/final batch usage shares one validated data path. The overview and
+detail panes also share one scheduler-state row renderer. No product file,
+schema, dependency, persistent selection state or recovery authority was added;
+the tranche is net-negative in maintained product Python. Focused local watch,
+selection, scheduler-fault and renderer suites pass. Standard CI,
+Viking terminal/NFS behavior and operator visual acceptance remain pending, so
+CV-16 is **Verification pending**.
 
 ### CV-17 Project creation progress
 
