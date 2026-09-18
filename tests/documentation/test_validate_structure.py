@@ -163,6 +163,13 @@ def test_quickstart_tracks_guided_init_and_viking_profile() -> None:
         "A private directory under `/tmp`",
     ):
         assert value in quickstart
+    readiness = quickstart.split("## 5. Prepare the scientific tools and storage", 1)[
+        1
+    ].split("## 6. Submit and watch the Run", 1)[0]
+    assert readiness.index("emrys runtime discover --from-project") < readiness.index(
+        "emrys doctor --repair"
+    )
+    assert "If you skipped the [optional smoke test]" in readiness
 
 
 def validate(

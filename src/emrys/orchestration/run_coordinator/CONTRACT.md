@@ -77,6 +77,12 @@ bounded discovery role, and log root retains the application-log owner's
 existing scope. Selected Project, profile, runtime, and scientific values are
 not global defaults.
 
+Doctor also checks the saved site when the Project's default profile is selected
+implicitly. A saved `viking` site does not admit a direct default profile: Doctor
+stops with the exact named-profile or explicit-direct choices and changes no
+profile. An explicit `--profile` is the operator's per-command override and must
+be selected consistently for Doctor and Run.
+
 ## No-write and publication boundaries
 
 `emrys init PROJECT_NAME` is dry-run-first and publishes only with `--execute`
