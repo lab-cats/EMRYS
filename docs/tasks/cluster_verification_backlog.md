@@ -81,7 +81,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-09](#cv-09-qualification-scope-and-placement) | P0 | Verification pending | Explain and enforce the qualified execution environment. |
 | [CV-10](#cv-10-external-cancellation-and-recovery) | P0 | Open | Recover safely from externally cancelled jobs when possible. |
 | [CV-11](#cv-11-resource-profile-compatibility) | P0 | Verification pending | Detect and explain resource profiles that cannot fit a node. |
-| [CV-12](#cv-12-unexplained-initial-runtime-qualification-failure) | P0 | Open | Establish the original runtime-qualification failure's cause. |
+| [CV-12](#cv-12-unexplained-initial-runtime-qualification-failure) | P0 | Discard | Establish the original runtime-qualification failure's cause. |
 | [CV-13](#cv-13-expected-setup-versus-blockers) | P1 | Verification pending | Distinguish expected initial setup needs from failures. |
 | [CV-14](#cv-14-project-directory-layout) | P1 | Verification pending | Supply the tracked Projects home inside the source checkout. |
 | [CV-15](#cv-15-cross-node-active-run-status) | P1 | Verification pending | Show remote active state without implying proven corruption. |
