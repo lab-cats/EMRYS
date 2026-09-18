@@ -16,6 +16,7 @@ APPROVED_PRODUCTION_IMPORTERS = frozenset(
         "emrys.orchestration.run_coordinator.control",
         "emrys.orchestration.run_coordinator.doctor",
         "emrys.orchestration.run_coordinator.onboarding",
+        "emrys.orchestration.run_coordinator.synthetic_fixture",
     }
 )
 

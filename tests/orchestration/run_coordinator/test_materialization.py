@@ -3303,6 +3303,7 @@ def test_watch_resume_handoff_fresh_plan_and_decline_preserve_every_record(
 def test_public_preflight_failure_closes_log_without_run_mutation(
     tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, command: str
 ) -> None:
+    monkeypatch.delenv("EMRYS_LOG_ROOT", raising=False)
     if command == "run":
         _ready, _resources, project, workspace = _readiness(tmp_path)
         message, error = "injected Doctor failure", doctor.DoctorInputError
