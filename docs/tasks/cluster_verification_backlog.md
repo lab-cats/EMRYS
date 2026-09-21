@@ -2264,7 +2264,8 @@ cached package work, checks that must repeat, and new install/repair actions.
 Explain why repeated work is necessary and retain successful prior evidence
 without claiming stale checks still pass. Cover unchanged retry, interrupted
 setup, and a changed dependency/input. Show first-setup duration guidance and
-queue time separately from work; keep performance changes under CV-26.
+queue time separately from work; retain CV-26's historical evidence while routing
+future performance changes through the optimization campaign.
 **Owners/dependencies:** Doctor and existing package-manager integration.
 
 **Selected runtime-work slice:** One immutable-plan summary is reused in preview,
@@ -2307,7 +2308,8 @@ binding and receipt/revalidation behavior while separating query latency from
 the waited submission timer. CV-05 is Completed for this hosted software
 acceptance. The scheduler records in these tests are controlled fixtures, not
 live Slurm measurements; comparable site setup/retry duration measurement and
-performance changes remain under CV-26.
+performance changes remain independently selectable under the optimization
+campaign. CV-26 retains the existing timing evidence.
 
 ### CV-06 Actual-data onboarding
 
