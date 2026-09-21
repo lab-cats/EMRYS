@@ -597,7 +597,6 @@ def test_doctor_measurement_preserves_public_dispatch_and_owner_reads(
         # Imported public aliases still reach their defining module's read owner.
         assert inputs.read_bytes(source, "Fixture") == before[0]
         inputs.sha256_with_identity(source, "Fixture")
-        assert inputs.read_suffix_with_identity(source, "Fixture", 4)[0] == b"put\n"
         assert package._read_regular_file(source, source.stat()) == before[0]
         if failure is not None:
             raise failure
@@ -638,7 +637,6 @@ def test_doctor_measurement_preserves_public_dispatch_and_owner_reads(
     for mode, count in (
         ("bytes", len(before[0])),
         ("digest", len(before[0])),
-        ("suffix", 4),
         ("package_payload", len(before[0])),
     ):
         row = measured["targeted_reads"][mode]

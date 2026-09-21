@@ -3916,7 +3916,7 @@ def test_oversized_submission_context_prevents_scheduler_invocation(
     ),
 )
 @pytest.mark.parametrize("selector_kind", ("name", "absolute"))
-def test_public_submission_selection_queries_only_the_exact_request(
+def test_public_submission_selection_renders_exact_owner_outcome(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -4006,6 +4006,69 @@ def test_public_submission_selection_queries_only_the_exact_request(
         assert observed == []
 
 
+@pytest.mark.parametrize("record", ("current", "legacy"))
+def test_public_submission_selection_reaches_real_observation_owner(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    record: str,
+) -> None:
+    from tests.orchestration.run_coordinator.test_slurm_submission import (
+        _request_record,
+    )
+
+    project = build(tmp_path / "project")
+    _, selected, context = _request_record(
+        project.parent,
+        stdout=b"700123;cluster-a\n",
+        version="v2" if record == "current" else "v1",
+    )
+    calls = []
+
+    def query(argv, **_kwargs):
+        calls.append(argv)
+        assert record == "current"
+        return (
+            "|".join(
+                (
+                    "700123",
+                    str(os.getuid()),
+                    "PENDING",
+                    "cluster-a",
+                    context["scheduler_stdout_pattern"].replace("%j", "700123"),
+                    context["scheduler_stderr_pattern"].replace("%j", "700123"),
+                    "Resources",
+                )
+            )
+            + "\n"
+        ).encode()
+
+    monkeypatch.setattr(
+        control.slurm_submission.scheduler_observation, "command_bytes", query
+    )
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    before = _file_snapshot(project.parent)
+
+    assert (
+        control.inspect_from_args(
+            parser.parse_args(
+                ["--project", str(project), "--submission", selected.name]
+            )
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert f"Request: {selected}" in output
+    assert (
+        f"Scheduler observation: {'PENDING' if record == 'current' else 'UNKNOWN'}"
+        in output
+    )
+    assert len(calls) == (1 if record == "current" else 0)
+    assert _file_snapshot(project.parent) == before
+
+
 @pytest.mark.parametrize("selector_kind", ("name", "absolute"))
 def test_public_watch_selected_request_is_one_read_only_nonterminal_snapshot(
     tmp_path, monkeypatch, capsys, selector_kind
@@ -4014,23 +4077,42 @@ def test_public_watch_selected_request_is_one_read_only_nonterminal_snapshot(
 
     project = build(tmp_path / "project")
     request, _profile = _request(project.parent, version="v3")
-    observed = []
+    context = request.context
+    calls = []
 
-    def observe(selected, **_kwargs):
-        observed.append(selected.request_root)
-        return {
-            "state": "PENDING",
-            "terminal": False,
-            "source": "squeue",
-            "cluster": "local",
-            "reason": "Resources\x1b[31m",
-            "diagnostic": None,
-        }
+    def query(argv, **_kwargs):
+        calls.append(argv)
+        return (
+            "|".join(
+                (
+                    request.recorded_job_id,
+                    str(os.getuid()),
+                    "PENDING",
+                    "local",
+                    context["scheduler_stdout_pattern"].replace(
+                        "%j", request.recorded_job_id
+                    ),
+                    context["scheduler_stderr_pattern"].replace(
+                        "%j", request.recorded_job_id
+                    ),
+                    "Resources\x1b[31m",
+                    context["scheduler_job_name"],
+                    "0:00",
+                    "1:00:00",
+                    "12",
+                    "compute",
+                    "(Priority)",
+                )
+            )
+            + "\n"
+        ).encode()
 
     def forbidden(*args, **kwargs):
         pytest.fail("watch must not enter workflow, create a log, or choose a Run")
 
-    monkeypatch.setattr(control.slurm_submission, "observe_submission_request", observe)
+    monkeypatch.setattr(
+        control.slurm_submission.scheduler_observation, "command_bytes", query
+    )
     monkeypatch.setattr(control, "_resolve_run_argument", forbidden)
     monkeypatch.setattr(control, "open_attempt_log", forbidden)
     monkeypatch.setattr(control._inspection_presentation, "RefreshWorker", forbidden)
@@ -4051,11 +4133,11 @@ def test_public_watch_selected_request_is_one_read_only_nonterminal_snapshot(
     assert "Scheduler: PENDING" in output
     assert "Resources\\x1b[31m" in output and "\x1b" not in output
     assert "Application association as of" in output
-    assert observed == [request.request_root]
+    assert len(calls) == 1
     assert _file_snapshot(project.parent) == before
-    observed.clear()
+    calls.clear()
     assert control.inspect_from_args(parser.parse_args([*argv, "run-" + "a" * 64])) == 2
-    assert not observed
+    assert not calls
 
 
 @pytest.mark.parametrize("explicit", (False, True))
@@ -4796,22 +4878,26 @@ def test_public_slurm_errors_keep_control_exit_and_never_retry(
         monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, profile.binding_sha256)
         monkeypatch.setenv(scheduler.SUBMIT_UID_ENV, str(os.getuid()))
         monkeypatch.setenv("SLURM_JOB_ID", "0")
-    if failure == "submission":
+    submitted = root / "submitted"
+    rejector = root / "sbatch"
+    rejector.write_text(
+        f"#!{sys.executable}\n"
+        "import os, pathlib\n"
+        "os.close(0)\n"
+        f"with pathlib.Path({str(submitted)!r}).open('ab') as stream: stream.write(b'once\\n')\n"
+        "os.write(2, b'sbatch: invalid account\\n\\x1b[31m')\n"
+        "raise SystemExit(23)\n"
+    )
+    rejector.chmod(0o700)
+    original_plan = scheduler.plan_submission
 
-        def reject_submission(*_args, **_kwargs):
-            raise scheduler.SlurmSubmissionError(
-                "sbatch exited with 23; job ID unconfirmed; invalid account\x1b[31m"
-            )
-
-        monkeypatch.setattr(scheduler, "submit", reject_submission)
-    else:
-        monkeypatch.setattr(
-            scheduler,
-            "submit",
-            lambda *_args, **_kwargs: pytest.fail(
-                "pre-submission failure invoked sbatch"
-            ),
+    def plan_rejected(*args, **kwargs):
+        planned = original_plan(*args, **kwargs, sbatch=str(rejector))
+        return replace(
+            planned, batch_script=planned.batch_script + "# padding\n" * 100_000
         )
+
+    monkeypatch.setattr(scheduler, "plan_submission", plan_rejected)
     monkeypatch.setattr(
         control.doctor,
         "diagnose_project",
@@ -4836,7 +4922,13 @@ def test_public_slurm_errors_keep_control_exit_and_never_retry(
     assert expected[failure] in output.err
     assert "\x1b" not in output.err
     if failure == "submission":
-        assert "sbatch exited with 23" in output.err and "invalid account" in output.err
+        assert submitted.read_bytes() == b"once\n"
+        assert "sbatch exited with 23" in output.err
+        assert "invalid account" in output.err
+        (request_path,) = (project.parent / "logs").glob("submission-*/sbatch.stderr")
+        assert request_path.read_bytes() == b"sbatch: invalid account\n\x1b[31m"
+    else:
+        assert not submitted.exists()
     assert not (project.parent / "logs/application").exists()
 
 

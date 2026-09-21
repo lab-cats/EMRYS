@@ -2170,6 +2170,17 @@ def _plan_runtime_reuse(
     return _RuntimeDiscoveryPlan(preview, admit)
 
 
+def reuse_runtime_profile(
+    *, project: Path, donor: Path, execute: bool, replace_existing: bool = False
+) -> RuntimeInspection:
+    """Freshly qualify one source generation for a dependent Project."""
+
+    plan = _plan_runtime_reuse(
+        project=project, donor=donor, replace_existing=replace_existing
+    )
+    return plan.admit() if execute else plan.inspection
+
+
 def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
     add_project_argument(parser)
     add_verbose_argument(parser)
@@ -2284,6 +2295,7 @@ __all__ = (
     "configure_validation_parser",
     "discover_runtime_from_args",
     "discover_runtime_profile",
+    "reuse_runtime_profile",
     "init_manifests_from_args",
     "init_project_from_args",
     "load_saved_cli_environment",

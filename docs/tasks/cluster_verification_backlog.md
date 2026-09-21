@@ -1326,10 +1326,12 @@ discovery, compatibility checking and selection occur first; Doctor is the one
 shared next step only after that admission. When smoke was skipped, the guide
 does not invent a source Project and Doctor prepares the real Project directly.
 The existing seal, freshness, explicit replacement and Project-readiness owners
-remain unchanged. A test-only reuse wrapper with no production caller was
-retired; the same plan and CLI protections remain exercised. Focused local
-checks pass; a fresh institutional smoke-to-study journey remains required, so
-CV-U22 is **Verification pending**.
+remain unchanged. The exported `reuse_runtime_profile` programmatic boundary
+was mistakenly described as test-only and retired while its implementation was
+copied into the tests. The boundary and export are restored, and the runtime
+reuse cases again exercise that production API directly. Focused local checks
+pass; a fresh institutional smoke-to-study journey remains required, so CV-U22
+is **Verification pending**.
 
 ### CV-U23 Repair restriction when sharing tools
 

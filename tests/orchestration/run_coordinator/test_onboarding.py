@@ -48,6 +48,20 @@ def _decoded_terminal(value: str) -> Text:
     return AnsiDecoder().decode_line(value)
 
 
+@pytest.fixture(autouse=True)
+def _isolate_saved_cli_environment():
+    """Keep in-process CLI environment loading inside the invoking test."""
+
+    keys = ("EMRYS_PROJECTS_ROOT", "EMRYS_SITE", "EMRYS_LOG_ROOT")
+    original = {key: os.environ[key] for key in keys if key in os.environ}
+    yield
+    for key in keys:
+        if key in original:
+            os.environ[key] = original[key]
+        else:
+            os.environ.pop(key, None)
+
+
 def _namespace(
     output: Path,
     *,
@@ -2200,15 +2214,6 @@ def _no_probe_inspection(
     )
 
 
-def _reuse_runtime_profile(
-    *, project: Path, donor: Path, execute: bool, replace_existing: bool = False
-) -> RuntimeInspection:
-    plan = onboarding._plan_runtime_reuse(
-        project=project, donor=donor, replace_existing=replace_existing
-    )
-    return plan.admit() if execute else plan.inspection
-
-
 def test_runtime_discovery_builds_project_owned_fixed_policy_without_writing(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -2473,14 +2478,15 @@ def test_runtime_reuse_previews_then_seals_and_selects_without_installation(
     assert inspector.load_runtime_seal(seal).data == seal.read_bytes()
     another = _project_with_owned_runtime(tmp_path / "another-borrower")
     identity = seal.stat()
-    _reuse_runtime_profile(project=another, donor=donor, execute=True)
+    assert "reuse_runtime_profile" in onboarding.__all__
+    onboarding.reuse_runtime_profile(project=another, donor=donor, execute=True)
     assert len(calls) == 4
     assert seal.stat() == identity
     assert (
         another.parent / "runtime/runtime.tsv"
     ).read_bytes() == selected.read_bytes()
     with pytest.raises(onboarding.OnboardingError, match="already exists"):
-        _reuse_runtime_profile(project=borrower, donor=donor, execute=True)
+        onboarding.reuse_runtime_profile(project=borrower, donor=donor, execute=True)
     assert len(calls) == 4
 
 
@@ -2536,7 +2542,7 @@ def test_runtime_reuse_explicitly_replaces_only_the_same_shared_source(
     from emrys.evidence.runtime_availability import inspector
 
     donor, borrower, old_seal, original = _reuse_projects(tmp_path, monkeypatch)
-    _reuse_runtime_profile(project=borrower, donor=donor, execute=True)
+    onboarding.reuse_runtime_profile(project=borrower, donor=donor, execute=True)
     old_selection = (borrower.parent / "runtime/runtime.tsv").read_bytes()
     old_seal_bytes = old_seal.read_bytes()
 
@@ -2568,7 +2574,7 @@ def test_runtime_reuse_explicitly_replaces_only_the_same_shared_source(
     )
     (donor.parent / "runtime/runtime.tsv").write_bytes(donor_profile)
 
-    preview = _reuse_runtime_profile(
+    preview = onboarding.reuse_runtime_profile(
         project=borrower,
         donor=donor,
         execute=False,
@@ -2578,7 +2584,7 @@ def test_runtime_reuse_explicitly_replaces_only_the_same_shared_source(
     assert preview.profile_bytes.startswith(
         f"seal_path\tseal_sha256\tpython\n{replacement_seal}\t".encode()
     )
-    _reuse_runtime_profile(
+    onboarding.reuse_runtime_profile(
         project=borrower,
         donor=donor,
         execute=True,
@@ -2599,7 +2605,7 @@ def test_runtime_reuse_explicitly_replaces_only_the_same_shared_source(
         )
     )
     with pytest.raises(onboarding.OnboardingError, match="same source Project"):
-        _reuse_runtime_profile(
+        onboarding.reuse_runtime_profile(
             project=other,
             donor=donor,
             execute=True,
@@ -2629,7 +2635,7 @@ def test_runtime_reuse_publication_failure_preserves_seal_and_claim_evidence(
 
     monkeypatch.setattr(onboarding, "publish_exclusive", fail)
     with pytest.raises(error_type, match="injected"):
-        _reuse_runtime_profile(project=borrower, donor=donor, execute=True)
+        onboarding.reuse_runtime_profile(project=borrower, donor=donor, execute=True)
     assert seal.exists() is (failure != "before_seal")
     assert (seal.parent / "maintenance.lock").exists() is (failure != "borrower")
     assert not (borrower.parent / "runtime/runtime.tsv").exists()
@@ -2656,7 +2662,7 @@ def test_runtime_reuse_refuses_outstanding_donor_claim_before_any_probe(
     with pytest.raises(
         (onboarding.OnboardingError, inspector.RuntimeInspectionError), match="claim"
     ):
-        _reuse_runtime_profile(project=borrower, donor=donor, execute=True)
+        onboarding.reuse_runtime_profile(project=borrower, donor=donor, execute=True)
     assert claim.read_bytes() == b"unresolved owner\n"
     assert not (borrower.parent / "runtime/runtime.tsv").exists()
 
@@ -2679,7 +2685,7 @@ def test_runtime_reuse_rechecks_content_after_seal_publication(
     with pytest.raises(
         inspector.RuntimeInspectionError, match="content or version changed"
     ):
-        _reuse_runtime_profile(project=borrower, donor=donor, execute=True)
+        onboarding.reuse_runtime_profile(project=borrower, donor=donor, execute=True)
     assert seal.exists()
     assert not (seal.parent / "maintenance.lock").exists()
     assert not (borrower.parent / "runtime/runtime.tsv").exists()

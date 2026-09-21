@@ -557,6 +557,8 @@ def test_watch_handoff_uses_exact_selection_and_fresh_ordinary_parser_defaults(
     project = tmp_path / "project.yaml"
     run_root = tmp_path / "runs" / ("run-" + "a" * 64)
     request_root = tmp_path / "logs" / ("submission-" + "b" * 32)
+    project.write_text("fixture\n", encoding="utf-8")
+    run_root.mkdir(parents=True)
     calls = []
     configurations = []
     in_view = True
@@ -618,7 +620,7 @@ def test_watch_handoff_uses_exact_selection_and_fresh_ordinary_parser_defaults(
             assert "run_root" not in kwargs
         else:
             assert kwargs["run_root"] == run_root
-            assert "request" not in kwargs
+            assert kwargs["request"] is None
         assert isinstance(review_actions, tuple)
         expected_keys = (b"s",) if command == "stop" else (b"p", b"b")
         assert tuple(key for key, _label, _callback in review_actions) == (

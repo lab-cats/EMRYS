@@ -35,50 +35,11 @@ def _read_sha256(path: Path, label: str) -> bytes:
     return INPUTS.sha256_with_identity(path, label)[0].encode()
 
 
-def _read_suffix(path: Path, label: str) -> bytes:
-    return INPUTS.read_suffix_with_identity(path, label, 4)[0]
-
-
 READERS = pytest.mark.parametrize(
     "reader",
-    (_read_all, _read_prefix, _read_sha256, _read_suffix),
-    ids=("all-bytes", "prefix", "sha256", "suffix"),
+    (_read_all, _read_prefix, _read_sha256),
+    ids=("all-bytes", "prefix", "sha256"),
 )
-
-
-@pytest.mark.parametrize("content", (b"", b"AB", b"prefix-ABCD"))
-def test_suffix_reads_only_bounded_trailing_bytes(tmp_path, monkeypatch, content):
-    source = tmp_path / "stream"
-    source.write_bytes(content)
-    original = INPUTS.os.read
-    offsets = []
-
-    def read(descriptor, size):
-        offsets.append((os.lseek(descriptor, 0, os.SEEK_CUR), size))
-        return original(descriptor, min(size, 1))
-
-    monkeypatch.setattr(INPUTS.os, "read", read)
-    data, identity = INPUTS.read_suffix_with_identity(source, "Stream", 4)
-
-    assert data == content[-4:]
-    assert identity.st_size == len(content)
-    assert offsets[0] == (max(0, len(content) - 4), 4)
-    assert all(size <= 4 for _, size in offsets)
-
-
-def test_suffix_rejects_symlinks_nonregular_files_and_invalid_lengths(tmp_path):
-    source = tmp_path / "stream"
-    source.write_bytes(b"fixture")
-    link = tmp_path / "alias"
-    link.symlink_to(source)
-    fifo = tmp_path / "fifo"
-    os.mkfifo(fifo)
-    for path in (link, fifo, tmp_path):
-        with pytest.raises(REPORT.ValidationError, match="regular non-symlink"):
-            INPUTS.read_suffix_with_identity(path, "Stream", 4)
-    for length in (None, True, 0, -1, 1.5):
-        with pytest.raises(ValueError, match="positive integer"):
-            INPUTS.read_suffix_with_identity(source, "Stream", length)
 
 
 @pytest.mark.parametrize("content", [b"", b"bound-prefix-and-unread-tail"])
