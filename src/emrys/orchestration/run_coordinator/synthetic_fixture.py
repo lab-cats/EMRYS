@@ -495,6 +495,7 @@ def _project_definition(profile: DatasetProfile = DEFAULT_PROFILE) -> bytes:
             "reference_gtf": Path("inputs/reference/genes.gtf"),
             "sjdb_overhang": READ_LENGTH - 1,
             "genome_sa_index_nbases": profile.genome_sa_index_nbases,
+            "genome_chr_bin_nbits": 18,
             "control_condition": "control",
             "treatment_condition": "treatment",
             "target_change": "A>G",
@@ -586,6 +587,7 @@ def fixture_metadata(
         },
         "star": {
             "genome_sa_index_nbases": profile.genome_sa_index_nbases,
+            "genome_chr_bin_nbits": 18,
             "sjdb_overhang": READ_LENGTH - 1,
         },
         "samples": [

@@ -64,6 +64,11 @@ from emrys.libraries.process_environment import (
 
 Operation = Literal["execute", "resume"]
 _SAFE_ROLE_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+_STAR_INDEX_COMMAND_FIELDS = (
+    ("sjdb-overhang", "sjdb_overhang"),
+    ("genome-sa-index-nbases", "genome_sa_index_nbases"),
+    ("genome-chr-bin-nbits", "genome_chr_bin_nbits"),
+)
 
 
 class MaterializationError(RuntimeError):
@@ -383,6 +388,10 @@ def _task_commands(
                 "Step 00a requires exactly 15 index members under one directory"
             )
         index_dir = index_members[0].parent
+        star_index_flags = tuple(
+            (option, reference["star_index"][field])
+            for option, field in _STAR_INDEX_COMMAND_FIELDS
+        )
         producer = (
             bash,
             str(source_root / producer_path),
@@ -391,11 +400,7 @@ def _task_commands(
                 ("reference-gtf", gtf),
                 ("index-dir", working_paths[index_members[0]].parent),
                 ("threads", threads),
-                ("sjdb-overhang", reference["star_index"]["sjdb_overhang"]),
-                (
-                    "genome-sa-index-nbases",
-                    reference["star_index"]["genome_sa_index_nbases"],
-                ),
+                *star_index_flags,
                 ("star-bin", star),
                 ("native-memory-mb", native_memory_mb),
             ),
@@ -408,14 +413,7 @@ def _task_commands(
                 ("reference-fasta", fasta),
                 ("reference-gtf", gtf),
                 ("parameter-path-base", run_root),
-                (
-                    "expected-sjdb-overhang",
-                    reference["star_index"]["sjdb_overhang"],
-                ),
-                (
-                    "expected-genome-sa-index-nbases",
-                    reference["star_index"]["genome_sa_index_nbases"],
-                ),
+                *((f"expected-{option}", value) for option, value in star_index_flags),
                 ("output", validation),
             ),
         )

@@ -524,6 +524,41 @@ def test_project_resource_execution_profile_and_run_records_pass() -> None:
     orchestration.validate_record("project", project_without_background)
 
 
+def test_star_chr_bin_policy_is_optional_for_authored_and_legacy_records() -> None:
+    current_project = project()
+    current_project["reference"]["star_index"]["genome_chr_bin_nbits"] = 17
+    orchestration.validate_record("project", current_project)
+
+    current_reference = reference()
+    current_reference["star_index"]["genome_chr_bin_nbits"] = 17
+    orchestration.validate_record("reference", current_reference)
+
+    # The unmodified fixtures model records authored before this optional field.
+    orchestration.validate_record("project", project())
+    orchestration.validate_record("reference", reference())
+
+
+@pytest.mark.parametrize("value", (0, 19, True))
+@pytest.mark.parametrize("record_name", ("project", "reference"))
+def test_star_chr_bin_policy_rejects_values_outside_star_bounds(
+    record_name: str,
+    value: object,
+) -> None:
+    record = project() if record_name == "project" else reference()
+    star_index = (
+        record["reference"]["star_index"]
+        if record_name == "project"
+        else record["star_index"]
+    )
+    star_index["genome_chr_bin_nbits"] = value
+
+    with pytest.raises(
+        orchestration.ContractValidationError,
+        match="genome_chr_bin_nbits",
+    ):
+        orchestration.validate_record(record_name, record)
+
+
 @pytest.mark.parametrize(
     "sample_ids",
     ([], ["EV-1", "EV-1"], ["unsafe sample"], [1]),

@@ -15,6 +15,7 @@ Usage: src/emrys/stages/star_index/step_00a_build_star_index.sh \
   --threads THREADS \
   --sjdb-overhang SJDB_OVERHANG \
   --genome-sa-index-nbases GENOME_SA_INDEX_NBASES \
+  --genome-chr-bin-nbits GENOME_CHR_BIN_NBITS \
   --native-memory-mb NATIVE_MEMORY_MB \
   --star-bin STAR_BIN
 
@@ -30,7 +31,7 @@ source "$script_dir/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$script_dir/../../libraries/file_checks.sh"
 
-declare_required_arguments reference_fasta reference_gtf index_dir threads sjdb_overhang genome_sa_index_nbases star_bin native_memory_mb
+declare_required_arguments reference_fasta reference_gtf index_dir threads sjdb_overhang genome_sa_index_nbases genome_chr_bin_nbits star_bin native_memory_mb
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -41,6 +42,7 @@ while [[ $# -gt 0 ]]; do
         --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
         --sjdb-overhang) assign_option_value "$1" "${2:-}" sjdb_overhang; shift 2 ;;
         --genome-sa-index-nbases) assign_option_value "$1" "${2:-}" genome_sa_index_nbases; shift 2 ;;
+        --genome-chr-bin-nbits) assign_option_value "$1" "${2:-}" genome_chr_bin_nbits; shift 2 ;;
         --star-bin) assign_option_value "$1" "${2:-}" star_bin; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         *) die "Unknown argument: $1" ;;
@@ -56,6 +58,9 @@ validate_nonempty_file "Reference GTF" "$reference_gtf"
     die "Reference FASTA and GTF must be regular files, not symlinks."
 validate_positive_integer "--threads" "$threads"
 validate_positive_integer "--genome-sa-index-nbases" "$genome_sa_index_nbases"
+validate_positive_integer "--genome-chr-bin-nbits" "$genome_chr_bin_nbits"
+(( genome_chr_bin_nbits <= 18 )) ||
+    die "--genome-chr-bin-nbits must be at most 18."
 validate_nonnegative_integer "--sjdb-overhang" "$sjdb_overhang"
 require_executable "STAR" "$star_bin"
 required_index_members=(
@@ -80,7 +85,8 @@ validate_index_members() {
     --limitGenomeGenerateRAM "$((native_memory_mb * 1024 * 1024))" \
     --genomeDir "$index_dir" --genomeFastaFiles "$reference_fasta" \
     --sjdbGTFfile "$reference_gtf" --sjdbOverhang "$sjdb_overhang" \
-    --genomeSAindexNbases "$genome_sa_index_nbases"
+    --genomeSAindexNbases "$genome_sa_index_nbases" \
+    --genomeChrBinNbits "$genome_chr_bin_nbits"
 validate_index_members "$index_dir"
 # STAR's additional top-level files travel with the complete index directory.
 shopt -s nullglob dotglob

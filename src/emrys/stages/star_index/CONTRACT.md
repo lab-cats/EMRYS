@@ -26,8 +26,9 @@ The functional inputs are:
 - one materialized reference GTF;
 - the STAR executable and runtime environment;
 - a thread count;
-- the STAR splice-junction overhang value; and
-- the STAR genome suffix-array index length (`genomeSAindexNbases`).
+- the STAR splice-junction overhang value;
+- the STAR genome suffix-array index length (`genomeSAindexNbases`); and
+- the STAR chromosome-bin index length (`genomeChrBinNbits`).
 
 ## Outputs
 
@@ -65,8 +66,8 @@ The required internal `--native-memory-mb` argument supplies STAR
 [Run planner](../../orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
 derives this positive budget from the admitted stage allowance.
 
-The worker receives explicit FASTA, GTF, STAR, thread, overhang, and
-suffix-array parameters. `--index-dir` names the runner-created staging
+The worker receives explicit FASTA, GTF, STAR, thread, overhang, suffix-array,
+and chromosome-bin parameters. `--index-dir` names the runner-created staging
 directory. It runs STAR genome generation, requires the 15 declared members,
 and rejects non-regular generated members. The runner carries the complete
 index directory, including additional native STAR files, to the final location.
@@ -76,25 +77,26 @@ index directory, including additional native STAR files, to the final location.
 `emrys validate star-index`, implemented by the private
 [`validator.py`](validator.py) module, accepts explicit scope, index, FASTA,
 GTF, relative-parameter base, expected overhang, expected suffix-array length,
-and output paths. Validation
+expected chromosome-bin length, and output paths. Validation
 is dry-run by default; `--execute` publishes `<scope-id>.validation.tsv`.
 
 The TSV contract is tab-delimited and uses the ordered fields `step_id`,
 `scope_id`, `check_id`, `status`, `observed`, `expected`, and `detail`.
 
-It contains exactly these six check identities:
+It contains exactly these seven check identities:
 
 - `index_members`;
 - `fasta_identity`;
 - `gtf_identity`;
 - `contig_names_lengths`; and
-- `sjdb_overhang`; and
-- `genome_sa_index_nbases`.
+- `sjdb_overhang`;
+- `genome_sa_index_nbases`; and
+- `genome_chr_bin_nbits`.
 
 The `genomeParameters.txt` parser ignores STAR metadata rows whose first field
 is exactly `###`. Every non-metadata row retains missing-value and duplicate-key
-admission, and the validator still checks the exact declared overhang and
-suffix-array length.
+admission, and the validator still checks the exact declared overhang,
+suffix-array length, and chromosome-bin length.
 
 A validation mismatch is represented by a `status=fail` row and does not
 repair inputs or native outputs. Unsafe input structure, an invalid

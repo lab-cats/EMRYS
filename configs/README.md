@@ -42,6 +42,7 @@ reference:
   star_index:
     sjdb_overhang: 149
     genome_sa_index_nbases: 14
+    genome_chr_bin_nbits: 18
 analyses:
   primary:
     partitions: partitions.tsv
@@ -58,11 +59,19 @@ analyses:
 ```
 
 Replace the example paths, conditions, reference and thresholds with your study's
-choices. Named Project creation derives an omitted `sjdb_overhang` from every
-admitted FASTQ record and assists with `genome_sa_index_nbases`; it freezes both
-as numeric `star_index` values. Hand-authored Projects supply those numeric
-values directly. `star_index` configures index construction; it does not admit
-an external prebuilt index.
+choices. Named Project creation derives an omitted `genome_sa_index_nbases` from
+the admitted FASTA length before preview as
+`max(1, floor(min(14, log2(total reference bases) / 2 - 1)))`. During creation's
+existing FASTQ admission pass, it derives an omitted `sjdb_overhang` from the
+maximum read length and resolves an omitted `genome_chr_bin_nbits`. References
+with at most 5,000 sequences use `18`; references with more sequences use
+`max(1, floor(min(18, log2(max(total reference bases / sequence count, maximum admitted read length)))))`.
+Creation freezes all three numeric `star_index` values, while advanced callers
+may supply explicit overrides. Existing hand-authored Projects that omit
+`genome_chr_bin_nbits` retain STAR's prior value of `18`; EMRYS normalizes that
+value without rewriting the Project. Hand-authored Projects still supply the
+other two numeric values. `star_index` configures index construction; it does
+not admit an external prebuilt index.
 
 Unknown fields, duplicate keys, merge keys, and legacy request-v3 documents
 are rejected by current Project commands. The FASTA parent must permit the

@@ -289,13 +289,19 @@ with Project-aware commands when working from another directory.
 Interactive named initialization discovers recognized FASTQ pairs in one
 directory, asks for their biological assignments and the study regions, and
 publishes `samples.tsv` and `partitions.tsv` inside the Project. Its preview
-checks paths and scientific structure without reading FASTQ contents and labels
-an omitted `sjdbOverhang` as automatic. The printed creation command carries
-every explicit answer; creation hashes each FASTQ's stored bytes once while
-validating every plain or gzip-decoded record, freezes the maximum read length
-minus one, and rejects an input whose filesystem identity changes through
-publication. An explicit `--sjdb-overhang` remains an advanced override and is
-reported beside the observed automatic value.
+checks paths and scientific structure without reading FASTQ contents, derives an
+omitted `genomeSAindexNbases` from the reference, and labels omitted
+`sjdbOverhang` and `genomeChrBinNbits` values as automatic at creation. The
+printed creation command carries every explicit answer while preserving those
+omissions. Creation hashes each FASTQ's stored bytes once while validating every
+plain or gzip-decoded record, then freezes the maximum read length minus one and
+the reference/read-length chromosome-bin setting. The reference summary is bound
+to its device, inode, size, nanosecond modification time and nanosecond change
+time until full admission; changed reference or FASTQ identity stops publication.
+Explicit `--sjdb-overhang`, `--genome-sa-index-nbases`, and
+`--genome-chr-bin-nbits` values remain advanced overrides and are reported as
+such. The [configuration guide](../../configs/README.md#projectyaml) owns the
+exact derivation and legacy-default rules.
 Existing advanced manifests may be supplied together with `--sample-manifest`
 and `--partition-manifest`; EMRYS copies normalized manifest content into the
 new Project. Existing Projects remain supported at their current paths.

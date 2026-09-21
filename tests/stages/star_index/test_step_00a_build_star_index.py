@@ -108,6 +108,7 @@ def run_producer(
     *,
     cwd: Path,
     native_memory_mb: int = 800,
+    genome_chr_bin_nbits: int = 18,
 ) -> subprocess.CompletedProcess[str]:
     command = [
         "/bin/bash",
@@ -126,6 +127,8 @@ def run_producer(
         "149",
         "--genome-sa-index-nbases",
         "14",
+        "--genome-chr-bin-nbits",
+        str(genome_chr_bin_nbits),
         "--star-bin",
         str(Path(environment["TMPDIR"]).parent / "fake-bin/STAR"),
     ]
@@ -171,6 +174,8 @@ def test_worker_builds_complete_star_index_from_arbitrary_cwd(
     tool_log = read_lines(Path(environment["FAKE_TOOL_LOG"]))[0]
     assert "--runMode\tgenomeGenerate" in tool_log
     assert "--sjdbOverhang\t149" in tool_log
+    assert "--genomeSAindexNbases\t14" in tool_log
+    assert "--genomeChrBinNbits\t18" in tool_log
     assert f"--limitGenomeGenerateRAM\t{native_memory_mb * 1024 * 1024}" in tool_log
     assert list(invocation_cwd.iterdir()) == []
 
@@ -203,4 +208,27 @@ def test_worker_refuses_zero_native_memory_before_star(tmp_path: Path) -> None:
     )
     assert result.returncode != 0
     assert "positive integer" in result.stderr
+    assert not Path(environment["FAKE_TOOL_LOG"]).exists()
+
+
+def test_worker_refuses_out_of_range_chromosome_bin_before_star(
+    tmp_path: Path,
+) -> None:
+    environment = prepared_environment(tmp_path)
+    fasta = tmp_path / "genome.fa"
+    gtf = tmp_path / "genome.gtf"
+    index = tmp_path / "index"
+    fasta.write_text(">chr1\nACGT\n", encoding="utf-8")
+    gtf.write_text("fixture\n", encoding="utf-8")
+    index.mkdir()
+    result = run_producer(
+        fasta,
+        gtf,
+        index,
+        environment,
+        cwd=tmp_path,
+        genome_chr_bin_nbits=19,
+    )
+    assert result.returncode != 0
+    assert "must be at most 18" in result.stderr
     assert not Path(environment["FAKE_TOOL_LOG"]).exists()

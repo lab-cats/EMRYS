@@ -341,6 +341,44 @@ def test_execution_plan_canonicalizes_sets_graphs_tools_and_resource_maps() -> N
         },
     )
     assert first.canonical_bytes == second.canonical_bytes
+    assert first.record["identity"]["star_index"] == {
+        "sjdb_overhang": 0,
+        "genome_sa_index_nbases": 14,
+        "genome_chr_bin_nbits": 18,
+    }
+
+
+def test_chr_bin_policy_changes_execution_and_processing_identities() -> None:
+    baseline = execution_plan()
+    identity = baseline.record["identity"]
+    changed_star_index = {**identity["star_index"], "genome_chr_bin_nbits": 17}
+    changed_plan = model.build_execution_plan(
+        processing_compatibility_sha256=TWO_HASH,
+        functional_specification=identity["functional_specification"],
+        scientific_stopping_owner_keys=identity["scientific_stopping_owner_keys"],
+        implementation_content_sha256=identity["implementation_content_sha256"],
+        toolchain=identity["toolchain"],
+        backend=identity["backend"]["backend"],
+        engine=identity["backend"]["engine"],
+        backend_semantics_sha256=identity["backend"]["semantics_sha256"],
+        star_index=changed_star_index,
+        computational_resources=identity["computational_resources"],
+    )
+    assert changed_plan.execution_plan_id != baseline.execution_plan_id
+
+    def compatibility(star_index: dict[str, int]) -> str:
+        return model.processing_compatibility_sha256(
+            functional_specification=identity["functional_specification"],
+            processing_implementation_sha256=identity["implementation_content_sha256"],
+            toolchain=identity["toolchain"],
+            backend=identity["backend"]["backend"],
+            engine=identity["backend"]["engine"],
+            backend_semantics_sha256=identity["backend"]["semantics_sha256"],
+            star_index=star_index,
+            computational_resources=identity["computational_resources"],
+        )
+
+    assert compatibility(identity["star_index"]) != compatibility(changed_star_index)
 
 
 def test_execution_plan_admits_only_predecessor_closed_stopping_owners() -> None:
@@ -517,6 +555,18 @@ def test_version_aware_reader_rejects_non_string_schema_versions(
         model.read_application_record(
             contracts.canonical_json_bytes({"schema_version": version})
         )
+
+
+def test_version_aware_reader_preserves_legacy_plan_without_chr_bin_policy() -> None:
+    legacy = execution_plan().record
+    legacy["identity"]["star_index"].pop("genome_chr_bin_nbits")
+    legacy["execution_plan_id"] = "plan-" + contracts.canonical_sha256(
+        legacy["identity"]
+    )
+
+    admitted = model.read_application_record(contracts.canonical_json_bytes(legacy))
+
+    assert admitted.record == legacy
 
 
 def test_plan_admission_rejects_rehashed_noncanonical_functional_lists() -> None:

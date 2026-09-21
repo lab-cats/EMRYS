@@ -437,7 +437,11 @@ def _generic_artifact_bytes(row: dict[str, str]) -> bytes:
         if path.name in {"Genome", "SA", "SAindex"}:
             return b"\x00synthetic STAR index\n"
         if path.name == "genomeParameters.txt":
-            return b"sjdbOverhang 74\n"
+            return (
+                b"sjdbOverhang 74\n"
+                b"genomeSAindexNbases 3\n"
+                b"genomeChrBinNbits 18\n"
+            )
         return b"synthetic STAR index\n"
     if spec.kind == "bed12":
         return b"chrSynthetic\t0\t12\ttx1\t0\t+\t0\t12\t0\t1\t12,\t0,\n"

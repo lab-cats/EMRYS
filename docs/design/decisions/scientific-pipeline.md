@@ -14,14 +14,24 @@ a reference for other Projects. Each Project explicitly declares its FASTA
 and annotation; sidecars, BED, and STAR index must reconcile to those
 identities.
 
-### Build STAR with the declared read-length overhang
+### Build STAR with explicit, mechanically derived index settings
 
-The original study declares 150-base reads and `sjdbOverhang=149`. Named Project
-creation can derive the value from the maximum read length across every admitted
-FASTQ record, while advanced callers may override it. Either route freezes an
-explicit numeric index parameter in
-[`project.yaml`](../../../configs/README.md#projectyaml). Validators inspect
-that configured value rather than infer it from a filename.
+The original study's settings are `sjdbOverhang=149` for its 150-base reads,
+`genomeSAindexNbases=14`, and `genomeChrBinNbits=18`. Named Project creation
+derives the overhang from the maximum read length across every admitted FASTQ
+record and the suffix-array pre-index length from total FASTA length. It uses
+STAR's default chromosome-bin width of `18` through 5,000 reference sequences;
+above that boundary it applies STAR's recommended bounded scaling rule over mean
+sequence length and maximum admitted read length. These are mechanical index
+construction choices, not inferred biological meaning. Advanced callers may
+override each value.
+
+Either route freezes all three numeric parameters in
+[`project.yaml`](../../../configs/README.md#projectyaml). Existing Projects that
+omit `genome_chr_bin_nbits` normalize to the prior STAR default of `18` without
+being rewritten. Validators inspect the configured values in
+`genomeParameters.txt` rather than infer them from a filename. The formulas
+follow the locked [STAR 2.7.11b manual](https://github.com/alexdobin/STAR/blob/2.7.11b/extras/doc-latex/STARmanual.tex).
 
 ### Generate BED12 from GTF
 

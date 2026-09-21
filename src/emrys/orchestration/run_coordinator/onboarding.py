@@ -68,7 +68,9 @@ from emrys.libraries.validation.mpileup import (
     validate_region_selector,
 )
 from emrys.libraries.validation.inputs import (
+    Snapshot,
     read_bytes_with_identity,
+    regular_snapshot,
     sha256_with_identity,
 )
 from emrys.libraries.validation.tsv import tsv_bytes
@@ -649,24 +651,25 @@ def publish_create_absent_tree(
         ) from exc
 
 
-_PROJECT_FIELDS = """reference_fasta reference_gtf sjdb_overhang genome_sa_index_nbases
+_PROJECT_FIELDS = """reference_fasta reference_gtf sjdb_overhang genome_sa_index_nbases genome_chr_bin_nbits
 control_condition treatment_condition target_change min_sample_dp
 mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold
 background_max_fraction""".split()
+_STAR_INDEX_FIELDS = {
+    "sjdb_overhang": ("STAR sjdb overhang", "maximum admitted read length - 1"),
+    "genome_sa_index_nbases": ("STAR genome SA index nbases", "reference length"),
+    "genome_chr_bin_nbits": (
+        "STAR genome chromosome-bin nbits",
+        "reference and maximum read length",
+    ),
+}
 _PROJECT_TYPES = {
-    field: converter
-    for fields, converter in (
-        (
-            "reference_fasta reference_gtf".split(),
-            Path,
-        ),
-        ("sjdb_overhang genome_sa_index_nbases min_sample_dp".split(), int),
-        (
-            "mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold background_max_fraction".split(),
-            float,
-        ),
-    )
-    for field in fields
+    **dict.fromkeys(("reference_fasta", "reference_gtf"), Path),
+    **dict.fromkeys((*_STAR_INDEX_FIELDS, "min_sample_dp"), int),
+    **dict.fromkeys(
+        "mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold background_max_fraction".split(),
+        float,
+    ),
 }
 _PROJECT_SUGGESTIONS = dict(
     zip(
@@ -724,9 +727,10 @@ def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
         )
     for destination in _PROJECT_FIELDS:
         help_text = f"{destination.replace('_', ' ')}; prompted when omitted."
-        if destination == "sjdb_overhang":
+        if destination in _STAR_INDEX_FIELDS:
             help_text = (
-                "Advanced override; default is max admitted read length minus one."
+                "Advanced override; default is derived from "
+                f"{_STAR_INDEX_FIELDS[destination][1]}."
             )
         parser.add_argument(
             f"--{destination.replace('_', '-')}",
@@ -758,6 +762,22 @@ def _project_name(value: str) -> str:
     return value
 
 
+def _reference_summary(
+    reference_fasta: Path,
+) -> tuple[tuple[tuple[str, int], ...], Snapshot]:
+    try:
+        before = regular_snapshot(reference_fasta, "Reference FASTA")
+        contigs = _reference_contigs(reference_fasta)
+        after = regular_snapshot(reference_fasta, "Reference FASTA")
+    except ValidationError as exc:
+        raise OnboardingError(str(exc)) from exc
+    if before != after:
+        raise OnboardingError(
+            f"Reference FASTA changed while inspected: {reference_fasta}"
+        )
+    return contigs, after
+
+
 def _reference_contigs(reference_fasta: Path) -> tuple[tuple[str, int], ...]:
     try:
         with reference_fasta.open("r", encoding="utf-8") as source:
@@ -766,6 +786,19 @@ def _reference_contigs(reference_fasta: Path) -> tuple[tuple[str, int], ...]:
         raise OnboardingError(
             f"could not inspect reference sequences in {reference_fasta}: {exc}"
         ) from exc
+
+
+def _genome_chr_bin_nbits(
+    reference_contigs: Sequence[tuple[str, int]], read_length: int
+) -> int:
+    count = len(reference_contigs)
+    if count <= 5_000:
+        return 18
+    mean_length = sum(length for _name, length in reference_contigs) / count
+    return max(
+        1,
+        math.floor(min(18, math.log2(max(mean_length, read_length)))),
+    )
 
 
 def _collect_project_answers(
@@ -777,8 +810,8 @@ def _collect_project_answers(
     missing = [
         f"--{destination.replace('_', '-')}"
         for destination in fields
-        if getattr(arguments, destination) is None
-        and destination not in {"sjdb_overhang", "genome_sa_index_nbases"}
+        if getattr(arguments, destination, None) is None
+        and destination not in _STAR_INDEX_FIELDS
     ]
     interactive = _interactive_terminal()
     if missing and not interactive:
@@ -789,21 +822,19 @@ def _collect_project_answers(
         )
     answers: dict[str, object] = {}
     for destination in fields:
-        value = getattr(arguments, destination)
+        value = getattr(arguments, destination, None)
         suggestion = _PROJECT_SUGGESTIONS.get(destination)
-        if value is None and destination == "sjdb_overhang":
+        if value is None and destination in {
+            "sjdb_overhang",
+            "genome_chr_bin_nbits",
+        }:
             answers[destination] = None
             continue
         if value is None and destination == "genome_sa_index_nbases":
             if reference_contigs is None:
                 reference_contigs = _reference_contigs(Path(answers["reference_fasta"]))
             genome_length = sum(length for _name, length in reference_contigs)
-            suggestion = max(1, math.floor(min(14, math.log2(genome_length) / 2 - 1)))
-            print(
-                f"Suggested STAR genome SA index nbases from the {genome_length}-base "
-                "reference.",
-                file=sys.stderr,
-            )
+            value = max(1, math.floor(min(14, math.log2(genome_length) / 2 - 1)))
         if value is None:
             label = destination.replace("_", " ")
             raw = (
@@ -850,16 +881,18 @@ def _project_yaml(answers: Mapping[str, object]) -> bytes:
         },
         "target_change": target,
     }
+    star_index = {
+        field: answers[field]
+        for field in _STAR_INDEX_FIELDS
+        if answers.get(field) is not None
+    }
     document = {
         "schema_version": "emrys.project.v1",
         "dataset": {"samples": "samples.tsv"},
         "reference": {
             "fasta": str(answers["reference_fasta"]),
             "gtf": str(answers["reference_gtf"]),
-            "star_index": {
-                "sjdb_overhang": answers["sjdb_overhang"],
-                "genome_sa_index_nbases": answers["genome_sa_index_nbases"],
-            },
+            "star_index": star_index,
         },
         "analyses": {str(answers["analysis_name"]): analysis},
     }
@@ -1046,6 +1079,8 @@ def _project_replay_flags(
 ) -> tuple[str, ...]:
     flags: list[str] = []
     for name, value in {**answers, "site": getattr(arguments, "site", None)}.items():
+        if name in _STAR_INDEX_FIELDS and getattr(arguments, name, None) is None:
+            continue
         if value is not None:
             flags.extend((f"--{name.replace('_', '-')}", str(value)))
     if getattr(arguments, "sample_manifest", None) is not None:
@@ -1124,12 +1159,13 @@ def _print_project_preview(
         f"{answers['control_condition']} -> {answers['treatment_condition']}; "
         f"target {answers['target_change']}",
     )
-    present_field(
-        "STAR sjdb overhang",
-        answers["sjdb_overhang"]
-        if answers["sjdb_overhang"] is not None
-        else "automatic at creation; maximum admitted read length - 1",
-    )
+    for field, (label, source) in _STAR_INDEX_FIELDS.items():
+        value = answers[field]
+        if value is None:
+            value = f"automatic at creation; {source}"
+        elif getattr(arguments, field, None) is None:
+            value = f"{value} (automatic from {source})"
+        present_field(label, value)
     if verbose:
         present("Detailed study review", style="bold blue")
         print("  Manifests: samples.tsv, partitions.tsv (inside this Project)")
@@ -1152,8 +1188,9 @@ def _print_project_preview(
             **definition["reference"]["star_index"],
             **policy,
         }
-        if answers["sjdb_overhang"] is None:
-            settings["sjdb_overhang"] = "automatic at creation"
+        for field in ("sjdb_overhang", "genome_chr_bin_nbits"):
+            if answers[field] is None:
+                settings[field] = "automatic at creation"
         print("Scientific settings:")
         print(f"  target change: {settings['rna_ref']}>{settings['rna_alt']}")
         for name, value in settings.items():
@@ -1189,15 +1226,20 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         )
         for field, value in reference_answers.items():
             setattr(arguments, field, value)
+        automatic_star = {
+            field
+            for field in _STAR_INDEX_FIELDS
+            if getattr(arguments, field, None) is None
+        }
         needs_reference_summary = (
             getattr(arguments, "sample_manifest", None) is None
             and not getattr(arguments, "regions_file", ())
             and not getattr(arguments, "region", ())
-        ) or getattr(arguments, "genome_sa_index_nbases") is None
-        reference_contigs = (
-            _reference_contigs(Path(arguments.reference_fasta))
+        ) or bool(automatic_star - {"sjdb_overhang"})
+        reference_contigs, reference_snapshot = (
+            _reference_summary(Path(arguments.reference_fasta))
             if needs_reference_summary
-            else None
+            else (None, None)
         )
         manifest_members = _copied_manifest_members(
             arguments, output, reference_contigs=reference_contigs
@@ -1240,9 +1282,13 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
                 output,
                 inspect_fastqs=True,
             )
-            automatic_sjdb = answers["sjdb_overhang"] is None
-            if automatic_sjdb:
+            if "sjdb_overhang" in automatic_star:
                 answers["sjdb_overhang"] = sample_inputs.max_read_length - 1
+            if "genome_chr_bin_nbits" in automatic_star:
+                assert reference_contigs is not None
+                answers["genome_chr_bin_nbits"] = _genome_chr_bin_nbits(
+                    reference_contigs, sample_inputs.max_read_length
+                )
             project_bytes = _project_yaml(answers)
             admission = _admit_project_data(
                 output / "project.yaml",
@@ -1251,14 +1297,26 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
                 prepared_files=prepared_files,
                 sample_inputs=sample_inputs,
             )
-        qualification = "automatic"
-        if not automatic_sjdb:
-            qualification = f"explicit; automatic value would be {sample_inputs.max_read_length - 1}"
-        print(
-            f"STAR sjdb overhang {answers['sjdb_overhang']} ({qualification}; maximum "
-            f"admitted read length {sample_inputs.max_read_length}).",
-            file=sys.stderr,
-        )
+            if (
+                reference_snapshot is not None
+                and regular_snapshot(Path(arguments.reference_fasta), "Reference FASTA")
+                != reference_snapshot
+            ):
+                raise OnboardingError(
+                    "Reference FASTA changed after its STAR settings were derived: "
+                    f"{arguments.reference_fasta}"
+                )
+        for field, (label, source) in _STAR_INDEX_FIELDS.items():
+            detail = (
+                f"automatic from {source}" if field in automatic_star else "explicit"
+            )
+            if field == "sjdb_overhang":
+                detail = (
+                    "automatic"
+                    if field in automatic_star
+                    else f"explicit; automatic value would be {sample_inputs.max_read_length - 1}"
+                ) + f"; maximum admitted read length {sample_inputs.max_read_length}"
+            print(f"{label} {answers[field]} ({detail}).", file=sys.stderr)
         with phase_progress("Checking reference and partition compatibility"):
             validate_project_admission(admission)
         members = {
@@ -1287,6 +1345,7 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
     except (
         OSError,
         OnboardingError,
+        ValidationError,
         orchestration_contracts.ContractValidationError,
         step08.ContractError,
     ) as exc:

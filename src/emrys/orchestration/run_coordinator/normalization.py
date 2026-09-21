@@ -26,6 +26,7 @@ from emrys.contracts.orchestration.application_model import (
     AnalysisRevision,
     _analysis_partition_from_execution_fields,
     analysis_revision_from_execution_fields,
+    normalize_star_index_policy,
 )
 from emrys.libraries.validation.mpileup import selector_file_semantics
 from emrys.contracts.scientific_evidence import step08
@@ -546,7 +547,7 @@ def _admit_project_data(
     reference_input = {
         "fasta": fasta_snapshot,
         "gtf": gtf_snapshot,
-        "star_index": dict(reference_definition["star_index"]),
+        "star_index": normalize_star_index_policy(reference_definition["star_index"]),
     }
     partition_cache: dict[str, dict[str, Any]] = {}
     analyses: list[AnalysisAdmission] = []

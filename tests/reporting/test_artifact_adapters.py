@@ -1120,13 +1120,55 @@ def test_native_metrics_and_artifact_state_are_conservative(
         "ref.star_index.genome_parameters",
     )
     assert genome_parameters["source"]["media_type"] == "text/plain"
-    assert any(
-        metric["metric_id"] == "sjdbOverhang" and metric["value"] == 99
+    native_metrics = {
+        metric["metric_id"]: metric["value"]
         for metric in genome_parameters["metrics"]
-    )
+    }
+    assert {
+        "sjdbOverhang": 99,
+        "genomeSAindexNbases": 14,
+        "genomeChrBinNbits": 18,
+    }.items() <= native_metrics.items()
     genome = record_for(artifact_fixture, "ref.star_index.genome")
     assert genome["source"]["media_type"] == "application/octet-stream"
     assert "scientific_state" not in genome
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement", "message"),
+    (
+        ("genomeSAindexNbases 14\n", "", "missing genomeSAindexNbases"),
+        (
+            "genomeChrBinNbits 18\n",
+            "genomeChrBinNbits invalid\n",
+            "genomeChrBinNbits is invalid",
+        ),
+    ),
+)
+def test_star_index_parameter_metrics_require_declared_integers(
+    artifact_fixture: Any,
+    original: str,
+    replacement: str,
+    message: str,
+) -> None:
+    parameters = artifact_fixture.source_for("ref.star_index.genome_parameters")
+    parameters.write_text(
+        parameters.read_text(encoding="utf-8").replace(original, replacement),
+        encoding="utf-8",
+    )
+
+    context = context_for(artifact_fixture)
+    record = next(
+        item
+        for item in context.index.records
+        if item["artifact_id"] == "ref.star_index.genome_parameters"
+    )
+    assert record["completion_status"] == "failed"
+    assert record["state_reason"] == "Present source failed its registered adapter."
+    assert [error["code"] for error in record["errors"]] == [
+        "adapter_validation_failed"
+    ]
+    assert message in record["errors"][0]["message"]
 
 
 def test_star_final_log_preserves_infinite_mapping_speed_as_string(

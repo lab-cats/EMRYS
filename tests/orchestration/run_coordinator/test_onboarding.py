@@ -156,6 +156,7 @@ def _project_arguments(
         reference_gtf=(source / reference["gtf"]).resolve(),
         sjdb_overhang=reference["star_index"]["sjdb_overhang"],
         genome_sa_index_nbases=reference["star_index"]["genome_sa_index_nbases"],
+        genome_chr_bin_nbits=reference["star_index"].get("genome_chr_bin_nbits", 18),
         analysis_name=analysis_name,
         control_condition=analysis["control_condition"],
         treatment_condition=analysis["treatment_condition"],
@@ -374,6 +375,10 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
         definition["reference"]["star_index"]["sjdb_overhang"]
         == arguments.sjdb_overhang
     )
+    assert (
+        definition["reference"]["star_index"]["genome_chr_bin_nbits"]
+        == arguments.genome_chr_bin_nbits
+    )
     assert definition["analyses"][arguments.analysis_name]["target_change"] == "A>G"
     assert not list(output.rglob("*.fastq"))
     assert onboarding.validate_project(output / "project.yaml").sample_count == 4
@@ -390,6 +395,13 @@ def test_project_preview_skips_fastq_hashing_and_creation_hashes_each_fastq_once
     monkeypatch.chdir(tmp_path)
     arguments = _project_arguments(tmp_path, output, execute=False)
     arguments.sjdb_overhang = None
+    arguments.genome_sa_index_nbases = None
+    arguments.genome_chr_bin_nbits = None
+    arguments.reference_fasta.write_text(
+        ">chrSynthetic\nACGTACGTACGT\n"
+        + "".join(f">fragment{index}\nA\n" for index in range(5_000)),
+        encoding="utf-8",
+    )
     _, _, rows = step08.validate_sample_manifest(arguments.sample_manifest)
     fastqs = {Path(row[mate]) for row in rows for mate in ("r1_fastq", "r2_fastq")}
     counts = {path: 0 for path in fastqs}
@@ -414,10 +426,14 @@ def test_project_preview_skips_fastq_hashing_and_creation_hashes_each_fastq_once
     )
     replay_argv = shlex.split(replay.split(" && ", 1)[1])
     assert "--sjdb-overhang" not in replay_argv
+    assert "--genome-sa-index-nbases" not in replay_argv
+    assert "--genome-chr-bin-nbits" not in replay_argv
     assert cli.main(replay_argv[replay_argv.index("emrys") + 1 :]) == 0
     assert set(counts.values()) == {1}
     definition = yaml.safe_load((output / "project.yaml").read_text())
     assert definition["reference"]["star_index"]["sjdb_overhang"] == 3
+    assert definition["reference"]["star_index"]["genome_sa_index_nbases"] == 5
+    assert definition["reference"]["star_index"]["genome_chr_bin_nbits"] == 2
 
 
 def test_guided_project_creation_writes_its_manifests_inside_the_project(
@@ -625,6 +641,7 @@ def test_guided_project_preview_replays_exact_answers_without_new_prompts(
     expected["reference"].update(
         fasta=str(arguments.reference_fasta), gtf=str(arguments.reference_gtf)
     )
+    expected["reference"]["star_index"]["genome_chr_bin_nbits"] = 18
     analysis = expected["analyses"].pop("primary")
     analysis.update(
         partitions="partitions.tsv",
@@ -811,7 +828,7 @@ def test_init_project_rejects_eof_instead_of_accepting_a_suggestion(
         onboarding._collect_project_answers(arguments)
 
 
-def test_init_project_defers_sjdb_and_suggests_reference_based_star_value(
+def test_init_project_derives_reference_star_value_without_prompting(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -819,8 +836,10 @@ def test_init_project_defers_sjdb_and_suggests_reference_based_star_value(
     arguments = _project_arguments(tmp_path, output, execute=False)
     arguments.sjdb_overhang = None
     arguments.genome_sa_index_nbases = None
+    arguments.genome_chr_bin_nbits = None
+    terminal_input = _Terminal("must not be read\n")
     terminal_output = _Terminal()
-    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("\n"))
+    monkeypatch.setattr(onboarding.sys, "stdin", terminal_input)
     monkeypatch.setattr(onboarding.sys, "stderr", terminal_output)
 
     answers = onboarding._collect_project_answers(
@@ -829,10 +848,20 @@ def test_init_project_defers_sjdb_and_suggests_reference_based_star_value(
 
     assert answers["sjdb_overhang"] is None
     assert answers["genome_sa_index_nbases"] == 1
-    rendered = _decoded_terminal(terminal_output.getvalue()).plain
-    assert "12-base reference" in rendered
-    assert "sjdb overhang" not in rendered
-    assert "genome sa index nbases (Press ENTER for 1):" in rendered
+    assert answers["genome_chr_bin_nbits"] is None
+    assert terminal_input.tell() == 0
+    assert terminal_output.getvalue() == ""
+
+
+def test_genome_chr_bin_nbits_preserves_ordinary_default_and_scales_fragments() -> None:
+    ordinary = (("chr", 1),) * 5_000
+    fragmented = (("contig", 1),) * 5_001
+    long_fragments = (("contig", 2**20),) * 5_001
+
+    assert onboarding._genome_chr_bin_nbits(ordinary, 1) == 18
+    assert onboarding._genome_chr_bin_nbits(fragmented, 150) == 7
+    assert onboarding._genome_chr_bin_nbits(fragmented, 1) == 1
+    assert onboarding._genome_chr_bin_nbits(long_fragments, 150) == 18
 
 
 def test_init_preview_reports_automatic_sjdb_without_reading_fastqs(
@@ -881,6 +910,31 @@ def test_project_creation_derives_sjdb_from_longest_admitted_record(
     definition = yaml.safe_load((output / "project.yaml").read_text())
     assert definition["reference"]["star_index"]["sjdb_overhang"] == 8
     assert "automatic; maximum admitted read length 9" in capsys.readouterr().err
+
+
+def test_project_creation_rejects_reference_changed_after_star_derivation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    output = tmp_path / "project"
+    arguments = _project_arguments(tmp_path, output, execute=True)
+    arguments.genome_chr_bin_nbits = None
+    reference = Path(arguments.reference_fasta)
+    admit = onboarding._admit_project_data
+
+    def mutate_before_admission(*args: object, **kwargs: object):
+        reference.write_bytes(reference.read_bytes() + b"\n")
+        return admit(*args, **kwargs)
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(onboarding, "_admit_project_data", mutate_before_admission)
+
+    assert onboarding.init_project_from_args(arguments) == 2
+    assert not output.exists()
+    assert "Reference FASTA changed after its STAR settings were derived" in (
+        capsys.readouterr().err
+    )
 
 
 def _admit_fastq_pair(
@@ -1638,6 +1692,7 @@ def test_production_like_profile_is_explicit_and_dry_run_skips_generation(
         "unique_template_pair_count_per_library": 89_883,
     }
     assert metadata["star"] == {
+        "genome_chr_bin_nbits": 18,
         "genome_sa_index_nbases": 10,
         "sjdb_overhang": 74,
     }
@@ -1660,6 +1715,7 @@ def test_production_like_profile_is_explicit_and_dry_run_skips_generation(
     assert project["schema_version"] == "emrys.project.v1"
     assert project["dataset"] == {"samples": "samples.tsv"}
     assert project["reference"]["star_index"]["genome_sa_index_nbases"] == 10
+    assert project["reference"]["star_index"]["genome_chr_bin_nbits"] == 18
     assert project["analyses"]["primary"]["partitions"] == "partitions.tsv"
     assert project["analyses"]["primary"]["target_change"] == "A>G"
 

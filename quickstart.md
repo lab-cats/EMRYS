@@ -158,15 +158,17 @@ entered names are checked immediately and Project creation rechecks them. If the
 delivery uses different names, stop and confirm the intended selectors rather
 than guessing.
 
-`sjdb overhang` is no longer a questionnaire prompt. Preview labels it
-automatic; creation validates every FASTQ record during the one hashing pass and
-freezes the maximum read length minus one. For this known 150-base delivery, the
-creation report should show `149`. After the partitions are selected, use these
-remaining STAR and scientific values:
+STAR index settings are no longer questionnaire prompts. Preview derives
+`genomeSAindexNbases` from the admitted reference length and should show `14` for
+this delivery. It labels `sjdbOverhang` and `genomeChrBinNbits` automatic until
+creation, when EMRYS validates every FASTQ record during the one hashing pass and
+uses the maximum read length with the admitted reference summary. For this known
+150-base delivery, the creation report should show `sjdbOverhang=149`,
+`genomeSAindexNbases=14`, and `genomeChrBinNbits=18`.
+After the partitions are selected, use these remaining scientific values:
 
 | Prompt | Enter |
 | --- | --- |
-| `genome sa index nbases` | `14` |
 | `control condition` | `EV` |
 | `treatment condition` | `PUM1` |
 | `target change` | `A>G` |
@@ -180,8 +182,9 @@ remaining STAR and scientific values:
 The preview ends with `Preview complete; Project not created.` It then prints
 one long command under `Next action`. Review the interpretation immediately
 above it, then copy and run that entire generated command. The command carries
-the answers forward, hashes each FASTQ once, derives the overhang, checks the
-reference and selectors, and creates the Project without another questionnaire.
+the explicit answers forward while leaving the automatic STAR flags omitted;
+creation freshly derives them, hashes each FASTQ once, checks the reference and
+selectors, and creates the Project without another questionnaire.
 
 Do not type another command from this guide until the generated command ends
 with `Project ready:` and the path to `project.yaml`. If it stops instead, keep

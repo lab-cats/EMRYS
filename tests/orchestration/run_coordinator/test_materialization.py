@@ -746,7 +746,12 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
     }.intersection(plan.attempt_record["snakemake_argv"])
     step00a = records_by_step["00a"]
     assert "--genome-sa-index-nbases" in step00a["producer_argv"]
+    assert "--genome-chr-bin-nbits" in step00a["producer_argv"]
+    assert producer_argument(step00a, "--genome-chr-bin-nbits") == Path("18")
     assert "--expected-genome-sa-index-nbases" in step00a["validator_argv"]
+    assert "--expected-genome-chr-bin-nbits" in step00a["validator_argv"]
+    chr_bin_index = step00a["validator_argv"].index("--expected-genome-chr-bin-nbits")
+    assert step00a["validator_argv"][chr_bin_index + 1] == "18"
     step00b = records_by_step["00b"]
     assert producer_argument(step00b, "--bed") == Path(
         step00b["outputs"][0]["working_path"]

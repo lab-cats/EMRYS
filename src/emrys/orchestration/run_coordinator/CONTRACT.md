@@ -97,14 +97,18 @@ discovers recognized FASTQ pairs and asks for biological assignments and one
 partition source. The regions-file and reference-name/region choices are
 explained as alternatives, and the latter prompt names the admitted FASTA.
 Prompt defaults remain explicit as `Press ENTER for VALUE` without color and
-are dimmed in eligible terminals. When `sjdbOverhang` is omitted, preview names
-it as automatic without reading FASTQ contents. Creation validates every FASTQ
-record during the one raw-content hashing pass and freezes the maximum admitted
-read length minus one into the Project. An explicit value remains an advanced
-override and creation reports it beside the observed automatic value.
-`genomeSAindexNbases` is suggested from the admitted FASTA length. Advanced
-callers may instead supply both existing
-manifests; their
+are dimmed in eligible terminals. Omitted STAR index settings are not prompts.
+Preview derives and shows `genomeSAindexNbases` from the admitted FASTA length;
+it labels `sjdbOverhang` and `genomeChrBinNbits` automatic at creation without
+reading FASTQ contents. Creation validates every FASTQ record during the one
+raw-content hashing pass, then freezes maximum admitted read length minus one
+and the reference/read-length chromosome-bin setting into the Project. Explicit
+values remain advanced overrides and creation identifies them as such. Existing
+Projects without `genome_chr_bin_nbits` normalize to the prior STAR value of
+`18` without rewriting their files. That compatibility default applies to new
+admissions; it does not rewrite immutable pre-change Runs or extend resume
+beyond the [version-support policy](../../../../docs/design/decisions/platform-direction.md#version-support).
+Advanced callers may instead supply both existing manifests; their
 validated, path-normalized content is copied into the new Project. It creates
 `runs/`, `logs/`, `runtime/`, and `runtime/profiles/` with mode `0700`, and
 publishes `project.yaml` last. Failure preserves the partial root and never
@@ -149,22 +153,27 @@ content-hashed once while its plain or gzip-decoded records are validated and
 measured. Record parsing retains line metadata instead of sequence or quality
 bytes, so long records do not require whole-line buffering and diagnostics
 never include their content.
-Admission retains device, inode, size, nanosecond modification time and
-nanosecond change time; those facts must remain unchanged before
-`project.yaml` is published and immediately after publication. The exact
-prepared Project and manifest bytes are verified during publication, so the
-post-publication path no longer performs a second full Project admission.
+FASTQ admission retains device, inode, size, nanosecond modification time and
+nanosecond change time; those facts must remain unchanged before `project.yaml`
+is published and immediately after publication. The reference summary used for
+automatic STAR values binds the same filesystem identity around parsing and
+through full Project admission. The exact prepared Project and manifest bytes
+are verified during publication, so the post-publication path no longer performs
+a second full Project admission.
 Progress adds no percentage estimate, persistent state, or authority to remove
 a partial or published Project after interruption.
 
 Named initialization's no-write preview shows the built-in Analysis,
 explicit sample/mate and biological assignments, input/region paths, and
 normalized scientific choices. Its quoted replay command selects the same Python
-interpreter and exact Projects parent and supplies every collected answer.
-Creation performs the one content admission; preview is not a frozen-input
-promise. Publication still requires explicit `--execute`. Unsupported Project
-schema diagnostics retain their original detail and identify guided current
-setup; no legacy field translation or YAML-only import is performed.
+interpreter and exact Projects parent and supplies every explicit collected
+answer. Automatically derived STAR flags stay omitted so creation derives them
+from current admitted inputs rather than treating preview observations as
+overrides. Creation performs the one content admission; preview is not a
+frozen-input promise. Publication still requires explicit `--execute`.
+Unsupported Project schema diagnostics retain their original detail and identify
+guided current setup; no unsupported legacy schema translation or YAML-only
+import is performed.
 
 Doctor labels a plan with package-manager actions as repair and verification;
 a plan without those actions is verification. Plan, confirmation, progress,

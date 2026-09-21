@@ -1144,11 +1144,11 @@ The guided EV/PUM1 continuation supplies all known study values inline: the six
 `ABE_EV4`/`ABE_PUM1_4` assignments; pairing groups 2, 3 and 4; reverse
 strandedness; primary-contig selectors 1–22, X, Y and MT; the delivered Novogene
 reference decision; `sjdbOverhang=149` for the declared 150-base reads;
-`genomeSAindexNbases=14`; EV/PUM1 conditions; A>G; and thresholds 1, 50, 0.05,
-1.2, 0.005 and 0.01. Only the absolute FASTQ, FASTA and GTF locations remain
-operator-supplied because they depend on where the delivered files exist on
-Viking. The guide no longer sends this operator elsewhere to obtain a known
-PUM1 value.
+`genomeSAindexNbases=14`; `genomeChrBinNbits=18`; EV/PUM1 conditions; A>G; and
+thresholds 1, 50, 0.05, 1.2, 0.005 and 0.01. Only the absolute FASTQ, FASTA and
+GTF locations remain operator-supplied because they depend on where the delivered
+files exist on Viking. The guide no longer sends this operator elsewhere to
+obtain a known PUM1 value.
 
 **Local verification:** The values reconcile to retained configuration,
 scientific decisions, validation evidence and the restored packaged resource
@@ -1211,7 +1211,7 @@ genome sa index nbases, etc. whenever possible”.
 users should not have to calculate or choose these values themselves. The user
 did not specify formulas, a new command name or a particular implementation.
 
-**Implemented outcome:** The Viking/PUM1 Quickstart retains its known study
+**Initial implemented outcome:** The Viking/PUM1 Quickstart retains its known study
 values. For other data, guided initialization now derives missing STAR settings:
 `sjdbOverhang` is the largest observed first-record read length across the
 declared FASTQs minus one, and `genomeSAindexNbases` follows STAR's small-genome
@@ -1225,7 +1225,7 @@ it does not add a full FASTQ hash or claim that the observed records prove a
 variable-length file's global maximum. Creation retains its single full FASTQ
 hashing pass.
 
-**Local verification:** Focused tests cover interactive defaults, noninteractive
+**Initial local verification:** Focused tests cover interactive defaults, noninteractive
 derivation, gzip input and the bounded first-record behavior. All 115
 source-bound onboarding cases pass; the two isolated replay cases reproduce the
 same older-installed-package mismatch on the integration baseline. Ruff
@@ -1272,6 +1272,27 @@ padded gzip, gzip integrity and
 explicit override preservation. CV-U21 is
 **Verification pending** for hosted CI and a fresh operator walkthrough with
 non-synthetic variable-length reads.
+
+**September 20 approved STAR-default completion:** Guided initialization no
+longer asks a non-technical user for `genomeSAindexNbases`; it derives and shows
+the numeric value from the stable admitted FASTA summary. A third technical
+setting, `genomeChrBinNbits`, is automatic at creation: references with at most
+5,000 sequences retain STAR's prior value of `18`, while more fragmented
+references use STAR's bounded mean-sequence/read-length rule. Creation derives
+the latter during the existing FASTQ validation/hash pass and freezes all three
+numeric STAR values in the new Project. Explicit advanced overrides remain
+available and visibly identified.
+
+The generated replay command preserves omission of automatic STAR flags so an
+observed preview value is not converted into an override. Reference-derived
+values remain bound to the device, inode, size, nanosecond modification time and
+nanosecond change time observed with the FASTA summary; a change through full
+admission fails before publication. Existing Projects without
+`genome_chr_bin_nbits` normalize to `18` without rewriting their files. The Step
+`00a` validator adds a seventh exact check for the retained native value. CV-U21
+remains **Verification pending** for hosted CI and a fresh operator walkthrough
+with non-synthetic variable-length reads and a representative fragmented
+reference.
 
 ### CV-U22 Smoke-project tool reuse
 

@@ -33,6 +33,25 @@ def test_ordinary_admission_does_not_parse_fastq_records(tmp_path: Path) -> None
     assert admit_project(project_path, fixture.profile()).dataset_sample_count == 4
 
 
+@pytest.mark.parametrize(("authored", "expected"), ((None, 18), (11, 11)))
+def test_project_admission_freezes_current_star_chr_bin_policy(
+    tmp_path: Path,
+    authored: int | None,
+    expected: int,
+) -> None:
+    project_path = fixture.build(tmp_path / "project-root")
+    definition = yaml.safe_load(project_path.read_text(encoding="utf-8"))
+    if authored is not None:
+        definition["reference"]["star_index"]["genome_chr_bin_nbits"] = authored
+        project_path.write_text(yaml.safe_dump(definition), encoding="utf-8")
+
+    analysis = admit_project(project_path, fixture.profile()).select_analysis()
+    reference = analysis.workflow_inputs["reference"]
+
+    assert reference["star_index"]["genome_chr_bin_nbits"] == expected
+    contracts.validate_record("reference", reference)
+
+
 def test_prepared_sample_admission_is_bound_to_its_project_root(
     tmp_path: Path,
 ) -> None:

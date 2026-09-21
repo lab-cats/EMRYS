@@ -58,6 +58,11 @@ _PROCESSING_SOURCE_FIELDS = (
     "workflow_attempt_id",
     "attempt_receipt_sha256",
 )
+_STAR_INDEX_FIELDS = (
+    "sjdb_overhang",
+    "genome_sa_index_nbases",
+    "genome_chr_bin_nbits",
+)
 _NON_RUN_TOOL_NAMES = {
     "runtime_profile",
     "storage_qualification",
@@ -105,6 +110,16 @@ def _require_unique(values: Iterable[str], label: str) -> None:
     materialized = tuple(values)
     if len(materialized) != len(set(materialized)):
         raise ContractValidationError(f"{label} values must be unique")
+
+
+def normalize_star_index_policy(value: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the current closed STAR-index policy from authored or legacy input."""
+
+    return _closed_copy(
+        {"genome_chr_bin_nbits": 18, **value},
+        _STAR_INDEX_FIELDS,
+        "STAR-index policy",
+    )
 
 
 def _canonical_rows(
@@ -617,11 +632,7 @@ def processing_compatibility_sha256(
                 "engine": engine,
                 "semantics_sha256": backend_semantics_sha256,
             },
-            "star_index": _closed_copy(
-                star_index,
-                ("sjdb_overhang", "genome_sa_index_nbases"),
-                "STAR-index policy",
-            ),
+            "star_index": normalize_star_index_policy(star_index),
             "computational_resources": resources,
         }
     )
@@ -678,11 +689,7 @@ def build_execution_plan(
             "engine": engine,
             "semantics_sha256": backend_semantics_sha256,
         },
-        "star_index": _closed_copy(
-            star_index,
-            ("sjdb_overhang", "genome_sa_index_nbases"),
-            "STAR-index policy",
-        ),
+        "star_index": normalize_star_index_policy(star_index),
         "computational_resources": resources,
     }
     if processing_source is not None:
@@ -1272,6 +1279,7 @@ __all__ = (
     "build_execution_plan",
     "functional_specification_from_profile",
     "implementation_content_sha256",
+    "normalize_star_index_policy",
     "processing_compatibility_sha256",
     "execution_plan_boundary",
     "execution_owner_keys",

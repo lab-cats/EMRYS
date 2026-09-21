@@ -231,15 +231,7 @@
             "semantics_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" }
           }
         },
-        "star_index": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["sjdb_overhang", "genome_sa_index_nbases"],
-          "properties": {
-            "sjdb_overhang": { "type": "integer", "minimum": 0 },
-            "genome_sa_index_nbases": { "type": "integer", "minimum": 1 }
-          }
-        },
+        "star_index": { "$ref": "urn:emrys:schema:orchestration:reference:v1#/properties/star_index" },
         "computational_resources": { "$ref": "#/$defs/computational_resources" },
         "processing_source": {
           "type": "object",
