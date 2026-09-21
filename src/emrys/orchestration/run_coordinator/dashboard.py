@@ -42,8 +42,8 @@ STAGES = [
         "convert_GTF_to_BED12",
         "Converts the GTF transcript annotation into a BED12 gene model. The BED12 "
         "representation preserves exon blocks in a form that RSeQC can compare "
-        "against aligned reads. That comparison is later used to verify the "
-        "library-orientation evidence for each sample.",
+        "against aligned reads when recording separate, non-gating mechanical "
+        "paired-read orientation evidence for each sample.",
         "1 owner process.",
     ),
     (
@@ -96,9 +96,9 @@ STAGES = [
         None,
         "collect_RSeQC_paired_orientation_evidence",
         "Uses RSeQC to compare each paired-read alignment with the BED12 transcript "
-        "model and infer library orientation. EMRYS records the observed orientation "
-        "as evidence for the declared strandedness. That evidence determines how the "
-        "workflow interprets directional reads in the later orientation split.",
+        "model. EMRYS retains the observed paired-read orientation fractions as "
+        "non-gating mechanical evidence. It does not derive or update the manifest's "
+        "declared strandedness and does not control the later mechanical orientation split.",
         "Up to 6 sample processes.",
     ),
     (

@@ -16,6 +16,20 @@ JOB_ID = 605305
 RUN_ID = "run-" + "a" * 64
 
 
+def test_rseqc_stage_descriptions_keep_orientation_evidence_non_gating() -> None:
+    descriptions = {
+        step: description for step, _, _, _, description, _ in dashboard.STAGES
+    }
+
+    assert "non-gating mechanical" in descriptions["00b"]
+    assert "non-gating mechanical evidence" in descriptions["03"]
+    assert "does not derive or update" in descriptions["03"]
+    assert (
+        "does not control the later mechanical orientation split" in descriptions["03"]
+    )
+    assert "determines how" not in descriptions["03"]
+
+
 def _make_logs(log_dir: Path, job_id: int = JOB_ID) -> tuple[Path, Path]:
     log_dir.mkdir()
     stdout = log_dir / f"emrys-local-pilot-{job_id}.out"
