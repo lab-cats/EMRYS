@@ -3247,7 +3247,7 @@ def test_interactive_prepared_resume_finalizes_only_after_confirmation(
     before = _file_snapshot(plan.workspace)
     assert control.resume_from_args(arguments) == (2 if confirmed else 0)
 
-    rendered = capsys.readouterr().err
+    rendered = AnsiDecoder().decode_line(capsys.readouterr().err).plain
     assert "Finalization: complete exact prepared Attempt receipt first" in rendered
     assert "Execute this plan? [y/N]" in rendered
     if confirmed:
@@ -7197,6 +7197,14 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     assert any(
         "Processing source changed during workflow execution" in blocker
         for blocker in drift_receipt["blockers"]
+    )
+    assert any(
+        "Processing source is not admissible" in blocker
+        for blocker in drift_receipt["blockers"]
+    )
+    assert any(
+        "Processing source is not admissible" in blocker
+        for blocker in inspection.inspect_run(drift_root).results_blockers
     )
     assert len(mutated_source) == 1
     mutated_path, original_data, original_mtime = mutated_source[0]

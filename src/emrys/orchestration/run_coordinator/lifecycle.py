@@ -2016,6 +2016,7 @@ def _run_attempt_locked(
             runtime_blockers.append(
                 f"Processing source changed during workflow execution: {exc}"
             )
+            runtime_blockers.append(f"Processing source is not admissible: {exc}")
         attempts, receipts, chain_blockers = inspection.inspect_attempt_chain(root)
         evidence = inspection.inspect_evidence(
             root,

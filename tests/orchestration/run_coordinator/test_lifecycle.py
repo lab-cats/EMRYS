@@ -1890,7 +1890,7 @@ def test_prepared_finalization_rejects_copied_equal_bytes(
 
 
 @pytest.mark.parametrize("replaced_name", ("receipt", "lock"))
-def test_prepared_finalization_rejects_equal_byte_path_replacement_after_read(
+def test_prepared_finalization_rejects_distinct_inode_equal_bytes_after_read(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     replaced_name: str,
@@ -1906,8 +1906,14 @@ def test_prepared_finalization_rejects_equal_byte_path_replacement_after_read(
     def replace_after_read(path, label, **kwargs):
         data, identity = read(path, label, **kwargs)
         if path == target and not replaced:
-            path.unlink()
-            path.write_bytes(data)
+            replacement = path.with_name(f"{path.name}.replacement")
+            replacement.write_bytes(data)
+            replacement.replace(path)
+            replacement_state = target.stat()
+            assert (replacement_state.st_dev, replacement_state.st_ino) != (
+                identity.st_dev,
+                identity.st_ino,
+            )
             replaced.append(path)
         return data, identity
 

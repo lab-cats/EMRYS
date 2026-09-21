@@ -2822,9 +2822,19 @@ missing-prepared states, lost workers and unclosed Tasks stay blocked; E09 is
 neither adopted nor repaired.
 
 CV-10 remains **Open** until exact hosted CI verifies this extension, including
-interrupted publication, refusal and public preview/confirmation behavior. Only
-then may it advance to **Verification pending** for institutional cancellation
-acceptance. No new local, hosted or institutional results are claimed here.
+interrupted publication, refusal and public preview/confirmation behavior, and
+the ownership limitation below is separately resolved or explicitly accepted.
+Only then may it advance to **Verification pending** for institutional
+cancellation acceptance. No new local, hosted or institutional results are
+claimed here.
+
+**Unresolved ownership limit:** The cross-preview candidate binds exact bytes
+and device/inode identity. If the original file is removed and the filesystem
+reuses its inode number for an equal-byte replacement, those observations alone
+cannot prove ownership continuity. The path-replacement regression tests a
+distinct-inode atomic replacement, not this recycled-inode case. A stronger
+retained-owner design is outside this CI repair; green CI must not be reported
+as closing that gap.
 
 ### CV-11 Resource profile compatibility
 
