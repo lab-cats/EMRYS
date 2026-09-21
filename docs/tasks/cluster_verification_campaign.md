@@ -73,7 +73,7 @@ Earlier exact evidence remains in the
 | E03 — Username startup | Snakemake failed while building its startup header because login-name variables were absent and compute-node UID lookup failed. The shared export fix was followed by a successful synthetic resume. Its regression coverage is narrower than the complete managed golden-path requirements. |
 | E04 — Synthetic completion | Operator inspection reported valid Run integrity, succeeded Attempt, all scientific milestones complete, Scientific Results complete, and Reporting complete; the latest Attempt elapsed was 3:52 and the inventory reported 151 artifacts. Visual review of both HTML reports was explicitly deferred. This is reported synthetic execution evidence, not actual-data completion or biological validation. |
 | E05 — Observing active work | A running Slurm submission initially had no discoverable Run. After creation, head-node inspection reported foreign-host lock and incomplete-task blockers during reference preparation and other active tasks. These displays did not by themselves establish execution failure. |
-| E06 — Reporting visibility | Synthetic inspection temporarily reported missing report transaction directories/receipts. A later inspection completed without operator repair, while the job log printed report locations. Publication overlap and shared-storage visibility delay remain competing explanations; neither is established as the cause. |
+| E06 — Reporting visibility | Synthetic inspection temporarily reported missing report transaction directories/receipts. A later inspection completed without operator repair, while the job log printed report locations. Publication overlap and shared-storage visibility delay remain competing explanations; neither is established as the cause. This remains unexplained historical provenance; CV-21 no longer requires causal reconstruction or reproduction for current acceptance. |
 | E07 — Actual-data onboarding | Reusing the recorded six-library, three-pair study and 25 partitions required inspection of legacy bundles, a long initialization command, and a manual resource-profile edit. Project creation was quiet for several minutes while admission read substantial inputs. The source performs full input hashing and reference compatibility checks; their individual runtime costs were not measured. |
 | E08 — Runtime reuse and verification | A new Project normally selected its own managed installation. A manual fresh-Project workaround reused the existing runtime inventory and installed tool paths; Doctor passed without a package-install action. This demonstrates a manually verified path, not a complete public managed-runtime reuse lifecycle. An already-ready Project still presented a repair plan and repeated compute checks and head finalization. |
 | E09 — Cancellation | The operator cancelled an active actual-data job through Slurm during reference preparation. Accounting confirmed batch termination by SIGTERM, while EMRYS retained no terminal Attempt receipt and offered no recovery. A fresh Project was used while preserving the blocked Run. Queue removal or scheduler exit alone does not close EMRYS transactions. |
@@ -162,8 +162,12 @@ Campaign closure requires:
   with legacy read compatibility; institutional verification and the separate
   evidence-deletion boundary remain.
 - The [optimization campaign](optimization_campaign.md) owns resource-tuning
-  measurements and existing hashing/probe investigations. CV-26 selects only
-  the Doctor-operation duplication question; no speedup is claimed in advance.
+  measurements and existing hashing/probe investigations. CV-26 selects the
+  source-level Doctor-operation consolidation: after compute qualification,
+  exact Project/execution readmission precedes storage finalization, and one
+  full final head diagnosis replaces the former two. This records one fewer
+  full head diagnosis per successful Slurm verification; no timing measurement
+  or speedup claim follows.
 - The [polish campaign](polish-campaign.md) retains earlier audit observations.
   Its overlap is reconciled through the existing main-matrix owners, not a
   parallel implementation queue.

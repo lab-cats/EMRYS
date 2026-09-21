@@ -2529,6 +2529,7 @@ _PROBED_FAILURES = {
     *_FINAL_DRIFT_FAILURES,
 }
 _RETAINED_QUALIFICATION_FAILURES = {
+    "head_runtime",
     "execution_final",
     "head_final_io",
     *_FINAL_DRIFT_FAILURES,
@@ -2923,7 +2924,6 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         assert [item["phase"] for item in passed] == [
             "diagnosis",
             "project_readiness",
-            "head_requalification",
             "head_final_readiness",
         ]
         for item in passed:
@@ -2945,6 +2945,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     assert all(line in output for line in execution.submission_summary())
     assert "Checking/updating native tools and R" not in output
     if failure is None:
+        assert state["jobs"] == 1
         assert [
             (item["event"], item["message"])
             for item in events
@@ -2954,6 +2955,8 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         assert "Verification interrupted;" in output
     else:
         assert "VERIFICATION FAILED:" in output
+    if failure is not None:
+        assert "repair_requalified" not in {item["event"] for item in events}
     if failure in {"execution_before", "execution_after"}:
         assert "Doctor plan changed before execution" in output
         assert state["jobs"] == (0 if failure == "execution_before" else 1)
@@ -2980,11 +2983,11 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
             assert "\x1b[31m" not in output
     if failure in _FINAL_DRIFT_FAILURES:
         assert "Project, package, or runtime changed during head finalization" in output
-        assert len(selected_sources) == 5
+        assert len(selected_sources) == 4
         assert state["jobs"] == 1
         assert "repair_requalified" not in {item["event"] for item in events}
     if failure is None:
-        assert len(selected_sources) == 5
+        assert len(selected_sources) == 4
         assert selected_sources[0] == selector
         assert all(Path(str(source)) == profile_path for source in selected_sources[1:])
     if failure in _RUNTIME_FAILURES:
@@ -3005,7 +3008,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
                 assert r"\n" in payload
         else:
             (diagnostic,) = diagnostics
-            assert diagnostic["phase"] == "head_requalification"
+            assert diagnostic["phase"] == "head_final_readiness"
             fields = diagnostic["fields"]
         assert fields["check_id"] == failed_probe.check.check_id
         assert fields["target"] == failed_probe.check.target

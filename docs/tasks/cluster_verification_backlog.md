@@ -53,12 +53,12 @@ real-Slurm lane nor an institutional walkthrough.
 
 | Remaining acceptance | Current owner and required work or evidence |
 | --- | --- |
-| Reopened implementation and acceptance gaps | Every card marked **Open** in the indexes below owns the dated source, journey, documentation or acceptance correction recorded in its detailed entry. Implement that gap or explicitly revise the original acceptance before external evidence can advance the card; in particular, site execution alone cannot close CV-01's missing managed-journey combinations, CV-10's missing reconciliation path, CV-18's missing active-native-task stop path or CV-21's unresolved causal requirement. |
-| Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27: exercise the maintained RUNBOOK on one exact installed revision; retain selected profile/runtime and report identities. Visual review is separate. |
+| Reopened implementation and acceptance gaps | Every card marked **Open** in the indexes below owns the dated source, journey, documentation or acceptance correction recorded in its detailed entry. Implement that gap or explicitly revise the original acceptance before external evidence can advance the card; in particular, site execution alone cannot close CV-01's missing managed-journey combinations, CV-10's missing reconciliation path or CV-18's missing active-native-task stop path. |
+| Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27 and CV-U28: exercise the maintained RUNBOOK on one exact installed revision; retain selected profile/runtime, resolved allocation-aware policy and report identities. Visual review is separate. |
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
-| Historical unexplained failures | CV-12/E01, CV-21/E06 and CV-10/E09: recover original diagnostics or a discriminating reproduction; newer successful checks cannot identify those causes. |
+| Historical unexplained failures | CV-12/E01 and CV-21/E06 remain unexplained historical observations whose causal reconstruction is not an acceptance requirement. CV-21 now needs only ordinary institutional execution of current reporting/inspection behavior. CV-10/E09 retains its separate current reconciliation requirement; newer successful checks cannot identify that cause. |
 | Postentry Task retry | CV-10: current-version closed-abort retry has hosted acceptance evidence; institutional cancellation and missing-finalization evidence remain. Existing blocked receipts remain ineligible. |
-| Doctor performance | CV-26 and the optimization campaign: use retained invocation counters and CV-05's accounting observations for comparable site setup/retry measurements; preserve fresh admission checks until an equivalent replacement has measured benefit. |
+| Doctor operation | CV-26: retain exact pre-storage readmission, storage finalization and one final full diagnosis after removing the redundant intervening head diagnosis. Hosted CI remains pending; no Viking timing or speedup claim is required. Future measured tuning remains independently owned by the optimization campaign. |
 | Optional interface and retirement | CV-23 keeps cleanup Deferred; CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns institutional replacement validation and coordinated standalone entry-point/caller/name retirement. |
 
 All card acceptance below remains authoritative. No institutional execution,
@@ -90,12 +90,12 @@ no supplied terminal scientific/reporting evidence.
 | [CV-18](#cv-18-safe-emrys-stop) | P1 | Open | Provide an operator stop action with safe recovery semantics. |
 | [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Verification pending | Name verification-only work accurately. |
 | [CV-20](#cv-20-submission-state-before-run-creation) | P1 | Verification pending | Show queued and preparing jobs before a Run exists. |
-| [CV-21](#cv-21-reporting-in-progress-and-visibility) | P1 | Open | Distinguish unfinished report publication from failed reporting. |
+| [CV-21](#cv-21-reporting-in-progress-and-visibility) | P1 | Verification pending | Distinguish unfinished report publication from failed reporting. |
 | [CV-22](#cv-22-complete-submission-preview) | P1 | Verification pending | Show effective placement and computational limits before approval. |
 | [CV-23](#cv-23-safe-project-or-artifact-cleanup) | P2 | Deferred | Decide and scope safe cleanup of unused owned state. |
 | [CV-24](#cv-24-run-center-actions) | P2 | Completed | Explore a dashboard that invokes supported CLI operations. |
 | [CV-25](#cv-25-log-discovery-and-readable-output) | P2 | Completed | Find the correct logs without memorizing scheduler IDs. |
-| [CV-26](#cv-26-repeated-doctor-input-reads) | P2 | Open | Measure and remove redundant reads within Doctor. |
+| [CV-26](#cv-26-repeated-doctor-input-reads) | P2 | Verification pending | Remove one redundant full head diagnosis without weakening final readiness. |
 | [CV-27](#cv-27-terminal-only-report-access) | P3 | Verification pending | Retrieve portable reports from a terminal-based workflow. |
 
 ## Operator findings matrix — 2026-09-15
@@ -144,12 +144,12 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U25](#cv-u25-repeated-fastq-hashing-during-init) | One full FASTQ hashing pass across preview and creation | Verification pending |
 | [CV-U26](#cv-u26-manifests-inside-the-project) | Keep manifests inside their Project directory | Verification pending |
 | [CV-U27](#cv-u27-tested-smoke-to-real-resource-guidance) | Tested workload profile, Doctor checks and exact submission | Verification pending |
-| [CV-U28](#cv-u28-historical-stage-configuration-and-wall-time) | Restore benchmark-derived stage settings and wall-time performance | Open |
+| [CV-U28](#cv-u28-allocation-aware-resource-policy-and-historical-provenance) | Make allocation-aware resource policy authoritative; retain fixed-policy history as provenance | Verification pending |
 | [CV-U29](#cv-u29-early-inspect-and-dashboard-feedback) | Show useful information before monitoring fully populates | Verification pending |
 | [CV-U30](#cv-u30-dashboard-color-and-pane-layout) | Restore dashboard colors and readable pane layout | Verification pending |
 | [CV-U31](#cv-u31-dashboard-automatic-run-selection) | Select the current Run without parameters; record lost functionality | Verification pending |
 | [CV-U32](#cv-u32-dashboard-independent-of-working-directory) | Open the dashboard from outside the Project directory | Verification pending |
-| [CV-U33](#cv-u33-dashboard-resource-usage) | Restore resource-usage display and preserve the wall-time objective | Verification pending |
+| [CV-U33](#cv-u33-dashboard-resource-usage) | Restore resource-usage display; keep future wall-time tuning separate | Verification pending |
 
 ### September 17 adversarial implementation audit
 
@@ -342,8 +342,8 @@ line and the next Slurm diagnostic were joined as
 `submission-to-return wait 0:00:00Slurm submission records...`. This makes the
 named phase unreadable and is tracked as the otherwise-unowned rendering defect
 CV-UX-01 below. The operator also reported that Doctor repair takes too long;
-CV-26 owns phase attribution and performance rather than treating shorter output
-as a speedup. CV-U04 returned to **Open** at that point.
+at that checkpoint CV-26 owned phase attribution rather than treating shorter
+output as a speedup. CV-U04 returned to **Open** at that point.
 
 **Reconciled correction:** CV-UX-01 now serializes ordinary and verbose Doctor
 diagnostics through the active Rich display, hides scheduler-record paths from
@@ -377,7 +377,8 @@ pending for operator terminal review.
 still takes too long and that setup plus execution should not consume a full hour.
 No exact phase timings or comparable cold/warm boundary were supplied in this
 finding batch. The 5–25-minute notice remains expectation-setting, not performance
-acceptance; CV-26 retains measured attribution and optimization ownership.
+acceptance. CV-26 retains the attribution evidence; future measured tuning is an
+independent optimization-campaign decision.
 
 ### CV-U06 Available resources
 
@@ -392,17 +393,18 @@ was agreed here; preserve the resource-use requirement without inventing a cause
 
 **Further requirement:** The operator reiterated that resource use must support
 wall-time optimization and challenged the introduction of resource limits without
-their instruction. Recovering historical per-stage settings and the reported
-eight-hour versus four-hour regression are recorded in CV-U28. Resource usage
-must also be visible again in the dashboard (CV-U33).
+their instruction. The historical fixed policy and reported eight-hour versus
+four-hour regression are retained as provenance in CV-U28; the allocation-aware
+policy below is current authority. Resource usage must also be visible again in
+the dashboard (CV-U33).
 
-**Historical restoration:** The initial implementation restored:
+**Superseded historical restoration:** The initial implementation restored:
 12 workflow cores and 524288 MiB, with concurrent sample/partition work and
 the original stage allowances. Viking placement requests 256 CPUs, exclusive
 allocation and 12 hours. Requested CPUs and workflow cores are separate limits;
 this restored the selected historical configuration but left CV-U06's request
 to use all available resources incomplete. CV-U33 remains separately owned.
-See CV-U28 for historical provenance and verification scope.
+See CV-U28 for the superseding decision and retained provenance.
 
 **Allocation-aware implementation:** Workflow cores and memory resolve from the
 allocation. Repeated stages resolve concurrency from admitted sample/partition
@@ -430,6 +432,10 @@ The existing Attempt policy retains Analysis-derived workload counts.
 Existing numeric policies remain valid and existing Runs retain their declaration.
 The [profile guide](../../configs/README.md#profile-document) documents values;
 the preceding migration procedure creates a new profile for existing Projects.
+This allocation-aware workflow, memory, concurrency and native-tool policy is
+authoritative for CV-U06 and CV-U28. Ordinary institutional admission and
+resolution remain pending; comparative benchmarks, optimal utilization and a
+speedup claim are not acceptance requirements for that policy decision.
 
 **Earlier STAR-index slice verification:** 848 focused profile/resource/Doctor/onboarding/Slurm,
 submission-inspection, application-contract and E2E-harness checks passed; the
@@ -547,8 +553,8 @@ paste-ready synthetic path followed by one guided six-library EV/PUM1 path. The
 guided initializer discovers paired FASTQs, records the six explicit biological
 assignments, creates both manifests inside the Project, checks preview inputs
 without full FASTQ hashing, and prints one replay command that hashes each FASTQ
-once during creation. New Viking Projects inherit the recovered EV/PUM1
-placement, workflow, stage-thread, concurrency and memory policy; the operator
+once during creation. New Viking Projects inherit the current allocation-aware
+placement, workflow, memory, concurrency and native-tool policy; the operator
 does not author a resource profile. Quickstart supplies the sample assignments,
 regions, STAR parameters, analysis thresholds and resource values inline while
 moving detailed Doctor, recovery and format material to their existing owners.
@@ -562,9 +568,9 @@ Project-creation boundary. CV-U24 owns the separate persistent-default
 convenience; the current commands remain complete and require no site decision
 from the operator. The integrated standard CI recorded above passed. A fresh
 Viking installation and a novice smoke-to-EV/PUM1 walkthrough remain pending,
-so CV-U08 is **Verification pending**. The historical policy and retained study
-evidence support the selected values but are not a new whole-Run cluster
-execution or performance measurement.
+so CV-U08 is **Verification pending**. Historical values remain provenance for
+the configurable per-task minima; they are not the current fixed workflow policy,
+a new whole-Run cluster execution or a performance measurement.
 
 The September 16 walkthrough rejected the mandatory smoke-to-real structure,
 command grouping, region/reference language and preview-to-creation handoff.
@@ -1175,8 +1181,8 @@ files exist on Viking. The guide no longer sends this operator elsewhere to
 obtain a known PUM1 value.
 
 **Local verification:** The values reconcile to retained configuration,
-scientific decisions, validation evidence and the restored packaged resource
-policy. On the combined branch, 554 focused tests passed across onboarding,
+scientific decisions, validation evidence and the current allocation-aware
+resource policy. On the combined branch, 554 focused tests passed across onboarding,
 normalization, execution profiles, resource policy, Doctor, materialization and
 the hosted synthetic E2E; one platform-specific materialization case skipped.
 The documentation gate passed for 169 Markdown documents and three Mermaid
@@ -1601,15 +1607,17 @@ This guidance belongs in the Viking/PUM1 Quickstart journey. A successful smoke
 test must lead into a usable real-data path without the operator becoming a
 scheduler expert or authoring a resource configuration. No new resource values,
 workload limits or claims of profile testing were established during collection.
-Historical benchmark-derived settings are separately requested in CV-U28.
+CV-U28 retains the fixed historical settings as provenance while making the
+current allocation-aware policy authoritative.
 
 **Approved implementation:** Synthetic and real-data Viking initialization now
-inherit the historical policy automatically. Doctor and Run use the existing
-shared admission and preview owners, and the Quickstart proceeds through
-`emrys doctor --repair` then `emrys run`. Existing Projects can create a named
+inherit the current allocation-aware policy automatically. Doctor and Run use
+the existing shared admission and preview owners, and the Quickstart proceeds
+through `emrys doctor --repair` then `emrys run`. Existing Projects can create a named
 Viking profile and select it consistently for both commands. Explicit profiles
 and frozen Run policies are preserved. The documented historical workload is
-six EV/PUM1 libraries; this is not a newly measured workload-size guarantee.
+six EV/PUM1 libraries; it supplies provenance for configurable minima, not a
+fixed current policy or workload-size guarantee.
 
 **Verification limit:** The packaged/default-profile, onboarding, Doctor,
 submission and hosted synthetic cases passed the integrated standard CI.
@@ -1636,7 +1644,7 @@ rewritten and Run identity is unchanged. Focused local checks pass;
 institutional smoke-to-real execution and operator acceptance remain required,
 so CV-U27 is **Verification pending**.
 
-### CV-U28 Historical stage configuration and wall time
+### CV-U28 Allocation-aware resource policy and historical provenance
 
 **Operator instruction:** “Stage thread caps and other configuration options are
 wrong, ideal config must be recovered from past runs and the whole giant fucking
@@ -1648,13 +1656,13 @@ per-stage configuration, and requires retaining those historical configurations.
 The operator emphasized the many hours already spent optimizing wall time and
 challenged the introduction of resource limits without their instruction.
 
-**Requested outcome:** Recover the desired per-stage settings and other relevant
+**Original requested outcome:** Recover the desired per-stage settings and other relevant
 configuration from the previous runs and benchmarking work, and retain that
 configuration. Preserve wall-time optimization as the objective. Replacing those
 settings with newly guessed caps would not address the requirement.
 
-**Accepted decision:** The operator's observation that the historical policy
-performed better is sufficient to select it as the default. Another benchmark
+**Earlier restoration decision:** The operator's observation that the historical
+policy performed better is sufficient to select it as the default. Another benchmark
 or controlled comparison is not a prerequisite for restoration. The reported
 8-hour/4-hour timing remains operator evidence, distinct from local software
 checks.
@@ -1677,8 +1685,8 @@ the retired, inactive reporting-memory map is not reintroduced.
 The 46 perf branches carrying the benchmark harness contained 11 harness
 versions; their fixed per-case budgets were not an alternative whole-Run policy.
 The older per-stage Slurm wrappers and the VM trial at `f054ddee` were separate
-execution contexts. The restoration uses the six-library Viking policy,
-including its per-stage memory and concurrency, not a mixture of those contexts.
+execution contexts. The restoration selected the six-library Viking policy,
+including its per-stage memory and concurrency, rather than mixing those contexts.
 
 **Approved native-memory follow-up:** Increasing an admitted stage allowance
 now raises STAR index/sort limits, samtools fallback-sort buffers, and
@@ -1726,19 +1734,33 @@ checkout and failed on its missing `simple_term_menu`. Full standard CI,
 including those cases and the active managed golden path, passed in the integrated
 run recorded above. The configured real-synthetic E2E lane was skipped, and the
 institutional walkthrough remains pending. No cluster job or new performance
-benchmark is claimed; CV-U28 remains **Verification pending**.
+benchmark was claimed; CV-U28 was **Verification pending** at that checkpoint.
 
-**September 17 adversarial audit and decision required:** Historical recovery
+**September 17 adversarial audit, conflict now resolved:** Historical recovery
 established a fixed policy with 12 workflow cores, while the integrated product
 subsequently replaced that workflow/STAR policy with CV-U06's allocation-aware
 limits. The repository also states that the new sharing policy is not known to
 be optimal and may increase wall time; no retained Viking comparison establishes
 that it satisfies the original instruction to restore the benchmark-derived
-policy and wall-time behavior. This is a conflict between accepted outcomes,
-not merely missing external verification. CV-U28 returns to **Open** pending an
-explicit decision either to restore the original acceptance or to supersede it
-with a revised allocation-aware outcome that states exactly which historical
-settings remain authoritative.
+policy and wall-time behavior. This was a conflict between accepted outcomes,
+not merely missing external verification. CV-U28 returned to **Open** at that
+checkpoint pending an explicit owner decision.
+
+**September 21 superseding owner decision:** The current allocation-aware
+workflow and memory ceilings, workload-aware concurrency and shares, and derived
+native-tool controls are authoritative. Historical per-task memory minima remain
+current only where the active profile declares them. The fixed 12-core policy,
+its 524288 MiB envelope, and the reported eight-hour/four-hour observation remain
+provenance; they are not current defaults or evidence of comparative performance.
+Restoring the fixed policy and reproducing or benchmarking the historical timing
+are no longer acceptance requirements.
+
+Ordinary institutional Doctor and Run execution on one exact installed revision
+must show that the current symbolic policy is admitted and resolves from the
+actual allocation. That verification does not need a fixed-policy comparison and
+does not establish optimality, utilization, speedup, safe peak memory for every
+dataset or scientific acceptance. That ordinary institutional execution remains
+pending, so CV-U28 is **Verification pending**.
 
 ### CV-U29 Early Inspect and dashboard feedback
 
@@ -1931,19 +1953,19 @@ resource usage after substantial prior benchmarking work.
 
 **Requested outcome:** Restore resource-usage information in the dashboard so
 the operator can see how the running work uses resources. Preserve the established
-wall-time objective when carrying resource configuration forward. Visibility of
-usage and correctness of resource limits are related requirements; restoring the
-display alone does not resolve the CPU/stage-cap concerns in CV-U06 and CV-U28.
+wall-time objective for independently selected future tuning. Visibility of
+usage and correctness of resource limits are related requirements, while the
+allocation-aware policy decision is owned by CV-U06 and CV-U28.
 The exact missing display fields were not enumerated in this batch.
 
 **Implemented software outcome:** The visible job/resources panel retains
 scheduler placement, allocated CPUs, per-task maximum RSS, bytes read/written and
 average task CPU time when admitted accounting supplies them; unavailable usage
 stays explicit. Its dynamic height prevents those rows from being clipped on the
-tested compact layout. CV-U06/CV-U28 restore the selected historical wall-time
-policy separately. Resource-label, identity and layout fixtures passed the
-integrated standard CI. Institutional accounting/display acceptance and any new
-wall-time measurement remain pending, so CV-U33 is **Verification pending**.
+tested compact layout. CV-U06/CV-U28 own the authoritative allocation-aware
+resource policy separately. Resource-label, identity and layout fixtures passed
+the integrated standard CI. Institutional accounting/display acceptance remains
+pending, so CV-U33 is **Verification pending**.
 
 **September 17 adversarial audit:** Once a retained submission is associated
 with a Run, Project-local selection removes that request and watches the Run
@@ -1963,8 +1985,9 @@ query. Duplicate rows, wrong ID/UID/cluster, malformed metrics and identity
 drift leave the admitted root state visible while reporting usage unknown. The
 shared renderer labels live samples and final accounting distinctly, and both
 interactive and snapshot request watches ask for resources. Focused local fault
-and rendering matrices pass; standard CI, institutional accounting/display and
-wall-time measurement remain pending, so CV-U33 is **Verification pending**.
+and rendering matrices pass; standard CI and institutional accounting/display
+remain pending, so CV-U33 is **Verification pending**. Future wall-time tuning
+and its measurements remain with the optimization campaign, not this card.
 
 ## Additional Viking UX findings — 2026-09-16
 
@@ -1994,7 +2017,8 @@ submission-record paths, but `--verbose` must still render every retained detail
 without collision, loss or reordering. Cover a real PTY with color, narrow-line
 wrapping and `NO_COLOR`/plain rendering. Keep the timer and phase label readable
 when the wait duration is zero. CV-U04 owns Doctor's broader presentation and
-CV-26 owns its duration; CV-UX-01 remains **Open** until Viking/PTY acceptance.
+CV-26 retains its historical duration evidence; future measured tuning belongs
+to the optimization campaign. CV-UX-01 remains **Open** until Viking/PTY acceptance.
 
 **Implemented slice:** The shared live-progress owner now redirects ordinary
 stdout/stderr through Rich's active display boundary, which clears and redraws
@@ -3232,12 +3256,14 @@ required. Recorded application failure does not establish a scientific outcome.
 ### CV-21 Reporting in progress and visibility
 
 **Finding:** Missing reporting receipts briefly appeared as failures and later
-passed without intervention (E06). **Acceptance:** First establish whether
-publication overlap, storage visibility, or another cause explains the case.
-Represent known in-progress publication accurately while retaining rejection
-of truly missing or invalid committed outputs. Exercise inspection at each
-report transaction boundary and controlled visibility/finalization faults;
-do not add blind sleeps or turn missing evidence into success.
+passed without intervention (E06). The event remains an unexplained historical
+observation. **Acceptance:** Represent `No admitted start`, `Started; completion
+unverified`, and `Verified complete` truthfully; expose report locations only
+after exact verified completion; and reject truly missing or invalid committed
+outputs. Exercise inspection at each report transaction boundary and controlled
+finalization faults; do not add blind sleeps or turn missing evidence into
+success. Reproducing E06, attributing its cause or reconstructing its historical
+filesystem state is not required.
 **Owners/dependencies:** Reporting publication/boundary and inspection;
 CV-01/15/16. Visual report review remains separate.
 
@@ -3254,8 +3280,9 @@ start, after start, after producer output, and after verified publication;
 exact retained references/blockers and no writes are checked. Public inspection
 fixtures cover pending/started/complete rows at normal and verbose levels.
 Static checks and the integrated hosted standard CI pass. These cases establish
-the overlap mechanism, not the historical cause of E06. That cause and actual
-site visibility/finalization evidence remain unresolved, so CV-21 remains Open.
+the overlap mechanism, not the historical cause of E06. Current institutional
+reporting/inspection execution remains pending; causal reconstruction is no
+longer required.
 
 **Integrated public reporting slice:** The existing failed-Run/resume fixture
 pauses immediately before and after each real summary/HTML producer, while its
@@ -3280,17 +3307,27 @@ Inspection follows the admitted filesystem state: the first case remains
 `Started; completion unverified`, even with a producer receipt present, while
 the second re-admits the visible marker as verified. No sleep, retry, missing-as-
 success rule or new reporting state was added. The historical E06 cause and
-actual Viking storage-visibility behavior still require institutional evidence,
-so CV-21 is **Verification pending** rather than established as a site result.
+actual Viking storage-visibility behavior remain unknown. Ordinary institutional
+execution of the current reporting path remains pending, so CV-21 is not
+established as a site result.
 
 **September 17 adversarial audit:** The added transaction-boundary and
 deterministic finalization-fault fixtures preserve useful defenses, but they
 demonstrate possible mechanisms rather than establish the cause of E06. This
-card's acceptance explicitly requires first distinguishing publication overlap,
-storage visibility, or another cause, while its own evidence record continues
-to say that the historical cause and Viking visibility behavior are unresolved.
-CV-21 therefore remains **Open**; passing hosted boundary checks do not convert
-that unresolved causal requirement into an external-verification-only gap.
+card's acceptance then required first distinguishing publication overlap, storage
+visibility or another cause, while its own evidence record continued to say that
+the historical cause and Viking visibility behavior were unresolved. CV-21
+therefore returned to **Open** at that checkpoint.
+
+**September 21 owner disposition:** Causal reconstruction is explicitly
+discarded as an acceptance requirement. The truthful transaction states,
+verified-location gate, fail-closed committed-output admission, real public
+producer-boundary coverage and controlled finalization-fault protections are
+accepted as the current implementation outcome. E06 remains unexplained
+historical provenance and does not block closure. Ordinary institutional
+execution of current inspection/reporting behavior on an exact revision remains
+pending; no induced fault, E06 reproduction, visual review or scientific claim
+is required. CV-21 is **Verification pending**.
 
 ### CV-22 Complete submission preview
 
@@ -3484,8 +3521,8 @@ remains under `DASHBOARD-RETIRE-01`.
 ### CV-26 Repeated Doctor input reads
 
 **Finding:** A verification-only Doctor operation repeated Project/runtime
-observations and exceeded ten minutes (E11). **Acceptance:** Measure a complete
-Doctor operation and attribute phases, hashes/bytes, probes, and queue time.
+observations and exceeded ten minutes (E11). **Original acceptance:** Measure a
+complete Doctor operation and attribute phases, hashes/bytes, probes, and queue time.
 Audit duplicate mechanics across callers; consolidate only observations proven
 equivalent at the same trust/mutation boundary. Preserve detection of input,
 package, runtime, and storage changes during repair and qualification. Report
@@ -3513,8 +3550,9 @@ Focused fixtures cover precise clocks, failed phases, observation failures,
 no-write diagnosis, existing-log buffering and delegated context. Public fixture
 execution passed the current integrated hosted CI. Read/hash bytes, probe
 attribution, process memory, actual scheduler timing and comparable before/after
-measurements remain open; this slice establishes timing observations, not a
-measured speedup.
+measurements were left open by this slice; they are independently selectable
+future research, not the revised CV-26 acceptance gate. This slice establishes
+timing observations, not a measured speedup.
 
 **Retained hosted observation:** The managed golden path at
 `2e03177747e67e8d970083e3994f3c8970d77caf`
@@ -3573,7 +3611,8 @@ hashing. Existing qualification identities, reads, probes, clocks and log owners
 remain unchanged. Focused runtime tests and the integrated hosted standard CI
 pass the public Doctor phase, identity, failure and observation-degradation
 fixtures. Full byte/I/O/memory attribution and institutional before/after
-evidence remain Open.
+evidence remained open at this checkpoint; the September 21 disposition makes
+them optional future measurement rather than CV-26 acceptance.
 
 **Retained probe attribution:** The managed golden-path job at
 `1f4171d198cada8833f59ccd5a1bfeffab3ebaff`
@@ -3628,7 +3667,8 @@ not identical console-bootstrap timing. It supplies no cold-cache, institutional
 queue or before/after optimization evidence. Twenty eligible local harness and
 workflow tests pass; the controlled public-parser test and actual donor/borrower
 measurements passed hosted CI, as recorded below. No product files, commands,
-dependencies, runtime identity rules or product schemas change. CV-26 remains Open.
+dependencies, runtime identity rules or product schemas change. At that
+checkpoint CV-26 remained Open.
 
 **Retained invocation counters:**
 [CI 34944690812](https://github.com/lab-cats/EMRYS/actions/runs/34944690812)
@@ -3728,7 +3768,7 @@ head `13cd68750e4223431a594478804795905bfe9154` then passed all 14 standard
 jobs, with four configured skips, in
 [CI 34998873917](https://github.com/lab-cats/EMRYS/actions/runs/34998873917).
 That combined run also validates the retained producer-workspace prerequisite.
-CV-26 remains Open for the complete comparable
+At that checkpoint CV-26 remained Open for the complete comparable
 institutional operation/queue measurements and E11 attribution; this experiment
 and its adoption decision are finished.
 
@@ -3742,15 +3782,45 @@ per-phase Viking measurements before selecting optimizations. Making the
 synthetic E2E optional shortens the novice route but is not evidence that Doctor
 itself became faster. The repeated preview/execute work in `runtime discover`
 is owned by CV-08; any consolidation must preserve its mutation-boundary checks.
-CV-26 remains **Open**.
+CV-26 remained **Open** at that checkpoint.
 
 **Approved attribution refinement:** A repair invocation now ends with one
 concise default `Doctor elapsed` field naming total elapsed time, the slowest
 phase and outcome; `--verbose` retains every phase duration. No admission check,
 fresh read, probe or mutation-boundary verification was removed. Making the
 synthetic E2E optional shortens the novice route but is not Doctor performance
-evidence. CV-26 remains **Open** pending comparable phase-resolved Viking
-measurements and a measured optimization.
+evidence. CV-26 remained **Open** at that checkpoint pending comparable
+phase-resolved Viking measurements and a measured optimization.
+
+**September 21 approved structural reduction and revised acceptance:** A
+successful Slurm verification now moves from compute qualification through exact
+installed-package, Project and execution-profile readmission, head storage
+finalization, and one full final head diagnosis. The former complete
+`head_requalification` between readmission and storage was redundant: the storage
+owner consumes only its admitted Project paths, compute receipt, probes, root
+identity, hashes and durability state, not runtime readiness. Removing that pass
+reduces the complete successful operation from five full diagnoses to four, and
+the head-node share from four to three. Product code is nine net lines smaller.
+
+The surviving readmission still refuses Project/package/profile drift before
+storage mutation. The unchanged storage owner retains corruption, interruption,
+receipt, finalization and durable-evidence defenses. The final full diagnosis
+still verifies runtime, package, Project and profile readiness and refuses binding
+drift before Doctor records success. A valid compute or final storage receipt may
+survive a later Doctor failure; the terminal `repair_requalified` record may not.
+The public Doctor fault matrix continues through one simulated submission and
+the real storage qualification owner, including final runtime, Project, package,
+inventory and profile drift plus storage corruption and interrupted finalization.
+
+**Local protection:** 116 Doctor, 55 storage-qualification and 85 runtime-owner
+tests passed, including all 17 public Slurm Doctor scenarios above. Thirteen
+documentation-structure checks, Ruff lint/format and the whitespace check passed.
+
+No cache, snapshot, weakened hash, new abstraction, persisted state or timing
+target is introduced, and no speedup is claimed. Hosted CI for this exact source
+change remains pending, so CV-26 is **Verification pending**. Once it passes,
+CV-26 can become Completed for this revised structural outcome without Viking
+timing data; future measured Doctor tuning remains independently selectable.
 
 ## P3 outcome
 

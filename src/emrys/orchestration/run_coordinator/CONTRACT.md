@@ -146,10 +146,15 @@ diagnosis is read-only, while confirmed repair mutates only declared
 EMRYS-owned locations through existing package managers and requalifies. Normal
 Doctor runs on the head node. For Slurm placement, repair installs there,
 submits bound compute runtime/storage checks and finalizes storage on the head
-node. `--compute` is the explicit advanced allocation route; it cannot finalize
-head-node evidence. A prior storage receipt alone does not qualify a changed
-runtime. Each automatic repair has one maintenance log; its compute checks
-retain scheduler streams without opening another application attempt.
+node. After compute qualification, Doctor re-admits the exact installed package,
+complete Project and execution profile before storage finalization. Storage has
+its own qualification authority and does not require another full runtime probe
+at that boundary. One final full head diagnosis then rechecks runtime, package,
+Project and profile readiness. `--compute` is the explicit advanced allocation
+route; it cannot finalize head-node evidence. A prior storage receipt alone does
+not qualify a changed runtime. Each automatic repair has one maintenance log;
+its compute checks retain scheduler streams without opening another application
+attempt.
 
 Head storage finalization failures name the accepted qualification job and retain
 the escaped storage or operating-system cause in the existing maintenance log.

@@ -1516,7 +1516,6 @@ def _diagnose_phase(
 ) -> DoctorResult:
     """Run one fresh Doctor phase through the shared timing/diagnostic boundary."""
     label = {
-        "head_requalification": "Verifying the checked runtime and Project",
         "head_final_readiness": "Verifying final Project readiness",
         "project_readiness": "Checking Project readiness",
     }[phase]
@@ -1634,11 +1633,6 @@ def _qualify_slurm(
         if timing is not None:
             timing.observe_scheduler(submission, submitted)
     _readmit_repair_plan(replace(plan, runtime=None), before_storage=False)
-    observed = _diagnose_phase(plan, "head_requalification", timing, attempt)
-    if _qualification_binding(observed) != binding:
-        raise DoctorRepairError(
-            "Project, package, or runtime changed during compute qualification"
-        )
     with progress("Checking shared storage from the head node"):
         try:
             storage_qualification.qualify_head(workspace, fasta)
@@ -1646,7 +1640,7 @@ def _qualify_slurm(
             raise DoctorRepairError(
                 f"Head storage finalization failed after Slurm job {job_id}: {str(exc)!a}"
             ) from exc
-    final = _diagnose_phase(plan, "head_final_readiness", timing, attempt, False)
+    final = _diagnose_phase(plan, "head_final_readiness", timing, attempt)
     if final.execution_profile != execution:
         raise DoctorRepairError(
             f"Execution profile changed during head finalization after Slurm job {job_id}"
@@ -1909,9 +1903,6 @@ def _execute_repair(
             plan.execution.placement, SlurmPlacement
         ):
             final = _qualify_slurm(plan, final, attempt, controls, timing)
-            _record_runtime_failures(
-                final.inspection, phase="project_readiness", attempt=attempt
-            )
             compute_checked = plan.compute
         if not compute_checked and not final.ready:
             raise DoctorRepairError("Project remained not ready after verification")
