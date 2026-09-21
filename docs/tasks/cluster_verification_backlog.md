@@ -128,7 +128,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Verification pending |
 | [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Completed |
 | [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Verification pending |
-| [CV-U12](#cv-u12-duplicate-submission-warning) | Warn before accidental duplicate submission | Open |
+| [CV-U12](#cv-u12-duplicate-submission-warning) | Warn before accidental duplicate submission | Verification pending |
 | [CV-U13](#cv-u13-watching-progress) | Quickstart dashboard instructions and watch command | Verification pending |
 | [CV-U14](#cv-u14-dashboard-logs) | Friendly, colored dashboard logs | Verification pending |
 | [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Verification pending |
@@ -780,6 +780,32 @@ do not represent distinct scientific work, so a second `sbatch` can proceed
 without `--allow-duplicate-submission`. The retained-request publication,
 scheduler observation and prominent warning remain useful protections, but the
 card's same-work safeguard is source-incomplete. CV-U12 returns to **Open**.
+
+**September 21 implementation correction:** Control now compares a normalized
+pre-Run request projection: the resolved Analysis name, stopping boundary,
+exact processing-source Run ID if any, and existing exact execution-profile
+binding. Project declaration admission shares the scientific owner's
+sole-or-explicit Analysis selection rule without hashing FASTQs, probing the
+runtime or constructing a Run on the submit host. Diagnostic log location,
+presentation/reporting choices, confirmation mode, interpreter path and
+profile source path no longer distinguish work; byte-identical profiles at
+different paths retain the same existing binding. Byte-different profile
+sources remain distinct under the exact-binding contract.
+
+Retained v1-v4 request formats remain unchanged. Their delegate arguments are
+projected through the public Run parser, and an active or unconfirmed request
+with the same profile binding fails closed to the existing warning and explicit
+override when its selectors cannot be reconstructed. Public-flow coverage uses
+admissible named Analyses and the real request publication, discovery and
+scheduler-observation owners for default/explicit Analysis, log-root, profile
+path, presentation, distinct Analysis/boundary/profile binding, terminal and
+active/unknown scheduler states, override, malformed retained arguments and a
+missing scheduler response; exact processing-source comparison is covered at
+the normalized projection seam. The slice adds 45 net maintained product lines
+across two existing product files, with no new file, schema, persistent field,
+configuration, dependency or mutable state. Hosted CI and institutional review
+of the red warning during real delayed scheduler/Run population remain
+outstanding, so CV-U12 is **Verification pending**.
 
 ### CV-U13 Watching progress
 

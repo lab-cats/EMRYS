@@ -45,6 +45,18 @@ def _json_object(data: bytes, label: str) -> dict[str, Any]:
     return orchestration_contracts.load_json_object_bytes(data, label)
 
 
+def select_analysis_name(analysis_names: tuple[str, ...], name: str | None) -> str:
+    selected = analysis_names[0] if name is None and len(analysis_names) == 1 else name
+    if selected in analysis_names:
+        return selected
+    choices = ", ".join(analysis_names)
+    raise orchestration_contracts.ContractValidationError(
+        f"Unknown Analysis {name!r}; choose one of: {choices}"
+        if name is not None
+        else "Project defines multiple Analyses; select one with --analysis: " + choices
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class AnalysisAdmission:
     """One selected, immutable Analysis admitted from a mutable Project."""
@@ -130,20 +142,8 @@ class ProjectAdmission:
                 matches[0],
             )
 
-        if name is None and len(self.analyses) == 1:
-            return self.analyses[0]
-        choices = ", ".join(analysis.name for analysis in self.analyses)
-        if name is None:
-            raise orchestration_contracts.ContractValidationError(
-                "Project defines multiple Analyses; select one with --analysis: "
-                + choices
-            )
-        match = next((item for item in self.analyses if item.name == name), None)
-        if match is not None:
-            return match
-        raise orchestration_contracts.ContractValidationError(
-            f"Unknown Analysis {name!r}; choose one of: {choices}"
-        )
+        by_name = {analysis.name: analysis for analysis in self.analyses}
+        return by_name[select_analysis_name(tuple(by_name), name)]
 
 
 @dataclass(frozen=True, slots=True)
@@ -746,5 +746,6 @@ __all__ = (
     "AnalysisAdmission",
     "ProjectAdmission",
     "admit_project",
+    "select_analysis_name",
     "validate_authored_path",
 )

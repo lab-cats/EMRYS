@@ -138,7 +138,15 @@ class _TerminalOutput:
 
 
 def _command_arguments(project: Path, **options) -> argparse.Namespace:
-    values = dict(project=project, profile=None, verbose=False, log_root=None)
+    values = dict(
+        project=project,
+        profile=None,
+        verbose=False,
+        log_root=None,
+        analysis=None,
+        through="analysis",
+        from_processing_run=None,
+    )
     values.update(options)
     return argparse.Namespace(**values)
 
@@ -3535,7 +3543,7 @@ def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Names
     profile.write_text(yaml.safe_dump(document), encoding="utf-8")
     return _command_arguments(
         project,
-        analysis="sensitivity",
+        analysis="primary",
         profile=str(profile),
         allow_duplicate_submission=False,
         execute=execute,
@@ -3886,7 +3894,7 @@ def test_oversized_submission_context_prevents_scheduler_invocation(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=True)
-    arguments.analysis = "a" * 40000
+    arguments.log_root = tmp_path / ("a" * 40000)
     monkeypatch.setattr(
         control.slurm_submission,
         "submit",
@@ -4481,7 +4489,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     normal_output = projections["normal"]
     normal = normal_output.plain
     assert "Execution placement: Slurm" in normal
-    assert "Analysis: 'sensitivity'" in normal
+    assert "Analysis: 'primary'" in normal
     assert (
         "Allocation request: 12 CPUs, 01:00:00; memory: site default (unknown)"
         in normal
@@ -4504,7 +4512,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
         normal[span.start : span.end]: str(span.style) for span in normal_output.spans
     }
     assert styles["Analysis: "] == "bold color(6)"
-    analysis_value = normal.index("'sensitivity'")
+    analysis_value = normal.index("'primary'")
     assert not any(
         span.start <= analysis_value < span.end for span in normal_output.spans
     )
@@ -4532,7 +4540,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=execute)
     arguments.log_root = tmp_path / "custom application logs"
-    arguments.analysis = "" if execute else "sensitivity"
+    arguments.analysis = "primary"
     arguments.through = "analysis" if execute else "processing"
     arguments.from_processing_run = "run-" + "a" * 64 if execute else None
     arguments.no_report = True
@@ -4608,8 +4616,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
         "Watch progress: emrys watch 812345\n"
     )
     assert len(submissions) == 1
-    expected_analysis = "''" if execute else "sensitivity"
-    assert f" --analysis {expected_analysis} " in submissions[0].batch_script
+    assert " --analysis primary " in submissions[0].batch_script
     if execute:
         assert " --through processing " not in submissions[0].batch_script
         assert (
@@ -4684,87 +4691,305 @@ def test_repeated_scheduled_commands_keep_distinct_frozen_streams(
     assert all(record.recorded_job_id == "812345" for record in records)
 
 
-@pytest.mark.parametrize("state", ("RUNNING", "UNKNOWN"))
+def _record_scheduled_submissions(monkeypatch: pytest.MonkeyPatch) -> list[object]:
+    plans = []
+
+    def submit(plan, *, record_path):
+        job_id = str(812345 + len(plans))
+        plans.append(plan)
+        record_path.write_bytes(f"{job_id};cluster-a\n".encode())
+        record_path.with_suffix(".stderr").write_bytes(b"")
+        return job_id
+
+    monkeypatch.setattr(control.slurm_submission, "submit", submit)
+    monkeypatch.setattr(
+        control.doctor,
+        "diagnose_project",
+        lambda *_args, **_kwargs: pytest.fail(
+            "submit host performed compute-allocation readiness"
+        ),
+    )
+    return plans
+
+
+def _bind_retained_scheduler_state(
+    monkeypatch: pytest.MonkeyPatch, project: Path, state: str
+) -> None:
+    def command(argv, **_kwargs):
+        if state == "UNKNOWN":
+            return None
+        job_id = argv[argv.index("-j") + 1]
+        request = next(
+            item
+            for item in control.slurm_submission.submission_requests(project)
+            if item.recorded_job_id == job_id
+        )
+        context = request.context
+        assert context is not None
+        common = (
+            job_id,
+            str(os.getuid()),
+            state,
+            "cluster-a",
+            context["scheduler_stdout_pattern"],
+            context["scheduler_stderr_pattern"],
+        )
+        if argv[0] == "squeue":
+            if state in control.slurm_submission.scheduler_observation.TERMINAL_STATES:
+                return b""
+            fields = (*common, "None", context["scheduler_job_name"])
+        else:
+            assert argv[0] == "sacct"
+            fields = (*common, "0:0", context["scheduler_job_name"])
+        return ("|".join(fields) + "\n").encode()
+
+    monkeypatch.setattr(
+        control.slurm_submission.scheduler_observation, "command_bytes", command
+    )
+
+
+def _valid_scheduled_run_arguments(
+    tmp_path: Path, *, analysis: str | None = "primary"
+) -> argparse.Namespace:
+    arguments = _scheduled_run_arguments(tmp_path, execute=True)
+    arguments.analysis = analysis
+    arguments.through = "analysis"
+    arguments.from_processing_run = None
+    arguments.no_report = False
+    return arguments
+
+
+def _submission_request_roots(project: Path) -> tuple[Path, ...]:
+    return tuple(sorted((project.parent / "logs").glob("submission-*")))
+
+
+@pytest.mark.parametrize(
+    "difference",
+    (
+        "default-to-explicit-analysis",
+        "explicit-to-default-analysis",
+        "log-root",
+        "profile-path",
+        "presentation",
+    ),
+)
+def test_equivalent_public_run_requests_require_duplicate_override(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    difference: str,
+) -> None:
+    arguments = _valid_scheduled_run_arguments(
+        tmp_path,
+        analysis="primary" if difference == "explicit-to-default-analysis" else None,
+    )
+    submissions = _record_scheduled_submissions(monkeypatch)
+    assert control.run_from_args(arguments) == 0
+    capsys.readouterr()
+    (first,) = control.slurm_submission.submission_requests(arguments.project)
+    _bind_retained_scheduler_state(monkeypatch, arguments.project, "RUNNING")
+
+    if difference == "default-to-explicit-analysis":
+        arguments.analysis = "primary"
+    elif difference == "explicit-to-default-analysis":
+        arguments.analysis = None
+    elif difference == "log-root":
+        arguments.log_root = tmp_path / "different-application-logs"
+    elif difference == "profile-path":
+        alternate = tmp_path / "equivalent-profile.yaml"
+        alternate.write_bytes(Path(arguments.profile).read_bytes())
+        arguments.profile = str(alternate)
+    else:
+        arguments.verbose = arguments.no_report = True
+        arguments.execute = False
+
+    before = _file_snapshot(arguments.project.parent)
+    before_roots = _submission_request_roots(arguments.project)
+    assert control.run_from_args(arguments) == 2
+    blocked = capsys.readouterr().err
+    assert len(submissions) == 1
+    assert "DUPLICATE SUBMISSION RISK" in blocked
+    assert "displays can take time to populate" in blocked
+    assert _file_snapshot(arguments.project.parent) == before
+    assert _submission_request_roots(arguments.project) == before_roots
+    assert first.request_root.is_dir()
+
+
+@pytest.mark.parametrize("state", ("PENDING", "RUNNING", "UNKNOWN"))
 def test_matching_nonterminal_submission_requires_explicit_duplicate_override(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     state: str,
 ) -> None:
-    arguments = _scheduled_run_arguments(tmp_path, execute=True)
-    workspace = arguments.project.parent
-    profile = load_execution_profile(config_path=Path(arguments.profile))
-    controls = control._resolve_controls(arguments, workspace)
-    submissions = []
+    arguments = _valid_scheduled_run_arguments(tmp_path)
+    submissions = _record_scheduled_submissions(monkeypatch)
+    assert control.run_from_args(arguments) == 0
+    capsys.readouterr()
+    _bind_retained_scheduler_state(monkeypatch, arguments.project, state)
+    before = _file_snapshot(arguments.project.parent)
+    before_roots = _submission_request_roots(arguments.project)
 
-    def submit(plan, *, record_path):
-        submissions.append(plan)
-        record_path.write_bytes(b"812345;cluster-a\n")
-        record_path.with_suffix(".stderr").write_bytes(b"")
-        return "812345"
-
-    monkeypatch.setattr(control.slurm_submission, "submit", submit)
-    assert (
-        control._schedule(
-            "run", arguments, profile, controls, ResourceOverrides(), workspace
-        )
-        == 0
-    )
-
-    monkeypatch.setattr(
-        control.slurm_submission,
-        "observe_submission_request",
-        lambda _request: {
-            "state": state,
-            "terminal": False,
-            "source": None if state == "UNKNOWN" else "squeue",
-            "cluster": None if state == "UNKNOWN" else "cluster-a",
-            "diagnostic": "fixture unavailable" if state == "UNKNOWN" else None,
-        },
-    )
-    assert (
-        control._schedule(
-            "run", arguments, profile, controls, ResourceOverrides(), workspace
-        )
-        == 2
-    )
+    assert control.run_from_args(arguments) == 2
     assert len(submissions) == 1
     blocked = capsys.readouterr().err
     assert "DUPLICATE SUBMISSION RISK" in blocked
     assert f"812345: scheduler state {state}" in blocked
     assert "displays can take time to populate" in blocked
     assert "--allow-duplicate-submission" in blocked
+    assert _file_snapshot(arguments.project.parent) == before
+    assert _submission_request_roots(arguments.project) == before_roots
 
     arguments.allow_duplicate_submission = True
-    assert (
-        control._schedule(
-            "run", arguments, profile, controls, ResourceOverrides(), workspace
-        )
-        == 0
-    )
+    assert control.run_from_args(arguments) == 0
     assert len(submissions) == 2
     assert "DUPLICATE SUBMISSION RISK" in capsys.readouterr().err
 
     arguments.allow_duplicate_submission = False
-    monkeypatch.setattr(
-        control.slurm_submission,
-        "observe_submission_request",
-        lambda _request: {
-            "state": "COMPLETED",
-            "terminal": True,
-            "source": "sacct",
-            "cluster": "cluster-a",
-            "diagnostic": None,
-        },
-    )
-    assert (
-        control._schedule(
-            "run", arguments, profile, controls, ResourceOverrides(), workspace
-        )
-        == 0
-    )
+    _bind_retained_scheduler_state(monkeypatch, arguments.project, "COMPLETED")
+    assert control.run_from_args(arguments) == 0
     assert len(submissions) == 3
     assert "DUPLICATE SUBMISSION RISK" not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("difference", ("analysis", "through", "profile-binding"))
+def test_distinct_public_run_intent_does_not_query_unrelated_submission(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    difference: str,
+) -> None:
+    arguments = _valid_scheduled_run_arguments(tmp_path)
+    if difference == "analysis":
+        definition = yaml.safe_load(arguments.project.read_bytes())
+        definition["analyses"]["secondary"] = copy.deepcopy(
+            definition["analyses"]["primary"]
+        )
+        arguments.project.write_text(yaml.safe_dump(definition), encoding="utf-8")
+    submissions = _record_scheduled_submissions(monkeypatch)
+    assert control.run_from_args(arguments) == 0
+    capsys.readouterr()
+
+    if difference == "analysis":
+        arguments.analysis = "secondary"
+    elif difference == "through":
+        arguments.through = "processing"
+    else:
+        document = yaml.safe_load(Path(arguments.profile).read_bytes())
+        document["placement"]["time"] = "02:00:00"
+        Path(arguments.profile).write_text(yaml.safe_dump(document), encoding="utf-8")
+    monkeypatch.setattr(
+        control.slurm_submission.scheduler_observation,
+        "command_bytes",
+        lambda *_args, **_kwargs: pytest.fail("unrelated request queried Slurm"),
+    )
+
+    assert control.run_from_args(arguments) == 0
+    assert len(submissions) == 2
+    assert "DUPLICATE SUBMISSION RISK" not in capsys.readouterr().err
+
+
+def test_run_submission_intent_includes_exact_processing_source() -> None:
+    arguments = argparse.Namespace(
+        analysis="primary",
+        through="analysis",
+        from_processing_run="run-" + "a" * 64,
+    )
+    first = control._run_submission_intent(arguments, ("primary",))
+    arguments.from_processing_run = "run-" + "b" * 64
+    assert control._run_submission_intent(arguments, ("primary",)) != first
+
+
+@pytest.mark.parametrize(
+    "corruption",
+    (
+        "unknown-option",
+        "delegate-prefix",
+        "context-analysis",
+        "project",
+        "missing-project",
+        "processing-source",
+    ),
+)
+def test_unprojectable_matching_request_fails_closed_without_rewriting_it(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    corruption: str,
+) -> None:
+    arguments = _valid_scheduled_run_arguments(
+        tmp_path,
+        analysis=(
+            "secondary" if corruption in ("delegate-prefix", "project") else "primary"
+        ),
+    )
+    if corruption in ("delegate-prefix", "context-analysis", "project"):
+        definition = yaml.safe_load(arguments.project.read_bytes())
+        definition["analyses"]["secondary"] = copy.deepcopy(
+            definition["analyses"]["primary"]
+        )
+        arguments.project.write_text(yaml.safe_dump(definition), encoding="utf-8")
+    submissions = _record_scheduled_submissions(monkeypatch)
+    assert control.run_from_args(arguments) == 0
+    capsys.readouterr()
+    (request,) = control.slurm_submission.submission_requests(arguments.project)
+    context_path = request.request_root / "request.json"
+    context = json.loads(context_path.read_bytes())
+    if corruption == "unknown-option":
+        context["emrys_argv"].append("--unsupported-retained-option")
+    elif corruption == "delegate-prefix":
+        context["emrys_argv"][6] = "resume"
+        arguments.analysis = "primary"
+    elif corruption == "context-analysis":
+        analysis_index = context["emrys_argv"].index("--analysis") + 1
+        context["emrys_argv"][analysis_index] = "secondary"
+    elif corruption == "project":
+        project_index = context["emrys_argv"].index("--project") + 1
+        context["emrys_argv"][project_index] = str(tmp_path / "other-project.yaml")
+        arguments.analysis = "primary"
+    elif corruption == "missing-project":
+        project_index = context["emrys_argv"].index("--project")
+        del context["emrys_argv"][project_index : project_index + 2]
+    else:
+        context["emrys_argv"].extend(("--from-processing-run", "not-a-run"))
+    context_path.write_bytes(orchestration_contracts.canonical_json_bytes(context))
+    _bind_retained_scheduler_state(monkeypatch, arguments.project, "RUNNING")
+    before = _file_snapshot(arguments.project.parent)
+    before_roots = _submission_request_roots(arguments.project)
+
+    assert control.run_from_args(arguments) == 2
+    assert len(submissions) == 1
+    assert "DUPLICATE SUBMISSION RISK" in capsys.readouterr().err
+    assert _file_snapshot(arguments.project.parent) == before
+    assert _submission_request_roots(arguments.project) == before_roots
+
+
+def test_unconfirmed_matching_request_fails_closed_without_scheduler_query(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    arguments = _valid_scheduled_run_arguments(tmp_path)
+    submissions = _record_scheduled_submissions(monkeypatch)
+    assert control.run_from_args(arguments) == 0
+    capsys.readouterr()
+    (request,) = control.slurm_submission.submission_requests(arguments.project)
+    (request.request_root / "sbatch.stdout").unlink()
+    monkeypatch.setattr(
+        control.slurm_submission.scheduler_observation,
+        "command_bytes",
+        lambda *_args, **_kwargs: pytest.fail("unconfirmed request queried Slurm"),
+    )
+    before = _file_snapshot(arguments.project.parent)
+    before_roots = _submission_request_roots(arguments.project)
+
+    assert control.run_from_args(arguments) == 2
+    blocked = capsys.readouterr().err
+    assert len(submissions) == 1
+    assert request.request_root.name in blocked
+    assert "scheduler state UNKNOWN" in blocked
+    assert _file_snapshot(arguments.project.parent) == before
+    assert _submission_request_roots(arguments.project) == before_roots
 
 
 @pytest.mark.parametrize(

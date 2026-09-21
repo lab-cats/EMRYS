@@ -410,15 +410,25 @@ identity. New Doctor qualification uses `emrys-doctor` and
 `emrys-doctor-%j.out`/`.err`; retained historical qualification streams remain
 admissible through exact scheduler metadata or explicit offline paths.
 
-Before a new Run submission, Control compares its scientific request and
-execution-profile binding with retained Project requests and observes each exact
-match through the existing scheduler owner. A matching active request, or one
-whose terminal state cannot be confirmed, produces a prominent duplicate-risk
-warning and prevents `sbatch` unless the operator supplied
-`--allow-duplicate-submission`. Presentation and reporting choices do not make
-the same scientific submission distinct. Terminal and unrelated
-requests do not trigger the override. This check never cancels, retries or
-promotes scheduler diagnostics to Run evidence.
+Before a new Run submission, Control projects the current and retained Project
+requests onto the selected Analysis name, scientific stopping boundary, exact
+processing-source Run ID if any, and exact execution-profile binding. Omitted
+sole-Analysis selection uses the same policy as scientific admission, but reads
+only the schema-valid Project declaration; it does not admit scientific inputs
+or construct a Run on the submit host. Interpreter and profile paths, log root,
+verbosity, reporting and confirmation choices are not work identity. Retained
+v1-v4 request records remain unchanged and are projected through the public Run
+parser; an active or unconfirmed record with the same profile binding whose Run
+selectors cannot be reconstructed is conservatively not treated as distinct.
+
+A matching or identity-unconfirmed request whose scheduler state is active or
+cannot be confirmed terminal produces a prominent duplicate-risk warning and
+prevents `sbatch` unless the operator supplied `--allow-duplicate-submission`.
+Terminal and unrelated requests do not trigger the override. This pre-Run
+safeguard is not Run identity, does not bind the head-read Project snapshot to
+later delegate execution, and never cancels, retries or promotes scheduler
+diagnostics to Run evidence. Compute-side Run admission remains authoritative
+if the Project changes.
 
 The shared transport requires a transcript destination, opens private raw
 `sbatch.stdout`/`sbatch.stderr` files, and synchronizes their directory before

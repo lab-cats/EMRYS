@@ -56,6 +56,7 @@ from emrys.orchestration.run_coordinator import (
     doctor,
     inspection,
     lifecycle,
+    normalization,
     onboarding,
     reporting_operation,
     task as task_boundary,
@@ -91,8 +92,6 @@ from emrys.orchestration.run_coordinator.resource_policy import (
     resume_resource_policy,
 )
 from emrys.orchestration.run_coordinator import slurm_submission
-
-_NON_WORK = frozenset({"--execute", "--no-report", "--verbose"})
 
 RUN_DESCRIPTION = "Plan an immutable Run; confirm or use --execute. Installs nothing."
 RESUME_DESCRIPTION = "Plan a safe resume, then confirm or use --execute for automation."
@@ -910,6 +909,36 @@ def _delegate_argv(
     return tuple(argv)
 
 
+class _RunArgumentParser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:
+        raise argparse.ArgumentError(None, message)
+
+
+def _retained_run_arguments(context: Mapping[str, Any]) -> argparse.Namespace | None:
+    argv = tuple(context["emrys_argv"])
+    if argv[1:7] != ("-X", "pycache_prefix=/dev/null", "-I", "-m", "emrys", "run"):
+        return None
+    parser = _RunArgumentParser(add_help=False)
+    configure_run_parser(parser)
+    try:
+        arguments = parser.parse_args(argv[7:])
+        project = arguments.project
+        if not project or str(_absolute(project)) != context["project"]:
+            return None
+        if arguments.from_processing_run is not None:
+            inspection.human_run_name(arguments.from_processing_run)
+        return arguments if arguments.analysis == context["analysis"] else None
+    except (argparse.ArgumentError, inspection.InspectionError):
+        return None
+
+
+def _run_submission_intent(
+    arguments: argparse.Namespace, analysis_names: tuple[str, ...]
+) -> tuple[str, str, str | None]:
+    analysis = normalization.select_analysis_name(analysis_names, arguments.analysis)
+    return analysis, arguments.through, arguments.from_processing_run
+
+
 def _prepare_scheduler_log_dir(workspace: Path) -> Path:
     root = _absolute(workspace)
     log_dir = root / "logs"
@@ -1027,32 +1056,47 @@ def _schedule(
         console_print("Scheduler command: " + shlex.join(submission.argv))
     if command == "run":
         try:
-            work_argv = tuple(v for v in delegate_argv if v not in _NON_WORK)
+            project = _absolute(arguments.project)
+            definition = orchestration_contracts.load_yaml_object_bytes(
+                read_bytes(project, "Project definition"), f"Project YAML {project}"
+            )
+            orchestration_contracts.validate_record("project", definition)
+            analysis_names = tuple(sorted(definition["analyses"]))
+            intent = _run_submission_intent(arguments, analysis_names)
             risks = []
-            for request in slurm_submission.submission_requests(
-                _absolute(arguments.project)
-            ):
+            for request in slurm_submission.submission_requests(project):
                 context = request.context
-                retained = () if context is None else tuple(context["emrys_argv"])
                 if (
                     context is None
                     or context["command"] != "run"
                     or context["profile_binding_sha256"] != profile.binding_sha256
-                    or tuple(v for v in retained if v not in _NON_WORK) != work_argv
                 ):
+                    continue
+                retained = _retained_run_arguments(context)
+                try:
+                    retained_intent = retained and _run_submission_intent(
+                        retained, analysis_names
+                    )
+                except orchestration_contracts.ContractValidationError:
+                    retained_intent = None
+                if retained_intent is not None and retained_intent != intent:
                     continue
                 observed = slurm_submission.observe_submission_request(request)
                 if not bool(observed["terminal"]):
                     risks.append((request, observed))
-        except slurm_submission.SlurmSubmissionError as exc:
+        except (
+            ValidationError,
+            orchestration_contracts.ContractValidationError,
+            slurm_submission.SlurmSubmissionError,
+        ) as exc:
             raise ControlError(
                 f"Could not check retained submissions; sbatch was not invoked: {exc}"
             ) from exc
         if risks:
             console_print("DUPLICATE SUBMISSION RISK", style="bold white on red")
             console_print(
-                "An earlier submission of this same work is active or is not yet "
-                "confirmed terminal.",
+                "An earlier retained request may match this work; its scheduler "
+                "state is active or unconfirmed.",
                 style="bold red",
             )
             for request, observed in risks:
