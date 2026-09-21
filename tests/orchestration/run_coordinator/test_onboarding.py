@@ -48,6 +48,12 @@ def _decoded_terminal(value: str) -> Text:
     return AnsiDecoder().decode_line(value)
 
 
+def _plain_terminal_history(value: str) -> str:
+    """Strip terminal styling without collapsing earlier emitted prompts."""
+
+    return re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", value)
+
+
 @pytest.fixture(autouse=True)
 def _isolate_saved_cli_environment():
     """Keep in-process CLI environment loading inside the invoking test."""
@@ -526,7 +532,7 @@ def test_guided_project_preview_replays_defaults_and_publishes_real_answers(
     assert reference_reads == [reference_fasta]
     assert not output.exists()
     prompts = terminal_output.getvalue()
-    plain_prompts = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", prompts)
+    plain_prompts = _plain_terminal_history(prompts)
     assert prompts.index("reference fasta") < prompts.index("FASTQ directory")
     assert (
         "Choose a regions file, or press Enter to type FASTA names/regions." in prompts
@@ -620,7 +626,7 @@ def test_guided_project_applies_one_study_strand_or_expands_mixed(
 
     _table, _, published = step08.validate_sample_manifest(output / "samples.tsv")
     assert tuple(row["strandedness"] for row in published) == expected
-    prompts = _decoded_terminal(stderr.getvalue()).plain
+    prompts = _plain_terminal_history(stderr.getvalue())
     assert prompts.count("study strandedness") == 1
     assert prompts.count("strandedness for") == (4 if choice == "mixed" else 0)
 
@@ -644,7 +650,7 @@ def test_guided_comparison_has_no_implicit_direction(
 
     assert onboarding.init_project_from_args(arguments) == 2
     assert not output.exists()
-    prompts = _decoded_terminal(stderr.getvalue()).plain
+    prompts = _plain_terminal_history(stderr.getvalue())
     assert "comparison [1 / 2]:" in prompts
     assert "comparison [1 / 2] (Press ENTER" not in prompts
 
@@ -676,7 +682,7 @@ def test_guided_incompatible_pairing_retains_explicit_comparison_questions(
 
     assert onboarding.init_project_from_args(arguments) == 2
     assert not output.exists()
-    prompts = _decoded_terminal(stderr.getvalue()).plain
+    prompts = _plain_terminal_history(stderr.getvalue())
     assert "Choose the paired comparison direction" not in prompts
     assert "control condition:" in prompts
     assert "treatment condition:" in prompts
@@ -712,7 +718,7 @@ def test_guided_project_declines_disclosed_defaults_and_persists_each_answer(
         "common_or_threshold": 1.5,
         "absolute_difference_threshold": 0.02,
     }
-    prompts = _decoded_terminal(stderr.getvalue()).plain
+    prompts = _plain_terminal_history(stderr.getvalue())
     assert "Use these paired-CMH defaults?" in prompts
     for label in (
         "min sample dp (Press ENTER for 1)",
@@ -754,7 +760,7 @@ def test_active_background_limit_joins_the_disclosed_default_set(
 
     assert onboarding.init_project_from_args(arguments) == 0
     assert not output.exists()
-    prompts = _decoded_terminal(stderr.getvalue()).plain
+    prompts = _plain_terminal_history(stderr.getvalue())
     assert prompts.index("background max fraction: 0.01") < prompts.index(
         "Use these paired-CMH defaults?"
     )
