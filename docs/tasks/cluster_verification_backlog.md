@@ -53,11 +53,11 @@ real-Slurm lane nor an institutional walkthrough.
 
 | Remaining acceptance | Current owner and required work or evidence |
 | --- | --- |
-| Reopened implementation and acceptance gaps | Every card marked **Open** in the indexes below owns the dated source, journey, documentation or acceptance correction recorded in its detailed entry. Implement that gap or explicitly revise the original acceptance before external evidence can advance the card; in particular, site execution alone cannot close CV-01's missing managed-journey combinations, CV-10's missing reconciliation path or CV-18's missing active-native-task stop path. |
+| Reopened implementation and acceptance gaps | Every card marked **Open** in the indexes below owns the dated source, journey, documentation or acceptance correction recorded in its detailed entry. Implement and verify that gap or explicitly revise the original acceptance before external evidence can advance the card; in particular, site execution alone cannot close CV-01's missing managed-journey combinations, CV-10's unverified prepared-finalization path or CV-18's missing active-native-task stop path. |
 | Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27 and CV-U28: exercise the maintained RUNBOOK on one exact installed revision; retain selected profile/runtime, resolved allocation-aware policy and report identities. Visual review is separate. |
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
 | Historical unexplained failures | CV-12/E01 and CV-21/E06 remain unexplained historical observations whose causal reconstruction is not an acceptance requirement. CV-21 now needs only ordinary institutional execution of current reporting/inspection behavior. CV-10/E09 retains its separate current reconciliation requirement; newer successful checks cannot identify that cause. |
-| Postentry Task retry | CV-10: current-version closed-abort retry has hosted acceptance evidence; institutional cancellation and missing-finalization evidence remain. Existing blocked receipts remain ineligible. |
+| Postentry Task retry and finalization | CV-10: current-version closed-abort retry has hosted acceptance evidence. The approved prepared-finalization path through `resume` remains Open for exact hosted CI, then Verification pending for institutional cancellation. Existing blocked receipts and missing prepared evidence remain ineligible. |
 | Doctor operation | CV-26 is Completed for exact pre-storage readmission, storage finalization and one final full diagnosis after removing the redundant intervening head diagnosis. Exact implementation CI passed; no Viking timing or speedup claim is required. Future measured tuning remains independently owned by the optimization campaign. |
 | Optional interface and retirement | CV-23 keeps cleanup Deferred; CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns institutional replacement validation and coordinated standalone entry-point/caller/name retirement. |
 
@@ -2134,8 +2134,9 @@ verified separately under CV-10.
 
 The successful between-Task failure/resume case remains a separate defense.
 Both public journeys passed the final CV-10 standard CI recorded below. Missing
-finalization or unclosed Task evidence still prevents resume. This does not
-establish Slurm/site cancellation or recover historical interrupted Runs.
+prepared finalization or unclosed Task evidence still prevents resume. This
+does not establish Slurm/site cancellation or recover historical interrupted
+Runs.
 
 The existing public failed-Run/resume journey also checks real report producer
 publication boundaries through separate public inspection processes, as recorded
@@ -2595,9 +2596,10 @@ concrete incompatibility gaps that evidence identifies.
 state and no offered recovery (E09). **Acceptance:** Characterize normal
 cancellation, TERM/KILL escalation, and lost wrapper/child processes. Account
 for the delegated process tree; retain an honest terminal outcome and partial
-publication evidence when possible. Provide an explicit supported reconciliation
-path when finalization was interrupted, proving process absence and ownership
-before safe resume. Ambiguous state remains preserved and clearly explained.
+publication evidence when possible. Use `emrys resume RUN` to complete an exact
+prepared finalization after revalidating retained terminal evidence and ownership,
+then apply ordinary resume admission. Process absence alone proves neither
+closure nor ownership. Ambiguous state remains preserved and clearly explained.
 Test interrupted native output, pre-entry state, publication boundaries, and
 failure of finalization itself. Scheduler cancellation alone is insufficient
 authority; never fabricate success or delete a lock to obtain resume.
@@ -2636,7 +2638,7 @@ the preserved lock/no-receipt boundary; their execution passed standard CI.
 Ruff, formatting and whitespace checks pass. These source-derived protections
 do not establish E09's cause or actual Slurm cancellation behavior. CV-01 adds
 the separately bounded real-Snakemake/native-fixture observation.
-Missing finalization and institutional cancellation evidence remain open. No
+Prepared-finalization and institutional cancellation acceptance remain open. No
 Task or Run becomes recoverable solely because an outer group stopped.
 
 **Wall-time observation and bounded prevention slice:** Operator-supplied
@@ -2648,11 +2650,11 @@ resume. The historical Run remains untouched. For future submissions, Slurm now
 warns the batch shell with `TERM` five minutes before the limit; the generated
 wrapper forwards that signal once to its exact EMRYS child and waits for the
 child's actual exit. Existing lifecycle and Task owners remain solely
-responsible for provable closure. Hard kill, missing/late warning, or interrupted
-finalization retains the existing blocked ambiguity. Local wrapper evidence is
-not a real Slurm timeout or institutional recovery result. Focused local
-submission, dashboard, lifecycle, and Task interruption checks pass; the full
-lifecycle/Task collection still requires a current installed-package test
+responsible for provable closure. Hard kill, missing/late warning, or finalization
+without admitted prepared evidence retains the blocked ambiguity. Local wrapper
+evidence is not a real Slurm timeout or institutional recovery result. Focused
+local submission, dashboard, lifecycle, and Task interruption checks pass; the
+full lifecycle/Task collection still requires a current installed-package test
 environment for its isolated-module case.
 
 **Supported recovery boundary:** The earlier fixed-start contract blocked every
@@ -2665,11 +2667,12 @@ inputs. Run identity and prior evidence stay immutable.
 
 Same-input `run` still resolves to the same content-derived Run ID and refuses
 its non-pristine destination. Processing reuse still requires a complete
-successful source. `resume` is the existing explicit retry route; there is no
-new recovery command or mutable recovery state. Old record versions and blocked
-receipts are refused unchanged. Lost worker evidence, missing workflow
-finalization and E09 are not reconstructed from a released lock or clean process
-group.
+successful source. `resume` remains the explicit recovery route. The approved
+finalization extension uses immutable Attempt-local prepared receipt bytes;
+it adds no public recovery command or mutable Run. Old record versions and
+blocked receipts remain ineligible for retry. Lost worker evidence, missing
+prepared finalization and E09 are not reconstructed from a released lock or
+clean process group.
 
 **Accepted descendant-containment prerequisite:** Use the existing fresh Linux
 Task worker as a [child subreaper](https://man7.org/linux/man-pages/man2/PR_SET_CHILD_SUBREAPER.2const.html).
@@ -2800,18 +2803,28 @@ all 47 native cases passed without skips. Final
 [artifact 10411245477](https://github.com/lab-cats/EMRYS/actions/runs/35002451860/artifacts/10411245477)
 has SHA-256 `7f691245b22bf4b24cd479745b041adfdcc9d11b662f0455ff1ceebde6d16985`.
 The later timeout-warning slice also passed the integrated standard CI recorded
-above. CV-10 is **Verification pending** for institutional cancellation acceptance
-and E09's missing finalization/diagnostic evidence. These changes do not recover
-the historical interrupted Run or establish its cause.
+above. Those results cover the earlier retry and warning behavior, not the
+prepared-finalization extension. The historical interrupted Run remains
+untouched and its cause unestablished.
 
-**September 17 adversarial audit:** The delivered retry path applies only to a
-finalized, positively closed prepublication abort. Missing finalization and
-unclosed entered-Task evidence remain blocked, with no explicit reconciliation
-path despite that path being part of this card's acceptance. Preserving
-ambiguity is the correct current safety behavior, but it does not make the
-requested recovery implementation complete. CV-10 returns to **Open**;
-institutional cancellation evidence alone cannot close the missing source
-behavior.
+**Approved prepared-finalization boundary:** The September 17 audit identified
+the missing reconciliation path. `emrys resume RUN` now owns the selected
+extension: complete the exact prepared `attempt-receipt.v3` bytes, written only
+after terminal observation and the lifecycle's evidence decision, before ordinary
+resume admission. The [lifecycle contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
+owns preparation, exact-byte/evidence/ownership revalidation and publication.
+The transition stages same-inode lock and receipt aliases before retiring their
+source names; a copied file or released-only shape cannot authorize recovery.
+There is no receipt reconstruction or scheduler/log/PID-derived authority.
+Prepared failed/interrupted outcomes may continue only after existing admission;
+prepared blocked/succeeded outcomes create no new scientific Attempt. Legacy
+missing-prepared states, lost workers and unclosed Tasks stay blocked; E09 is
+neither adopted nor repaired.
+
+CV-10 remains **Open** until exact hosted CI verifies this extension, including
+interrupted publication, refusal and public preview/confirmation behavior. Only
+then may it advance to **Verification pending** for institutional cancellation
+acceptance. No new local, hosted or institutional results are claimed here.
 
 ### CV-11 Resource profile compatibility
 

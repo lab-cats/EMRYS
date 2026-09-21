@@ -42,6 +42,9 @@ from emrys.orchestration.run_coordinator import (
     lifecycle,
     task,
 )
+from emrys.orchestration.run_coordinator.execution_profile import (
+    project_default_profile_bytes,
+)
 from tests.orchestration.run_coordinator.fixtures import workflow as workflow_fixture
 
 WORKFLOW_TIME = datetime(2026, 8, 12, 14, 0, tzinfo=UTC)
@@ -476,6 +479,7 @@ class Harness:
             run_workflow=self.run_workflow,
             publish_bytes=self.publish,
             release_lock=self.release,
+            promote_receipt=self.promote_receipt,
             now=lambda: FINISHED_TIME,
             host_name=lambda: "fixture-host",
             process_id=lambda: 4242,
@@ -561,15 +565,31 @@ class Harness:
         evidence_path: Path,
         expected: bytes,
         inode: tuple[int, int],
+        retain_source: bool = False,
     ) -> None:
         self.events.append("release")
-        state = path.stat(follow_symlinks=False)
-        assert (state.st_dev, state.st_ino) == inode
-        assert path.read_bytes() == expected
-        path.rename(evidence_path)
-        assert evidence_path.read_bytes() == expected
+        lifecycle._release_owned_lock(
+            path, evidence_path, expected, inode, retain_source
+        )
         if self.inject_lock_entry_on_release:
             (path.parent / "foreign.lock").write_bytes(b"late foreign lock\n")
+
+    def promote_receipt(
+        self,
+        prepared_path: Path,
+        receipt_path: Path,
+        expected: bytes,
+        inode: tuple[int, int],
+        retain_source: bool = False,
+    ) -> None:
+        self.events.append("promote-receipt")
+        lifecycle._promote_prepared_receipt(
+            prepared_path,
+            receipt_path,
+            expected,
+            inode,
+            retain_source,
+        )
 
     def validate_reporting(
         self,
@@ -1110,13 +1130,14 @@ def test_signal_during_receipt_commit_reaches_ambient_handler_after_commit(
     receipt_path = (
         built.built.run_root / "attempts" / identifier / "attempt-receipt.json"
     )
+    prepared_path = receipt_path.with_name("prepared-attempt-receipt.json")
     prior = signal.getsignal(signal.SIGTERM)
 
     def ambient(_signum: int, _frame: object) -> None:
         ambient_observations.append(receipt_path.is_file())
 
     def publish(path: Path, data: bytes) -> None:
-        if path == receipt_path:
+        if path == prepared_path:
             _raise_signal_on_lifecycle_thread(signal.SIGTERM)
         defaults.publish_bytes(path, data)
 
@@ -1132,6 +1153,7 @@ def test_signal_during_receipt_commit_reaches_ambient_handler_after_commit(
     assert outcome.receipt["status"] == "failed"
     assert ambient_observations == [True]
     assert receipt_path.is_file()
+    assert not prepared_path.exists()
 
 
 @pytest.mark.parametrize("mutex_phase", ["before_release", "after_release"])
@@ -1188,16 +1210,21 @@ def test_signal_and_failure_during_receipt_commit_restore_controller_state(
     receipt_path = (
         built.built.run_root / "attempts" / identifier / "attempt-receipt.json"
     )
+    prepared_path = receipt_path.with_name("prepared-attempt-receipt.json")
     prior_handlers = {
         signum: signal.getsignal(signum) for signum in (signal.SIGINT, signal.SIGTERM)
     }
     prior_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
 
-    def publish(path: Path, data: bytes) -> None:
-        if path == receipt_path:
-            os.kill(os.getpid(), signal.SIGINT)
-            raise OSError("fixture receipt publication failure")
-        defaults.publish_bytes(path, data)
+    def fail_promotion(
+        _prepared: Path,
+        _receipt: Path,
+        _expected: bytes,
+        _inode: tuple[int, int],
+        _retain_source: bool,
+    ) -> None:
+        os.kill(os.getpid(), signal.SIGINT)
+        raise OSError("fixture receipt promotion failure")
 
     with pytest.raises(
         lifecycle.LifecycleError,
@@ -1205,12 +1232,13 @@ def test_signal_and_failure_during_receipt_commit_restore_controller_state(
     ) as observed:
         _run_attempt(
             built.request,
-            ops=replace(defaults, publish_bytes=publish),
+            ops=replace(defaults, promote_receipt=fail_promotion),
         )
 
     assert isinstance(observed.value.__cause__, OSError)
-    assert "receipt publication failure" in str(observed.value.__cause__)
+    assert "receipt promotion failure" in str(observed.value.__cause__)
     assert not receipt_path.exists()
+    assert prepared_path.is_file()
     assert (
         built.built.run_root / "attempts" / identifier / "released-run-lock.json"
     ).is_file()
@@ -1218,6 +1246,64 @@ def test_signal_and_failure_during_receipt_commit_restore_controller_state(
         signum: signal.getsignal(signum) for signum in (signal.SIGINT, signal.SIGTERM)
     } == prior_handlers
     assert signal.pthread_sigmask(signal.SIG_BLOCK, set()) == prior_mask
+
+
+def test_prepared_receipt_publication_failure_retains_active_lock(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(tmp_path)
+    defaults = built.ops()
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
+    attempt_root = built.built.run_root / "attempts" / identifier
+    prepared_path = attempt_root / "prepared-attempt-receipt.json"
+
+    def fail_preparation(path: Path, data: bytes) -> None:
+        if path == prepared_path:
+            raise OSError("fixture prepared receipt publication failure")
+        defaults.publish_bytes(path, data)
+
+    with pytest.raises(
+        lifecycle.LifecycleError,
+        match="Could not materialize immutable workflow attempt",
+    ):
+        _run_attempt(
+            built.request,
+            ops=replace(defaults, publish_bytes=fail_preparation),
+        )
+
+    assert (built.built.run_root / "locks/run.lock").is_file()
+    assert not prepared_path.exists()
+    assert not (attempt_root / "released-run-lock.json").exists()
+    assert not (attempt_root / "attempt-receipt.json").exists()
+
+
+def test_lock_release_failure_retains_prepared_receipt_and_active_lock(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(tmp_path)
+    defaults = built.ops()
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
+    attempt_root = built.built.run_root / "attempts" / identifier
+
+    def fail_release(
+        _path: Path,
+        _evidence_path: Path,
+        _expected: bytes,
+        _inode: tuple[int, int],
+        _retain_source: bool,
+    ) -> None:
+        raise lifecycle.LifecycleError("fixture lock release failure")
+
+    with pytest.raises(lifecycle.LifecycleError, match="lock release failure"):
+        _run_attempt(
+            built.request,
+            ops=replace(defaults, release_lock=fail_release),
+        )
+
+    assert (built.built.run_root / "locks/run.lock").is_file()
+    assert (attempt_root / "prepared-attempt-receipt.json").is_file()
+    assert not (attempt_root / "released-run-lock.json").exists()
+    assert not (attempt_root / "attempt-receipt.json").exists()
 
 
 def test_preblocked_ordinary_signal_is_refused_without_run_evidence(
@@ -1655,9 +1741,17 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
     ) < built.events.index(
         f"publish:{outcome.attempt_path.relative_to(built.built.run_root)}"
     )
-    assert built.events[-2:] == [
+    prepared_path = outcome.attempt_path.with_name("prepared-attempt-receipt.json")
+    assert not prepared_path.exists()
+    assert (
+        outcome.receipt_path.read_bytes()
+        == orchestration_contracts.canonical_json_bytes(outcome.receipt)
+    )
+    assert built.events[-4:] == [
+        f"publish:{prepared_path.relative_to(built.built.run_root)}",
+        f"sync:{prepared_path.parent.relative_to(built.built.run_root)}",
         "release",
-        f"publish:{outcome.receipt_path.relative_to(built.built.run_root)}",
+        "promote-receipt",
     ]
     runtime_admissions = [
         index for index, event in enumerate(built.events) if event == "runtime-admitted"
@@ -1703,9 +1797,549 @@ def test_application_event_observer_exceptions_cannot_alter_receipt(
     assert outcome.receipt["status"] == "succeeded"
     assert outcome.receipt_path.is_file()
     assert json.loads(outcome.receipt_path.read_bytes()) == outcome.receipt
-    assert built.events[-2:] == [
+    prepared_path = outcome.attempt_path.with_name("prepared-attempt-receipt.json")
+    assert built.events[-4:] == [
+        f"publish:{prepared_path.relative_to(built.built.run_root)}",
+        f"sync:{prepared_path.parent.relative_to(built.built.run_root)}",
         "release",
-        f"publish:{outcome.receipt_path.relative_to(built.built.run_root)}",
+        "promote-receipt",
+    ]
+
+
+def _prepared_finalization_case(tmp_path: Path) -> tuple[Harness, Path, Path, Path]:
+    built = _build_harness(tmp_path)
+    outcome = _run_attempt(built.request, ops=built.ops())
+    assert outcome.receipt["status"] == "failed"
+    prepared = outcome.receipt_path.with_name("prepared-attempt-receipt.json")
+    released = outcome.receipt_path.with_name("released-run-lock.json")
+    return built, outcome.receipt_path, prepared, released
+
+
+@pytest.mark.parametrize(
+    ("shape", "lock_shape", "receipt_shape"),
+    (
+        ("active", "active", "prepared"),
+        ("active-released", "active-released-alias", "prepared"),
+        ("fully-staged", "active-released-alias", "prepared-final-alias"),
+        ("final-alias", "released", "prepared-final-alias"),
+    ),
+)
+def test_prepared_finalization_completes_supported_inode_transitions(
+    tmp_path: Path,
+    shape: str,
+    lock_shape: str,
+    receipt_shape: str,
+) -> None:
+    built, receipt, prepared, released = _prepared_finalization_case(tmp_path)
+    active = built.built.run_root / "locks/run.lock"
+    if shape in {"fully-staged", "final-alias"}:
+        os.link(receipt, prepared)
+        if shape == "fully-staged":
+            os.link(released, active)
+    else:
+        receipt.rename(prepared)
+        if shape == "active":
+            released.rename(active)
+        else:
+            os.link(released, active)
+
+    before = {
+        path: (path.read_bytes(), path.stat().st_mtime_ns)
+        for path in built.built.run_root.rglob("*")
+        if path.is_file()
+    }
+    preview = inspection.inspect_prepared_finalization(built.built.run_root)
+    assert {
+        path: (path.read_bytes(), path.stat().st_mtime_ns)
+        for path in built.built.run_root.rglob("*")
+        if path.is_file()
+    } == before
+    assert preview.candidate.lock_shape == lock_shape
+    assert preview.candidate.receipt_shape == receipt_shape
+    assert preview.prospective_state.recovery_available
+    if shape == "active":
+        active_state = built.inspect()
+        assert active_state.lock_observation == "local live owner"
+        assert active_state.attempt_outcome != "running"
+
+    finalized = lifecycle.finalize_prepared_attempt(
+        built.built.run_root, preview.candidate, ops=built.ops()
+    )
+    assert finalized.recovery_available
+    assert finalized.latest_receipt == preview.candidate.record
+    assert receipt.is_file() and released.is_file()
+    assert not prepared.exists() and not active.exists()
+
+
+@pytest.mark.parametrize("collision", ("lock-copy", "receipt-copy"))
+def test_prepared_finalization_rejects_copied_equal_bytes(
+    tmp_path: Path,
+    collision: str,
+) -> None:
+    built, receipt, prepared, released = _prepared_finalization_case(tmp_path)
+    if collision == "lock-copy":
+        receipt.rename(prepared)
+        shutil.copyfile(released, built.built.run_root / "locks/run.lock")
+    else:
+        shutil.copyfile(receipt, prepared)
+
+    observed = inspection.inspect_run(built.built.run_root)
+    assert observed.prepared_finalization is None
+    with pytest.raises(inspection.InspectionError, match="no admissible prepared"):
+        inspection.inspect_prepared_finalization(built.built.run_root)
+
+
+@pytest.mark.parametrize("replaced_name", ("receipt", "lock"))
+def test_prepared_finalization_rejects_equal_byte_path_replacement_after_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    replaced_name: str,
+) -> None:
+    built, receipt, prepared, released = _prepared_finalization_case(tmp_path)
+    receipt.rename(prepared)
+    active = built.built.run_root / "locks/run.lock"
+    released.rename(active)
+    target = prepared if replaced_name == "receipt" else active
+    read = validation_inputs.read_bytes_with_identity
+    replaced = []
+
+    def replace_after_read(path, label, **kwargs):
+        data, identity = read(path, label, **kwargs)
+        if path == target and not replaced:
+            path.unlink()
+            path.write_bytes(data)
+            replaced.append(path)
+        return data, identity
+
+    monkeypatch.setattr(
+        validation_inputs, "read_bytes_with_identity", replace_after_read
+    )
+    with pytest.raises(inspection.InspectionError, match="changed during preview"):
+        inspection.inspect_prepared_finalization(built.built.run_root)
+    assert replaced == [target]
+
+
+def test_released_lock_without_prepared_receipt_remains_ineligible(
+    tmp_path: Path,
+) -> None:
+    built, receipt, _prepared, _released = _prepared_finalization_case(tmp_path)
+    receipt.unlink()
+    observed = inspection.inspect_run(built.built.run_root)
+    assert observed.prepared_finalization is None
+    assert not observed.recovery_available
+    assert any(
+        "without a prepared or final terminal receipt" in blocker
+        for blocker in observed.blockers
+    )
+
+
+def test_prepared_finalization_accepts_exact_concurrent_completion(
+    tmp_path: Path,
+) -> None:
+    built, receipt, prepared, _released = _prepared_finalization_case(tmp_path)
+    os.link(receipt, prepared)
+    preview = inspection.inspect_prepared_finalization(built.built.run_root)
+    lifecycle._promote_prepared_receipt(
+        prepared,
+        receipt,
+        receipt_bytes := orchestration_contracts.canonical_json_bytes(
+            preview.candidate.record
+        ),
+        preview.candidate.prepared_inode,
+    )
+    assert receipt.read_bytes() == receipt_bytes
+
+    finalized = lifecycle.finalize_prepared_attempt(
+        built.built.run_root, preview.candidate, ops=built.ops()
+    )
+    assert finalized.latest_receipt == preview.candidate.record
+    assert finalized.recovery_available
+
+
+def test_prepared_finalization_concurrent_completion_does_not_consume_signal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    built, receipt, prepared, _released = _prepared_finalization_case(tmp_path)
+    os.link(receipt, prepared)
+    preview = inspection.inspect_prepared_finalization(built.built.run_root)
+    lifecycle._promote_prepared_receipt(
+        prepared,
+        receipt,
+        orchestration_contracts.canonical_json_bytes(preview.candidate.record),
+        preview.candidate.prepared_inode,
+    )
+    inspect_prepared = inspection.inspect_prepared_finalization
+
+    def interrupt_then_inspect(*args, **kwargs):
+        _raise_signal_on_lifecycle_thread(signal.SIGTERM)
+        return inspect_prepared(*args, **kwargs)
+
+    monkeypatch.setattr(
+        inspection, "inspect_prepared_finalization", interrupt_then_inspect
+    )
+    ambient = []
+    prior_handler = signal.getsignal(signal.SIGTERM)
+    prior_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    signal.signal(signal.SIGTERM, lambda signum, _frame: ambient.append(signum))
+    try:
+        with pytest.raises(lifecycle.LifecycleError, match="interrupted before commit"):
+            lifecycle.finalize_prepared_attempt(
+                built.built.run_root, preview.candidate, ops=built.ops()
+            )
+    finally:
+        signal.signal(signal.SIGTERM, prior_handler)
+        signal.pthread_sigmask(signal.SIG_SETMASK, prior_mask)
+
+    assert ambient == []
+    assert inspection.inspect_run(built.built.run_root).recovery_available
+
+
+def test_prepared_finalization_refuses_signal_recorded_during_reinspection(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    built, receipt, prepared, released = _prepared_finalization_case(tmp_path)
+    active = built.built.run_root / "locks/run.lock"
+    receipt.rename(prepared)
+    released.rename(active)
+    preview = inspection.inspect_prepared_finalization(built.built.run_root)
+    before = {
+        path: (path.read_bytes(), path.stat().st_mtime_ns)
+        for path in built.built.run_root.rglob("*")
+        if path.is_file()
+    }
+    ambient = []
+    prior_handler = signal.getsignal(signal.SIGTERM)
+    prior_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    inspect_prepared = inspection.inspect_prepared_finalization
+
+    def inspect_then_interrupt(*args, **kwargs):
+        admitted = inspect_prepared(*args, **kwargs)
+        _raise_signal_on_lifecycle_thread(signal.SIGTERM)
+        return admitted
+
+    monkeypatch.setattr(
+        inspection, "inspect_prepared_finalization", inspect_then_interrupt
+    )
+    signal.signal(signal.SIGTERM, lambda signum, _frame: ambient.append(signum))
+    try:
+        with pytest.raises(lifecycle.LifecycleError, match="interrupted before commit"):
+            lifecycle.finalize_prepared_attempt(
+                built.built.run_root, preview.candidate, ops=built.ops()
+            )
+        assert signal.getsignal(signal.SIGTERM) is not prior_handler
+        assert signal.pthread_sigmask(signal.SIG_BLOCK, set()) == prior_mask
+    finally:
+        signal.signal(signal.SIGTERM, prior_handler)
+        signal.pthread_sigmask(signal.SIG_SETMASK, prior_mask)
+
+    assert ambient == []
+    assert prepared.is_file() and active.is_file()
+    assert not receipt.exists() and not released.exists()
+    assert {
+        path: (path.read_bytes(), path.stat().st_mtime_ns)
+        for path in built.built.run_root.rglob("*")
+        if path.is_file()
+    } == before
+
+
+@pytest.mark.parametrize(
+    "mutation", ("unexpected-child", "deleted-task", "changed-task")
+)
+def test_prepared_finalization_refuses_retained_evidence_drift_after_preview(
+    tmp_path: Path,
+    mutation: str,
+) -> None:
+    built = _build_harness(tmp_path, result=lifecycle.WorkflowResult(7, None))
+    built.materialize_preentry_failure = True
+    outcome = _run_attempt(built.request, ops=built.ops())
+    attempt_root = outcome.receipt_path.parent
+    prepared = attempt_root / "prepared-attempt-receipt.json"
+    active = built.built.run_root / "locks/run.lock"
+    outcome.receipt_path.rename(prepared)
+    outcome.released_lock_path.rename(active)
+    preview = inspection.inspect_prepared_finalization(built.built.run_root)
+
+    if mutation == "unexpected-child":
+        (attempt_root / "unexpected").write_bytes(b"late child\n")
+    else:
+        reference = preview.candidate.record["task_attempt_records"][0]["record"]
+        retained = built.built.run_root / reference["path"]
+        if mutation == "deleted-task":
+            retained.unlink()
+        else:
+            retained.write_bytes(b"{}\n")
+
+    with pytest.raises(lifecycle.LifecycleError):
+        lifecycle.finalize_prepared_attempt(
+            built.built.run_root, preview.candidate, ops=built.ops()
+        )
+    assert prepared.is_file() and active.is_file()
+    assert not outcome.receipt_path.exists()
+    assert not outcome.released_lock_path.exists()
+
+
+def test_prepared_finalization_failure_retains_retryable_staged_aliases(
+    tmp_path: Path,
+) -> None:
+    built, receipt, prepared, released = _prepared_finalization_case(tmp_path)
+    active = built.built.run_root / "locks/run.lock"
+    receipt.rename(prepared)
+    released.rename(active)
+    preview = inspection.inspect_prepared_finalization(built.built.run_root)
+    defaults = built.ops()
+    failures = []
+
+    def fail_once(*args, **kwargs):
+        failures.append((args, kwargs))
+        raise OSError("fixture prepared finalization failure")
+
+    with pytest.raises(OSError, match="prepared finalization failure"):
+        lifecycle.finalize_prepared_attempt(
+            built.built.run_root,
+            preview.candidate,
+            ops=replace(defaults, promote_receipt=fail_once),
+        )
+    assert len(failures) == 1
+    assert prepared.is_file() and active.is_file() and released.is_file()
+    assert not receipt.exists()
+    assert len(tuple((built.built.run_root / "attempts").iterdir())) == 1
+
+    finalized = lifecycle.finalize_prepared_attempt(
+        built.built.run_root, preview.candidate, ops=defaults
+    )
+    assert finalized.recovery_available
+    assert receipt.is_file() and released.is_file()
+    assert not prepared.exists() and not active.exists()
+
+
+def test_prepared_finalization_revalidates_evidence_after_alias_staging(
+    tmp_path: Path,
+) -> None:
+    built, receipt, prepared, released = _prepared_finalization_case(tmp_path)
+    active = built.built.run_root / "locks/run.lock"
+    receipt.rename(prepared)
+    released.rename(active)
+    preview = inspection.inspect_prepared_finalization(built.built.run_root)
+    unexpected = prepared.parent / "unexpected"
+
+    def inject_drift(phase: str) -> None:
+        if phase == "before_receipt_promotion":
+            unexpected.write_bytes(b"late child\n")
+
+    with pytest.raises(inspection.InspectionError, match="changed during preview"):
+        lifecycle.finalize_prepared_attempt(
+            built.built.run_root,
+            preview.candidate,
+            ops=replace(built.ops(), observe_phase=inject_drift),
+        )
+    assert prepared.is_file() and receipt.is_file()
+    assert active.is_file() and released.is_file()
+    assert prepared.stat().st_ino == receipt.stat().st_ino
+    assert active.stat().st_ino == released.stat().st_ino
+
+    unexpected.unlink()
+    finalized = lifecycle.finalize_prepared_attempt(
+        built.built.run_root, preview.candidate, ops=built.ops()
+    )
+    assert finalized.recovery_available
+    assert receipt.is_file() and released.is_file()
+    assert not prepared.exists() and not active.exists()
+
+
+def test_prepared_finalization_rejects_receipt_promoter_inode_substitution(
+    tmp_path: Path,
+) -> None:
+    built, receipt, prepared, released = _prepared_finalization_case(tmp_path)
+    active = built.built.run_root / "locks/run.lock"
+    receipt.rename(prepared)
+    released.rename(active)
+    preview = inspection.inspect_prepared_finalization(built.built.run_root)
+
+    def substitute_receipt(
+        source: Path,
+        destination: Path,
+        expected: bytes,
+        _inode: tuple[int, int],
+        _retain_source: bool,
+    ) -> None:
+        destination.write_bytes(expected)
+        source.unlink()
+
+    with pytest.raises(inspection.InspectionError):
+        lifecycle.finalize_prepared_attempt(
+            built.built.run_root,
+            preview.candidate,
+            ops=replace(built.ops(), promote_receipt=substitute_receipt),
+        )
+    assert receipt.is_file() and active.is_file() and released.is_file()
+    assert not prepared.exists()
+    observed = inspection.inspect_run(built.built.run_root)
+    assert not observed.recovery_available
+    with pytest.raises(lifecycle.LifecycleError):
+        lifecycle.finalize_prepared_attempt(
+            built.built.run_root, preview.candidate, ops=built.ops()
+        )
+
+
+@pytest.mark.parametrize("execute", (False, True), ids=("preview", "execute"))
+@pytest.mark.parametrize("outcome", ("succeeded", "blocked"))
+def test_public_resume_finalization_only_outcomes_create_no_attempt(
+    tmp_path: Path,
+    capsys,
+    execute: bool,
+    outcome: str,
+) -> None:
+    built = _build_harness(tmp_path)
+    built.materialize_complete = outcome == "succeeded"
+    built.inject_state_entry_after_child = outcome == "blocked"
+    attempt_root = (
+        built.built.run_root
+        / "attempts"
+        / str(_attempt_record(built.request)["workflow_attempt_id"])
+    )
+    receipt = attempt_root / "attempt-receipt.json"
+    prepared = attempt_root / "prepared-attempt-receipt.json"
+    if outcome == "blocked":
+        with pytest.raises(
+            lifecycle.LifecycleError, match="prepared receipt was retained"
+        ):
+            _run_attempt(built.request, ops=built.ops())
+    else:
+        terminal = _run_attempt(built.request, ops=built.ops())
+        terminal.receipt_path.rename(prepared)
+        terminal.released_lock_path.rename(built.built.run_root / "locks/run.lock")
+    record = json.loads(prepared.read_bytes())
+    assert record["status"] == outcome
+    receipt_before = receipt.exists()
+    attempt_count = len(tuple((built.built.run_root / "attempts").iterdir()))
+    project = built.built.root / "project.yaml"
+    shutil.copy2(built.built.root / "intake/project.yaml", project)
+    before = {
+        path: (path.read_bytes(), path.stat().st_mtime_ns)
+        for path in built.built.root.rglob("*")
+        if path.is_file()
+    }
+
+    result = control.resume_from_args(
+        argparse.Namespace(
+            project=project,
+            run=built.built.run_root.name,
+            profile=str(tmp_path / "must-not-be-read.yaml"),
+            execute=execute,
+        )
+    )
+    assert result == (2 if execute and outcome == "blocked" else 0)
+    rendered = capsys.readouterr().err
+    assert inspection.human_run_name(built.built.run_root.name) in rendered
+    assert str(built.built.run_root) in rendered
+    assert record["workflow_attempt_id"] in rendered
+    assert len(tuple((built.built.run_root / "attempts").iterdir())) == attempt_count
+    if execute:
+        assert receipt.is_file() and not prepared.exists()
+        if outcome == "blocked":
+            assert "continuation remains unavailable" in rendered
+    else:
+        assert "Dry-run complete; no resume state was written." in rendered
+        assert prepared.is_file() and receipt.exists() is receipt_before
+        assert {
+            path: (path.read_bytes(), path.stat().st_mtime_ns)
+            for path in built.built.root.rglob("*")
+            if path.is_file()
+        } == before
+
+
+@pytest.mark.parametrize("delegate_context", ("none", "mismatched", "incomplete"))
+def test_public_slurm_profile_finalization_only_logs_without_submission_or_attempt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    delegate_context: str,
+) -> None:
+    built = _build_harness(tmp_path)
+    built.materialize_complete = True
+    terminal = _run_attempt(built.request, ops=built.ops())
+    prepared = terminal.receipt_path.with_name("prepared-attempt-receipt.json")
+    original_receipt = terminal.receipt_path.read_bytes()
+    terminal.receipt_path.rename(prepared)
+    terminal.released_lock_path.rename(built.built.run_root / "locks/run.lock")
+    project = built.built.root / "project.yaml"
+    shutil.copy2(built.built.root / "intake/project.yaml", project)
+    profile = tmp_path / "slurm.yaml"
+    profile.write_bytes(project_default_profile_bytes("viking"))
+    log_root = tmp_path / "application-logs"
+    attempts_before = tuple((built.built.run_root / "attempts").iterdir())
+    real_finalize = control.lifecycle.finalize_prepared_attempt
+    finalizations = []
+
+    def finalize_with_open_log(*args, **kwargs):
+        (log_path,) = log_root.rglob("*.jsonl")
+        assert [
+            json.loads(line)["event"] for line in log_path.read_text().splitlines()
+        ] == ["attempt_opened"]
+        finalizations.append(True)
+        return real_finalize(*args, **kwargs)
+
+    monkeypatch.setattr(
+        control.lifecycle, "finalize_prepared_attempt", finalize_with_open_log
+    )
+    monkeypatch.setattr(
+        control.slurm_submission,
+        "submit",
+        lambda *_args, **_kwargs: pytest.fail("finalization submitted a job"),
+    )
+    scheduler = control.slurm_submission
+    for name in (
+        scheduler.DELEGATE_MARKER_ENV,
+        scheduler.PROFILE_SHA256_ENV,
+        scheduler.SUBMIT_UID_ENV,
+        scheduler.REQUEST_TOKEN_ENV,
+        "SLURM_JOB_ID",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    if delegate_context != "none":
+        monkeypatch.setenv(scheduler.DELEGATE_MARKER_ENV, scheduler.DELEGATE_MARKER)
+        if delegate_context == "mismatched":
+            monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, "f" * 64)
+            monkeypatch.setenv(scheduler.SUBMIT_UID_ENV, str(os.getuid()))
+            monkeypatch.setenv("SLURM_JOB_ID", "812345")
+
+    result = control.resume_from_args(
+        argparse.Namespace(
+            project=project,
+            run=built.built.run_root.name,
+            profile=str(profile),
+            execute=True,
+            log_root=log_root,
+        )
+    )
+    assert result == (0 if delegate_context == "none" else 2)
+    assert tuple((built.built.run_root / "attempts").iterdir()) == attempts_before
+    assert not (built.built.root / "logs").exists()
+    if delegate_context != "none":
+        assert prepared.read_bytes() == original_receipt
+        assert not terminal.receipt_path.exists()
+        assert finalizations == []
+        if delegate_context == "incomplete":
+            assert not log_root.exists()
+        else:
+            (log_path,) = log_root.rglob("*.jsonl")
+            assert [
+                json.loads(line)["event"] for line in log_path.read_text().splitlines()
+            ] == [
+                "attempt_opened",
+                "attempt_failed",
+            ]
+        return
+    assert terminal.receipt_path.read_bytes() == original_receipt
+    assert not prepared.exists()
+    assert finalizations == [True]
+    (log_path,) = log_root.rglob("*.jsonl")
+    assert [
+        json.loads(line)["event"] for line in log_path.read_text().splitlines()
+    ] == [
+        "attempt_opened",
+        "resume_finalization_completed",
     ]
 
 
@@ -2414,24 +3048,35 @@ def test_late_state_and_lock_namespace_drift_are_receipt_bound_blockers(
         tmp_path / "state", result=lifecycle.WorkflowResult(7, None)
     )
     state_case.inject_state_entry_after_child = True
-    state_outcome = _run_attempt(state_case.request, ops=state_case.ops())
-    assert state_outcome.receipt["status"] == "blocked"
+    with pytest.raises(
+        lifecycle.LifecycleError,
+        match="lock release left ambiguous aggregate state",
+    ):
+        _run_attempt(state_case.request, ops=state_case.ops())
+    identifier = str(_attempt_record(state_case.request)["workflow_attempt_id"])
+    state_attempt = state_case.built.run_root / "attempts" / identifier
+    receipt = json.loads((state_attempt / "prepared-attempt-receipt.json").read_bytes())
+    assert receipt["status"] == "blocked"
     assert any(
-        "Unexpected aggregate state path" in item
-        for item in state_outcome.receipt["blockers"]
+        "Unexpected aggregate state path" in item for item in receipt["blockers"]
     )
+    assert (state_attempt / "attempt-receipt.json").is_file()
 
     lock_case = _build_harness(
         tmp_path / "lock", result=lifecycle.WorkflowResult(7, None)
     )
     lock_case.inject_lock_entry_on_release = True
-    lock_outcome = _run_attempt(lock_case.request, ops=lock_case.ops())
-    assert lock_outcome.receipt["status"] == "blocked"
-    assert any(
-        "Unexpected retained aggregate lock state" in item
-        for item in lock_outcome.receipt["blockers"]
-    )
-    assert lock_outcome.receipt_path.is_file()
+    with pytest.raises(
+        lifecycle.LifecycleError,
+        match="Unexpected retained aggregate lock state",
+    ):
+        _run_attempt(lock_case.request, ops=lock_case.ops())
+    identifier = str(_attempt_record(lock_case.request)["workflow_attempt_id"])
+    attempt_root = lock_case.built.run_root / "attempts" / identifier
+    assert (attempt_root / "prepared-attempt-receipt.json").is_file()
+    assert (attempt_root / "released-run-lock.json").is_file()
+    assert not (attempt_root / "attempt-receipt.json").exists()
+    assert (lock_case.built.run_root / "locks/foreign.lock").is_file()
 
 
 def test_release_hook_cannot_substitute_equal_bytes_on_a_new_inode(
@@ -2445,6 +3090,7 @@ def test_release_hook_cannot_substitute_equal_bytes_on_a_new_inode(
         evidence_path: Path,
         expected: bytes,
         _inode: tuple[int, int],
+        _retain_source: bool,
     ) -> None:
         evidence_path.write_bytes(expected)
         path.unlink()
@@ -2453,6 +3099,7 @@ def test_release_hook_cannot_substitute_equal_bytes_on_a_new_inode(
         run_workflow=defaults.run_workflow,
         publish_bytes=defaults.publish_bytes,
         release_lock=copied_release,
+        promote_receipt=defaults.promote_receipt,
         now=defaults.now,
         host_name=defaults.host_name,
         process_id=defaults.process_id,
@@ -2462,12 +3109,19 @@ def test_release_hook_cannot_substitute_equal_bytes_on_a_new_inode(
         admit_runtime_context=defaults.admit_runtime_context,
         sync_directory=defaults.sync_directory,
     )
-    with pytest.raises(lifecycle.LifecycleError, match="descriptor identity"):
+    with pytest.raises(
+        (lifecycle.LifecycleError, inspection.InspectionError),
+        match="staged terminal receipt alias",
+    ):
         _run_attempt(built.request, ops=ops)
     identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
-    assert not (
-        built.built.run_root / "attempts" / identifier / "attempt-receipt.json"
-    ).exists()
+    attempt_root = built.built.run_root / "attempts" / identifier
+    assert (attempt_root / "prepared-attempt-receipt.json").is_file()
+    assert (attempt_root / "released-run-lock.json").is_file()
+    assert not (attempt_root / "attempt-receipt.json").exists()
+    assert inspection.inspect_run(built.built.run_root).prepared_finalization is None
+    with pytest.raises(inspection.InspectionError, match="no admissible prepared"):
+        inspection.inspect_prepared_finalization(built.built.run_root)
 
 
 def test_owned_lock_release_retains_owned_inode_and_removes_public_name(
@@ -2548,6 +3202,68 @@ def test_owned_lock_injected_destination_race_preserves_both_names(
 
     assert lock.read_bytes() == expected
     assert evidence.read_bytes() == foreign
+
+
+def test_prepared_receipt_promotion_retains_inode_and_exact_bytes(
+    tmp_path: Path,
+) -> None:
+    prepared = tmp_path / "prepared-attempt-receipt.json"
+    receipt = tmp_path / "attempt-receipt.json"
+    expected = b'{"schema_version":"emrys.attempt-receipt.v3"}\n'
+    prepared.write_bytes(expected)
+    prepared_state = prepared.stat(follow_symlinks=False)
+
+    lifecycle._promote_prepared_receipt(
+        prepared,
+        receipt,
+        expected,
+        (prepared_state.st_dev, prepared_state.st_ino),
+    )
+
+    receipt_state = receipt.stat(follow_symlinks=False)
+    assert not prepared.exists()
+    assert receipt.read_bytes() == expected
+    assert (receipt_state.st_dev, receipt_state.st_ino) == (
+        prepared_state.st_dev,
+        prepared_state.st_ino,
+    )
+
+
+def test_prepared_receipt_cleanup_failure_preserves_both_inode_aliases(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    prepared = tmp_path / "prepared-attempt-receipt.json"
+    receipt = tmp_path / "attempt-receipt.json"
+    expected = b'{"schema_version":"emrys.attempt-receipt.v3"}\n'
+    prepared.write_bytes(expected)
+    prepared_state = prepared.stat(follow_symlinks=False)
+    real_unlink = Path.unlink
+
+    def fail_prepared_unlink(path: Path, *args: Any, **kwargs: Any) -> None:
+        if path == prepared:
+            raise OSError("fixture prepared-alias cleanup failure")
+        real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", fail_prepared_unlink)
+
+    with pytest.raises(
+        lifecycle.LifecycleError,
+        match="prepared-alias cleanup failure",
+    ):
+        lifecycle._promote_prepared_receipt(
+            prepared,
+            receipt,
+            expected,
+            (prepared_state.st_dev, prepared_state.st_ino),
+        )
+
+    receipt_state = receipt.stat(follow_symlinks=False)
+    assert prepared.read_bytes() == receipt.read_bytes() == expected
+    assert (receipt_state.st_dev, receipt_state.st_ino) == (
+        prepared_state.st_dev,
+        prepared_state.st_ino,
+    )
 
 
 def test_initial_and_resume_argv_never_contain_recovery_bypasses(
@@ -2654,6 +3370,7 @@ def test_lying_runtime_authority_fails_before_attempt_publication(
         run_workflow=ops.run_workflow,
         publish_bytes=ops.publish_bytes,
         release_lock=ops.release_lock,
+        promote_receipt=ops.promote_receipt,
         now=ops.now,
         host_name=ops.host_name,
         process_id=ops.process_id,
@@ -3121,16 +3838,24 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
         *,
         ops: inspection.InspectionOps | None = None,
         allowed_next_attempt: Mapping[str, Any] | None = None,
+        prospective_receipt: inspection.PreparedFinalizationCandidate | None = None,
     ) -> inspection.RunInspection:
         before = {path: len(chunks) for path, chunks in chunk_lengths.items()}
         result = original_inspect_run(
             run_root,
             ops=ops,
             allowed_next_attempt=allowed_next_attempt,
+            prospective_receipt=prospective_receipt,
         )
         resume_inspections.append(
             (
-                "under-lock" if allowed_next_attempt is not None else "outer",
+                (
+                    "under-lock"
+                    if allowed_next_attempt is not None
+                    else "prospective"
+                    if prospective_receipt is not None
+                    else "outer"
+                ),
                 tuple(
                     path
                     for path in (stdout_path, stderr_path)
@@ -3156,9 +3881,12 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
     second_outcome = _run_attempt(first.request, ops=first.ops())
     assert second_outcome.receipt["status"] == "succeeded"
     expected_log_pass = (stdout_path, stderr_path)
+    # Outer planning, under-lock admission, staged and terminal re-admission.
     assert resume_inspections == [
         ("outer", expected_log_pass),
         ("under-lock", expected_log_pass),
+        ("prospective", expected_log_pass),
+        ("outer", expected_log_pass),
     ]
 
 

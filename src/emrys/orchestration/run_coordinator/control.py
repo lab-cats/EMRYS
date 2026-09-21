@@ -94,7 +94,7 @@ from emrys.orchestration.run_coordinator.resource_policy import (
 from emrys.orchestration.run_coordinator import slurm_submission
 
 RUN_DESCRIPTION = "Plan an immutable Run; confirm or use --execute. Installs nothing."
-RESUME_DESCRIPTION = "Plan a safe resume, then confirm or use --execute for automation."
+RESUME_DESCRIPTION = "Finish interrupted finalization or continue eligible work; confirm or use --execute."
 INSPECT_DESCRIPTION = (
     "Show retained Project submissions and inspect one Run without changing state."
 )
@@ -135,6 +135,12 @@ class _WatchTarget:
     request: slurm_submission.SubmissionRequestObservation | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class _ResumeAction:
+    effective: inspection.RunInspection
+    finalization: inspection.PreparedFinalizationInspection | None = None
+
+
 _CONTROL_ERRORS = (
     slurm_submission.SlurmSubmissionError,
     slurm_submission.scheduler_observation.DiscoveryError,
@@ -160,7 +166,7 @@ def _control_failure(exc: Exception) -> int:
     return 0 if isinstance(exc, _RunSelectionCancelled) else 2
 
 
-PlanBuilder = Callable[[], AttemptPlan]
+PlanBuilder = Callable[[], AttemptPlan | int]
 
 
 def _absolute(path: Path) -> Path:
@@ -430,6 +436,14 @@ def _admit_resume_predecessor(
         observed = inspection.inspect_run(root)
     except (OSError, inspection.InspectionError) as exc:
         raise ControlError(str(exc)) from exc
+    return _require_resume_predecessor(observed)
+
+
+def _require_resume_predecessor(
+    observed: inspection.RunInspection,
+) -> tuple[inspection.RunInspection, dict[str, Any]]:
+    """Require ordinary finalized-receipt continuation admission."""
+
     if not observed.recovery_available or observed.latest_attempt is None:
         raise ControlError(
             "Run is not at an admissible closed-task resume boundary: "
@@ -443,6 +457,20 @@ def _admit_resume_predecessor(
         )
     previous = observed.latest_attempt
     return observed, previous
+
+
+def _admit_resume_action(run_root: Path) -> _ResumeAction:
+    """Admit ordinary continuation or one exact prepared-finalization preview."""
+
+    root = _absolute(run_root)
+    try:
+        observed = inspection.inspect_run(root)
+        if observed.prepared_finalization is not None:
+            prepared = inspection.inspect_prepared_finalization(root)
+            return _ResumeAction(prepared.prospective_state, prepared)
+    except (OSError, inspection.InspectionError) as exc:
+        raise ControlError(str(exc)) from exc
+    return _ResumeAction(_require_resume_predecessor(observed)[0])
 
 
 def _resume_predecessor_policy(
@@ -624,11 +652,16 @@ def _plan_resume(
     resource_overrides: ResourceOverrides = ResourceOverrides(),
     scheduler_job_id: str | None = None,
     report_enabled: bool = True,
+    observed: inspection.RunInspection | None = None,
 ) -> AttemptPlan:
     """Plan a safe closed-task resume without writing run state."""
 
     root = _absolute(run_root)
-    observed, previous = _admit_resume_predecessor(root)
+    observed, previous = (
+        _admit_resume_predecessor(root)
+        if observed is None
+        else _require_resume_predecessor(observed)
+    )
     project_path = Path(str(previous["authored_paths"]["request"]))
     workspace = Path(str(previous["workspace"]))
     runtime_profile = _resume_runtime_profile_path(project_path, previous)
@@ -754,6 +787,8 @@ def _run_followup(command: str, run_root: Path, run_id: str, *options: str) -> s
 
 
 def _next_supported_action(observed: inspection.RunInspection) -> str:
+    if observed.prepared_finalization is not None:
+        return "Use emrys resume to finish the exact prepared Attempt finalization."
     if observed.integrity == "blocked":
         return "Preserve this Run; review Run integrity blockers. Do not resume."
     if observed.results_status == "blocked":
@@ -789,6 +824,7 @@ def _resolve_execution_profile(
     project_path: Path,
     overrides: ResourceOverrides,
     resume_run_root: Path | None = None,
+    resume_state: inspection.RunInspection | None = None,
 ) -> tuple[ExecutionProfile, str | None]:
     """Admit one selected profile and any private Slurm delegate binding."""
 
@@ -808,7 +844,11 @@ def _resolve_execution_profile(
         and isinstance(profile.placement, SlurmPlacement)
         and not profile.computational_resources_explicit
     ):
-        _observed, previous = _admit_resume_predecessor(resume_run_root)
+        _observed, previous = (
+            _admit_resume_predecessor(resume_run_root)
+            if resume_state is None
+            else _require_resume_predecessor(resume_state)
+        )
         profile = replace(
             profile,
             resource_policy=_resume_predecessor_policy(
@@ -1020,6 +1060,8 @@ def _schedule(
     controls: LogControls,
     overrides: ResourceOverrides,
     workspace: Path,
+    *,
+    before_submission: Callable[[], None] | None = None,
 ) -> int:
     request_token = uuid.uuid4().hex
     request_root = _absolute(workspace) / "logs" / f"submission-{request_token}"
@@ -1047,6 +1089,10 @@ def _schedule(
         )
     else:
         console_field("Run", inspection.human_run_name(arguments.run))
+        if before_submission is not None:
+            console_field(
+                "Finalization", "complete exact prepared Attempt receipt first"
+            )
     for line in _submission_summary(profile, controls.verbose):
         console_print(line)
     if controls.verbose:
@@ -1118,6 +1164,8 @@ def _schedule(
     if not arguments.execute and not _confirm_execution():
         _print_no_write("scheduler or workspace")
         return 0
+    if before_submission is not None:
+        before_submission()
     _admit_workspace_location(workspace)
     _prepare_scheduler_log_dir(workspace)
     try:
@@ -1203,6 +1251,7 @@ def _execute_plan(
     scope_id: str,
     entrypoint: str,
     report_enabled: bool = True,
+    before_plan: Callable[[], None] | None = None,
 ) -> int:
     """Build and execute one plan inside one non-authoritative application log."""
 
@@ -1277,6 +1326,8 @@ def _execute_plan(
         )
 
     try:
+        if before_plan is not None:
+            before_plan()
         plan = plan_source() if callable(plan_source) else plan_source
     except KeyboardInterrupt:
         log_best_effort(
@@ -1290,7 +1341,7 @@ def _execute_plan(
             next_action="Retry when ready.",
         )
         raise
-    except ControlError as exc:
+    except _CONTROL_ERRORS as exc:
         log_best_effort(
             lambda: attempt.fail(
                 phase="preflight",
@@ -1304,6 +1355,17 @@ def _execute_plan(
             next_action="Correct the reported preflight error, then retry.",
         )
         raise ControlError(str(exc), reported=True) from exc
+
+    if isinstance(plan, int):
+        log_best_effort(
+            lambda: attempt.terminal(
+                event_name="resume_finalization_completed",
+                message="Prepared Attempt finalization completed without new scientific work.",
+                fields={"exit_status": field(plan)},
+            )
+        )
+        close_log_best_effort()
+        return plan
 
     log_best_effort(
         lambda: logger.info(
@@ -1580,6 +1642,109 @@ def _print_plan(
         )
 
 
+def _complete_resume_finalization(
+    run_root: Path,
+    prepared: inspection.PreparedFinalizationInspection,
+    *,
+    require_recovery: bool = True,
+) -> inspection.RunInspection:
+    """Finish and freshly re-admit one exact prepared Attempt."""
+    try:
+        observed = lifecycle.finalize_prepared_attempt(run_root, prepared.candidate)
+    except (OSError, lifecycle.LifecycleError, inspection.InspectionError) as exc:
+        raise ControlError(str(exc)) from exc
+    if require_recovery:
+        _require_resume_predecessor(observed)
+    return observed
+
+
+def _finish_finalization_only(
+    arguments: argparse.Namespace,
+    run_root: Path,
+    prepared: inspection.PreparedFinalizationInspection,
+    logged: bool = False,
+) -> int:
+    """Complete an exact terminal outcome that cannot start another Attempt."""
+
+    if slurm_submission.delegate_binding() is not None:
+        raise ControlError("Prepared finalization is not a delegate operation")
+    status = str(prepared.candidate.record["status"])
+    if logged == arguments.execute:
+        console_field(
+            "Run", inspection.human_run_name(prepared.prospective_state.run_id)
+        )
+        console_field("Location", run_root)
+        console_field("Attempt", prepared.candidate.record["workflow_attempt_id"])
+        console_field("Finalization", "complete exact prepared Attempt receipt")
+        console_field("Prepared outcome", status)
+        console_field("Scientific continuation", "no new Attempt will be started")
+    if not logged and not arguments.execute and not _confirm_execution():
+        _print_no_write("resume")
+        return 0
+    if not logged:
+        return _execute_resume_locally(
+            arguments, arguments.project, run_root, overrides_from_args(arguments), None
+        )
+    observed = _complete_resume_finalization(run_root, prepared, require_recovery=False)
+    if status == "succeeded" and not observed.blockers:
+        console_print("Finalization complete; no scientific Attempt was created.")
+        return 0
+    detail = "; ".join(observed.blockers) or f"Attempt outcome is {status}"
+    message = "Finalization complete; scientific continuation remains unavailable: "
+    return _control_failure(ControlError(message + detail))
+
+
+def _execute_resume_locally(
+    arguments: argparse.Namespace,
+    project_path: Path,
+    run_root: Path,
+    overrides: ResourceOverrides,
+    expected_profile_source_sha256: str | None,
+) -> int:
+    """Open one local/delegate log before the first Run evidence admission."""
+
+    workspace = project_path.parent
+    report_enabled = not getattr(arguments, "no_report", False)
+
+    def build() -> AttemptPlan | int:
+        action = _admit_resume_action(run_root)
+        if action.finalization is not None and not action.effective.recovery_available:
+            return _finish_finalization_only(
+                arguments, run_root, action.finalization, logged=True
+            )
+        if expected_profile_source_sha256 is None:
+            raise ControlError("Execution profile could not be admitted")
+        profile, scheduler_job_id = _resolve_execution_profile(
+            arguments,
+            project_path,
+            overrides,
+            resume_run_root=run_root,
+            resume_state=action.effective,
+        )
+        # The effective delegated binding is checked by _resolve_execution_profile.
+        if profile.source_raw_sha256 != expected_profile_source_sha256:
+            raise ControlError("Execution profile changed during resume admission")
+        if action.finalization is not None:
+            _complete_resume_finalization(run_root, action.finalization)
+        return _plan_resume(
+            run_root,
+            execution_profile=profile,
+            resource_overrides=overrides,
+            scheduler_job_id=scheduler_job_id,
+            report_enabled=report_enabled,
+        )
+
+    return _execute_plan(
+        build,
+        controls=_resolve_controls(arguments, workspace),
+        workspace=workspace,
+        mode="resume",
+        scope_id=str(arguments.run),
+        entrypoint="emrys-resume",
+        report_enabled=report_enabled,
+    )
+
+
 def _finish_control(
     arguments: argparse.Namespace,
     *,
@@ -1590,6 +1755,7 @@ def _finish_control(
     scheduler_job_id: str | None,
     workspace: Path,
     build_plan: PlanBuilder,
+    before_execution: Callable[[], None] | None = None,
 ) -> int:
     report_enabled = not getattr(arguments, "no_report", False)
     if isinstance(profile.placement, SlurmPlacement) and scheduler_job_id is None:
@@ -1600,7 +1766,11 @@ def _finish_control(
             controls,
             overrides,
             workspace,
+            before_submission=before_execution,
         )
+    if before_execution is not None:
+        console_field("Finalization", "complete exact prepared Attempt receipt first")
+    plan_source: AttemptPlan | PlanBuilder = build_plan
     if not arguments.execute:
         plan = build_plan()
         _print_plan(
@@ -1611,9 +1781,7 @@ def _finish_control(
         if not _confirm_execution():
             _print_no_write("workspace" if command == "run" else "resume")
             return 0
-        plan_source: AttemptPlan | PlanBuilder = plan
-    else:
-        plan_source = build_plan
+        plan_source = plan
     return _execute_plan(
         plan_source,
         controls=controls,
@@ -1622,6 +1790,7 @@ def _finish_control(
         scope_id="pending" if command == "run" else str(arguments.run),
         entrypoint=f"emrys-{command}",
         report_enabled=report_enabled,
+        before_plan=before_execution,
     )
 
 
@@ -1803,8 +1972,42 @@ def _run_or_resume_from_args(
 
     try:
         overrides = overrides_from_args(arguments)
+        resume_action = None
         if command == "resume":
             project_path, run_root = _resolve_run_argument(arguments)
+            if arguments.execute:
+                delegate_binding = slurm_submission.delegate_binding()
+                try:
+                    placement_profile = load_execution_profile(
+                        config_path=project_execution_profile_path(
+                            project_path, getattr(arguments, "profile", None)
+                        ),
+                        resource_overrides=overrides,
+                    )
+                except ExecutionProfileError:
+                    action = _admit_resume_action(run_root)
+                    if not action.finalization or action.effective.recovery_available:
+                        raise
+                    return _execute_resume_locally(
+                        arguments, project_path, run_root, overrides, None
+                    )
+                if delegate_binding is not None:
+                    if not isinstance(placement_profile.placement, SlurmPlacement):
+                        raise slurm_submission.SlurmSubmissionError(
+                            "A private Slurm delegate requires Slurm placement"
+                        )
+                    placement_profile.attempt_placement(os.environ.get("SLURM_JOB_ID"))
+                if delegate_binding is not None or not isinstance(
+                    placement_profile.placement, SlurmPlacement
+                ):
+                    return _execute_resume_locally(
+                        arguments,
+                        project_path,
+                        run_root,
+                        overrides,
+                        placement_profile.source_raw_sha256,
+                    )
+            resume_action = _admit_resume_action(run_root)
         else:
             project_path = onboarding.project_definition_path(
                 getattr(arguments, "project", None)
@@ -1812,11 +2015,20 @@ def _run_or_resume_from_args(
             arguments.project = project_path
             run_root = None
         workspace = project_path.parent
+        if (
+            resume_action is not None
+            and resume_action.finalization is not None
+            and not resume_action.effective.recovery_available
+        ):
+            return _finish_finalization_only(
+                arguments, run_root, resume_action.finalization
+            )
         profile, scheduler_job_id = _resolve_execution_profile(
             arguments,
             project_path,
             overrides,
             resume_run_root=run_root,
+            resume_state=(None if resume_action is None else resume_action.effective),
         )
         report_enabled = not getattr(arguments, "no_report", False)
         if command == "run":
@@ -1847,6 +2059,7 @@ def _run_or_resume_from_args(
                 resource_overrides=overrides,
                 scheduler_job_id=scheduler_job_id,
                 report_enabled=report_enabled,
+                observed=resume_action.effective,
             )
         return _finish_control(
             arguments,
@@ -1857,6 +2070,13 @@ def _run_or_resume_from_args(
             overrides=overrides,
             scheduler_job_id=scheduler_job_id,
             workspace=workspace,
+            before_execution=(
+                None
+                if command == "run" or resume_action.finalization is None
+                else partial(
+                    _complete_resume_finalization, run_root, resume_action.finalization
+                )
+            ),
         )
     except _CONTROL_ERRORS as exc:
         return _control_failure(exc)

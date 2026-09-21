@@ -15,6 +15,7 @@ from emrys.contracts.orchestration.application_model import validate_successor_r
 from emrys.orchestration.run_coordinator._inspection_admission import (
     ExpectedTask,
     InspectionError,
+    PreparedFinalizationCandidate,
     SuccessorRunAuthority,
     _read_bytes,
     _record_reference,
@@ -22,6 +23,7 @@ from emrys.orchestration.run_coordinator._inspection_admission import (
     _stable_directory_entries,
     admit_attempt_run_lock,
     admit_canonical_record,
+    admit_prepared_finalization,
     admit_successor_run,
     expected_tasks,
 )
@@ -31,6 +33,7 @@ _ATTEMPT_CHILD_NAMES = frozenset(
     {
         "attempt.json",
         "attempt-receipt.json",
+        "prepared-attempt-receipt.json",
         "released-run-lock.json",
         "request.yaml",
         "tasks",
@@ -92,12 +95,12 @@ def inspect_attempt_tree(root: Path) -> tuple[tuple[Path, ...], tuple[str, ...]]
             for child in children
             if child.name not in _ATTEMPT_CHILD_NAMES
         )
-        if (
-            "released-run-lock.json" in child_names
-            and "attempt-receipt.json" not in child_names
+        if "released-run-lock.json" in child_names and not child_names.intersection(
+            {"attempt-receipt.json", "prepared-attempt-receipt.json"}
         ):
             blockers.append(
-                "Released run-lock evidence exists without a terminal receipt: "
+                "Released run-lock evidence exists without a prepared or final "
+                "terminal receipt: "
                 f"{entry / 'released-run-lock.json'}"
             )
     return tuple(entries), tuple(blockers)
@@ -120,6 +123,7 @@ def inspect_attempt_chain(
     *,
     authority: SuccessorRunAuthority | None = None,
     profile: Mapping[str, Any] | None = None,
+    prospective_receipt: PreparedFinalizationCandidate | None = None,
 ) -> tuple[
     tuple[dict[str, Any], ...],
     dict[str, dict[str, Any]],
@@ -237,6 +241,27 @@ def inspect_attempt_chain(
                 blockers.append(
                     f"Resume attempt predates predecessor completion: {identifier}"
                 )
+    latest_id = str(ordered[-1]["workflow_attempt_id"])
+    for attempt in ordered[:-1]:
+        identifier = str(attempt["workflow_attempt_id"])
+        prepared_path = root / "attempts" / identifier / "prepared-attempt-receipt.json"
+        if prepared_path.exists() or prepared_path.is_symlink():
+            blockers.append(
+                f"Non-latest workflow attempt retains prepared finalization: {identifier}"
+            )
+    if prospective_receipt is not None:
+        candidate_id = str(prospective_receipt.record["workflow_attempt_id"])
+        if candidate_id != latest_id:
+            blockers.append("Prepared finalization does not bind the latest Attempt")
+        else:
+            try:
+                current = admit_prepared_finalization(root, ordered[-1])
+            except InspectionError as exc:
+                blockers.append(str(exc))
+            else:
+                if current != prospective_receipt:
+                    blockers.append("Prepared finalization changed during inspection")
+                receipts[latest_id] = prospective_receipt.record
     for attempt in ordered:
         identifier = str(attempt["workflow_attempt_id"])
         request_path = root / "attempts" / identifier / "request.yaml"
@@ -290,7 +315,10 @@ def inspect_attempt_chain(
                         f"Workflow attempt receipt predates its attempt: {identifier}"
                     )
             try:
-                admit_attempt_run_lock(root, attempt, require_active=False)
+                if prospective_receipt is None or identifier != str(
+                    prospective_receipt.record["workflow_attempt_id"]
+                ):
+                    admit_attempt_run_lock(root, attempt, require_active=False)
             except InspectionError as exc:
                 blockers.append(str(exc))
         attempt_path = root / "attempts" / identifier / "attempt.json"

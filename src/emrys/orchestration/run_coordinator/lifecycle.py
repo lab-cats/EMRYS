@@ -112,8 +112,8 @@ class WorkflowResult:
 
 
 BytesPublisher = Callable[[Path, bytes], None]
-LockReleaser = Callable[[Path, Path, bytes, tuple[int, int]], None]
 LockEvidenceLinker = Callable[[Path, Path], None]
+OwnedFilePromoter = Callable[[Path, Path, bytes, tuple[int, int], bool], None]
 StorageContextAdmission = Callable[
     [Mapping[str, Any], Mapping[str, Any]],
     "RuntimeBinding | None",
@@ -433,7 +433,8 @@ class LifecycleOps:
 
     run_workflow: WorkflowRunner | None
     publish_bytes: BytesPublisher
-    release_lock: LockReleaser
+    release_lock: OwnedFilePromoter
+    promote_receipt: OwnedFilePromoter
     now: Callable[[], datetime]
     host_name: Callable[[], str]
     process_id: Callable[[], int]
@@ -787,32 +788,32 @@ def _acquire_attempt_mutex(
             raise observer_error
 
 
-def _release_owned_lock(
-    path: Path,
-    evidence_path: Path,
+def _promote_owned_file(
+    source: Path,
+    destination: Path,
     expected_bytes: bytes,
     expected_inode: tuple[int, int],
+    retain_source: bool = False,
     *,
     publish_evidence: LockEvidenceLinker | None = None,
 ) -> None:
-    """Publish owned lock evidence without replacing any destination inode."""
+    """Publish one owned inode at a new name, optionally retaining its source."""
 
     if not hasattr(os, "O_NOFOLLOW"):
-        raise LifecycleError("This platform lacks required O_NOFOLLOW lock release")
+        raise LifecycleError("This platform lacks required O_NOFOLLOW promotion")
     descriptor = -1
     try:
-        for directory, label in (
-            (path.parent, "aggregate lock directory"),
-            (evidence_path.parent, "released-lock evidence directory"),
-        ):
+        for directory in (source.parent, destination.parent):
             if (
                 directory.is_symlink()
                 or not directory.is_dir()
                 or directory.resolve(strict=True) != directory
             ):
-                raise LifecycleError(f"{label} must be a canonical real directory")
+                raise LifecycleError(
+                    f"Owned-file directory must be canonical and real: {directory}"
+                )
         descriptor = os.open(
-            path,
+            source,
             os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
         )
         before = os.fstat(descriptor)
@@ -824,34 +825,35 @@ def _release_owned_lock(
             )
             != expected_inode
         ):
-            raise LifecycleError(f"Run lock ownership changed before release: {path}")
+            raise LifecycleError(f"Owned file changed before promotion: {source}")
         chunks: list[bytes] = []
         while chunk := os.read(descriptor, 1024 * 1024):
             chunks.append(chunk)
         after = os.fstat(descriptor)
         if (after.st_dev, after.st_ino) != expected_inode:
-            raise LifecycleError(f"Run lock ownership changed while read: {path}")
+            raise LifecycleError(f"Owned file changed while read: {source}")
         if b"".join(chunks) != expected_bytes:
-            raise LifecycleError(f"Run lock content changed before release: {path}")
-        path_state = path.stat(follow_symlinks=False)
+            raise LifecycleError(f"Owned file content changed: {source}")
+        path_state = source.stat(follow_symlinks=False)
         if (path_state.st_dev, path_state.st_ino) != expected_inode:
-            raise LifecycleError(f"Run lock pathname changed before release: {path}")
-        if publish_evidence is None:
-
-            def evidence_publisher(source: Path, destination: Path) -> None:
-                os.link(source, destination, follow_symlinks=False)
-        else:
-            evidence_publisher = publish_evidence
+            raise LifecycleError(f"Owned pathname changed: {source}")
+        linker = (
+            (lambda first, second: os.link(first, second, follow_symlinks=False))
+            if publish_evidence is None
+            else publish_evidence
+        )
         try:
-            evidence_publisher(path, evidence_path)
+            linker(source, destination)
         except FileExistsError as exc:
-            raise LifecycleError(
-                f"Refusing to replace released-lock evidence: {evidence_path}"
-            ) from exc
-        evidence_state = evidence_path.stat(follow_symlinks=False)
+            existing = destination.stat(follow_symlinks=False)
+            if (existing.st_dev, existing.st_ino) != expected_inode:
+                raise LifecycleError(
+                    f"Refusing to replace owned-file destination: {destination}"
+                ) from exc
+        evidence_state = destination.stat(follow_symlinks=False)
         if (evidence_state.st_dev, evidence_state.st_ino) != expected_inode:
             raise LifecycleError(
-                f"Released run-lock evidence did not retain the owned inode: {evidence_path}"
+                f"Destination did not retain owned inode: {destination}"
             )
         os.lseek(descriptor, 0, os.SEEK_SET)
         retained_chunks: list[bytes] = []
@@ -874,36 +876,36 @@ def _release_owned_lock(
             retained_identity != evidence_identity
             or b"".join(retained_chunks) != expected_bytes
         ):
-            raise LifecycleError(
-                f"Released run-lock evidence changed at publication: {evidence_path}"
-            )
+            raise LifecycleError(f"Owned destination changed: {destination}")
         os.fsync(descriptor)
-        _sync_real_directory(evidence_path.parent, "released-lock evidence directory")
-        public_state = path.stat(follow_symlinks=False)
+        _sync_real_directory(destination.parent, "owned-file destination directory")
+        public_state = source.stat(follow_symlinks=False)
         if (public_state.st_dev, public_state.st_ino) != expected_inode:
             raise LifecycleError(
-                f"Run lock pathname changed after evidence publication; owned evidence retained at {evidence_path}"
+                f"Owned source changed after publication; destination retained at {destination}"
             )
-        path.unlink()
-        if path.exists() or path.is_symlink():
-            raise LifecycleError(
-                f"Owned run lock remained after evidence publication: {path}"
-            )
-        evidence_after = evidence_path.stat(follow_symlinks=False)
+        if retain_source:
+            return
+        source.unlink()
+        if source.exists() or source.is_symlink():
+            raise LifecycleError(f"Owned source remained after promotion: {source}")
+        evidence_after = destination.stat(follow_symlinks=False)
         if (evidence_after.st_dev, evidence_after.st_ino) != expected_inode:
             raise LifecycleError(
-                f"Released run-lock evidence changed after unlink: {evidence_path}"
+                f"Owned destination changed after unlink: {destination}"
             )
-        _sync_real_directory(path.parent, "aggregate lock directory")
-        if evidence_path.parent != path.parent:
-            _sync_real_directory(
-                evidence_path.parent, "released-lock evidence directory"
-            )
+        _sync_real_directory(source.parent, "owned-file source directory")
+        if destination.parent != source.parent:
+            _sync_real_directory(destination.parent, "owned-file destination directory")
     except OSError as exc:
-        raise LifecycleError(f"Could not release owned run lock {path}: {exc}") from exc
+        raise LifecycleError(f"Could not promote owned file {source}: {exc}") from exc
     finally:
         if descriptor >= 0:
             os.close(descriptor)
+
+
+_release_owned_lock = _promote_owned_file
+_promote_prepared_receipt = _promote_owned_file
 
 
 def _wait_for_group_absence(
@@ -1348,6 +1350,7 @@ def default_lifecycle_ops() -> LifecycleOps:
         run_workflow=None,
         publish_bytes=_publish_exclusive,
         release_lock=_release_owned_lock,
+        promote_receipt=_promote_prepared_receipt,
         now=lambda: datetime.now(UTC),
         host_name=socket.gethostname,
         process_id=os.getpid,
@@ -1818,6 +1821,7 @@ def _run_attempt_locked(
             )
     attempt_path = attempt_root / "attempt.json"
     receipt_path = attempt_root / "attempt-receipt.json"
+    prepared_receipt_path = attempt_root / "prepared-attempt-receipt.json"
     lock_path = locks_root / "run.lock"
     released_lock_path = attempt_root / "released-run-lock.json"
 
@@ -1872,7 +1876,7 @@ def _run_attempt_locked(
             else locks_root / f"released-{identifier}-run-lock.json"
         )
         active_ops.release_lock(
-            lock_path, failure_evidence_path, lock_bytes, lock_inode
+            lock_path, failure_evidence_path, lock_bytes, lock_inode, False
         )
         raise LifecycleError(
             f"Could not establish immutable workflow attempt: {exc}"
@@ -2073,33 +2077,16 @@ def _run_attempt_locked(
         if not blockers:
             status = "interrupted"
             message = result.message
-    active_ops.release_lock(lock_path, released_lock_path, lock_bytes, lock_inode)
-    released_bytes, released_inode = _read_stable_with_identity(
-        released_lock_path,
-        root,
-        "released run-lock evidence",
-    )
-    if released_bytes != lock_bytes or released_inode != lock_inode:
-        raise LifecycleError(
-            "Released run-lock evidence does not retain the owned descriptor identity"
-        )
-    released_namespace_blockers = [
-        *inspection.state_tree_blockers(root),
-        *inspection.lock_tree_blockers(root, expected_run_lock=False),
-    ]
-    if released_namespace_blockers:
-        blockers.extend(released_namespace_blockers)
-        status = "blocked"
-        message = "Workflow lock release left ambiguous aggregate state"
     _observe_phase(active_ops, "before_receipt_publication")
     _observe_application_event(active_ops, "publication_ready")
+    signals.block_for_receipt_commit()
     if signals.first_signal is not None:
         result = WorkflowResult(
             None,
             signals.first_signal,
             "Lifecycle signal recorded during workflow transaction",
         )
-        if not blockers and not released_namespace_blockers:
+        if not blockers:
             status = "interrupted"
             message = result.message
     receipt = _terminal_receipt(
@@ -2117,36 +2104,27 @@ def _run_attempt_locked(
         message=message,
         now=active_ops.now(),
     )
-    signals.block_for_receipt_commit()
-    try:
-        if signals.first_signal is not None:
-            result = WorkflowResult(
-                None,
-                signals.first_signal,
-                "Lifecycle signal recorded during workflow transaction",
-            )
-            if not blockers and not released_namespace_blockers:
-                receipt = _terminal_receipt(
-                    root=root,
-                    attempt=attempt,
-                    attempt_path=attempt_path,
-                    released_lock_path=released_lock_path,
-                    lock_bytes=lock_bytes,
-                    status="interrupted",
-                    result=result,
-                    terminal_tasks=terminal_tasks,
-                    task_starts=task_starts,
-                    verified=verified,
-                    blockers=blockers,
-                    message=result.message,
-                    now=active_ops.now(),
-                )
-        active_ops.publish_bytes(
-            receipt_path,
-            orchestration_contracts.canonical_json_bytes(receipt),
+    receipt_bytes = orchestration_contracts.canonical_json_bytes(receipt)
+    active_ops.publish_bytes(
+        prepared_receipt_path,
+        receipt_bytes,
+    )
+    active_ops.sync_directory(attempt_root, "prepared Attempt receipt directory")
+    if (
+        _read_stable(prepared_receipt_path, root, "prepared Attempt receipt")
+        != receipt_bytes
+    ):
+        raise LifecycleError(
+            "Prepared Attempt receipt differs from the exact terminal bytes"
         )
-    except BaseException:
-        raise
+    prepared_candidate = inspection.admit_prepared_finalization(root, attempt)
+    _complete_prepared_transition(
+        root,
+        attempt,
+        prepared_candidate,
+        active_ops,
+        require_clean_namespace=True,
+    )
     signals.mark_receipt_committed()
     _observe_phase(active_ops, "after_receipt_publication")
     return LifecycleOutcome(
@@ -2185,6 +2163,183 @@ def _admit_lifecycle_request(request: LifecycleRequest) -> dict[str, Any]:
             "Prepared workflow attempt does not bind lifecycle operation"
         )
     return attempt
+
+
+def _admit_completed_prepared(
+    root: Path,
+    expected: inspection.PreparedFinalizationCandidate,
+) -> inspection.RunInspection:
+    """Admit the exact completed transition, including retained inode identity."""
+
+    identifier = str(expected.record["workflow_attempt_id"])
+    attempt_root = root / "attempts" / identifier
+    receipt_path = attempt_root / "attempt-receipt.json"
+    released_path = attempt_root / "released-run-lock.json"
+    stale_names = (
+        attempt_root / "prepared-attempt-receipt.json",
+        root / "locks/run.lock",
+    )
+    if any(path.exists() or path.is_symlink() for path in stale_names):
+        raise LifecycleError("Completed Attempt finalization retains a source name")
+    try:
+        observed = inspection.inspect_run(root)
+        attempt = observed.latest_attempt
+        if (
+            attempt is None
+            or str(attempt["workflow_attempt_id"]) != identifier
+            or observed.latest_receipt != expected.record
+        ):
+            raise LifecycleError(
+                "Completed Attempt finalization does not match the prepared receipt"
+            )
+        inspection.admit_attempt_run_lock(root, attempt, require_active=False)
+        receipt_bytes, receipt_inode = _read_stable_with_identity(
+            receipt_path, root, "terminal Attempt receipt"
+        )
+        lock_bytes, lock_inode = _read_stable_with_identity(
+            released_path, root, "released run-lock evidence"
+        )
+    except (OSError, inspection.InspectionError) as exc:
+        raise LifecycleError(str(exc)) from exc
+    if (
+        receipt_bytes != orchestration_contracts.canonical_json_bytes(expected.record)
+        or receipt_inode != expected.prepared_inode
+        or lock_bytes
+        != orchestration_contracts.canonical_json_bytes(
+            orchestration_contracts.run_lock_record(attempt)
+        )
+        or lock_inode != expected.lock_inode
+    ):
+        raise LifecycleError("Completed Attempt finalization changed owned evidence")
+    return observed
+
+
+def _complete_prepared_transition(
+    root: Path,
+    attempt: Mapping[str, Any],
+    current: inspection.PreparedFinalizationCandidate,
+    ops: LifecycleOps,
+    *,
+    require_clean_namespace: bool,
+) -> inspection.RunInspection:
+    """Stage both aliases before retiring either exact source name."""
+
+    attempt_root = root / "attempts" / str(attempt["workflow_attempt_id"])
+    lock_path = root / "locks/run.lock"
+    released_path = attempt_root / "released-run-lock.json"
+    prepared_path = attempt_root / "prepared-attempt-receipt.json"
+    receipt_path = attempt_root / "attempt-receipt.json"
+    lock_bytes = orchestration_contracts.canonical_json_bytes(
+        orchestration_contracts.run_lock_record(attempt)
+    )
+    receipt_bytes = orchestration_contracts.canonical_json_bytes(current.record)
+    if current.lock_shape == "active":
+        ops.release_lock(
+            lock_path,
+            released_path,
+            lock_bytes,
+            current.lock_inode,
+            True,
+        )
+        linked = inspection.admit_prepared_finalization(root, attempt)
+        if linked != replace(current, lock_shape="active-released-alias"):
+            raise LifecycleError("Prepared lock alias changed during staging")
+        current = linked
+    if current.receipt_shape == "prepared":
+        _observe_phase(ops, "before_receipt_promotion")
+        ops.promote_receipt(
+            prepared_path,
+            receipt_path,
+            receipt_bytes,
+            current.prepared_inode,
+            True,
+        )
+        linked = inspection.admit_prepared_finalization(root, attempt)
+        if linked != replace(current, receipt_shape="prepared-final-alias"):
+            raise LifecycleError("Prepared receipt alias changed during staging")
+        current = linked
+    inspection.inspect_prepared_finalization(root, expected=current)
+    if current.lock_shape != "released":
+        _promote_owned_file(lock_path, released_path, lock_bytes, current.lock_inode)
+    if require_clean_namespace:
+        blockers = (
+            *inspection.state_tree_blockers(root),
+            *inspection.lock_tree_blockers(root, expected_run_lock=False),
+        )
+        if blockers:
+            raise LifecycleError(
+                "Workflow lock release left ambiguous aggregate state; "
+                "the prepared receipt was retained without terminal publication: "
+                + "; ".join(blockers)
+            )
+    _promote_owned_file(
+        prepared_path, receipt_path, receipt_bytes, current.prepared_inode
+    )
+    return _admit_completed_prepared(root, current)
+
+
+def finalize_prepared_attempt(
+    run_root: Path,
+    expected: inspection.PreparedFinalizationCandidate,
+    *,
+    ops: LifecycleOps | None = None,
+) -> inspection.RunInspection:
+    """Complete one exact prepared receipt transition under lifecycle serialization."""
+
+    active_ops = default_lifecycle_ops() if ops is None else ops
+    with TransactionSignalController(
+        DEFAULT_SIGNAL_OPS, active_ops.process_group_ops
+    ) as signals:
+        root = _canonical_root(run_root)
+        with _acquire_attempt_mutex(
+            root,
+            observe=active_ops.observe_mutex,
+            interrupted=lambda: signals.first_signal is not None,
+        ):
+            _refuse_pre_attempt_signal(signals, "before prepared finalization")
+            try:
+                admitted = inspection.inspect_prepared_finalization(root)
+            except inspection.InspectionError:
+                observed = _admit_completed_prepared(root, expected)
+                signals.block_for_receipt_commit()
+                if signals.first_signal is not None:
+                    raise LifecycleError(
+                        "Prepared finalization interrupted before commit"
+                    )
+                signals.mark_receipt_committed()
+                return observed
+            current = admitted.candidate
+            lock_order = {"active": 0, "active-released-alias": 1, "released": 2}
+            receipt_order = {"prepared": 0, "prepared-final-alias": 1}
+            if (
+                replace(
+                    current,
+                    lock_shape=expected.lock_shape,
+                    receipt_shape=expected.receipt_shape,
+                )
+                != expected
+                or lock_order[current.lock_shape] < lock_order[expected.lock_shape]
+                or receipt_order[current.receipt_shape]
+                < receipt_order[expected.receipt_shape]
+            ):
+                raise LifecycleError(
+                    "Prepared Attempt finalization changed before commit"
+                )
+            attempt = admitted.prospective_state.latest_attempt
+            if attempt is None:
+                raise LifecycleError("Prepared finalization has no admitted Attempt")
+            signals.block_for_receipt_commit()
+            if signals.first_signal is not None:
+                raise LifecycleError("Prepared finalization interrupted before commit")
+            observed = _complete_prepared_transition(
+                root,
+                attempt,
+                current,
+                active_ops,
+                require_clean_namespace=False,
+            )
+            signals.mark_receipt_committed()
+            return observed
 
 
 def run_materialized_attempt(
@@ -2267,6 +2422,7 @@ def run_materialized_attempt(
                             evidence,
                             lock_bytes,
                             owned.inode,
+                            False,
                         )
                 if isinstance(exc, LifecycleError):
                     raise
@@ -2285,5 +2441,6 @@ __all__ = (
     "WorkflowResult",
     "build_snakemake_argv",
     "default_lifecycle_ops",
+    "finalize_prepared_attempt",
     "run_materialized_attempt",
 )

@@ -26,7 +26,8 @@ identity and content for use:
   the name does not contribute to its content-derived identity.
 - A Run immutably binds one Analysis revision and one Execution Plan. Changing
   scientific intent or planned tasks creates another Run.
-- Each execution or resume creates a new Attempt. It cannot mutate the Run.
+- Each execution or continuation creates a new Attempt. Resume can first
+  complete a prepared finalization; neither operation mutates the Run.
 - Results are the admitted final scientific artifacts beneath that Run.
   Reporting is a downstream transaction, not a scientific stage or completion
   authority.
@@ -350,7 +351,8 @@ then ask once before executing that same object. Refusal, EOF, interruption, or
 noninteractive omission of `--execute` writes nothing, submits nothing, and
 opens no application log. `--execute` is the explicit automation path.
 Normal plan output is limited to Run identity/location, pending/reusable work,
-and reporting disposition. Slurm planning adds placement and its allocation
+reporting disposition, and any prepared finalization that resume must complete
+before planning a new Attempt. Slurm planning adds placement and its allocation
 request. `--verbose` restores profile limits, immutable identities, commands,
 per-Task detail, and the evidence-boundary explanation.
 
@@ -909,8 +911,9 @@ definitions cannot execute as new work. Pending definitions belong to the new
 Attempt and freeze a nullable `retry_task_attempt_record`: null for an unentered
 scope, otherwise the exact latest positive abort for that scope. Retained Step
 07 work and retries keep the original selected-sample manifest path and bytes;
-resume never recreates missing historical inputs. A changed plan requires a new Run; resume creates a new Attempt
-without changing any predecessor.
+resume never recreates missing historical inputs. A changed plan requires a new
+Run; continuing incomplete work creates a new Attempt without changing any
+predecessor.
 
 Graph construction shares decoded original manifests across task definitions.
 Each worker decodes its selected manifest at startup and retains exact-byte
@@ -966,9 +969,31 @@ This requires trusted workers to keep relevant computation and writes within
 their descendants and supplied owned paths, without preexisting-service or
 remote delegation, as required by the [provider contract](../../analyses/README.md).
 Structural admission is not a filesystem or network sandbox. Worker loss,
-missing workflow finalization, blocked receipts, postpublication failures and
-old record formats remain ineligible. A durable Task abort without a complete
-terminal workflow receipt does not authorize resume.
+unclosed entered Tasks, blocked receipts, postpublication failures and old
+record formats remain ineligible for continuation. A durable Task abort alone
+does not authorize reconstruction of a missing workflow receipt.
+
+`emrys resume RUN` also owns completion of an interrupted prepared Attempt
+finalization. Lifecycle prepares the exact canonical `emrys.attempt-receipt.v3`
+bytes only after observing workflow termination and deciding the terminal
+outcome from admitted Task history and evidence. Preparation is immutable
+Attempt-local transaction state, not a new receipt schema or a mutable Run.
+Resume revalidates those bytes and their exact Run, Attempt, retained evidence
+and lock ownership under the existing lifecycle serialization boundary before
+completing their publication. It never reconstructs a receipt from scheduler
+state, logs, timestamps, output presence, PID absence or a released lock.
+Publication stages same-inode released-lock and terminal-receipt aliases before
+retiring either active source name. A released lock plus a prepared receipt
+without that terminal alias is not ownership proof and remains ineligible.
+
+Preview and declined confirmation leave the prepared transaction untouched;
+confirmed resume or `--execute` completes only that exact finalization before
+rechecking ordinary continuation eligibility. A failed or interrupted outcome
+may then admit a new Attempt through the existing closed-task boundary. A
+blocked outcome remains blocked, and a succeeded outcome starts no new
+scientific work. Legacy missing-finalization states without prepared bytes and
+lost or unclosed Tasks remain preserved and ineligible. This boundary cannot
+recover the historical E09 Run or establish its cause.
 
 Snakemake schedules only verified-task targets. Native artifacts, validation
 reports, receipts, streams, and recovery evidence are not disposable engine

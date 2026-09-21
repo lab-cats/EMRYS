@@ -32,7 +32,8 @@ A queued job may not have created its Run: check its exact scheduler ID before
 resubmitting. Inspect or resume an existing Run; do not delete or rename its
 root to make initialization succeed.
 
-**Failed or interrupted, with recovery available.** Preview, then confirm:
+**Failed, interrupted, or awaiting supported finalization.** Follow inspection's
+supported resume action. Preview, then confirm:
 
 ```bash
 emrys resume RUN </dev/null
@@ -41,10 +42,19 @@ emrys resume RUN
 
 Viking Projects created with `--site viking` already select Slurm. Use
 `emrys resume RUN --profile NAME` only to select another existing profile.
-Resume creates a new Attempt for the same immutable Run and checks prior work
-before reuse; do not bypass it with raw Snakemake. A `blocked` state has no public
-reconciliation or cleanup command; keep the evidence and consult the named
-component's owner.
+Resume checks prior work before reuse and creates a new Attempt only for
+eligible unfinished work in the same immutable Run. If the earlier Attempt
+retained an exact prepared terminal receipt, resume can first complete that
+finalization. The preview explains the required action; declining changes
+nothing, and `--execute` is the automation route. A prepared success starts no
+new scientific work; a prepared blocked outcome remains blocked.
+
+Missing prepared evidence, lost workers and unclosed Tasks remain blocked.
+Scheduler state, logs or absence of a PID do not supply the missing proof.
+Preserve the Run, lock and partials and consult the named component's owner;
+do not bypass refusal with raw Snakemake or manual cleanup. This support does
+not recover historical Runs that lack prepared finalization evidence. Do not
+rename lock or receipt files to imitate a supported interrupted transaction.
 
 **Snakemake fails with `No username set in the environment`.** A compute node
 may have no passwd entry for the job's numeric UID. Older EMRYS submissions

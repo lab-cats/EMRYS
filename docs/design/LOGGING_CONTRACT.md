@@ -81,6 +81,10 @@ opens it only after confirmation and before lifecycle admission. Doctor opens
 one `maintenance` attempt after repair confirmation and before its first
 filesystem or package-manager mutation. A Slurm submitter opens none; the
 compute delegate opens the Run attempt inside the allocation.
+Finalization-only `resume` is local execution, even with a Slurm profile: it
+opens one application attempt before completing prepared evidence and submits
+no job. If profile selection fails, `resume` may inspect the Run read-only to
+identify that profile-independent action; ordinary profile refusal owns no log.
 Stop opens one `maintenance` attempt scoped to the exact submission request
 after target/client admission and explicit execution intent. Already-terminal
 targets need no cancellation or new application log.

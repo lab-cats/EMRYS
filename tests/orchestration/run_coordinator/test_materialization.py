@@ -3190,38 +3190,82 @@ def test_interactive_run_confirms_exact_plan_before_every_write(
         assert not log_root.exists()
 
 
-def test_interactive_resume_uses_the_same_no_write_gate(
+@pytest.mark.parametrize(("response", "confirmed"), (("no\n", False), ("yes\n", True)))
+def test_interactive_prepared_resume_finalizes_only_after_confirmation(
     tmp_path: Path,
     capsys,
     monkeypatch: pytest.MonkeyPatch,
+    response: str,
+    confirmed: bool,
 ) -> None:
     plan = _plan(tmp_path)
-    plan.run_root.mkdir(parents=True)
+    failed = _failed_run(plan)
+    attempt_root = (
+        plan.run_root / "attempts" / str(failed.latest_attempt["workflow_attempt_id"])
+    )
+    receipt = attempt_root / "attempt-receipt.json"
+    prepared = attempt_root / "prepared-attempt-receipt.json"
+    receipt.rename(prepared)
+    (attempt_root / "released-run-lock.json").rename(plan.run_root / "locks/run.lock")
+    _bind_readiness(monkeypatch, plan.readiness, plan.resources)
     named = plan.workspace / "runtime/profiles/resume-ci.yaml"
     shutil.copy2(
         plan.run.analysis.source_path.parent / "runtime/profiles/default.yaml",
         named,
     )
+    log_root = tmp_path / "application-logs"
+    finalized = []
+    real_finalize = lifecycle.finalize_prepared_attempt
 
-    def plan_resume(*_args: object, execution_profile, **_kwargs: object):
-        assert execution_profile.source_path == named
-        return plan
+    def finalize(*args, **kwargs):
+        (log_path,) = log_root.rglob("*.jsonl")
+        assert _log_events(log_path) == ["attempt_opened"]
+        finalized.append(True)
+        return real_finalize(*args, **kwargs)
 
-    monkeypatch.setattr(control, "_plan_resume", plan_resume)
-    _terminal_input(monkeypatch, "no\n")
+    def refuse_new_attempt(*_args, **_kwargs):
+        assert receipt.is_file() and not prepared.exists()
+        raise MaterializationError("injected execution-entry failure")
+
+    monkeypatch.setattr(control.lifecycle, "finalize_prepared_attempt", finalize)
+    monkeypatch.setattr(control, "admit_run", refuse_new_attempt)
+
+    def before_read() -> None:
+        assert prepared.is_file() and not receipt.exists()
+        assert finalized == []
+        assert not log_root.exists()
+
+    _terminal_input(monkeypatch, response, before_read)
     arguments = _command_arguments(
         plan.run.analysis.source_path,
         run=plan.run.run_id,
         profile="resume-ci",
         execute=False,
+        log_root=log_root,
     )
 
-    assert control.resume_from_args(arguments) == 0
+    before = _file_snapshot(plan.workspace)
+    assert control.resume_from_args(arguments) == (2 if confirmed else 0)
 
     rendered = capsys.readouterr().err
+    assert "Finalization: complete exact prepared Attempt receipt first" in rendered
     assert "Execute this plan? [y/N]" in rendered
-    assert "Dry-run complete; no resume state was written." in rendered
-    assert list(plan.run_root.iterdir()) == []
+    if confirmed:
+        assert finalized == [True]
+        assert receipt.is_file() and not prepared.exists()
+        (log_path,) = log_root.rglob("*.jsonl")
+        assert _log_events(log_path) == [
+            "attempt_opened",
+            "analysis_prepared",
+            "attempt_failed",
+        ]
+        assert len(tuple((plan.run_root / "attempts").iterdir())) == 1
+    else:
+        assert "Dry-run complete; no resume state was written." in rendered
+        assert _file_snapshot(plan.workspace) == before
+        assert prepared.is_file() and not receipt.exists()
+        assert finalized == []
+        assert not log_root.exists()
 
 
 @pytest.mark.parametrize("placement", ("direct", "slurm"))
@@ -4345,6 +4389,11 @@ def test_public_slurm_rejects_known_reservation_shortfall_before_submission(
     ((8, 4, 2), (2, 2, 0)),
     ids=("inherited-shortfall", "inherited-exact-fit"),
 )
+@pytest.mark.parametrize(
+    "with_prepared_finalization",
+    (False, True),
+    ids=("finalized", "prepared"),
+)
 def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
     tmp_path: Path,
     capsys,
@@ -4352,9 +4401,20 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
     workflow_cores: int,
     cpus_per_task: int,
     expected_exit: int,
+    with_prepared_finalization: bool,
 ) -> None:
     first = _plan(tmp_path, workflow_cores=workflow_cores)
-    _failed_run(first)
+    failed = _failed_run(first)
+    attempt_root = (
+        first.run_root / "attempts" / str(failed.latest_attempt["workflow_attempt_id"])
+    )
+    receipt_path = attempt_root / "attempt-receipt.json"
+    prepared_path = attempt_root / "prepared-attempt-receipt.json"
+    if with_prepared_finalization:
+        receipt_path.rename(prepared_path)
+        (attempt_root / "released-run-lock.json").rename(
+            first.run_root / "locks/run.lock"
+        )
     arguments = _command_arguments(
         first.run.analysis.source_path,
         run=first.run.run_id,
@@ -4381,9 +4441,12 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
         assert submissions == []
         assert "Workflow cores exceed Slurm reservation: 8 > 4" in captured.err
         assert not (first.workspace / "logs").exists()
+        if with_prepared_finalization:
+            assert prepared_path.is_file() and not receipt_path.exists()
     else:
         assert len(submissions) == 1
         assert captured.out.startswith("JOB_ID=812345\n")
+        assert receipt_path.is_file() and not prepared_path.exists()
         (request_path,) = (first.workspace / "logs").glob("submission-*/request.json")
         request = json.loads(request_path.read_bytes())
         assert request["command"] == "resume"
@@ -4439,6 +4502,120 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
                 ResourceOverrides(),
                 resume_run_root=first.run_root,
             )
+
+
+def test_public_delegated_resume_admits_inherited_binding_inside_one_log(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first = _plan(tmp_path, workflow_cores=2)
+    failed = _failed_run(first)
+    selected = load_execution_profile(
+        config_path=_slurm_profile(tmp_path, cpus_per_task=2)
+    )
+    effective = replace(selected, resource_policy=first.resources.policy)
+    assert effective.binding_sha256 != selected.binding_sha256
+    scheduler = control.slurm_submission
+    monkeypatch.setenv(scheduler.DELEGATE_MARKER_ENV, scheduler.DELEGATE_MARKER)
+    monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, effective.binding_sha256)
+    monkeypatch.setenv(scheduler.SUBMIT_UID_ENV, str(os.getuid()))
+    monkeypatch.setenv("SLURM_JOB_ID", "812345")
+    monkeypatch.setattr(
+        scheduler,
+        "submit",
+        lambda *_args, **_kwargs: pytest.fail("compute delegate resubmitted"),
+    )
+    log_root = tmp_path / "delegate-application-logs"
+    arguments = _command_arguments(
+        first.run.analysis.source_path,
+        run=first.run.run_id,
+        profile=str(selected.source_path),
+        execute=True,
+        log_root=log_root,
+    )
+    attempts_before = tuple((first.run_root / "attempts").iterdir())
+
+    def reject_after_admission(*_args, **_kwargs):
+        (log_path,) = log_root.rglob("*.jsonl")
+        records = _read_log(log_path)
+        assert [record["event"] for record in records] == ["attempt_opened"]
+        assert records[0]["fields"]["slurm_job_id"] == "812345"
+        raise doctor.DoctorInputError("fixture post-admission readiness failure")
+
+    monkeypatch.setattr(control.doctor, "diagnose_project", reject_after_admission)
+    assert control.resume_from_args(arguments) == 2
+    assert "fixture post-admission readiness failure" in capsys.readouterr().err
+    assert tuple((first.run_root / "attempts").iterdir()) == attempts_before
+    assert inspection.inspect_run(first.run_root).recovery_available
+    (log_path,) = log_root.rglob("*.jsonl")
+    assert _log_events(log_path) == ["attempt_opened", "attempt_failed"]
+    assert _read_log(log_path)[-1]["phase"] == "preflight"
+    assert not (first.workspace / "logs").exists()
+
+
+@pytest.mark.parametrize("execute", (False, True), ids=("decline", "submit"))
+def test_slurm_prepared_resume_finalizes_before_request_or_submission(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+    execute: bool,
+) -> None:
+    first = _plan(tmp_path)
+    failed = _failed_run(first)
+    attempt_root = (
+        first.run_root / "attempts" / str(failed.latest_attempt["workflow_attempt_id"])
+    )
+    receipt = attempt_root / "attempt-receipt.json"
+    prepared = attempt_root / "prepared-attempt-receipt.json"
+    receipt.rename(prepared)
+    (attempt_root / "released-run-lock.json").rename(first.run_root / "locks/run.lock")
+    arguments = _command_arguments(
+        first.run.analysis.source_path,
+        run=first.run.run_id,
+        profile=str(_slurm_profile(tmp_path)),
+        execute=execute,
+    )
+    finalizations = []
+    finalize = control.lifecycle.finalize_prepared_attempt
+
+    def finalize_before_request(*args, **kwargs):
+        assert not (first.workspace / "logs").exists()
+        finalizations.append(args[1])
+        return finalize(*args, **kwargs)
+
+    monkeypatch.setattr(
+        control.lifecycle, "finalize_prepared_attempt", finalize_before_request
+    )
+
+    def reject_submission(_submission, **_kwargs):
+        assert receipt.is_file() and not prepared.exists()
+        assert len(tuple((first.run_root / "attempts").iterdir())) == 1
+        raise control.slurm_submission.SlurmSubmissionError("fixture sbatch failure")
+
+    monkeypatch.setattr(control.slurm_submission, "submit", reject_submission)
+    monkeypatch.setattr(
+        control.doctor,
+        "diagnose_project",
+        lambda *_args, **_kwargs: pytest.fail(
+            "submit host performed compute-allocation readiness"
+        ),
+    )
+    if not execute:
+        _terminal_input(monkeypatch, "no\n")
+
+    assert control.resume_from_args(arguments) == (2 if execute else 0)
+    rendered = capsys.readouterr().err
+    if execute:
+        assert "fixture sbatch failure" in rendered
+        assert len(finalizations) == 1
+        assert receipt.is_file() and not prepared.exists()
+        assert inspection.inspect_run(first.run_root).recovery_available
+    else:
+        assert finalizations == []
+        assert prepared.is_file() and not receipt.exists()
+        assert not (first.workspace / "logs").exists()
+    assert len(tuple((first.run_root / "attempts").iterdir())) == 1
 
 
 @pytest.mark.parametrize("interactive", [False, True])
@@ -5802,6 +5979,7 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
         reporting: str = "complete",
         recovery: bool = False,
         receipt: str = "succeeded",
+        prepared: bool = False,
     ) -> str:
         return control._next_supported_action(
             SimpleNamespace(
@@ -5810,6 +5988,7 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
                 results_status=results,
                 reporting_status=reporting,
                 recovery_available=recovery,
+                prepared_finalization=object() if prepared else None,
                 latest_receipt={
                     "schema_version": "emrys.attempt-receipt.v3",
                     "status": receipt,
@@ -5821,6 +6000,9 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
 
     assert action(integrity="blocked") == (
         "Preserve this Run; review Run integrity blockers. Do not resume."
+    )
+    assert action(integrity="blocked", prepared=True) == (
+        "Use emrys resume to finish the exact prepared Attempt finalization."
     )
     assert action(attempt="blocked", results="blocked", reporting="incomplete") == (
         "Preserve this Run; review scientific Results blockers. Do not resume."
@@ -6188,6 +6370,20 @@ def _public_native_cancellation_child(root: Path) -> None:
             for record in interrupted.reporting_completion_records.values()
         )
 
+        receipt_path = first_attempt / "attempt-receipt.json"
+        prepared_path = first_attempt / "prepared-attempt-receipt.json"
+        active_lock = run_root / "locks/run.lock"
+        receipt_path.rename(prepared_path)
+        (first_attempt / "released-run-lock.json").rename(active_lock)
+        prepared_snapshot = (
+            prepared_path.read_bytes(),
+            prepared_path.stat().st_dev,
+            prepared_path.stat().st_ino,
+        )
+        prepared_preview = inspection.inspect_prepared_finalization(run_root)
+        assert prepared_preview.candidate.record["status"] == "interrupted"
+        assert prepared_preview.prospective_state.recovery_available
+
         verified_before = _verified_snapshot(run_root)
         assert verified_before
         arguments.run = run_id
@@ -6213,6 +6409,12 @@ def _public_native_cancellation_child(root: Path) -> None:
             completed.attempt_outcome,
             completed.results_status,
         ) == ("valid", "succeeded", "complete")
+        assert not prepared_path.exists() and not active_lock.exists()
+        assert (
+            receipt_path.read_bytes(),
+            receipt_path.stat().st_dev,
+            receipt_path.stat().st_ino,
+        ) == prepared_snapshot
         assert not completed.recovery_available
         assert len(processes) == 2
         assert quiescence_checks == [
@@ -6240,7 +6442,8 @@ def _public_native_cancellation_child(root: Path) -> None:
         assert all(
             (path.read_bytes(), path.stat().st_mtime_ns) == value
             for path, value in preview_before.items()
-            if any(
+            if path != prepared_path
+            and any(
                 path == retained or retained in path.parents
                 for retained in retained_roots
             )
@@ -6409,16 +6612,41 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert failed.verified_report_locations == ()
     before = _verified_snapshot(run_root)
     assert 0 < len(before) < 35
+    predecessor = (
+        run_root / "attempts" / str(failed.latest_attempt["workflow_attempt_id"])
+    )
+    receipt_path = predecessor / "attempt-receipt.json"
+    prepared_path = predecessor / "prepared-attempt-receipt.json"
+    receipt_path.rename(prepared_path)
+    (predecessor / "released-run-lock.json").rename(run_root / "locks/run.lock")
+    interrupted_finalization = inspection.inspect_run(run_root)
+    assert interrupted_finalization.prepared_finalization is not None
+    assert not interrupted_finalization.recovery_available
+    assert inspection.inspect_prepared_finalization(
+        run_root
+    ).prospective_state.recovery_available
 
     fail_after_rule[0] = None
     resume_arguments = _command_arguments(
         request, run=run_id, allocated_cores=1, execute=False
     )
+    preview = {
+        path: (path.read_bytes(), path.stat().st_mtime_ns)
+        for path in workspace.rglob("*")
+        if path.is_file()
+    }
     assert control.resume_from_args(resume_arguments) == 0
     dry_output = capsys.readouterr().err
+    assert "Finalization:" in dry_output
     assert "Work:" in dry_output and " reusable" in dry_output
     assert "Results:" not in dry_output.splitlines()
     assert _verified_snapshot(run_root) == before
+    assert {
+        path: (path.read_bytes(), path.stat().st_mtime_ns)
+        for path in workspace.rglob("*")
+        if path.is_file()
+    } == preview
+    assert prepared_path.is_file() and not receipt_path.exists()
 
     real_publish = reporting_operation._publish_prepared
     reporting_observations = []
@@ -6526,6 +6754,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     monkeypatch.setattr(reporting_operation, "_publish_prepared", publish_and_observe)
     resume_arguments.execute = True
     assert control.resume_from_args(resume_arguments) == 0
+    assert receipt_path.is_file() and not prepared_path.exists()
     assert reporting_observations == [
         ("run_summary", "before producer"),
         ("run_summary", "after producer"),
