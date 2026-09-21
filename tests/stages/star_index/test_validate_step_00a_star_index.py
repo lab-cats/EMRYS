@@ -155,9 +155,9 @@ def test_scientific_mismatches_are_reported_not_repaired(tmp_path: Path) -> None
     (index / "chrLength.txt").write_text("4\n3\n", encoding="utf-8")
     parameters = (index / "genomeParameters.txt").read_text(encoding="utf-8")
     (index / "genomeParameters.txt").write_text(
-        parameters.replace("sjdbOverhang 149", "sjdbOverhang 99").replace(
-            "genomeSAindexNbases 14", "genomeSAindexNbases 7"
-        ).replace("genomeChrBinNbits 18", "genomeChrBinNbits 12"),
+        parameters.replace("sjdbOverhang 149", "sjdbOverhang 99")
+        .replace("genomeSAindexNbases 14", "genomeSAindexNbases 7")
+        .replace("genomeChrBinNbits 18", "genomeChrBinNbits 12"),
         encoding="utf-8",
     )
     result = run_validator(index, fasta, gtf, output, "--execute")

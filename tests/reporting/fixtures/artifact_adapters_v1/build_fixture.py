@@ -791,9 +791,7 @@ def write_adapter_source(
             path.write_bytes(b"\x00synthetic STAR index\n")
         elif path.name == "genomeParameters.txt":
             path.write_text(
-                "sjdbOverhang 99\n"
-                "genomeSAindexNbases 14\n"
-                "genomeChrBinNbits 18\n",
+                "sjdbOverhang 99\ngenomeSAindexNbases 14\ngenomeChrBinNbits 18\n",
                 encoding="utf-8",
             )
         else:

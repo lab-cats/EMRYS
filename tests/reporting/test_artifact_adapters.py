@@ -1121,8 +1121,7 @@ def test_native_metrics_and_artifact_state_are_conservative(
     )
     assert genome_parameters["source"]["media_type"] == "text/plain"
     native_metrics = {
-        metric["metric_id"]: metric["value"]
-        for metric in genome_parameters["metrics"]
+        metric["metric_id"]: metric["value"] for metric in genome_parameters["metrics"]
     }
     assert {
         "sjdbOverhang": 99,
