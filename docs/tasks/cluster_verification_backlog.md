@@ -137,11 +137,11 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Verification pending |
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Deferred |
 | [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
-| [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Open |
+| [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Verification pending |
 | [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Verification pending |
 | [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Verification pending |
 | [CV-U24](#cv-u24-persistent-cli-defaults) | Save site and other repeated CLI values | Verification pending |
-| [CV-U25](#cv-u25-repeated-fastq-hashing-during-init) | One full FASTQ hashing pass across preview and creation | Open |
+| [CV-U25](#cv-u25-repeated-fastq-hashing-during-init) | One full FASTQ hashing pass across preview and creation | Verification pending |
 | [CV-U26](#cv-u26-manifests-inside-the-project) | Keep manifests inside their Project directory | Verification pending |
 | [CV-U27](#cv-u27-tested-smoke-to-real-resource-guidance) | Tested workload profile, Doctor checks and exact submission | Verification pending |
 | [CV-U28](#cv-u28-historical-stage-configuration-and-wall-time) | Restore benchmark-derived stage settings and wall-time performance | Open |
@@ -1259,6 +1259,20 @@ not reliable determination of the parameter requested by the card. CV-U21
 returns to **Open** pending either a sound determination method or an explicitly
 approved narrower outcome with safe validation and truthful presentation.
 
+**September 20 approved repair:** No-write preview now labels `sjdbOverhang` as
+automatic without reading FASTQ contents. Creation validates every record in
+every declared plain or gzip FASTQ during the existing single raw-content hash
+pass, finds the global maximum sequence length and freezes maximum minus one as
+the numeric Project value. Explicit numeric overrides remain available and are
+reported beside the observed automatic value. Malformed or truncated records
+fail before publication without exposing sequence content. Focused local tests
+cover later and R2 maxima, plain and gzip input, malformed records, deterministic
+numeric publication, long records across streaming fragments, concatenated and
+padded gzip, gzip integrity and
+explicit override preservation. CV-U21 is
+**Verification pending** for hosted CI and a fresh operator walkthrough with
+non-synthetic variable-length reads.
+
 ### CV-U22 Smoke-project tool reuse
 
 **Exact instruction challenged:**
@@ -1469,6 +1483,20 @@ succeed. The focused mutation case substitutes the refusal rather than
 exercising that real rewrite, so it does not protect the claimed exact input-
 identity boundary. This is an implementation gap, not pending timing or Viking
 evidence; CV-U25 returns to **Open**.
+
+**September 20 approved repair:** The retained input snapshot now also binds
+nanosecond change time. The publication test performs a real same-inode,
+same-size FASTQ rewrite, restores mtime and verifies that the production
+boundary refuses `project.yaml`; it no longer substitutes a mocked refusal.
+FASTQ structure validation and maximum-read measurement observe the same raw
+chunks used by the sole content hash, and the resulting immutable sample
+admission is reused by full Project admission without reopening a FASTQ.
+Preview still reads zero FASTQ content. Focused local tests cover exact observer
+bytes, one execution hash per FASTQ, mutation during stable reads and restored-
+mtime post-admission mutation. CV-U25 is **Verification pending** for hosted CI,
+comparable large-input timing and a fresh Viking/operator exercise; ctime is the
+accepted ordinary-filesystem post-hash mutation boundary and is not claimed as
+protection against privileged tampering that can forge filesystem metadata.
 
 ### CV-U26 Manifests inside the Project
 

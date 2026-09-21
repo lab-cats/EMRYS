@@ -24,6 +24,34 @@ from tests.orchestration.run_coordinator import fixture
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
+def test_ordinary_admission_does_not_parse_fastq_records(tmp_path: Path) -> None:
+    project_path = fixture.build(tmp_path / "project-root")
+    next((project_path.parent / "reads").glob("*.fastq")).write_bytes(
+        b"opaque bytes admitted by hash\n"
+    )
+
+    assert admit_project(project_path, fixture.profile()).dataset_sample_count == 4
+
+
+def test_prepared_sample_admission_is_bound_to_its_project_root(
+    tmp_path: Path,
+) -> None:
+    first = fixture.build(tmp_path / "first")
+    second = fixture.build(tmp_path / "second")
+    sample_path = first.parent / "samples.tsv"
+    definition = yaml.safe_load(second.read_text())
+    definition["dataset"]["samples"] = str(sample_path)
+    second.write_text(yaml.safe_dump(definition), encoding="utf-8")
+    prepared = normalization._admit_sample_inputs(
+        sample_path, sample_path.read_bytes(), first.parent
+    )
+
+    with pytest.raises(contracts.ContractValidationError, match="does not match"):
+        normalization._admit_project_data(
+            second, second.read_bytes(), fixture.profile(), sample_inputs=prepared
+        )
+
+
 def test_analysis_revision_is_path_and_name_neutral(
     tmp_path: Path,
 ) -> None:

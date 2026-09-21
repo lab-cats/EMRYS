@@ -289,9 +289,13 @@ with Project-aware commands when working from another directory.
 Interactive named initialization discovers recognized FASTQ pairs in one
 directory, asks for their biological assignments and the study regions, and
 publishes `samples.tsv` and `partitions.tsv` inside the Project. Its preview
-checks paths and scientific structure without hashing FASTQ contents. The
-printed creation command carries every answer; creation hashes each FASTQ once
-and rejects an input whose filesystem identity changes through publication.
+checks paths and scientific structure without reading FASTQ contents and labels
+an omitted `sjdbOverhang` as automatic. The printed creation command carries
+every explicit answer; creation hashes each FASTQ's stored bytes once while
+validating every plain or gzip-decoded record, freezes the maximum read length
+minus one, and rejects an input whose filesystem identity changes through
+publication. An explicit `--sjdb-overhang` remains an advanced override and is
+reported beside the observed automatic value.
 Existing advanced manifests may be supplied together with `--sample-manifest`
 and `--partition-manifest`; EMRYS copies normalized manifest content into the
 new Project. Existing Projects remain supported at their current paths.

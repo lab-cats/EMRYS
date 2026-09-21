@@ -310,6 +310,7 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     output = projects / "my-study"
     monkeypatch.chdir(projects)
     arguments = _project_arguments(tmp_path, output, execute=False)
+    arguments.sjdb_overhang = 17
     arguments.sample_manifest = tmp_path / "source/samples.tsv"
     arguments.site = "viking"
     input_files = _tree_bytes(tmp_path / "source")
@@ -343,6 +344,7 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     assert cli.main([*command, "--execute"]) == 0
     created = capsys.readouterr()
     assert "Project ready:" in created.out
+    assert "explicit; automatic value would be 3" in created.err
     for phase in phases:
         assert re.search(rf"{phase}: complete \(\d+m \d{{2}}s\)", created.err)
     assert set(_tree_bytes(output)) == {
@@ -368,6 +370,10 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     )
     assert definition["reference"]["fasta"] == str(arguments.reference_fasta)
     assert definition["reference"]["gtf"] == str(arguments.reference_gtf)
+    assert (
+        definition["reference"]["star_index"]["sjdb_overhang"]
+        == arguments.sjdb_overhang
+    )
     assert definition["analyses"][arguments.analysis_name]["target_change"] == "A>G"
     assert not list(output.rglob("*.fastq"))
     assert onboarding.validate_project(output / "project.yaml").sample_count == 4
@@ -378,10 +384,12 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
 def test_project_preview_skips_fastq_hashing_and_creation_hashes_each_fastq_once(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     output = tmp_path / "my-study"
     monkeypatch.chdir(tmp_path)
     arguments = _project_arguments(tmp_path, output, execute=False)
+    arguments.sjdb_overhang = None
     _, _, rows = step08.validate_sample_manifest(arguments.sample_manifest)
     fastqs = {Path(row[mate]) for row in rows for mate in ("r1_fastq", "r2_fastq")}
     counts = {path: 0 for path in fastqs}
@@ -399,9 +407,17 @@ def test_project_preview_skips_fastq_hashing_and_creation_hashes_each_fastq_once
 
     assert onboarding.init_project_from_args(arguments) == 0
     assert set(counts.values()) == {0}
-    arguments.execute = True
-    assert onboarding.init_project_from_args(arguments) == 0
+    replay = next(
+        line
+        for line in capsys.readouterr().out.splitlines()
+        if " -m emrys init " in line
+    )
+    replay_argv = shlex.split(replay.split(" && ", 1)[1])
+    assert "--sjdb-overhang" not in replay_argv
+    assert cli.main(replay_argv[replay_argv.index("emrys") + 1 :]) == 0
     assert set(counts.values()) == {1}
+    definition = yaml.safe_load((output / "project.yaml").read_text())
+    assert definition["reference"]["star_index"]["sjdb_overhang"] == 3
 
 
 def test_guided_project_creation_writes_its_manifests_inside_the_project(
@@ -684,20 +700,33 @@ def test_init_progress_preserves_failed_or_interrupted_validation(
     assert "Project ready:" not in captured.out
 
 
-def test_init_rejects_input_changed_during_publication_before_project_completion(
+def test_init_rejects_same_size_fastq_rewrite_with_restored_mtime(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     output = tmp_path / "my-study"
     monkeypatch.chdir(tmp_path)
     arguments = _project_arguments(tmp_path, output, execute=True)
-
-    def changed(_admission: object) -> None:
-        raise contracts.ContractValidationError("Project input changed after admission")
-
-    monkeypatch.setattr(
-        normalization.ProjectAdmission, "require_inputs_unchanged", changed
+    _table, _sample_ids, rows = step08.validate_sample_manifest(
+        arguments.sample_manifest
     )
+    fastq = Path(rows[0]["r1_fastq"])
+    original = fastq.read_bytes()
+    replacement = original.replace(b"ACGT", b"TGCA", 1)
+    assert len(replacement) == len(original) and replacement != original
+    original_state = fastq.stat()
+    admit = onboarding._admit_project_data
+
+    def rewrite_after_admission(*args: object, **kwargs: object):
+        admission = admit(*args, **kwargs)
+        fastq.write_bytes(replacement)
+        os.utime(
+            fastq,
+            ns=(original_state.st_atime_ns, original_state.st_mtime_ns),
+        )
+        return admission
+
+    monkeypatch.setattr(onboarding, "_admit_project_data", rewrite_after_admission)
 
     assert onboarding.init_project_from_args(arguments) == 2
     assert output.is_dir()
@@ -740,7 +769,7 @@ def test_init_project_prompts_and_requires_explicit_suggestion_acceptance(
     monkeypatch.setattr(onboarding.sys, "stdin", terminal_input)
     monkeypatch.setattr(onboarding.sys, "stderr", terminal_output)
 
-    answers = onboarding._collect_project_answers(arguments, {}, tmp_path / "project")
+    answers = onboarding._collect_project_answers(arguments)
 
     assert answers["target_change"] == "C>T"
     assert answers["min_sample_dp"] == 1
@@ -779,10 +808,10 @@ def test_init_project_rejects_eof_instead_of_accepting_a_suggestion(
     monkeypatch.setattr(onboarding.sys, "stderr", _Terminal())
 
     with pytest.raises(onboarding.OnboardingError, match="ended before min sample dp"):
-        onboarding._collect_project_answers(arguments, {}, tmp_path / "project")
+        onboarding._collect_project_answers(arguments)
 
 
-def test_init_project_suggests_star_values_from_declared_inputs(
+def test_init_project_defers_sjdb_and_suggests_reference_based_star_value(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -790,47 +819,216 @@ def test_init_project_suggests_star_values_from_declared_inputs(
     arguments = _project_arguments(tmp_path, output, execute=False)
     arguments.sjdb_overhang = None
     arguments.genome_sa_index_nbases = None
-    members = onboarding._copied_manifest_members(arguments, output)
     terminal_output = _Terminal()
-    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("\n\n"))
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("\n"))
     monkeypatch.setattr(onboarding.sys, "stderr", terminal_output)
 
-    answers = onboarding._collect_project_answers(arguments, members, output)
+    answers = onboarding._collect_project_answers(
+        arguments, reference_contigs=(("chrSynthetic", 12),)
+    )
 
-    assert answers["sjdb_overhang"] == 3
+    assert answers["sjdb_overhang"] is None
     assert answers["genome_sa_index_nbases"] == 1
     rendered = _decoded_terminal(terminal_output.getvalue()).plain
-    assert "first complete record in each declared FASTQ" in rendered
-    assert "maximum 4 bases" in rendered
     assert "12-base reference" in rendered
-    assert "sjdb overhang (Press ENTER for 3):" in rendered
+    assert "sjdb overhang" not in rendered
     assert "genome sa index nbases (Press ENTER for 1):" in rendered
 
 
-def test_init_project_uses_derived_star_values_noninteractively(
+def test_init_preview_reports_automatic_sjdb_without_reading_fastqs(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     output = tmp_path / "project"
     arguments = _project_arguments(tmp_path, output, execute=False)
     arguments.sjdb_overhang = None
-    arguments.genome_sa_index_nbases = None
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(onboarding.sys, "stdin", io.StringIO())
-    monkeypatch.setattr(onboarding.sys, "stderr", io.StringIO())
+    monkeypatch.setattr(
+        onboarding,
+        "_reference_contigs",
+        lambda *_args: pytest.fail("automatic sjdb preview read the reference"),
+    )
 
     assert onboarding.init_project_from_args(arguments) == 0
     assert not output.exists()
+    captured = capsys.readouterr()
+    assert (
+        "STAR sjdb overhang: automatic at creation; maximum admitted read length - 1"
+        in captured.out
+    )
+    assert "--sjdb-overhang" not in captured.out
 
 
-def test_star_read_length_inspection_accepts_gzip_and_stops_after_one_record(
+def test_project_creation_derives_sjdb_from_longest_admitted_record(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    output = tmp_path / "project"
+    arguments = _project_arguments(tmp_path, output, execute=True)
+    arguments.sjdb_overhang = None
+    _table, _sample_ids, rows = step08.validate_sample_manifest(
+        arguments.sample_manifest
+    )
+    longest = Path(rows[-1]["r2_fastq"])
+    longest.write_bytes(b"@first\nACGT\n+\nIIII\n@later\nACGTACGTA\n+\nIIIIIIIII\n")
+    monkeypatch.chdir(tmp_path)
+
+    assert onboarding.init_project_from_args(arguments) == 0
+
+    definition = yaml.safe_load((output / "project.yaml").read_text())
+    assert definition["reference"]["star_index"]["sjdb_overhang"] == 8
+    assert "automatic; maximum admitted read length 9" in capsys.readouterr().err
+
+
+def _admit_fastq_pair(
+    root: Path,
+    r1_data: bytes,
+    r2_data: bytes,
+    *,
+    compressed: bool = False,
+    preencoded: bool = False,
+):
+    suffix = ".fastq.gz" if compressed else ".fastq"
+    paths = (root / f"sample_R1{suffix}", root / f"sample_R2{suffix}")
+    for path, data in zip(paths, (r1_data, r2_data), strict=True):
+        path.write_bytes(
+            data if preencoded else gzip.compress(data) if compressed else data
+        )
+    manifest = tsv_bytes(
+        step08.SAMPLE_MANIFEST_REQUIRED,
+        (
+            {
+                "sample_id": "sample",
+                "r1_fastq": str(paths[0]),
+                "r2_fastq": str(paths[1]),
+                "strandedness": "unstranded",
+                "condition": "case",
+                "replicate": "pair_1",
+            },
+        ),
+    )
+    return normalization._admit_sample_inputs(
+        root / "samples.tsv", manifest, root, inspect_fastqs=True
+    )
+
+
+@pytest.mark.parametrize("compressed", (False, True), ids=("plain", "gzip"))
+def test_fastq_admission_checks_every_record_and_both_mates(
+    tmp_path: Path, compressed: bool
+) -> None:
+    admission = _admit_fastq_pair(
+        tmp_path,
+        b"@r1\r\nACGT\r\n+\r\nIIII",
+        b"@first\nACG\n+\nIII\n@later\nACGTACG\n+\nIIIIIII\n",
+        compressed=compressed,
+    )
+
+    assert admission.max_read_length == 7
+
+
+@pytest.mark.parametrize(
+    "malformed",
+    (
+        b"@first\nACGT\n+\nIIII\n@second\nGATTACA\n+\n",
+        b"@first\nGATTACA\n+\nIIII\n",
+    ),
+    ids=("truncated-record", "quality-length"),
+)
+def test_fastq_admission_rejects_malformed_records_without_sequence_leak(
+    tmp_path: Path, malformed: bytes
+) -> None:
+    with pytest.raises(contracts.ContractValidationError) as raised:
+        _admit_fastq_pair(tmp_path, malformed, b"@mate\nACGT\n+\nIIII\n")
+
+    assert "FASTQ is malformed" in str(raised.value)
+    assert "GATTACA" not in str(raised.value)
+
+
+def test_fastq_admission_rejects_truncated_gzip(tmp_path: Path) -> None:
+    valid = b"@read\nACGT\n+\nIIII\n"
+    with pytest.raises(contracts.ContractValidationError, match="truncated gzip"):
+        _admit_fastq_pair(
+            tmp_path,
+            gzip.compress(valid)[:-4],
+            gzip.compress(valid),
+            compressed=True,
+            preencoded=True,
+        )
+
+
+def test_fastq_admission_translates_invalid_gzip(tmp_path: Path) -> None:
+    with pytest.raises(contracts.ContractValidationError, match="invalid gzip stream"):
+        _admit_fastq_pair(
+            tmp_path,
+            b"not a gzip stream",
+            gzip.compress(b"@mate\nACGT\n+\nIIII\n"),
+            compressed=True,
+            preencoded=True,
+        )
+
+
+def test_fastq_admission_checks_gzip_crc_after_decoding_records(tmp_path: Path) -> None:
+    corrupted = bytearray(gzip.compress(b"@read\nACGT\n+\nIIII\n"))
+    corrupted[-8] ^= 1
+
+    with pytest.raises(contracts.ContractValidationError, match="invalid gzip stream"):
+        _admit_fastq_pair(
+            tmp_path,
+            bytes(corrupted),
+            gzip.compress(b"@mate\nACGT\n+\nIIII\n"),
+            compressed=True,
+            preencoded=True,
+        )
+
+
+def test_fastq_admission_accepts_concatenated_gzip_and_zero_padding(
     tmp_path: Path,
 ) -> None:
-    fastq = tmp_path / "reads.fastq.gz"
-    with gzip.open(fastq, "wt", encoding="ascii") as destination:
-        destination.write("@first\nACGTAC\n+\nIIIIII\nmalformed trailing data")
+    first = gzip.compress(b"@first\nACGT\n+\nIIII\n")
+    second = gzip.compress(b"@second\nACGTAC\n+\nIIIIII\n")
 
-    assert onboarding._first_fastq_read_length(fastq) == 6
+    admission = _admit_fastq_pair(
+        tmp_path,
+        first + b"\0" * 8 + second + b"\0" * 8,
+        first,
+        compressed=True,
+        preencoded=True,
+    )
+
+    assert admission.max_read_length == 6
+
+
+@pytest.mark.parametrize("compressed", (False, True), ids=("plain", "gzip"))
+def test_fastq_admission_accepts_long_records_across_streaming_fragments(
+    tmp_path: Path, compressed: bool
+) -> None:
+    sequence = b"A" * 1_000_001
+    admission = _admit_fastq_pair(
+        tmp_path,
+        b"@read\n" + sequence + b"\n+\n" + b"I" * len(sequence) + b"\n",
+        b"@mate\nACGT\n+\nIIII\n",
+        compressed=compressed,
+    )
+
+    assert admission.max_read_length == len(sequence)
+
+
+def test_init_malformed_fastq_publishes_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "project"
+    arguments = _project_arguments(tmp_path, output, execute=True)
+    _table, _sample_ids, rows = step08.validate_sample_manifest(
+        arguments.sample_manifest
+    )
+    Path(rows[0]["r1_fastq"]).write_bytes(b"@read\nACGT\n+\n")
+    monkeypatch.chdir(tmp_path)
+
+    assert onboarding.init_project_from_args(arguments) == 2
+    assert not output.exists()
 
 
 @pytest.mark.parametrize(

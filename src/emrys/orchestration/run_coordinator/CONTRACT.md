@@ -97,11 +97,13 @@ discovers recognized FASTQ pairs and asks for biological assignments and one
 partition source. The regions-file and reference-name/region choices are
 explained as alternatives, and the latter prompt names the admitted FASTA.
 Prompt defaults remain explicit as `Press ENTER for VALUE` without color and
-are dimmed in eligible terminals. When STAR index settings are omitted, setup
-suggests `sjdbOverhang` from one complete record in each declared FASTQ and
-`genomeSAindexNbases` from the admitted FASTA length. The prompt states that
-bounded observation, accepts an explicit override, and uses the derived values
-in noninteractive setup. Advanced callers may instead supply both existing
+are dimmed in eligible terminals. When `sjdbOverhang` is omitted, preview names
+it as automatic without reading FASTQ contents. Creation validates every FASTQ
+record during the one raw-content hashing pass and freezes the maximum admitted
+read length minus one into the Project. An explicit value remains an advanced
+override and creation reports it beside the observed automatic value.
+`genomeSAindexNbases` is suggested from the admitted FASTA length. Advanced
+callers may instead supply both existing
 manifests; their
 validated, path-normalized content is copied into the new Project. It creates
 `runs/`, `logs/`, `runtime/`, and `runtime/profiles/` with mode `0700`, and
@@ -142,13 +144,18 @@ into successful verification.
 Named Project preview validates input-list structure, path availability,
 scientific assignments and settings without hashing FASTQ contents. Creation
 then displays one input hashing phase and compatibility checking through the
-existing elapsed-time presenter. Each FASTQ is content-hashed once. Admission
-retains its device, inode, size and nanosecond modification time; those facts
-must remain unchanged before `project.yaml` is published and immediately after
-publication. The exact prepared Project and manifest bytes are verified during
-publication, so the post-publication path no longer performs a second full
-Project admission. Progress adds no percentage estimate, persistent state, or
-authority to remove a partial or published Project after interruption.
+existing elapsed-time presenter. Each FASTQ's exact stored bytes are
+content-hashed once while its plain or gzip-decoded records are validated and
+measured. Record parsing retains line metadata instead of sequence or quality
+bytes, so long records do not require whole-line buffering and diagnostics
+never include their content.
+Admission retains device, inode, size, nanosecond modification time and
+nanosecond change time; those facts must remain unchanged before
+`project.yaml` is published and immediately after publication. The exact
+prepared Project and manifest bytes are verified during publication, so the
+post-publication path no longer performs a second full Project admission.
+Progress adds no percentage estimate, persistent state, or authority to remove
+a partial or published Project after interruption.
 
 Named initialization's no-write preview shows the built-in Analysis,
 explicit sample/mate and biological assignments, input/region paths, and

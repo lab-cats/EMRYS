@@ -75,6 +75,7 @@ from emrys.libraries.validation.tsv import tsv_bytes
 from emrys.orchestration.run_coordinator.normalization import (
     ProjectAdmission,
     _admit_project_data,
+    _admit_sample_inputs,
     admit_project,
     validate_authored_path,
 )
@@ -674,7 +675,6 @@ _PROJECT_SUGGESTIONS = dict(
         strict=True,
     )
 )
-_STAR_FIELDS = {"sjdb_overhang", "genome_sa_index_nbases"}
 
 
 def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
@@ -723,10 +723,15 @@ def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
             help=f"Partition {name.replace('-', ' ')}; prompted when omitted.",
         )
     for destination in _PROJECT_FIELDS:
+        help_text = f"{destination.replace('_', ' ')}; prompted when omitted."
+        if destination == "sjdb_overhang":
+            help_text = (
+                "Advanced override; default is max admitted read length minus one."
+            )
         parser.add_argument(
             f"--{destination.replace('_', '-')}",
             type=_PROJECT_TYPES.get(destination, str),
-            help=f"{destination.replace('_', ' ')}; prompted when omitted.",
+            help=help_text,
         )
     parser.add_argument(
         "--background-condition",
@@ -753,32 +758,6 @@ def _project_name(value: str) -> str:
     return value
 
 
-def _first_fastq_read_length(path: Path) -> int:
-    try:
-        if path.name.endswith(".gz"):
-            source = gzip.open(path, "rt", encoding="ascii", newline="")
-        else:
-            source = path.open("r", encoding="ascii", newline="")
-        with source:
-            header, sequence, separator, quality = (
-                source.readline(1_000_001) for _ in range(4)
-            )
-    except (OSError, UnicodeError, EOFError) as exc:
-        raise OnboardingError(
-            f"could not inspect the first FASTQ record in {path}: {exc}"
-        ) from exc
-    sequence = sequence.rstrip("\r\n")
-    quality = quality.rstrip("\r\n")
-    if (
-        not header.startswith("@")
-        or not sequence
-        or not separator.startswith("+")
-        or len(quality) != len(sequence)
-    ):
-        raise OnboardingError(f"first FASTQ record is incomplete or malformed: {path}")
-    return len(sequence)
-
-
 def _reference_contigs(reference_fasta: Path) -> tuple[tuple[str, int], ...]:
     try:
         with reference_fasta.open("r", encoding="utf-8") as source:
@@ -789,35 +768,8 @@ def _reference_contigs(reference_fasta: Path) -> tuple[tuple[str, int], ...]:
         ) from exc
 
 
-def _star_suggestions(
-    reference_contigs: Sequence[tuple[str, int]],
-    sample_manifest: bytes,
-    manifest_path: Path,
-) -> tuple[dict[str, int], int, int]:
-    _table, _sample_ids, rows = step08.validate_sample_manifest_bytes(
-        sample_manifest, manifest_path
-    )
-    fastqs = sorted(
-        {Path(row[mate]) for row in rows for mate in ("r1_fastq", "r2_fastq")}
-    )
-    read_length = max(_first_fastq_read_length(path) for path in fastqs)
-    genome_length = sum(length for _name, length in reference_contigs)
-    return (
-        {
-            "sjdb_overhang": read_length - 1,
-            "genome_sa_index_nbases": max(
-                1, math.floor(min(14, math.log2(genome_length) / 2 - 1))
-            ),
-        },
-        read_length,
-        genome_length,
-    )
-
-
 def _collect_project_answers(
     arguments: argparse.Namespace,
-    manifest_members: Mapping[str, tuple[bytes, int]],
-    output: Path,
     *,
     fields: Sequence[str] = _PROJECT_FIELDS,
     reference_contigs: Sequence[tuple[str, int]] | None = None,
@@ -825,7 +777,8 @@ def _collect_project_answers(
     missing = [
         f"--{destination.replace('_', '-')}"
         for destination in fields
-        if getattr(arguments, destination) is None and destination not in _STAR_FIELDS
+        if getattr(arguments, destination) is None
+        and destination not in {"sjdb_overhang", "genome_sa_index_nbases"}
     ]
     interactive = _interactive_terminal()
     if missing and not interactive:
@@ -835,28 +788,22 @@ def _collect_project_answers(
             + "; supply them explicitly or run this command in a terminal"
         )
     answers: dict[str, object] = {}
-    star_suggestions: dict[str, int] | None = None
     for destination in fields:
         value = getattr(arguments, destination)
         suggestion = _PROJECT_SUGGESTIONS.get(destination)
-        if value is None and destination in _STAR_FIELDS:
-            if star_suggestions is None:
-                if reference_contigs is None:
-                    reference_contigs = _reference_contigs(
-                        Path(answers["reference_fasta"])
-                    )
-                star_suggestions, read_length, genome_length = _star_suggestions(
-                    reference_contigs,
-                    manifest_members["samples.tsv"][0],
-                    output / "samples.tsv",
-                )
-                print(
-                    "Suggested STAR settings from the first complete record in each "
-                    f"declared FASTQ (maximum {read_length} bases) and the "
-                    f"{genome_length}-base reference.",
-                    file=sys.stderr,
-                )
-            suggestion = star_suggestions[destination]
+        if value is None and destination == "sjdb_overhang":
+            answers[destination] = None
+            continue
+        if value is None and destination == "genome_sa_index_nbases":
+            if reference_contigs is None:
+                reference_contigs = _reference_contigs(Path(answers["reference_fasta"]))
+            genome_length = sum(length for _name, length in reference_contigs)
+            suggestion = max(1, math.floor(min(14, math.log2(genome_length) / 2 - 1)))
+            print(
+                f"Suggested STAR genome SA index nbases from the {genome_length}-base "
+                "reference.",
+                file=sys.stderr,
+            )
         if value is None:
             label = destination.replace("_", " ")
             raw = (
@@ -1177,6 +1124,12 @@ def _print_project_preview(
         f"{answers['control_condition']} -> {answers['treatment_condition']}; "
         f"target {answers['target_change']}",
     )
+    present_field(
+        "STAR sjdb overhang",
+        answers["sjdb_overhang"]
+        if answers["sjdb_overhang"] is not None
+        else "automatic at creation; maximum admitted read length - 1",
+    )
     if verbose:
         present("Detailed study review", style="bold blue")
         print("  Manifests: samples.tsv, partitions.tsv (inside this Project)")
@@ -1199,6 +1152,8 @@ def _print_project_preview(
             **definition["reference"]["star_index"],
             **policy,
         }
+        if answers["sjdb_overhang"] is None:
+            settings["sjdb_overhang"] = "automatic at creation"
         print("Scientific settings:")
         print(f"  target change: {settings['rna_ref']}>{settings['rna_alt']}")
         for name, value in settings.items():
@@ -1230,10 +1185,7 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             Path.cwd() / arguments.project_name, source_root()
         )
         reference_answers = _collect_project_answers(
-            arguments,
-            {},
-            output,
-            fields=("reference_fasta", "reference_gtf"),
+            arguments, fields=("reference_fasta", "reference_gtf")
         )
         for field, value in reference_answers.items():
             setattr(arguments, field, value)
@@ -1241,7 +1193,7 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             getattr(arguments, "sample_manifest", None) is None
             and not getattr(arguments, "regions_file", ())
             and not getattr(arguments, "region", ())
-        ) or any(getattr(arguments, field) is None for field in _STAR_FIELDS)
+        ) or getattr(arguments, "genome_sa_index_nbases") is None
         reference_contigs = (
             _reference_contigs(Path(arguments.reference_fasta))
             if needs_reference_summary
@@ -1252,8 +1204,6 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         )
         answers = _collect_project_answers(
             arguments,
-            manifest_members,
-            output,
             reference_contigs=reference_contigs,
         )
         execution_profile_bytes = project_default_profile_bytes(
@@ -1261,10 +1211,12 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         )
         answers["analysis_name"] = arguments.analysis_name
         answers["background_condition"] = arguments.background_condition
-        project_bytes = _project_yaml(answers)
+        preview_bytes = _project_yaml(
+            answers | {"sjdb_overhang": answers["sjdb_overhang"] or 0}
+        )
         _print_project_preview(
             output,
-            project_bytes,
+            preview_bytes,
             manifest_members,
             answers,
             arguments,
@@ -1282,12 +1234,31 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             output / name: data for name, (data, _mode) in manifest_members.items()
         }
         with phase_progress("Reading and hashing Project inputs"):
+            sample_inputs = _admit_sample_inputs(
+                output / "samples.tsv",
+                manifest_members["samples.tsv"][0],
+                output,
+                inspect_fastqs=True,
+            )
+            automatic_sjdb = answers["sjdb_overhang"] is None
+            if automatic_sjdb:
+                answers["sjdb_overhang"] = sample_inputs.max_read_length - 1
+            project_bytes = _project_yaml(answers)
             admission = _admit_project_data(
                 output / "project.yaml",
                 project_bytes,
                 source_root() / PROFILE_RELATIVE_PATH,
                 prepared_files=prepared_files,
+                sample_inputs=sample_inputs,
             )
+        qualification = "automatic"
+        if not automatic_sjdb:
+            qualification = f"explicit; automatic value would be {sample_inputs.max_read_length - 1}"
+        print(
+            f"STAR sjdb overhang {answers['sjdb_overhang']} ({qualification}; maximum "
+            f"admitted read length {sample_inputs.max_read_length}).",
+            file=sys.stderr,
+        )
         with phase_progress("Checking reference and partition compatibility"):
             validate_project_admission(admission)
         members = {

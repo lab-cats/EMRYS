@@ -70,11 +70,15 @@ def test_sha256_with_identity_streams_bound_file_and_allows_declared_empty(
 ) -> None:
     source = tmp_path / "input.bin"
     source.write_bytes(b"fixture")
+    observed: list[bytes] = []
 
-    digest, identity = INPUTS.sha256_with_identity(source, "Input")
+    digest, identity = INPUTS.sha256_with_identity(
+        source, "Input", observe=observed.append
+    )
 
     assert digest == hashlib.sha256(b"fixture").hexdigest()
     assert identity.st_size == len(b"fixture")
+    assert b"".join(observed) == b"fixture"
 
     source.write_bytes(b"")
     digest, identity = INPUTS.sha256_with_identity(

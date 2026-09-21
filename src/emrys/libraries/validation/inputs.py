@@ -7,11 +7,11 @@ import hashlib
 import os
 import stat
 import subprocess
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-from emrys.libraries.exclusive_publication import stable_file_identity
+from emrys.libraries.exclusive_publication import stable_file_identity, stat_identity
 from emrys.libraries.validation.errors import fail
 
 
@@ -21,6 +21,7 @@ class Snapshot:
     inode: int
     size: int
     mtime_ns: int
+    ctime_ns: int
 
 
 def regular_snapshot(path: Path, label: str, *, nonempty: bool = True) -> Snapshot:
@@ -32,7 +33,7 @@ def regular_snapshot(path: Path, label: str, *, nonempty: bool = True) -> Snapsh
         fail(f"{label} must be a regular non-symlink file: {path}")
     if nonempty and value.st_size == 0:
         fail(f"{label} must be nonempty: {path}")
-    return Snapshot(value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns)
+    return Snapshot(*stat_identity(value))
 
 
 def require_executable(path: Path, label: str) -> None:
@@ -78,10 +79,13 @@ def sha256_with_identity(
     label: str,
     *,
     nonempty: bool = True,
+    observe: Callable[[bytes], None] | None = None,
 ) -> tuple[str, os.stat_result]:
-    """Hash one stable file without retaining its contents."""
+    """Hash one stable file, optionally observing the same streamed bytes."""
 
-    digest, state = _read_file(path, label, nonempty=nonempty, digest_only=True)
+    digest, state = _read_file(
+        path, label, nonempty=nonempty, digest_only=True, observe=observe
+    )
     assert isinstance(digest, str)
     return digest, state
 
@@ -149,6 +153,7 @@ def _read_file(
     limit: int | None = None,
     nonempty: bool = True,
     digest_only: bool = False,
+    observe: Callable[[bytes], None] | None = None,
 ) -> tuple[bytes | str, os.stat_result]:
     """Read a stable complete file or bounded range from one bound descriptor."""
 
@@ -184,6 +189,8 @@ def _read_file(
                 digest.update(chunk)
             else:
                 chunks.append(chunk)
+            if observe is not None:
+                observe(chunk)
             if remaining is not None:
                 remaining -= len(chunk)
         after = os.fstat(descriptor)

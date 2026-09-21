@@ -7,10 +7,11 @@ Each validator chooses its inputs, check IDs, commands, and evidence meaning.
 ## Input stability
 
 Retain both read mechanisms: they make different guarantees. `Snapshot` records
-device, inode, size and modification time; equal snapshots do not prove equal
-bytes. `read_bytes_with_identity` binds an open descriptor, checks mode and change
-time, and rejects pathname replacement. The restored-size/mtime counterexample
-remains covered by the [validation tests](../../../../tests/libraries/test_validation_report.py).
+device, inode, size, modification time and change time; equal snapshots do not
+prove equal bytes. `read_bytes_with_identity` binds an open descriptor, checks
+mode and change time, and rejects pathname replacement. The restored-size/mtime
+rewrite boundary remains covered by the
+[validation tests](../../../../tests/libraries/test_validation_report.py).
 Any consolidation must first specify the required guarantee for every caller;
 metadata equality cannot replace byte identity at admission or reuse boundaries.
 

@@ -5,7 +5,8 @@ from __future__ import annotations
 import glob
 import hashlib
 import os
-from collections.abc import Mapping
+import zlib
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,7 @@ from emrys.contracts.orchestration.application_model import (
 )
 from emrys.libraries.validation.mpileup import selector_file_semantics
 from emrys.contracts.scientific_evidence import step08
+from emrys.libraries.exclusive_publication import stat_identity
 from emrys.libraries.validation.errors import ValidationError
 from emrys.libraries.validation.inputs import (
     Snapshot,
@@ -143,6 +145,87 @@ class ProjectAdmission:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class _SampleInputAdmission:
+    samples_bytes: bytes
+    project_dir: Path
+    snapshots: tuple[tuple[Path, Snapshot], ...]
+    max_read_length: int
+
+
+class _FastqInspection:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.part = self.records = self.sequence_length = self.max_read_length = 0
+        self.line_length = self.line_first = self.line_last = 0
+        self.decoder = zlib.decompressobj(31) if path.name.endswith(".gz") else None
+
+    def observe(self, data: bytes) -> None:
+        while data and self.decoder is not None:
+            if self.decoder.eof:
+                data = data.lstrip(b"\0")
+                if not data:
+                    return
+                self.decoder = zlib.decompressobj(31)
+            plain = self.decoder.decompress(data, 1_000_001)
+            data = self.decoder.unconsumed_tail or self.decoder.unused_data
+            self._plain(plain)
+        if self.decoder is None:
+            self._plain(data)
+
+    def _plain(self, data: bytes) -> None:
+        *lines, tail = data.split(b"\n")
+        for fragment in lines:
+            self._fragment(fragment)
+            self._line()
+        self._fragment(tail)
+
+    def _fragment(self, fragment: bytes) -> None:
+        if not fragment.isascii():
+            self._fail("non-ASCII record")
+        if fragment:
+            if self.line_length == 0:
+                self.line_first = fragment[0]
+            self.line_length += len(fragment)
+            self.line_last = fragment[-1]
+
+    def _line(self) -> None:
+        length = self.line_length - (self.line_last == 13)
+        if self.part == 0:
+            if self.line_first != 64:
+                self._fail("record header does not start with '@'")
+        elif self.part == 1:
+            if not length:
+                self._fail("record sequence is empty")
+            self.sequence_length = length
+        elif self.part == 2:
+            if self.line_first != 43:
+                self._fail("record separator does not start with '+'")
+        else:
+            if length != self.sequence_length:
+                self._fail("record sequence and quality lengths differ")
+            self.records += 1
+            self.max_read_length = max(self.max_read_length, self.sequence_length)
+        self.part = (self.part + 1) % 4
+        self.line_length = self.line_first = self.line_last = 0
+
+    def finish(self) -> int:
+        if self.decoder is not None:
+            self._plain(self.decoder.flush())
+            if not self.decoder.eof:
+                self._fail("truncated gzip stream")
+        if self.line_length:
+            self._line()
+        if self.part or not self.records:
+            self._fail("incomplete FASTQ record")
+        return self.max_read_length
+
+    def _fail(self, reason: str) -> None:
+        raise orchestration_contracts.ContractValidationError(
+            f"FASTQ is malformed at record {self.records + 1}: {self.path}: {reason}"
+        )
+
+
 def _regular_file(path: Path, label: str) -> tuple[Path, bytes]:
     admitted_path = Path(os.path.abspath(path))
     try:
@@ -155,21 +238,17 @@ def _regular_file_snapshot(
     path: Path,
     label: str,
     input_snapshots: dict[Path, Snapshot] | None = None,
+    observe: Callable[[bytes], None] | None = None,
 ) -> tuple[Path, dict[str, Any]]:
     """Admit one large input by streaming its identity without retaining bytes."""
 
     admitted_path = Path(os.path.abspath(path))
     try:
-        digest, state = sha256_with_identity(admitted_path, label)
+        digest, state = sha256_with_identity(admitted_path, label, observe=observe)
     except ValidationError as exc:
         raise orchestration_contracts.ContractValidationError(str(exc)) from exc
     if input_snapshots is not None:
-        input_snapshots[admitted_path] = Snapshot(
-            state.st_dev,
-            state.st_ino,
-            state.st_size,
-            state.st_mtime_ns,
-        )
+        input_snapshots[admitted_path] = Snapshot(*stat_identity(state))
     return admitted_path, {
         "path": str(admitted_path),
         "size_bytes": state.st_size,
@@ -211,17 +290,19 @@ def validate_authored_path(value: str, label: str) -> None:
         )
 
 
+def _authored_path(value: str, base: Path, label: str) -> Path:
+    validate_authored_path(value, label)
+    path = Path(value)
+    return Path(os.path.abspath(path if path.is_absolute() else base / path))
+
+
 def _resolve_authored_path(
     value: str,
     base: Path,
     label: str,
     prepared_files: Mapping[Path, bytes] | None = None,
 ) -> tuple[Path, bytes]:
-    validate_authored_path(value, label)
-    candidate = Path(value)
-    if not candidate.is_absolute():
-        candidate = base / candidate
-    candidate = Path(os.path.abspath(candidate))
+    candidate = _authored_path(value, base, label)
     if prepared_files is not None and candidate in prepared_files:
         return candidate, prepared_files[candidate]
     return _regular_file(candidate, label)
@@ -233,11 +314,9 @@ def _resolve_authored_snapshot(
     label: str,
     input_snapshots: dict[Path, Snapshot] | None = None,
 ) -> tuple[Path, dict[str, Any]]:
-    validate_authored_path(value, label)
-    candidate = Path(value)
-    if not candidate.is_absolute():
-        candidate = base / candidate
-    return _regular_file_snapshot(candidate, label, input_snapshots)
+    return _regular_file_snapshot(
+        _authored_path(value, base, label), label, input_snapshots
+    )
 
 
 def _snapshot(path: Path, data: bytes) -> dict[str, Any]:
@@ -252,11 +331,7 @@ def _load_profile(profile: Mapping[str, Any] | str | Path) -> dict[str, Any]:
     if isinstance(profile, Mapping):
         value = dict(profile)
     else:
-        authored_profile = os.fspath(profile)
-        validate_authored_path(authored_profile, "Profile")
-        profile_path = Path(authored_profile)
-        if not profile_path.is_absolute():
-            profile_path = Path.cwd() / profile_path
+        profile_path = _authored_path(os.fspath(profile), Path.cwd(), "Profile")
         admitted_path, profile_data = _regular_file(profile_path, "Profile")
         value = orchestration_contracts.load_json_object_bytes(
             profile_data,
@@ -271,7 +346,8 @@ def _normalize_samples(
     manifest_data: bytes,
     project_dir: Path,
     input_snapshots: dict[Path, Snapshot] | None = None,
-) -> tuple[dict[str, Any], step08.Table]:
+    inspect_fastqs: bool = False,
+) -> tuple[dict[str, Any], step08.Table, int]:
     try:
         table, _, rows = step08.validate_sample_manifest_bytes(
             manifest_data, manifest_path
@@ -279,19 +355,30 @@ def _normalize_samples(
     except step08.ContractError as exc:
         raise orchestration_contracts.ContractValidationError(str(exc)) from exc
     normalized_rows: list[dict[str, Any]] = []
+    fastq_cache: dict[Path, tuple[dict[str, Any], int]] = {}
+
+    def admit_fastq(path: Path, label: str) -> dict[str, Any]:
+        if not inspect_fastqs:
+            return _regular_file_snapshot(path, label, input_snapshots)[1]
+        cached = fastq_cache.get(path)
+        if cached is None:
+            inspection = _FastqInspection(path)
+            try:
+                _path, record = _regular_file_snapshot(
+                    path, label, input_snapshots, inspection.observe
+                )
+                maximum = inspection.finish()
+            except zlib.error as exc:
+                inspection._fail(f"invalid gzip stream ({exc})")
+            cached = (record, maximum)
+            fastq_cache[path] = cached
+        return cached[0]
+
     for index, row in enumerate(rows, start=2):
-        r1_path, r1_snapshot = _resolve_authored_snapshot(
-            row["r1_fastq"],
-            project_dir,
-            f"Sample manifest row {index} R1 FASTQ",
-            input_snapshots,
-        )
-        r2_path, r2_snapshot = _resolve_authored_snapshot(
-            row["r2_fastq"],
-            project_dir,
-            f"Sample manifest row {index} R2 FASTQ",
-            input_snapshots,
-        )
+        r1_label = f"Sample manifest row {index} R1 FASTQ"
+        r2_label = f"Sample manifest row {index} R2 FASTQ"
+        r1_path = _authored_path(row["r1_fastq"], project_dir, r1_label)
+        r2_path = _authored_path(row["r2_fastq"], project_dir, r2_label)
         if r1_path == r2_path:
             raise orchestration_contracts.ContractValidationError(
                 f"Sample {row['sample_id']} R1 and R2 FASTQs must be distinct"
@@ -301,6 +388,8 @@ def _normalize_samples(
                 f"Sample {row['sample_id']} R1 and R2 FASTQs must use the same "
                 "compression mode"
             )
+        r1_snapshot = admit_fastq(r1_path, r1_label)
+        r2_snapshot = admit_fastq(r2_path, r2_label)
         normalized = {
             "sample_id": row["sample_id"],
             "condition": row["condition"],
@@ -318,6 +407,30 @@ def _normalize_samples(
             "rows": normalized_rows,
         },
         table,
+        max((length for _record, length in fastq_cache.values()), default=0),
+    )
+
+
+def _admit_sample_inputs(
+    manifest_path: Path,
+    manifest_data: bytes,
+    project_dir: Path,
+    inspect_fastqs: bool = False,
+) -> _SampleInputAdmission:
+    project_dir = Path(os.path.abspath(project_dir))
+    snapshots: dict[Path, Snapshot] = {}
+    samples, _table, max_read_length = _normalize_samples(
+        manifest_path,
+        manifest_data,
+        project_dir,
+        snapshots,
+        inspect_fastqs=inspect_fastqs,
+    )
+    return _SampleInputAdmission(
+        orchestration_contracts.canonical_json_bytes(samples),
+        project_dir,
+        tuple(snapshots.items()),
+        max_read_length,
     )
 
 
@@ -371,6 +484,7 @@ def _admit_project_data(
     profile: Mapping[str, Any] | str | Path,
     *,
     prepared_files: Mapping[Path, bytes] | None = None,
+    sample_inputs: _SampleInputAdmission | None = None,
 ) -> ProjectAdmission:
     """Admit prepared Project bytes at their intended canonical location."""
 
@@ -404,12 +518,17 @@ def _admit_project_data(
     sample_path, sample_data = _resolve_authored_path(
         sample_manifest, project_dir, "Sample manifest", prepared
     )
-    samples, sample_table = _normalize_samples(
-        sample_path,
-        sample_data,
-        project_dir,
-        input_snapshots,
-    )
+    if sample_inputs is None:
+        sample_inputs = _admit_sample_inputs(sample_path, sample_data, project_dir)
+    samples = _json_object(sample_inputs.samples_bytes, "Prepared sample admission")
+    if sample_inputs.project_dir != project_dir or samples["manifest"] != _snapshot(
+        sample_path, sample_data
+    ):
+        raise orchestration_contracts.ContractValidationError(
+            "Prepared sample admission does not match the Project sample manifest"
+        )
+    sample_table = step08.validate_sample_manifest_bytes(sample_data, sample_path)[0]
+    input_snapshots.update(sample_inputs.snapshots)
     dataset_sample_ids = {str(row["sample_id"]) for row in samples["rows"]}
 
     _fasta_path, fasta_snapshot = _resolve_authored_snapshot(
@@ -611,11 +730,9 @@ def admit_project(
 ) -> ProjectAdmission:
     """Admit one file-bound Project and all of its named Analyses."""
 
-    authored_value = os.fspath(project_path)
-    validate_authored_path(authored_value, "Project definition")
-    authored_path = Path(authored_value)
-    if not authored_path.is_absolute():
-        authored_path = Path.cwd() / authored_path
+    authored_path = _authored_path(
+        os.fspath(project_path), Path.cwd(), "Project definition"
+    )
     resolved_project, project_data = _regular_file(authored_path, "Project definition")
     return _admit_project_data(
         resolved_project,

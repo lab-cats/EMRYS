@@ -16,10 +16,12 @@ identities.
 
 ### Build STAR with the declared read-length overhang
 
-The original study declares 150-base reads and `sjdbOverhang=149`. Other
-Projects supply their own explicit index parameters through
+The original study declares 150-base reads and `sjdbOverhang=149`. Named Project
+creation can derive the value from the maximum read length across every admitted
+FASTQ record, while advanced callers may override it. Either route freezes an
+explicit numeric index parameter in
 [`project.yaml`](../../../configs/README.md#projectyaml). Validators inspect
-the configured value rather than infer it from a filename.
+that configured value rather than infer it from a filename.
 
 ### Generate BED12 from GTF
 

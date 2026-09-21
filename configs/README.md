@@ -57,9 +57,12 @@ analyses:
     background_max_fraction: 0.01
 ```
 
-Replace the example paths, conditions, reference, STAR parameters, and thresholds
-with your study's choices. EMRYS does not infer them from reads. `star_index`
-configures index construction; it does not admit an external prebuilt index.
+Replace the example paths, conditions, reference and thresholds with your study's
+choices. Named Project creation derives an omitted `sjdb_overhang` from every
+admitted FASTQ record and assists with `genome_sa_index_nbases`; it freezes both
+as numeric `star_index` values. Hand-authored Projects supply those numeric
+values directly. `star_index` configures index construction; it does not admit
+an external prebuilt index.
 
 Unknown fields, duplicate keys, merge keys, and legacy request-v3 documents
 are rejected by current Project commands. The FASTA parent must permit the
