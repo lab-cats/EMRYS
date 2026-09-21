@@ -58,7 +58,7 @@ real-Slurm lane nor an institutional walkthrough.
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
 | Historical unexplained failures | CV-12/E01 and CV-21/E06 remain unexplained historical observations whose causal reconstruction is not an acceptance requirement. CV-21 now needs only ordinary institutional execution of current reporting/inspection behavior. CV-10/E09 retains its separate current reconciliation requirement; newer successful checks cannot identify that cause. |
 | Postentry Task retry | CV-10: current-version closed-abort retry has hosted acceptance evidence; institutional cancellation and missing-finalization evidence remain. Existing blocked receipts remain ineligible. |
-| Doctor operation | CV-26: retain exact pre-storage readmission, storage finalization and one final full diagnosis after removing the redundant intervening head diagnosis. Hosted CI remains pending; no Viking timing or speedup claim is required. Future measured tuning remains independently owned by the optimization campaign. |
+| Doctor operation | CV-26 is Completed for exact pre-storage readmission, storage finalization and one final full diagnosis after removing the redundant intervening head diagnosis. Exact implementation CI passed; no Viking timing or speedup claim is required. Future measured tuning remains independently owned by the optimization campaign. |
 | Optional interface and retirement | CV-23 keeps cleanup Deferred; CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns institutional replacement validation and coordinated standalone entry-point/caller/name retirement. |
 
 All card acceptance below remains authoritative. No institutional execution,
@@ -95,7 +95,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-23](#cv-23-safe-project-or-artifact-cleanup) | P2 | Deferred | Decide and scope safe cleanup of unused owned state. |
 | [CV-24](#cv-24-run-center-actions) | P2 | Completed | Explore a dashboard that invokes supported CLI operations. |
 | [CV-25](#cv-25-log-discovery-and-readable-output) | P2 | Completed | Find the correct logs without memorizing scheduler IDs. |
-| [CV-26](#cv-26-repeated-doctor-input-reads) | P2 | Verification pending | Remove one redundant full head diagnosis without weakening final readiness. |
+| [CV-26](#cv-26-repeated-doctor-input-reads) | P2 | Completed | Remove one redundant full head diagnosis without weakening final readiness. |
 | [CV-27](#cv-27-terminal-only-report-access) | P3 | Verification pending | Retrieve portable reports from a terminal-based workflow. |
 
 ## Operator findings matrix — 2026-09-15
@@ -3817,10 +3817,12 @@ tests passed, including all 17 public Slurm Doctor scenarios above. Thirteen
 documentation-structure checks, Ruff lint/format and the whitespace check passed.
 
 No cache, snapshot, weakened hash, new abstraction, persisted state or timing
-target is introduced, and no speedup is claimed. Hosted CI for this exact source
-change remains pending, so CV-26 is **Verification pending**. Once it passes,
-CV-26 can become Completed for this revised structural outcome without Viking
-timing data; future measured Doctor tuning remains independently selectable.
+target is introduced, and no speedup is claimed. Exact implementation head
+`593f6e728321f535817bcde732d263c2f86079a8` passed all 14 standard jobs, with
+four configured skips and no failures, in
+[CI 35577392877](https://github.com/lab-cats/EMRYS/actions/runs/35577392877).
+CV-26 is **Completed** for this revised structural outcome without Viking timing
+data; future measured Doctor tuning remains independently selectable.
 
 ## P3 outcome
 
