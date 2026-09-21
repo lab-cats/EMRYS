@@ -287,10 +287,20 @@ moves or adopts an existing Project. Use `--project /absolute/Project/project.ya
 with Project-aware commands when working from another directory.
 
 Interactive named initialization discovers recognized FASTQ pairs in one
-directory, asks for their biological assignments and the study regions, and
-publishes `samples.tsv` and `partitions.tsv` inside the Project. Its preview
-checks paths and scientific structure without reading FASTQ contents, derives an
-omitted `genomeSAindexNbases` from the reference, and labels omitted
+directory, applies one operator-selected strand value to missing rows or expands
+`mixed` into per-sample questions, and still asks for every condition, pairing
+group and study region. For exactly two compatible paired conditions it displays
+both comparison directions and requires a choice with no default. It discloses
+the five built-in paired-CMH values for one acceptance when all five are omitted;
+decline restores the individual questions. Copied manifests retain their
+supplied biological values while their paths are normalized, explicit `--sample`
+rows bypass these missing-row prompts, and noninteractive omission still fails.
+The normal preview keeps the
+strand summary, comparison and target, five thresholds, background state and
+maximum, and all three STAR values visible before replay.
+
+Preview checks paths and scientific structure without reading FASTQ contents,
+derives an omitted `genomeSAindexNbases` from the reference, and labels omitted
 `sjdbOverhang` and `genomeChrBinNbits` values as automatic at creation. The
 printed creation command carries every explicit answer while preserving those
 omissions. Creation hashes each FASTQ's stored bytes once while validating every
@@ -315,7 +325,9 @@ For studies with additional input requirements:
   paired-CMH Project manifest.
 - For a background cohort, include its samples in the manifest and pass
   `--background-condition CONDITION` when creating the Project. The condition
-  must match those sample rows; the [Analysis field guide](../../configs/README.md#built-in-analysis-fields)
+  must match those sample rows; an omitted active maximum joins the disclosed
+  default set. Without a background condition, `0.01` remains in the closed
+  configuration but is shown as inactive. The [Analysis field guide](../../configs/README.md#built-in-analysis-fields)
   explains the background filter and other scientific settings.
 - For noninteractive setup, use the explicit field flags shown by
   `emrys init --help`. Supply every required answer when no terminal is available.

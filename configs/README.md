@@ -73,6 +73,25 @@ value without rewriting the Project. Hand-authored Projects still supply the
 other two numeric values. `star_index` configures index construction; it does
 not admit an external prebuilt index.
 
+Guided creation asks once for a study-wide strandedness value when it must author
+missing sample rows. `unknown` is the conservative prompt default; `mixed` is a
+prompt-only branch that asks separately for each missing row and is never stored.
+Persisted values remain exactly the four values in the sample-manifest contract
+below. Conditions and pairing groups are always operator-authored. When those
+new rows form exactly two conditions with identical, unambiguous pairing strata,
+Init shows both control-to-treatment directions and requires a numbered choice
+with no default; filenames and row order never choose the direction. Copied
+manifests and explicit `--sample` rows retain their supplied content.
+
+When all five built-in paired-CMH settings are omitted interactively, Init shows
+their existing values together and offers one explicit acceptance. Declining
+returns to the individual questions. If a background condition is present and
+its maximum is also omitted, `background_max_fraction=0.01` is disclosed in the
+same set; otherwise the closed configuration still persists `0.01` but displays
+it as inactive because no background condition exists. These conveniences do
+not change the scientific field semantics below or fill missing noninteractive
+arguments.
+
 Unknown fields, duplicate keys, merge keys, and legacy request-v3 documents
 are rejected by current Project commands. The FASTA parent must permit the
 Step `00c` `.fai` and `.dict` sidecars. Safe identifiers begin with an ASCII

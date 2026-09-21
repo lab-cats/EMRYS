@@ -142,8 +142,11 @@ def test_quickstart_tracks_guided_init_and_viking_profile() -> None:
     ordered_guidance = (
         "Enter the absolute path to the reference FASTA",
         "asks for the absolute FASTQ directory",
+        "At `study strandedness`, enter `reverse`",
         "At `optional regions file`",
-        "After the partitions are selected",
+        "shows both numbered comparison",
+        "discloses the five built-in paired-CMH settings",
+        "normal preview also shows the strand summary",
     )
     positions = [quickstart.index(value) for value in ordered_guidance]
 
@@ -154,6 +157,14 @@ def test_quickstart_tracks_guided_init_and_viking_profile() -> None:
     assert "If the data provider supplied checksums, retain them" in quickstart
     assert "Synthetic Project: ready" in quickstart
     for value in (
+        "`EV -> PUM1`",
+        "`A>G`",
+        "minimum sample depth\n`1`",
+        "mean-depth threshold `50`",
+        "FDR threshold `0.05`",
+        "common-odds-ratio threshold\n`1.2`",
+        "absolute-difference threshold `0.005`",
+        "`background max fraction: 0.01 (inactive)`",
         "`viking-users`",
         "`long`",
         "`normal`",

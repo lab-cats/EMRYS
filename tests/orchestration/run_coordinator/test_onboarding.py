@@ -172,6 +172,24 @@ def _project_arguments(
     )
 
 
+def _guided_project_arguments(
+    tmp_path: Path, output: Path, *, execute: bool
+) -> tuple[argparse.Namespace, list[dict[str, str]]]:
+    arguments = _project_arguments(tmp_path, output, execute=execute)
+    _table, _sample_ids, rows = step08.validate_sample_manifest(
+        arguments.sample_manifest
+    )
+    arguments.sample_manifest = None
+    arguments.partition_manifest = None
+    arguments.fastq = [
+        Path(row[mate]) for row in rows for mate in ("r1_fastq", "r2_fastq")
+    ]
+    arguments.sample = []
+    arguments.regions_file = []
+    arguments.region = [["p1", "chrSynthetic"]]
+    return arguments, rows
+
+
 def _setup_checkout(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> tuple[Path, Path]:
@@ -436,50 +454,59 @@ def test_project_preview_skips_fastq_hashing_and_creation_hashes_each_fastq_once
     assert definition["reference"]["star_index"]["genome_chr_bin_nbits"] == 2
 
 
-def test_guided_project_creation_writes_its_manifests_inside_the_project(
+@pytest.mark.parametrize(
+    ("selection", "control", "treatment"),
+    (("1", "EV", "PUM1"), ("2", "PUM1", "EV")),
+)
+def test_guided_project_preview_replays_defaults_and_publishes_real_answers(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    selection: str,
+    control: str,
+    treatment: str,
 ) -> None:
     output = tmp_path / "guided-study"
-    arguments = _project_arguments(tmp_path, output, execute=True)
+    arguments, _rows = _guided_project_arguments(tmp_path, output, execute=False)
     reads = tmp_path / "source" / "reads"
-    arguments.sample_manifest = None
-    arguments.partition_manifest = None
     arguments.fastq = []
-    arguments.sample = []
-    arguments.regions_file = []
     arguments.region = []
     arguments.sjdb_overhang = None
     arguments.genome_sa_index_nbases = None
+    arguments.genome_chr_bin_nbits = None
     reference_fasta = arguments.reference_fasta
     reference_gtf = arguments.reference_gtf
     arguments.reference_fasta = None
     arguments.reference_gtf = None
+    arguments.control_condition = None
+    arguments.treatment_condition = None
+    arguments.target_change = None
+    for field in onboarding._PAIRED_CMH_DEFAULTS:
+        setattr(arguments, field, None)
+    arguments.background_max_fraction = None
     terminal = _Terminal(
         "\n".join(
             (
                 str(reference_fasta),
                 str(reference_gtf),
                 str(reads),
+                "reverse",
                 "EV",
                 "pair_1",
-                "unstranded",
                 "EV",
                 "pair_2",
-                "unstranded",
                 "PUM1",
                 "pair_1",
-                "unstranded",
                 "PUM1",
                 "pair_2",
-                "unstranded",
                 "",
                 "chrSynthetic",
-                "",
-                "",
+                selection,
+                "A>G",
                 "",
             )
         )
+        + "\n"
     )
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(onboarding.sys, "stdin", terminal)
@@ -494,16 +521,10 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
 
     monkeypatch.setattr(onboarding, "_reference_contigs", count_reference)
 
-    assert onboarding.init_project_from_args(arguments) == 0
+    result = onboarding.init_project_from_args(arguments)
+    assert result == 0, _decoded_terminal(terminal_output.getvalue()).plain
     assert reference_reads == [reference_fasta]
-    assert (output / "samples.tsv").is_file()
-    assert (output / "partitions.tsv").is_file()
-    definition = yaml.safe_load((output / "project.yaml").read_text(encoding="utf-8"))
-    assert definition["dataset"]["samples"] == "samples.tsv"
-    assert (
-        definition["analyses"][arguments.analysis_name]["partitions"]
-        == "partitions.tsv"
-    )
+    assert not output.exists()
     prompts = terminal_output.getvalue()
     plain_prompts = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", prompts)
     assert prompts.index("reference fasta") < prompts.index("FASTQ directory")
@@ -512,6 +533,232 @@ def test_guided_project_creation_writes_its_manifests_inside_the_project(
     )
     assert f"FASTA names/regions from {Path(reference_fasta).name}" in prompts
     assert "Accepted FASTA names (1): chrSynthetic" in plain_prompts
+    assert plain_prompts.count("study strandedness") == 1
+    assert "strandedness for" not in plain_prompts
+    assert "1. EV -> PUM1" in plain_prompts
+    assert "2. PUM1 -> EV" in plain_prompts
+    assert "comparison [1 / 2]:" in plain_prompts
+    assert "Built-in paired-CMH settings:" in plain_prompts
+    assert "Use these paired-CMH defaults?" in plain_prompts
+
+    preview = capsys.readouterr().out
+    assert f"Comparison: {control} -> {treatment}; target A>G" in preview
+    assert "Strandedness: reverse: 4" in preview
+    for text in (
+        "min sample dp: 1",
+        "mean dp threshold: 50",
+        "fdr threshold: 0.05",
+        "common or threshold: 1.2",
+        "absolute difference threshold: 0.005",
+        "Background condition: none",
+        "Background max fraction: 0.01 (inactive)",
+        "STAR sjdb overhang: automatic at creation",
+        "STAR genome SA index nbases: 1 (automatic",
+        "STAR genome chromosome-bin nbits:",
+    ):
+        assert text in preview
+    assert preview.count("automatic at creation") == 2
+    replay = next(line for line in preview.splitlines() if line.startswith("cd "))
+    tokens = shlex.split(replay)
+    assert tokens.count("--sample") == 4
+    assert "--sjdb-overhang" not in tokens
+    assert "--genome-sa-index-nbases" not in tokens
+    assert "--genome-chr-bin-nbits" not in tokens
+
+    monkeypatch.setattr(onboarding.sys, "stdin", io.StringIO())
+    assert cli.main(tokens[tokens.index("emrys") + 1 :]) == 0
+    assert reference_reads == [reference_fasta, reference_fasta]
+    definition = yaml.safe_load((output / "project.yaml").read_text(encoding="utf-8"))
+    analysis = definition["analyses"][arguments.analysis_name]
+    assert (analysis["control_condition"], analysis["treatment_condition"]) == (
+        control,
+        treatment,
+    )
+    assert analysis["target_change"] == "A>G"
+    assert {field: analysis[field] for field in onboarding._PAIRED_CMH_DEFAULTS} == {
+        "min_sample_dp": 1,
+        "mean_dp_threshold": 50,
+        "fdr_threshold": 0.05,
+        "common_or_threshold": 1.2,
+        "absolute_difference_threshold": 0.005,
+    }
+    assert analysis["background_max_fraction"] == 0.01
+    _table, _, samples = step08.validate_sample_manifest(output / "samples.tsv")
+    assert {row["strandedness"] for row in samples} == {"reverse"}
+    assert (output / "partitions.tsv").is_file()
+
+
+@pytest.mark.parametrize(
+    ("choice", "expected"),
+    (
+        ("", ("unknown",) * 4),
+        ("forward", ("forward",) * 4),
+        ("reverse", ("reverse",) * 4),
+        ("unstranded", ("unstranded",) * 4),
+        ("mixed", ("forward", "reverse", "unstranded", "unknown")),
+    ),
+)
+def test_guided_project_applies_one_study_strand_or_expands_mixed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    choice: str,
+    expected: tuple[str, ...],
+) -> None:
+    output = tmp_path / "guided-strands"
+    arguments, rows = _guided_project_arguments(tmp_path, output, execute=True)
+    answers = [choice]
+    for row, strand in zip(sorted(rows, key=lambda row: row["sample_id"]), expected):
+        answers.extend((row["condition"], row["replicate"]))
+        if choice == "mixed":
+            answers.append(strand)
+    stderr = _Terminal()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("\n".join(answers)))
+    monkeypatch.setattr(onboarding.sys, "stderr", stderr)
+
+    assert onboarding.init_project_from_args(arguments) == 0
+
+    _table, _, published = step08.validate_sample_manifest(output / "samples.tsv")
+    assert tuple(row["strandedness"] for row in published) == expected
+    prompts = _decoded_terminal(stderr.getvalue()).plain
+    assert prompts.count("study strandedness") == 1
+    assert prompts.count("strandedness for") == (4 if choice == "mixed" else 0)
+
+
+def test_guided_comparison_has_no_implicit_direction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "no-direction"
+    arguments, rows = _guided_project_arguments(tmp_path, output, execute=False)
+    arguments.control_condition = None
+    arguments.treatment_condition = None
+    answers = ["reverse"]
+    for row in sorted(rows, key=lambda row: row["sample_id"]):
+        answers.extend((row["condition"], row["replicate"]))
+    answers.append("")
+    stderr = _Terminal()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("\n".join(answers) + "\n"))
+    monkeypatch.setattr(onboarding.sys, "stderr", stderr)
+
+    assert onboarding.init_project_from_args(arguments) == 2
+    assert not output.exists()
+    prompts = _decoded_terminal(stderr.getvalue()).plain
+    assert "comparison [1 / 2]:" in prompts
+    assert "comparison [1 / 2] (Press ENTER" not in prompts
+
+
+def test_guided_incompatible_pairing_retains_explicit_comparison_questions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "incompatible-pairs"
+    arguments, rows = _guided_project_arguments(tmp_path, output, execute=False)
+    arguments.control_condition = None
+    arguments.treatment_condition = None
+    assignments = (
+        ("EV", "pair_1"),
+        ("EV", "pair_2"),
+        ("PUM1", "pair_1"),
+        ("PUM1", "pair_3"),
+    )
+    answers = ["reverse"]
+    for _row, assignment in zip(
+        sorted(rows, key=lambda row: row["sample_id"]), assignments
+    ):
+        answers.extend(assignment)
+    answers.extend(("EV", "PUM1"))
+    stderr = _Terminal()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("\n".join(answers)))
+    monkeypatch.setattr(onboarding.sys, "stderr", stderr)
+
+    assert onboarding.init_project_from_args(arguments) == 2
+    assert not output.exists()
+    prompts = _decoded_terminal(stderr.getvalue()).plain
+    assert "Choose the paired comparison direction" not in prompts
+    assert "control condition:" in prompts
+    assert "treatment condition:" in prompts
+    assert "Sample manifest must define" in prompts
+
+
+def test_guided_project_declines_disclosed_defaults_and_persists_each_answer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "custom-thresholds"
+    arguments = _project_arguments(tmp_path, output, execute=True)
+    for field in onboarding._PAIRED_CMH_DEFAULTS:
+        setattr(arguments, field, None)
+    stderr = _Terminal()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        onboarding.sys,
+        "stdin",
+        _Terminal("no\n2\n60\n0.1\n1.5\n0.02\n"),
+    )
+    monkeypatch.setattr(onboarding.sys, "stderr", stderr)
+
+    assert onboarding.init_project_from_args(arguments) == 0
+
+    analysis = yaml.safe_load((output / "project.yaml").read_text())["analyses"][
+        arguments.analysis_name
+    ]
+    assert {field: analysis[field] for field in onboarding._PAIRED_CMH_DEFAULTS} == {
+        "min_sample_dp": 2,
+        "mean_dp_threshold": 60,
+        "fdr_threshold": 0.1,
+        "common_or_threshold": 1.5,
+        "absolute_difference_threshold": 0.02,
+    }
+    prompts = _decoded_terminal(stderr.getvalue()).plain
+    assert "Use these paired-CMH defaults?" in prompts
+    for label in (
+        "min sample dp (Press ENTER for 1)",
+        "mean dp threshold (Press ENTER for 50)",
+        "fdr threshold (Press ENTER for 0.05)",
+        "common or threshold (Press ENTER for 1.2)",
+        "absolute difference threshold (Press ENTER for 0.005)",
+    ):
+        assert label in prompts
+
+
+def test_active_background_limit_joins_the_disclosed_default_set(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    output = tmp_path / "background-default"
+    arguments = _project_arguments(tmp_path, output, execute=False)
+    table, _, rows = step08.validate_sample_manifest(arguments.sample_manifest)
+    background = {
+        **rows[0],
+        "sample_id": "background",
+        "condition": "background",
+        "replicate": "background-1",
+    }
+    for mate in ("r1_fastq", "r2_fastq"):
+        path = tmp_path / f"background_{mate}.fastq"
+        path.write_bytes(Path(background[mate]).read_bytes())
+        background[mate] = str(path)
+    arguments.sample_manifest.write_bytes(tsv_bytes(table.header, [*rows, background]))
+    arguments.background_condition = "background"
+    arguments.background_max_fraction = None
+    for field in onboarding._PAIRED_CMH_DEFAULTS:
+        setattr(arguments, field, None)
+    stderr = _Terminal()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("\n"))
+    monkeypatch.setattr(onboarding.sys, "stderr", stderr)
+
+    assert onboarding.init_project_from_args(arguments) == 0
+    assert not output.exists()
+    prompts = _decoded_terminal(stderr.getvalue()).plain
+    assert prompts.index("background max fraction: 0.01") < prompts.index(
+        "Use these paired-CMH defaults?"
+    )
+    assert "Background max fraction: 0.01 (active)" in capsys.readouterr().out
 
 
 def test_guided_project_rejects_selector_absent_from_supplied_fasta(
@@ -545,7 +792,7 @@ def test_guided_project_rejects_selector_absent_from_supplied_fasta(
 
 
 @pytest.mark.parametrize("site", (None, "viking"))
-def test_guided_project_preview_replays_exact_answers_without_new_prompts(
+def test_copied_manifest_preview_replays_exact_answers_without_new_prompts(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -611,10 +858,13 @@ def test_guided_project_preview_replays_exact_answers_without_new_prompts(
     preview = capsys.readouterr().out
     assert _tree_bytes(tmp_path) == before
     assert not output.exists()
-    assert "target change: C>T" in preview
+    assert (
+        f"Comparison: {arguments.control_condition} -> "
+        f"{arguments.treatment_condition}; target C>T"
+    ) in preview
     assert "mean dp threshold: 71.5" in preview
     assert (
-        f"background condition: {arguments.background_condition or 'none'}" in preview
+        f"Background condition: {arguments.background_condition or 'none'}" in preview
     )
     assert f"Analysis: {arguments.analysis_name}; site: {site or 'direct'}" in preview
     for sample in samples:

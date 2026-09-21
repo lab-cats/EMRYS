@@ -140,8 +140,11 @@ emrys init pum1-study
 
 Enter the absolute path to the reference FASTA, then the absolute path to its
 matching GTF. EMRYS next asks for the absolute FASTQ directory. Confirm that all
-six pairs were detected and enter the condition, pairing group and strandedness
-from the table in step 2.
+six pairs were detected. At `study strandedness`, enter `reverse` once for this
+delivery. EMRYS then asks for the condition and pairing group for each sample;
+enter the values from the table in step 2. For another study, pressing Enter at
+the study-wide question records the conservative `unknown` value, while `mixed`
+opens a separate strandedness question for each sample.
 
 At `optional regions file`, press Enter. This study uses reference sequence
 names directly rather than a separate BED- or VCF-like regions file. At the
@@ -165,19 +168,22 @@ creation, when EMRYS validates every FASTQ record during the one hashing pass an
 uses the maximum read length with the admitted reference summary. For this known
 150-base delivery, the creation report should show `sjdbOverhang=149`,
 `genomeSAindexNbases=14`, and `genomeChrBinNbits=18`.
-After the partitions are selected, use these remaining scientific values:
+After the partitions are selected, EMRYS shows both numbered comparison
+directions. Choose the number beside `EV -> PUM1`; this question deliberately has
+no default. At `target change`, enter `A>G`.
 
-| Prompt | Enter |
-| --- | --- |
-| `control condition` | `EV` |
-| `treatment condition` | `PUM1` |
-| `target change` | `A>G` |
-| `min sample dp (Press ENTER for 1)` | Press Enter |
-| `mean dp threshold (Press ENTER for 50)` | Press Enter |
-| `fdr threshold (Press ENTER for 0.05)` | Press Enter |
-| `common or threshold (Press ENTER for 1.2)` | Press Enter |
-| `absolute difference threshold (Press ENTER for 0.005)` | Press Enter |
-| `background max fraction (Press ENTER for 0.01)` | Press Enter; it is unused because no background cohort is selected |
+EMRYS then discloses the five built-in paired-CMH settings: minimum sample depth
+`1`, mean-depth threshold `50`, FDR threshold `0.05`, common-odds-ratio threshold
+`1.2`, and absolute-difference threshold `0.005`. Review the list and press Enter
+at `Use these paired-CMH defaults?` to accept it once. Entering `no` asks for the
+five values separately. They are computational ranking choices, not biological
+conclusions.
+
+This study has no background cohort, so there is no active background-limit
+question. The preview and saved closed configuration still show
+`background max fraction: 0.01 (inactive)`. Before the generated command, the
+normal preview also shows the strand summary, selected comparison and target,
+all five thresholds, background state, and all three STAR settings.
 
 The preview ends with `Preview complete; Project not created.` It then prints
 one long command under `Next action`. Review the interpretation immediately

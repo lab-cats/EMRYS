@@ -93,11 +93,25 @@ then contains the built-in Viking placement rather than direct placement.
 Named initialization creates Project-owned `samples.tsv` and `partitions.tsv`;
 FASTQs, references and region files remain at their declared locations. Guided
 setup collects and admits the operator-supplied reference FASTA/GTF before it
-discovers recognized FASTQ pairs and asks for biological assignments and one
-partition source. The regions-file and reference-name/region choices are
-explained as alternatives, and the latter prompt names the admitted FASTA.
-Prompt defaults remain explicit as `Press ENTER for VALUE` without color and
-are dimmed in eligible terminals. Omitted STAR index settings are not prompts.
+discovers recognized FASTQ pairs. For missing sample assignments it asks once
+for study-wide strandedness, defaulting conservatively to `unknown`; the
+prompt-only `mixed` choice asks per missing sample. The operator still authors
+every condition and pairing group. Exactly two conditions with valid identical
+pairing strata produce both numbered control-to-treatment directions, with no
+default; ambiguous, incompatible, multi-condition, or partially explicit
+comparisons retain the separate questions. Existing explicit `--sample` rows
+and copied manifests do not enter these missing-row conveniences. The
+regions-file and reference-name/region choices are explained as alternatives,
+and the latter prompt names the admitted FASTA.
+
+When all five built-in paired-CMH values are omitted interactively, one prompt
+first discloses them and accepts or declines the set; decline restores the
+individual questions. An omitted background maximum joins that disclosure only
+when a background condition is active. Without one, the closed configuration
+persists `0.01` and labels it inactive without another question. Prompt defaults
+remain explicit as `Press ENTER for VALUE` without color and are dimmed in
+eligible terminals. Noninteractive missing fields still fail rather than using
+these prompt conveniences. Omitted STAR index settings are not prompts.
 Preview derives and shows `genomeSAindexNbases` from the admitted FASTA length;
 it labels `sjdbOverhang` and `genomeChrBinNbits` automatic at creation without
 reading FASTQ contents. Creation validates every FASTQ record during the one
@@ -163,14 +177,17 @@ a second full Project admission.
 Progress adds no percentage estimate, persistent state, or authority to remove
 a partial or published Project after interruption.
 
-Named initialization's no-write preview shows the built-in Analysis,
-explicit sample/mate and biological assignments, input/region paths, and
-normalized scientific choices. Its quoted replay command selects the same Python
-interpreter and exact Projects parent and supplies every explicit collected
-answer. Automatically derived STAR flags stay omitted so creation derives them
-from current admitted inputs rather than treating preview observations as
-overrides. Creation performs the one content admission; preview is not a
-frozen-input promise. Publication still requires explicit `--execute`.
+Named initialization's no-write preview validates the built-in Analysis,
+sample/mate and biological assignments, input/region paths, and normalized
+scientific choices. Normal output keeps the strand summary, comparison and
+target, all five paired-CMH values, background state and maximum, and all three
+STAR values visible because they define the immutable scientific plan; verbose
+output displays per-sample and path detail. Its quoted replay command
+selects the same Python interpreter and exact Projects parent and supplies every
+explicit collected answer. Automatically derived STAR flags stay omitted so
+creation derives them from current admitted inputs rather than treating preview
+observations as overrides. Creation performs the one content admission; preview
+is not a frozen-input promise. Publication still requires explicit `--execute`.
 Unsupported Project schema diagnostics retain their original detail and identify
 guided current setup; no unsupported legacy schema translation or YAML-only
 import is performed.

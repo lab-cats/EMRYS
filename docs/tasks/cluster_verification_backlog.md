@@ -283,6 +283,14 @@ publication state; exact members and policy are verbose. Both preserve errors
 and no-write outcomes. Focused local checks passed; standard CI and Viking
 terminal acceptance remain, so CV-U02 is **Verification pending**.
 
+**September 21 critical-preview refinement:** Named Init's normal review now
+keeps only the compact scientific choices needed to catch an incorrect immutable
+plan: strand summary, comparison/target, five paired-CMH thresholds, background
+state/maximum and three STAR values. Per-sample paths and assignments remain
+verbose. This is deliberate critical information under AC-GUARD-002, not a
+return of diagnostic narration. CV-U02 remains **Verification pending** for
+hosted CI and Viking terminal acceptance.
+
 ### CV-U03 Init and Validate summaries
 
 **Operator instruction:** “Init can give output directory libraries, and
@@ -298,6 +306,12 @@ described in CV-U02. The user did not supply an exhaustive list of Init fields.
 library count and IDs, Analysis/site, reference, partition count, comparison and
 target. Validate normally prints `PASS` or one `FAIL` line with the specific
 error; `--verbose` restores hashes, counts, paths, warnings and Analysis detail.
+
+**September 21 summary completion:** Init now also reports the compact strand
+summary, five paired-CMH values, active/inactive background maximum and all three
+STAR values in the normal review. These are the effective immutable study
+choices; verbose still owns individual sample/mate paths and assignments.
+CV-U03 remains **Verification pending** for hosted CI and Viking visual review.
 
 ### CV-U04 Doctor presentation
 
@@ -1099,6 +1113,16 @@ handoff. The initializer itself did not change. Focused local checks pass; a
 novice Viking/PTY walkthrough remains required, so CV-U18 is **Verification
 pending**.
 
+**September 21 guided-input compression:** For newly discovered samples, one
+study-wide strand answer now fills the missing rows; `mixed` opens the existing
+per-sample choice instead. Conditions and pairing groups remain explicit. When
+exactly two conditions pass the existing paired-strata authority, Init shows both
+directions and requires a numbered choice with no default. Ambiguous or
+incompatible shapes retain the separate questions. Explicit `--sample` rows and
+copied manifests are unchanged. Public preview/replay/publication tests cover the
+new routing; novice Viking/PTY acceptance remains, so CV-U18 stays
+**Verification pending**.
+
 ### CV-U19 Long-term interactive CLI
 
 **Operator direction:** “Eventually the whole setup and even run process should
@@ -1201,6 +1225,14 @@ scratch. It labels these as supplied requests rather than measured performance,
 and the questionnaire order now matches the product. Focused local checks pass;
 novice Viking acceptance remains required, so CV-U20 is **Verification pending**.
 
+**September 21 shorter concrete path:** Quickstart now directs the PUM1 operator
+to enter study-wide `reverse`, explicitly choose the displayed `EV -> PUM1`
+direction, enter `A>G`, and accept the disclosed values `1`, `50`, `0.05`, `1.2`
+and `0.005` once. With no background cohort, `0.01` remains visible and persisted
+as inactive rather than becoming another question. All known values remain in
+the guide; novice Viking acceptance is still required, so CV-U20 remains
+**Verification pending**.
+
 ### CV-U21 Technical parameter assistance
 
 **Operator instruction:** “There should be a tool for determining sjdb overhang,
@@ -1293,6 +1325,15 @@ admission fails before publication. Existing Projects without
 remains **Verification pending** for hosted CI and a fresh operator walkthrough
 with non-synthetic variable-length reads and a representative fragmented
 reference.
+
+**September 21 novice-default boundary:** The shorter questionnaire does not
+extend mechanical parameter determination. STAR values remain derived as above;
+`unknown` is a conservative strandedness fallback rather than a measurement,
+comparison direction is explicitly selected, and the disclosed paired-CMH
+values are existing ranking policy rather than inferred study truth. An active
+background maximum joins the same disclosure; without a background condition,
+the persisted `0.01` is visibly inactive. CV-U21 remains **Verification pending**
+at its existing evidence ceiling.
 
 ### CV-U22 Smoke-project tool reuse
 
@@ -2335,6 +2376,16 @@ Together with the previously implemented reference-informed selectors, visible
 defaults and explicit preview-to-publication handoff, this resolves the recorded
 source/documentation gaps. Focused local checks pass; institutional novice
 acceptance remains required, so CV-06 is **Verification pending**.
+
+**September 21 onboarding compression:** The actual-data flow now replaces
+repeated strand and threshold questions with one disclosed study-wide strand
+choice and one disclosed paired-CMH default-set confirmation. Pairing metadata
+and control direction remain explicit, every effective choice stays in the
+normal preview and replay, copied manifests remain literal, and decline,
+noninteractive refusal, admission and no-write/publication boundaries are
+preserved. Public-path fixtures cover persisted TSV/YAML and replay with closed
+stdin; institutional novice acceptance remains required, so CV-06 stays
+**Verification pending**.
 
 ### CV-07 Site and workload profile selection
 

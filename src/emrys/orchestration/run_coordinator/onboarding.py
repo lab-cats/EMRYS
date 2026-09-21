@@ -12,6 +12,7 @@ import stat
 import sys
 import hashlib
 import uuid
+from collections import Counter
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, replace
 from functools import partial
@@ -28,7 +29,7 @@ from emrys.analyses import (
     load_analysis_module,
 )
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.scientific_evidence import step08
+from emrys.contracts.scientific_evidence import step08, step09
 from emrys.evidence.runtime_availability.inspector import (
     RuntimeInspection,
     RuntimeInspectionError,
@@ -678,6 +679,8 @@ _PROJECT_SUGGESTIONS = dict(
         strict=True,
     )
 )
+_PAIRED_CMH_DEFAULTS = tuple(_PROJECT_SUGGESTIONS)[:-1]
+_STRANDEDNESS_CHOICES = ("forward", "reverse", "unstranded", "unknown")
 
 
 def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
@@ -821,6 +824,17 @@ def _collect_project_answers(
             + "; supply them explicitly or run this command in a terminal"
         )
     answers: dict[str, object] = {}
+    disclosed_defaults = _PAIRED_CMH_DEFAULTS
+    if (
+        getattr(arguments, "background_condition", None) is not None
+        and getattr(arguments, "background_max_fraction", None) is None
+    ):
+        disclosed_defaults += ("background_max_fraction",)
+    offer_defaults = interactive and all(
+        getattr(arguments, destination, None) is None
+        for destination in disclosed_defaults
+    )
+    use_defaults = False
     for destination in fields:
         value = getattr(arguments, destination, None)
         suggestion = _PROJECT_SUGGESTIONS.get(destination)
@@ -835,6 +849,24 @@ def _collect_project_answers(
                 reference_contigs = _reference_contigs(Path(answers["reference_fasta"]))
             genome_length = sum(length for _name, length in reference_contigs)
             value = max(1, math.floor(min(14, math.log2(genome_length) / 2 - 1)))
+        if value is None and destination == _PAIRED_CMH_DEFAULTS[0] and offer_defaults:
+            print("Built-in paired-CMH settings:", file=sys.stderr)
+            for name in disclosed_defaults:
+                console_field(
+                    name.replace("_", " "), _PROJECT_SUGGESTIONS[name], file=sys.stderr
+                )
+            use_defaults = (
+                _prompt_choice("Use these paired-CMH defaults?", ("yes", "no"), "yes")
+                == "yes"
+            )
+        if value is None and use_defaults and destination in disclosed_defaults:
+            value = suggestion
+        if (
+            value is None
+            and destination == "background_max_fraction"
+            and not getattr(arguments, "background_condition", None)
+        ):
+            value = suggestion
         if value is None:
             label = destination.replace("_", " ")
             raw = (
@@ -911,6 +943,15 @@ def _prompt(label: str, suggestion: str | None = None) -> str:
     return raw.strip() or (suggestion or "")
 
 
+def _prompt_choice(
+    label: str, choices: Sequence[str], suggestion: str | None = None
+) -> str:
+    value = _prompt(f"{label} [{' / '.join(choices)}]", suggestion)
+    if value not in choices:
+        raise OnboardingError(f"{label} must be one of: {', '.join(choices)}")
+    return value
+
+
 def _interactive_terminal() -> bool:
     return sys.stdin.isatty() and sys.stderr.isatty()
 
@@ -958,13 +999,22 @@ def _guided_manifest_members(
         print("Detected FASTQ pairs:", file=sys.stderr)
         for sample_id in sorted(sample_ids):
             print(f"  {sample_id}", file=sys.stderr)
+        study_strand = _prompt_choice(
+            "study strandedness", (*_STRANDEDNESS_CHOICES, "mixed"), "unknown"
+        )
         for sample_id in missing:
             samples.append(
                 [
                     sample_id,
                     _prompt(f"condition for {sample_id}"),
                     _prompt(f"pairing group for {sample_id}"),
-                    _prompt(f"strandedness for {sample_id}", "unknown"),
+                    _prompt_choice(
+                        f"strandedness for {sample_id}",
+                        _STRANDEDNESS_CHOICES,
+                        "unknown",
+                    )
+                    if study_strand == "mixed"
+                    else study_strand,
                 ]
             )
         arguments.sample = samples
@@ -1011,7 +1061,30 @@ def _guided_manifest_members(
                 for index, selector in enumerate(selectors, start=1)
             ]
             arguments.region = regions
-    return _draft_manifest_members(fastqs, samples, regions_files, regions)
+    members = _draft_manifest_members(fastqs, samples, regions_files, regions)
+    if (
+        missing
+        and interactive
+        and arguments.control_condition is None
+        and arguments.treatment_condition is None
+    ):
+        _, _, rows = step08.validate_sample_manifest_bytes(
+            members["samples.tsv"][0], "samples.tsv"
+        )
+        conditions = sorted({row["condition"] for row in rows})
+        if len(conditions) == 2:
+            try:
+                step09.paired_samples(rows, *conditions)
+            except step09.ContractError:
+                pass
+            else:
+                directions = (conditions, list(reversed(conditions)))
+                print("Choose the paired comparison direction:", file=sys.stderr)
+                for index, (control, treatment) in enumerate(directions, 1):
+                    print(f"  {index}. {control} -> {treatment}", file=sys.stderr)
+                selected = directions[int(_prompt_choice("comparison", ("1", "2"))) - 1]
+                arguments.control_condition, arguments.treatment_condition = selected
+    return members
 
 
 def _copied_manifest_members(
@@ -1157,7 +1230,20 @@ def _print_project_preview(
     present_field(
         "Comparison",
         f"{answers['control_condition']} -> {answers['treatment_condition']}; "
-        f"target {answers['target_change']}",
+        f"target {policy['rna_ref']}>{policy['rna_alt']}",
+    )
+    strands = Counter(row["strandedness"] for row in samples)
+    present_field(
+        "Strandedness",
+        ", ".join(f"{value}: {count}" for value, count in sorted(strands.items())),
+    )
+    for field in _PAIRED_CMH_DEFAULTS:
+        present_field(field.replace("_", " "), answers[field])
+    background = answers["background_condition"]
+    present_field("Background condition", background or "none")
+    present_field(
+        "Background max fraction",
+        f"{answers['background_max_fraction']} ({'active' if background else 'inactive'})",
     )
     for field, (label, source) in _STAR_INDEX_FIELDS.items():
         value = answers[field]
@@ -1169,9 +1255,7 @@ def _print_project_preview(
     if verbose:
         present("Detailed study review", style="bold blue")
         print("  Manifests: samples.tsv, partitions.tsv (inside this Project)")
-        print(f"  Reference FASTA: {answers['reference_fasta']}")
         print(f"  Reference GTF: {answers['reference_gtf']}")
-        print("Sample assignments (pairing groups are explicitly supplied):")
         for sample in samples:
             print(
                 f"  {sample['sample_id']}: condition={sample['condition']}; "
@@ -1184,20 +1268,6 @@ def _print_project_preview(
                 f"  Partition {partition['partition_id']}: {partition['selector_type']} "
                 f"{partition['selector_value']!r}"
             )
-        settings = {
-            **definition["reference"]["star_index"],
-            **policy,
-        }
-        for field in ("sjdb_overhang", "genome_chr_bin_nbits"):
-            if answers[field] is None:
-                settings[field] = "automatic at creation"
-        print("Scientific settings:")
-        print(f"  target change: {settings['rna_ref']}>{settings['rna_alt']}")
-        for name, value in settings.items():
-            if name not in {"rna_ref", "rna_alt"}:
-                label = name.replace("_", " ")
-                print(f"  {label}: {'none' if value is None else value}")
-
     replay = controlled_python_argv(
         sys.executable,
         "-m",
