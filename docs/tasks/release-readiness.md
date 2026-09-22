@@ -59,10 +59,10 @@ local navigation labels, not new backlog items.
 | `R01` | Exact candidate and included work | PR #307 head is the reviewed source; PRs #303/#305/#306 are a separate CI stack. | Select and freeze the eventual candidate, then bind each check and artifact to that exact head. | `RELEASE-01`; live Git and CI |
 | `R02` | Promised operations | Quickstart describes a Viking Project-to-Results path; the Runbook also describes direct-host operation. | Classify each public operation as prerelease/v1 promised, limited, or unsupported, including recovery and report regeneration. | `RELEASE-01`; coordinator and reporting owners |
 | `R03` | Platforms and site | README describes Linux/POSIX, direct one-host or one-node Slurm; managed repair is narrower. | State tested combinations and resource/storage requirements; qualify any named Viking promise at one revision. | `RELEASE-01`, `SITE-PARITY-01`, `CLUSTER-VERIFY-01` |
-| `R04` | Distributed artifact | Quickstart clones the moving default branch and uses `uv sync --locked`; Runbook documents an exact tag/commit checkout; wheel assets and some installed commands have tests. | Choose checkout plus locks, standalone wheel, or a deliberately limited wheel; pin the candidate and prove every promised asset is supplied. | `RELEASE-01`; package and onboarding owners |
+| `R04` | Distributed artifact | Quickstart clones the moving default branch and uses `uv sync --locked`; Runbook documents an exact tag/commit checkout; the distribution test builds an sdist and wheel. | Choose a pinned checkout, wheel paired with that checkout, standalone or limited wheel, and which built artifact is distributed and tested. | `RELEASE-01`; package and onboarding owners |
 | `R05` | Study-selection resource | Viking Init points to `configs/step_07_partitions.primary_contigs.tsv` in the checkout. | Settle its installed-package route before promising checkout-free EV/PUM1 Init. | `INIT-02`; onboarding/package owners |
-| `R06` | Dependency support | Wheel smoke constrains installation to `uv.lock`; package metadata permits broader `jsonschema` and `referencing` ranges. | Choose lock-required or independently resolved metadata support; state Pixi/native/R policy separately. | `RELEASE-01`, `RUNTIME-CLOSURE-01`; package/runtime owners |
-| `R07` | Version and artifact provenance | Package version is `0.1.0.dev0`; build metadata can record Git origin and Python-lock hash; installed code is content-bound. | Define prerelease/v1 numbering and prove the actual candidate artifact binds the reviewed commit, lock, version, and installed bytes. | `RELEASE-01`; package/source-authority owners |
+| `R06` | Dependency support | Wheel smoke creates a separate installer lock under constraints derived from checkout `uv.lock`; wheel metadata permits broader `jsonschema` and `referencing` ranges. | Choose lock-required or independently resolved metadata support; if lock-required, specify how the exact lock reaches users of the selected artifact. State Pixi/native/R policy separately. | `RELEASE-01`, `RUNTIME-CLOSURE-01`; package/runtime owners |
+| `R07` | Version and artifact provenance | Package version is `0.1.0.dev0`; build metadata can record Git origin and Python-lock hash; installed admission hashes code and build fields. | Define prerelease/v1 numbering and independently compare the candidate artifact, embedded origin, lock, metadata, and installed bytes with reviewed source. | `RELEASE-01`; package/source-authority owners |
 | `R08` | Public installed journey | Isolated wheel smoke covers help, Init, and validation outside the checkout; report smoke calls internal APIs. | Exercise every selected operation through the public installed command, from an arbitrary directory; a full wheel promise requires a tiny complete Run and public report regeneration. | `RELEASE-01`; package, CLI, synthetic-journey owners |
 | `R09` | Record and schema support | Approved policy supports current formats only; schema IDs are exact and span unrelated families. | Verify public older-Run refusal preserves retained bytes; decide any schema reset through `SCHEMA-01`, independently of product v1. | `RELEASE-01`, `SCHEMA-01`; contract owners |
 | `R10` | Guides and limitations | README, Quickstart, Runbook, and Troubleshooting already divide reader and operator guidance. | Reconcile install route, supported environment, Results journey, recovery, known limits, and external-provider claims without duplicate status prose. | `RELEASE-01`, `QUICKSTART-01`, `DOCS-01`, conditional `EXTENSION-01` |
@@ -137,11 +137,12 @@ exact tag/commit route that a release candidate needs. The package declares
 workflow, scientific/R, schema, runtime, and reporting assets in
 [`pyproject.toml`](../../pyproject.toml). The
 [distribution test](../../tests/test_package_distribution.py) checks packaged
-resources and some installed behavior. Choose one supported artifact route
-before writing its installation instructions or claiming wheel completeness.
-The source checkout remains an artifact choice; a wheel need not promise the
-entire user journey unless that scope is deliberately selected. `emrys setup`
-adds a separate checkout dependency, recorded under R13 below.
+resources and some installed behavior. Its build produces both an sdist and a
+wheel from a copied source tree. Choose whether the distributed unit is a
+pinned checkout, an sdist, a wheel paired with the exact checkout, or a
+standalone/limited wheel. Name which unit is installed and tested. A wheel
+need not promise the entire user journey unless that scope is deliberately
+selected. `emrys setup` adds a separate checkout dependency under R13.
 
 ### R05 — Study-selection resource
 
@@ -155,9 +156,14 @@ the biological region selection from the site or reference.
 
 ### R06 — Dependency policy
 
-The wheel smoke constructs constraints from the checkout's `uv.lock`, while
-`pyproject.toml` allows broader versions of `jsonschema` and `referencing`.
-That test proves neither an incompatible range nor compatibility across it.
+The wheel smoke reads the checkout's `uv.lock`, constructs an installer
+project constrained to its resolved versions, creates that project's lock,
+then syncs offline. The wheel embeds the checkout lock's hash through build
+metadata, but does not distribute the lock file as a wheel resource. If wheel
+support requires that exact lock, specify a usable way for consumers to obtain
+and apply it or explicitly pair the wheel with a checkout. `pyproject.toml`
+allows broader versions of `jsonschema` and `referencing`; the constrained
+test proves neither incompatibility nor compatibility across those ranges.
 The [environment owner](../operations/ENGINEERING_CONVENTIONS.md#dependencies-and-environments)
 assigns Python to uv and Project-owned native/R environments to Pixi and
 `renv`. The packaged Pixi and `renv` locks do not by themselves prove the
@@ -169,20 +175,25 @@ distinct.
 ### R07 — Version and provenance
 
 [`emrys.__version__`](../../src/emrys/__init__.py) is `0.1.0.dev0` and package
-metadata derives its version from it. [`setup.py`](../../setup.py) records a Git
-commit and dirty state when built from a matching Git root, plus the Python
-lock hash; [installed-package admission](../../src/emrys/libraries/source_authority.py)
-binds exact installed bytes. The wheel smoke builds from a copied tree lacking
-that Git root, so it does not itself prove a candidate artifact's origin at
-the reviewed commit. Verify that link on the artifact selected for release.
+metadata derives its version from it. The distribution test separately asserts
+that literal version, and `pyproject.toml` advertises Alpha. A version change
+must reconcile those touchpoints and public wording rather than create a
+second registry. [`setup.py`](../../setup.py) records a Git commit and dirty
+state when built from a matching Git root, plus the Python lock hash; outside
+that root its origin may be null. [Installed-package admission](../../src/emrys/libraries/source_authority.py)
+hashes installed code with the declared build metadata but does not prove a
+claimed commit matches Git source. The wheel smoke builds from a copied tree
+lacking Git and expects unavailable commit provenance. For a candidate, compare
+clean HEAD, embedded commit/dirty state, lock hash, selected artifact digest(s),
+package metadata/entry points, and installed byte identity independently.
 
 ### R08 — Installed public journey
 
 The existing wheel test installs to an isolated environment, uses an arbitrary
 working directory, and exercises help, named Init, and validation through the
-installed command. Its report portion creates a fixture using repository test
-helpers and invokes internal report preparation/publication, not public
-`emrys report`. It does not run a complete Project through Doctor, scientific
+installed command. Init uses repository fixture inputs, and its report portion
+uses repository test helpers and invokes internal report preparation/publication,
+not public `emrys report`. It does not run a complete Project through Doctor, scientific
 execution, Results, and independent report regeneration. Extend the existing
 package/public-CLI and synthetic-journey owners for the chosen promise rather
 than create a second release harness.
@@ -192,9 +203,11 @@ record the artifact digest and embedded build identity; install it in an
 isolated environment; run public commands from a directory outside the
 checkout with source-path leakage checked; use only resources documented for
 that artifact; and retain success, refusal, and no-write evidence. Run the
-tiny complete Project and public report regeneration only when that full
-installed operation is selected. These are future checks, not checks performed
-for this document.
+tiny complete Project only when that full installed operation is selected. A
+public report exercise can finish a Run with `--no-report`, then check
+`emrys report [RUN]` preview and `--execute` publication into empty owned
+state, followed by verified reuse. It must not assume existing reports may be
+overwritten. These are future checks, not checks performed for this document.
 
 ### R09 — Record and schema support
 
@@ -255,10 +268,15 @@ work, not automatic `RELEASE-01` completion criteria.
 ### R13 — Saved defaults and Projects home
 
 The current [`emrys setup` owner](../../src/emrys/orchestration/run_coordinator/onboarding.py)
-requires an EMRYS Git checkout, writes `.env` at its root, and defaults the
-Projects home to its `Projects/` child. This matches the documented checkout
-journey. It is a separate obstacle to a wheel-only novice path even if the
-maintained PUM1 selection is packaged. The existing wheel smoke does not call
+requires an EMRYS Git checkout and an existing writable Projects home. It
+writes `.env` at the checkout root only with `--execute`, defaults the home to
+its `Projects/` child, and currently accepts only the `viking` site. The CLI
+loads those saved settings by walking upward from its working directory; a
+separate direct-host route does not use the same setup defaults. This matches
+the documented Viking checkout journey but is an obstacle to a wheel-only
+novice path even if the PUM1 selection is packaged. Named Init already works
+outside a checkout when an explicit Projects home is provided, so the gap is
+saved-defaults setup, not all installed Init. The wheel smoke does not call
 `setup`. Preserve one setup authority: either select checkout-based operation
 or approve a bounded onboarding change with public-command, no-write, and
 resource tests before claiming standalone setup.
