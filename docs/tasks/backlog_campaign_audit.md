@@ -233,6 +233,33 @@ original outcome, current status, current behavior, remaining acceptance,
 owner, and exact evidence that must survive. Remove or link only superseded
 non-evidence narration after this comparison; keep unknown causes unknown.
 
+**Index sweep:** All 61 card IDs occur once in both indexes and once as a
+detailed heading. The current index labels are 52 Verification pending, four
+Completed, two Open, two Deferred, and one Discard. Comparing each index label
+with the card's final disposition found no additional status conflict; dated
+earlier Open checkpoints must not be mistaken for the last disposition. This
+is a coverage check, not independent proof that the 52 implementations satisfy
+their original outcomes. In particular, `CV-U22` and `CV-26` intentionally
+remain Open, and CV-12's Discard preserves E01 as unexplained. CV-21 dropped
+E06 causal reconstruction while retaining current reporting truthfulness and
+site acceptance. The four Completed cards are scoped outcomes, not campaign
+closure or Viking qualification.
+
+| Evidence-bearing region in the [CV backlog](cluster_verification_backlog.md) | Preserve before shortening |
+| --- | --- |
+| CV-10, lines 2928–2979 | Exact CI/artifact hashes, the failed first-suite distinction, prepared recovery boundary, and accepted equal-byte recycled-inode limitation. |
+| CV-26, lines 3785–3808 and 3949–4056 | The bounded 175.681-second hosted setup, four trial measurements, artifact identity/hash, failed prototype-suite distinction, serial-probe decision, and five-to-four structural reduction without a measured whole-operation or Viking speedup. |
+| CV-U06, lines 512–533; CV-U28, lines 1749–1785 and 1847–1861 | Product-growth exception, historical resource provenance, operator-reported eight/four-hour comparison, superseding allocation policy, and explicit lack of utilization proof. |
+| CV-23, lines 3601–3625; CV-21, lines 3537–3545 | No presently provable deletable candidate class, and the decision to stop causal reconstruction of E06 while preserving truthful current reporting. |
+| [Charter](cluster_verification_campaign.md), lines 104–117 | E01–E12 observations and their limits, including unknown E01/E06 causes, E09's missing terminal recovery evidence, and E12's missing terminal actual-data result. |
+
+CV-01's selected 130-pair disposable-Slurm journey still needs the exact
+hosted and site proof named in its card (cluster backlog lines 2259–2295).
+CV-10 and CV-18 also keep hosted checks and institutional cancellation
+acceptance separate. The older resource coverage map at cluster backlog line
+4103 should identify CV-U06/CV-U28 as the current allocation-policy owners;
+CV-07/11/22 retain selection, fit, and disclosure responsibilities.
+
 ### 10. Polish chronology and overlap
 
 **Observed:** [Polish campaign](polish-campaign.md) lines 35–131 details its
@@ -267,25 +294,32 @@ callers, resources, and retained measurements. Mark observations as surviving,
 superseded, or unresolved only after that comparison. Keep scientific and
 recovery constraints even where an optimization proposal is retired.
 
-**Candidate comparison begun:** Candidate 8 at lines 199–212 says Step 05
-GATK spill is deliberately under its output directory. Current
-[`step_05_split_n_cigar_reads.sh`](../../src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh)
-lines 123–124 sends Java and GATK temporary files to runner-supplied
-`EMRYS_TASK_WORK_DIR`, documented in the
-[Step 05 contract](../../src/emrys/stages/split_n_cigar/CONTRACT.md) lines
-50–60. The premise needs rewriting; qualifying faster site scratch remains an
-unmeasured proposal and the runner scratch must not be assumed to be `/tmp`.
-Candidate 12's old four-attestation/24-Git-subprocess count at lines 269–290
-predates installed-package source authority in
-[`source_authority.py`](../../src/emrys/libraries/source_authority.py)
-lines 68–125 and Task readmission at
-[`task.py`](../../src/emrys/orchestration/run_coordinator/task.py) lines
-1861–1909. Rebuild any startup-cost hypothesis from the current owner while
-retaining exact identity and change detection. Candidates 1, 2, 4, 9, and 13
-still have corresponding source mechanisms at this revision; their potential
-benefits remain unmeasured. The old `workflow/Snakefile` link at line 446 is a
-valid citation to the pinned September 7 tree, but cannot establish today's
-path or behavior without a current-source comparison.
+**Candidate-by-candidate source pass:** The comparison below checks mechanism
+only. No new benchmark, representative workload, physical-I/O measurement,
+or scientific-equivalence result was produced. Numbers refer to the
+[campaign discussions](optimization_campaign.md#candidate-observations).
+
+| Candidate | Baseline source discovery | Disposition for the campaign text |
+| ---: | --- | --- |
+| 1 | [Step 06](../../src/emrys/stages/mechanical_orientation/producer.py) lines 140–149 and 172–207 still perform five input count scans, four flag extractions, and subgroup merge. | Mechanism survives; retain overlap/multiplicity and publication requirements. Benefit unmeasured. |
+| 2 | [Reference observation](../../src/emrys/evidence/reference_provenance/_reference_contigs.py) lines 20–47 reads complete members; the [FASTA parser](../../src/emrys/libraries/references/contigs.py) lines 18–45 reads full text. | Mechanism survives; preserve independent observations and malformed-input behavior. Memory benefit unmeasured. |
+| 3 | [Default policy](../../src/emrys/orchestration/run_coordinator/resources/default_execution.yaml) and [Viking profile](../../configs/execution_profile.csu_viking_ev_pum1.yaml) now use allocation-aware sharing. | Treat the older fixed-core model as history; current tuning requires comparable Run measurements. |
+| 4 | [Step 04](../../src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh) lines 64–72 and [Step 05](../../src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh) lines 121–127 still run separate indexing. | Mechanism survives; verify native write-time capability and PR44 outcome before selecting a change. |
+| 5 | [Step 08 processing](../../src/emrys/stages/cohort_candidate_preprocessing/_step_08_vcf_processing.R) lines 46–168 materializes VCF/allele/DP/AD/AF data; [aggregation](../../src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R) lines 175–215 retains worker results and binds rows. | Mechanism survives; retain order, TSV, recovery, and prototype evidence. RSS benefit unmeasured. |
+| 6 | Each partition binds cohort BAM/BAI inputs in [materialization](../../src/emrys/orchestration/run_coordinator/materialization.py) lines 695–704; [Task](../../src/emrys/orchestration/run_coordinator/task.py) lines 2605–2790 has multiple pre-producer, publication, and final hashing windows. | Rebuild the old `3 × P × B`/75-traversal example per branch; preserve mutation detection. Physical I/O remains unmeasured. |
+| 7 | Stage/native budgets are now derived by [materialization](../../src/emrys/orchestration/run_coordinator/materialization.py) lines 371–378 and applied to Picard/GATK heaps. | Old unbounded-heap premise is historical; spill/RSS tuning remains unmeasured. |
+| 8 | [Step 05](../../src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh) lines 121–124 sends Java/GATK temporary files to runner-owned `EMRYS_TASK_WORK_DIR`, described by its [contract](../../src/emrys/stages/split_n_cigar/CONTRACT.md) lines 50–60. | Replace the output-directory-spill premise. Faster site scratch remains an unselected, unmeasured question; do not assume current scratch is `/tmp`. |
+| 9 | [Step 09](../../src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_validation.R) lines 227–278 retains a dense AF matrix; evaluation consumes DP/AD, and Python validation retains row tables. | Mechanism survives; retain AF rejection and global statistical checks. RSS benefit unmeasured. |
+| 10 | [Step 07](../../src/emrys/stages/partitioned_cohort_mpileup/producer.py) lines 284–293 still emits text VCF. | Representation proposal survives; no approved output-format migration or measured disk/I/O result. |
+| 11 | [Inspection](../../src/emrys/orchestration/run_coordinator/inspection.py) and the current [Snakefile](../../src/emrys/workflow/Snakefile) each traverse Task evidence; resume/report use inspection. | Repeated-work mechanism survives, but exact bytes and latency need measurement; preserve verification boundaries. |
+| 12 | [Installed-package authority](../../src/emrys/libraries/source_authority.py) lines 68–125 no longer performs execution-time Git checkout attestation, while [Task](../../src/emrys/orchestration/run_coordinator/task.py) lines 1861–1910 re-admits package identity. | Retire the current-sounding four-attestation/24-Git-subprocess count; rebuild startup trace and retain source-change detection. |
+| 13 | [Runtime policy](../../src/emrys/resources/runtime/runtime_policy.tsv) lines 18–27 has ten R namespace checks, and [probe dispatch](../../src/emrys/evidence/runtime_availability/_probes.py) lines 383–418 runs them serially. | Mechanism survives; CV-26's Doctor reduction is separate. Startup benefit unmeasured. |
+
+The old `workflow/Snakefile` link in the optimization campaign is a valid
+citation to the pinned September 7 tree, but cannot establish the current
+path or behavior without the comparison above. The dated PR45 experiment at
+lines 329–339 remains bounded evidence; it does not prove an adopted current
+whole-Run optimization.
 
 ### 12. Time-bound campaign authority
 
