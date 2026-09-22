@@ -14,9 +14,9 @@ records the original six classes and the absence of a proven retained
 candidate. Recheck source and references if the target head changes.
 
 The evidence level here is review of owner contracts, implementation, and
-existing test cases. No tests, Project-data inventory, institutional run, or
-deletion was performed for this audit. A source-described protection is not
-proof that every runtime failure mode has been exercised.
+existing test cases. No product or owner fault tests, Project-data inventory,
+institutional run, or deletion was performed for this audit. A source-described
+protection is not proof that every runtime failure mode has been exercised.
 
 ## Decision question
 
