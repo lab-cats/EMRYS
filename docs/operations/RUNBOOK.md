@@ -277,84 +277,44 @@ successful computation generates both reports automatically. Follow
 [Inspect and open reports](#inspect-and-open-reports) to check completion,
 view the outputs or finish reporting without repeating completed computation.
 
-For your own study, use the quickstart's
-[input and manifest guidance](../../quickstart.md#2-gather-the-study-inputs-and-scientific-choices).
-Create a new Project on this host using its Project-creation commands with
-`--site viking` omitted, then return to Doctor and Run above after validation.
-Confirm resources for the actual data using the
-[execution settings](../../configs/README.md#execution-profile), and retain the
-synthetic Project separately. Use [recovery guidance](TROUBLESHOOTING.md#run-and-reporting-state)
-for incomplete Runs rather than deleting their files.
+For a direct-host study, follow the [own-data route](#create-a-project-for-your-own-data)
+without `--site viking`; validate, then return to Doctor and Run above. Check
+[resource settings](../../configs/README.md#execution-profile), keep the synthetic
+Project separate, and use [recovery guidance](TROUBLESHOOTING.md#run-and-reporting-state)
+rather than deleting incomplete Run files.
 
 ## Create a Project for your own data
 
-Follow the [Quickstart's real-data path](../../quickstart.md#3-create-the-project)
-for the complete Viking sequence: prepare study inputs, create the Project,
-run Doctor, submit the study, inspect it and open the reports.
-The ordinary `emrys init NAME` creates beneath the selected `EMRYS_PROJECTS_ROOT`,
-including the home saved by setup when invoked from the repository root. Without
-a selected home, it uses the current directory. The preview shows the destination.
-Synthetic `--output-dir` may
-select an external absolute destination when an advanced workflow requires it.
-These routes share the same absent-child and canonical-parent checks; neither
-moves or adopts an existing Project. Use `--project /absolute/Project/project.yaml`
-with Project-aware commands when working from another directory.
+The [Quickstart](../../quickstart.md#3-create-the-project) uses the fixed EV/PUM1
+Viking study. For other data, author paths, samples, partitions, and scientific
+choices with the [configuration guide](../../configs/README.md#projectyaml).
+`emrys init NAME` previews an absent child of the selected Projects home (the
+current directory if none); it neither moves nor adopts an existing Project.
+Advanced synthetic setup can use an absolute `--output-dir`. From outside a
+Project, pass `--project /absolute/Project/project.yaml` to Project-aware commands.
+After Init, follow [Quickstart steps 4–7](../../quickstart.md#4-validate-the-project)
+for validation, Doctor, Run, inspection, and reports.
 
-Interactive named initialization discovers recognized FASTQ pairs in one
-directory, applies one operator-selected strand value to missing rows or expands
-`mixed` into per-sample questions, and still asks for every condition and pairing
-group. A supplied `--partition-manifest` reads the study selection and skips
-region questions; without it, the user chooses the regions. For exactly two
-compatible paired conditions it displays both comparison directions and requires
-a choice with no default. It discloses
-the five built-in paired-CMH values for one acceptance when all five are omitted;
-decline restores the individual questions. Copied manifests retain their
-supplied biological values while their paths are normalized, explicit `--sample`
-rows bypass these missing-row prompts, and noninteractive omission still fails.
-The normal preview keeps the
-strand summary, comparison and target, five thresholds, background state and
-maximum, and all three STAR values visible before confirmation.
+Guided Init finds recognized FASTQ mates; you still assign conditions and pairing
+groups. Review comparison direction, target, thresholds, background, and STAR
+settings. `--partition-manifest` supplies regions while samples remain guided.
+For arbitrary FASTQ names, pass both a [sample manifest](../../configs/README.md#sample-manifest)
+and [partition manifest](../../configs/README.md#partition-manifest) with
+`--sample-manifest` and `--partition-manifest`. A background cohort requires its
+samples and `--background-condition CONDITION`. See `emrys init --help` for
+noninteractive fields and advanced overrides.
 
-Preview checks paths and scientific structure without reading FASTQ contents,
-derives an omitted `genomeSAindexNbases` from the reference, and labels omitted
-`sjdbOverhang` and `genomeChrBinNbits` values as automatic at creation. The
-`Create this Project? [y/N]` prompt accepts the reviewed answers without repeating
-the questions. Enter, `n`, or end of input writes nothing; `--preview` skips the
-confirmation and `--execute` authorizes creation for automation. Creation hashes
-each FASTQ's stored bytes once while validating every
-plain or gzip-decoded record, then freezes the maximum read length minus one and
-the reference/read-length chromosome-bin setting. The reference summary is bound
-to its device, inode, size, nanosecond modification time and nanosecond change
-time until full admission; changed reference or FASTQ identity stops publication.
-Explicit `--sjdb-overhang`, `--genome-sa-index-nbases`, and
-`--genome-chr-bin-nbits` values remain advanced overrides and are reported as
-such. The [configuration guide](../../configs/README.md#projectyaml) owns the
-exact derivation and legacy-default rules.
-Existing advanced manifests may be supplied together with `--sample-manifest`
-and `--partition-manifest`; EMRYS copies normalized manifest content into the
-new Project. Existing Projects remain supported at their current paths.
+`--preview` checks the plan without creating a Project or reading FASTQ contents.
+At `Create this Project? [y/N]`, only `y` or `yes` confirms; Enter, `n`, or end
+of input writes nothing. `--execute` authorizes noninteractive creation.
+Creation refuses changed inputs or an existing destination. See the
+[configuration guide](../../configs/README.md#projectyaml) for derivation and defaults,
+and the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries) for admission and publication.
 
-For studies with additional input requirements:
-
-- For arbitrary FASTQ names, prepare the [sample manifest](../../configs/README.md#sample-manifest)
-  and [partition manifest](../../configs/README.md#partition-manifest) directly,
-  then supply both advanced inputs during initialization.
-  `samples.example.tsv` demonstrates ingestion fields; it is not a complete
-  paired-CMH Project manifest.
-- For a background cohort, include its samples in the manifest and pass
-  `--background-condition CONDITION` when creating the Project. The condition
-  must match those sample rows; an omitted active maximum joins the disclosed
-  default set. Without a background condition, `0.01` remains in the closed
-  configuration but is shown as inactive. The [Analysis field guide](../../configs/README.md#built-in-analysis-fields)
-  explains the background filter and other scientific settings.
-- For noninteractive setup, use the explicit field flags shown by
-  `emrys init --help`. Supply every required answer when no terminal is available.
-
-For a larger software exercise, `production-like-v1` contains 100,000 pairs
-per library across four libraries and a 5-Mb reference. Create a new synthetic
-Project with `--dataset-profile production-like-v1`; retain `--site viking`
-for Viking placement. A successful synthetic exercise does not establish
-capacity for a full study.
+For a larger synthetic exercise, use `--dataset-profile production-like-v1`:
+100,000 pairs per library across four libraries and a 5-Mb reference. Keep its
+Project separate and use `--site viking` for Viking placement. Success does
+not establish capacity for a full study.
 
 ## Institution-provided runtime
 
