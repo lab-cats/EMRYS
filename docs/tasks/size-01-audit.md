@@ -119,3 +119,31 @@ Guided Project creation and the separate manifest-draft command already use the 
 ### _inspection_presentation.py
 
 The [full-history trace pass](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py#L664) and [bounded selected tail](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py#L371) can observe one scheduler stream twice per refresh. [Dashboard stream tests](../../tests/orchestration/run_coordinator/test_dashboard.py#L528) and [watch tail tests](../../tests/orchestration/run_coordinator/test_inspection_presentation.py#L589) protect different history, byte-bound, sanitization, and generation behavior. One admitted observation with two projections is a possible mutable-state and I/O reduction, not yet a proven code reduction. Next proof: establish identical path admission, rotation, timing, diagnostics, and selected-tail behavior before changing cache ownership.
+
+## Third pass: scientific, reporting, and evidence boundaries
+
+These findings are source and test inspections at the inventory snapshot. They neither change scientific meaning nor establish runtime or biological proof.
+
+### scientific_context_projection.R and scientific_context.py
+
+The Step 10 R producer repeats the exact safe-ID and SHA-256 argument checks already present in [Step 09's R common code](../../src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_common.R#L108). Step 10 already sources the neutral [input contract library](../../src/emrys/libraries/input_contract.R); a caller-complete move of those two small helpers there is a plausible net reduction after checking diagnostics and all R callers. It would not take the producer below 600 lines. The producer's Fisher calculation and the [Python scientific-context rederivation](../../src/emrys/contracts/scientific_evidence/scientific_context.py#L481) are independent across a producer/validator trust boundary and must stay separate. [Contract mutation tests](../../tests/contracts/scientific_evidence/test_scientific_context.py#L82) and [real-R determinism tests](../../tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_real_r_projection.py#L287) protect different evidence levels; their presence does not prove they ran here.
+
+### step09.py
+
+[Intrinsic streaming projection validation](../../src/emrys/contracts/scientific_evidence/step09.py#L665) deliberately omits upstream Step 08 identity, paired-sample CMH semantics, global BH reconciliation, and publication state. Reporting calls that intrinsic route, while the analysis validator calls [full result admission](../../src/emrys/contracts/scientific_evidence/step09.py#L804), summary validation, and semantic validation. [Direct contract tests](../../tests/contracts/scientific_evidence/test_step09.py#L233) cover streaming and mutation cases. These are distinct validation layers, so moving them to separate files would mostly relocate code. Next proof: compare their shared TSV mechanics with the neutral TSV reader without weakening either layer's diagnostics or bounded-memory behavior.
+
+### figures.py and scientific_context_figures.py
+
+Both renderers use the identical eight-color pair palette and legend limit, and both select colors by pair index. Step 10 already imports renderer helpers from [Step 09 figures](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/scientific_context_figures.py#L20). Sharing the two constants through that existing relationship is a plausible roughly ten-line product reduction with no new file. [Figure tests](../../tests/reporting/test_figures.py#L402) protect selected panels and paired profiles. This candidate does not settle the files' size exceptions or make their remaining plot decisions identical.
+
+### transaction_validation.py
+
+The owner already shares snapshot and residue checks, while [report validation](../../src/emrys/reporting/transaction_validation.py#L479) and [Run-summary validation](../../src/emrys/reporting/transaction_validation.py#L625) have different output and receipt transactions. [Mutation and race tests](../../tests/reporting/test_transaction_validation.py#L424) protect their boundaries. A split would change location, not reduce maintained behavior. Next proof: inspect repeated operations at equivalent publication boundaries across both callers; retain separate scientific-source and report admission unless equivalence is shown.
+
+### qualification.py
+
+The storage owner shares one [root probe](../../src/emrys/evidence/storage_inventory/qualification.py#L414), then conducts direct qualification or staged compute and final qualification with separate receipt and admission rules. [Storage tests](../../tests/evidence/storage_inventory/test_storage_inventory.py#L89) cover both modes and incomplete or failed publication. A path-specific exception is a candidate if no measured reduction preserves both authorities and recovery behavior. Local synthetic coverage is not institutional cross-node qualification.
+
+### renv/activate.R
+
+The bundled [renv autoloader](../../src/emrys/renv/activate.R#L5) declares renv version 1.2.3 and its MD5. An earlier product-code campaign excluded generated activate.R from its count; SIZE-01's non-test rule still includes this path. The [shell test](../../tests/shell/test_local_r_environment.sh#L64) checks presence and later uses a stub, so it does not prove the bundled bootstrap itself. Before proposing a generated-file exception, verify upstream provenance, exact selected-environment behavior, and the explicit repair route. Hand editing the generated autoloader is not a line-count reduction.
