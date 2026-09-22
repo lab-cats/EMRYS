@@ -137,10 +137,13 @@ the profile `required_owner_keys`, 551 for 12 rule names, 332 for 12 owner
 selectors, and 1,591 for 57 template selectors. Removing all five groups
 together saves 3,708 bytes (17.55%) from that serialized profile. In the
 base profile, both rosters exactly follow owner-key order and both selectors
-match the five-scope mapping. A source-projected built-in composition has 14
-owners, 70 templates, and 26,103 canonical bytes; its combined deletion is
-4,424 bytes (16.95%). That composed value was not runtime-validated because
-the local Python lacks `jsonschema`; no dependency was installed. Analysis
+match the five-scope mapping. A mechanical projection from
+[profile composition](../../src/emrys/analyses/__init__.py) and the
+[built-in descriptor](../../src/emrys/analyses/paired_cmh_candidate_ranking/__init__.py)
+has 14 owners, 70 templates, and 26,103 canonical bytes; its combined
+deletion is 4,424 bytes (16.95%). That composed value was not
+runtime-validated because the local Python lacks `jsonschema`; no dependency
+was installed. Analysis
 rule names are generated differently from processing machine-key slugs, so a
 single slug derivation does not cover the composed profile. These figures
 measure serialized bytes only, not product-code savings, compatible records,
@@ -348,8 +351,9 @@ This is a scope split, not a recommendation to change any resource. A v1
 
 This source-level map names production producers and readers rather than
 treating a registered schema as proof that a serialized record is used. All
-20 resources are installed and loaded; the two `common` resources are
-definition-only. The 15 orchestration selectors include `application-model`,
+20 resources are packaged and registered by their respective loaders; the
+two `common` resources are definition-only. The 15 orchestration selectors
+include `application-model`,
 which admits three current labels: analysis revision v2, Execution Plan v1,
 and Run binding v1. The three artifact selectors have separate public
 validation. This map does not establish external use or complete route parity.
