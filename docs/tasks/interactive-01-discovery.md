@@ -124,7 +124,9 @@ currently discards that result (`__main__.py` lines 349-357). Retain that
 private result to show the origin and effective values, including process
 overrides, without scanning for settings again. A regular unmarked nearer
 `.env` is ignored by the existing loader; a malformed marked one stops before
-guidance.
+guidance. If a process value outranks a reviewed saved value, the guide must
+show the value that will actually apply in later commands rather than promise
+that `.env` overrides the process.
 
 ### 3. Project context
 
@@ -464,10 +466,10 @@ The public outcomes that composition must distinguish are:
 | Setup | Omitting `--execute` previews and returns 0; a missing answer or existing `.env` returns 2. | `--execute` publishes absent `.env` and returns 0; Setup itself has no final yes/no prompt. |
 | Init | `--preview`, no/blank/EOF at final confirmation, or nonterminal omission of `--execute` returns 0 without creation; missing interactive answers or EOF during a required question returns 2. | `y`/`yes` or `--execute` hashes and validates inputs before create-absent publication, returning 0 only on success. |
 | Runtime discovery | Not-ready returns 1 before approval; ready but no/blank/EOF or nonterminal omission returns 0 without admission. | `y`/`yes` or `--execute` calls the existing admission plan; success also returns 0, and donor partials must be retained if later admission fails. |
-| Doctor | Read-only diagnosis returns 0 when ready and 1 when not ready. With `--repair`, blocked or declined preview returns 1; interrupted repair returns 130. | Confirmed repair or `--execute` can return 0 after final readiness; an already ready direct profile can return 0 without any repair prompt, while Slurm qualification still has its site path. |
+| Doctor | Read-only diagnosis returns 0 when ready and 1 when not ready. With `--repair`, blocked or declined preview returns 1; interrupted repair returns 130. | Confirmed head-side repair can return 0 after final readiness; an already ready direct profile can return 0 without a repair prompt. Private delegated compute success also returns 0 but still needs head finalization. |
 | Direct Run | No/blank/EOF or nonterminal omission of `--execute` previews a frozen plan and returns 0 without executing. | Confirmation executes that plan; `--execute` bypasses its pre-execution display, and a zero result has the existing limited Run/report meaning. |
 | Slurm Run | No/blank/EOF or nonterminal omission of `--execute` previews a submission request and returns 0 without submission; the duplicate guard can stop with 2. | Confirmation or `--execute` retains a request before `sbatch`; zero means accepted submission, not Run creation or completion. |
-| Watch or Inspect selection | Menu cancellation, EOF, or interruption returns 0; ambiguous nonterminal selection returns 2. A noninteractive watch snapshot can also return 0 with no admitted Run association. | Exact Project/request/Run selection permits inspection; watch command completion still does not prove Run completion. |
+| Watch or Inspect selection | Menu cancellation, EOF, or interruption returns 0; ambiguous nonterminal selection returns 2. An exact submission roster or noninteractive watch snapshot can also return 0 with no admitted Run association. | Exact Project/request/Run selection permits inspection; watch command completion still does not prove Run completion. |
 
 If sibling PR #320 is integrated, its donor picker adds another zero-result
 no-write path when no candidate is selected. It must remain distinct from an
@@ -509,17 +511,22 @@ stdout while onboarding prints to stderr; their approvals also authorize
 different mutations. A new common prompt policy has no demonstrated
 caller-complete net reduction.
 
-The smallest candidate outcome interfaces are owner-specific. Reuse
-`ProjectValidation`, `validate_project`, the runtime discovery plan's
-`inspection`/`admit` result, and Doctor's diagnosis data. Setup and Init need an
-unambiguous private publication outcome because their public integer result
-also covers a no-write preview. Runtime needs its admitted selection, and
-Control needs the exact retained request and job identity from `_schedule` for
-the Project inspection handoff. Doctor's private path must also distinguish
-initial readiness, declined or blocked repair, and completed qualification;
-`DoctorResult.ready` alone does not encode that history. This is an interface
-proposal requiring an exact caller review before implementation. No tracked
-fixture or retained evidence has been shown safe to delete.
+The smallest candidate handoffs remain owner-specific. CLI startup already
+receives the exact marked `.env` path or `None`; retain that result and the
+effective values after process precedence. Setup needs a private
+published-versus-preview result with its selected values for same-invocation
+use; Init needs the created `project.yaml` path or no-write result. Reuse
+existing `ProjectValidation` and `validate_project` for the current read-only
+observation, and the runtime discovery plan's `inspection`/`admit` result for
+the admitted profile. Doctor's private path must distinguish initial readiness,
+declined or blocked repair, delegated compute qualification, and completed
+head-side finalization; `DoctorResult.ready` and public exit alone do not encode
+that history. Control's `_schedule` has the exact retained `request_root` and
+`job_id` in local scope but returns only an integer; those values are the
+minimum submission-to-watch handoff. These are interface proposals requiring
+exact caller review before implementation, not new generic result types or
+persistent wizard state. No tracked fixture or retained evidence has been shown
+safe to delete.
 
 The compression inventory is deliberately conservative:
 
@@ -628,14 +635,34 @@ operator- or runtime-supplied.
 | Runtime and Doctor | A chosen donor can show `Runtime discovery: READY` and `Admit this runtime inventory? [y/N]`; Doctor asks `Apply this {operation} plan? [y/N]` when repair is available (`onboarding.py` lines 2304-2356; `doctor.py` lines 1480-1484). | Donor use is optional; PR #320's picker is not in this branch. Donor preview can rehash two Projects. The plan operation and readiness depend on fresh diagnosis. |
 | Launch and return | Control asks `Execute this plan? [y/N]`, then prints the exact submission request and job; completion is unverified (`control.py` lines 1046-1050 and 1165-1225). | A `Watch now?` question is guide-only proposed text. Request-bound inspection exists, but later Run association and completion must be independently admitted. |
 
+### Proposed guide-only connective questions
+
+The quoted questions below are **proposed**, not current public CLI text or
+approved scientific choices. The proposed save question supplies the approval
+that Setup's `--execute` flag currently represents; Init, runtime, Doctor, and
+Control keep their own single mutation approvals. The guide must decide its
+own cancellation exit contract without changing any named command's exit or
+output.
+
+| When | Proposed question | Route and evidence limit |
+| --- | --- | --- |
+| After saved-settings admission | `Start a new Project, open an existing Project, or leave?` | No default or latest-Project choice. Existing Project selection skips create-absent Setup; a regular marked `.env` is loaded once with process precedence. Leave/EOF stops without mutation; its new public exit remains to decide. |
+| New Project from the checkout without saved settings | `Save these defaults in <checkout>/.env? [y/N]` after Setup's current values and preview | `y` commits the same reviewed Setup plan once through its owner, without calling the public question path again, then carries effective values in this invocation. No/blank/EOF stops this proposed first-setup route without a write; an existing `.env` is never overwritten. |
+| New Project outside a checkout without saved settings | Show the required checkout and exact Projects-home context | Setup currently requires a checkout. Stop with an instruction or design an explicit unsaved route before implementation; never search for a repository or home by recency. |
+| Project identity | `Project name:` for new, or `Existing Project path:` for existing | New shows the canonical absent destination before Init. Existing requires an exact directory or `project.yaml` selector; refusal, EOF, alias, missing, or partial Project stops or returns to explicit choice without selecting another. |
+| Optional known donor | `Reuse tools from a known Project? [y/N]` | Yes asks for one exact donor and reviews donor and borrower writes before the runtime owner's confirmation. No proceeds to Doctor's diagnosis. A subsequent owner refusal/EOF stops without admission or automatic Doctor fallback; listed candidates and existing files are not readiness proof. |
+| After confirmed Slurm submission | `Watch this submission now? [y/N]` | Yes hands the exact Project and retained `submission-<32 hex>` request to request-bound inspection. No/blank/EOF prints those identities and `emrys inspect --project PROJECT --submission REQUEST --watch`; neither branch implies a Run exists. |
+| Later return through an existing Project | `Inspect a retained submission request? [y/N]` | Yes requires an exact request selector and re-admits its current association. No/blank/EOF stops or returns to explicit choice without automatic submission. Leaving watch or seeing a terminal scheduler state never authorizes another submission. |
+
 ## Proposed design and delivery order
 
 The entry choice above is accepted. The remaining steps are review proposals;
 implementation must satisfy the owner and measured-footprint gates below.
 
-1. Use the approved bare-terminal entry and named-command manual route. Set the
-   nonterminal behavior and full prompt/exit transcript. Resolve the `INIT-02`
-   dependency.
+1. Use the approved bare-terminal entry and named-command manual route.
+   Preserve the existing nonterminal no-write usage error unless separately
+   approved; settle guide cancellation exits and the full prompt transcript.
+   Resolve the `INIT-02` dependency.
 2. Map each existing public handler's no-write, success, blocked, and partial
    outcomes. Select the smallest private result interface that preserves public
    exits and text. Measure the affected product footprint before adding code.
@@ -694,8 +721,9 @@ authorized worktree and branch based on a rechecked target head.
 
 Refresh the source findings when sibling PRs are integrated. Resolve the
 INIT-02 and CV-U22 sibling dispositions, then recheck the literal prompt and
-exit sequence against that target in an installed environment. Complete the
-novice transcript once the guide-only connective questions are designed. The
-first bounded Init outcome slice above is a proposal; measure its actual
-product-code delta before seeking any growth exception or implementing it.
-Keep INTERACTIVE-01 status and acceptance in the main backlog.
+exit sequence against that target in an installed environment. Review the
+proposed connective questions above, especially first-setup refusal,
+outside-checkout entry, and guide cancellation exits, before fixing the full
+novice transcript. The first bounded Init outcome slice above is a proposal;
+measure its actual product-code delta before seeking any growth exception or
+implementing it. Keep INTERACTIVE-01 status and acceptance in the main backlog.
