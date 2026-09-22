@@ -75,11 +75,11 @@ discovery below and names the next evidence needed before changing authority.
 | 6. Repeated cluster closure instructions | The main checklist, cluster backlog summary, and charter repeat remaining work. | Keep one operative sequence and retain unique card acceptance and evidence limits at their owners. |
 | 7. Viking walkthrough chronology | The main matrix holds dated jobs, a qualification identity, capacity observations, approvals, and a last-supplied Run state. | Review the [additive dated record](../history/2026-09-14-viking-walkthrough.md) against both sources before proposing any source shortening. |
 | 8. Compression closeout chronology | The completed section combines the user closure, quantified shortfall, exact CI, and PR chronology. | Review the [additive dated record](../history/2026-09-14-compression-closeout.md) before any closeout shortening; retain the closure decision in the matrix. |
-| 9. CV card checkpoint narratives | Detailed cards repeatedly recount Open-to-implemented-to-pending transitions alongside live acceptance. | Classify each paragraph; retain original outcome, current status/acceptance, trust limits, and exact evidence pointers. |
+| 9. CV card checkpoint narratives | Detailed cards repeatedly recount Open-to-implemented-to-pending transitions alongside live acceptance. | The 61-card first pass and CI wording correction are recorded below; transfer exact observations and decisions before any shortening. |
 | 10. Polish chronology and overlap | The campaign contains an old audit/PR narrative and merged-PR tables plus proposals already implemented elsewhere. | Classify PR chronology and preserve unique rationale and evidence before compression. |
 | 11. Optimization source drift | The September 7 audit is correctly pinned, but most cited source blobs changed by the baseline. Candidates 8 and 12 have materially changed source premises. | Re-evaluate all 13 candidates against current owners and measurements without converting old proposals into defects. |
 | 12. Time-bound campaign authority | The charter repeats earlier blanket development authority and an active-cluster-job precaution as present-tense guidance. | Date-bound historical instructions; keep current authorization and cluster safety with their authoritative owners. |
-| 13. Polish proposals versus current owners | Several original findings describe capabilities now delivered; others retain a live gap. | Reconcile each numbered proposal with source, tests, accepted rows, and its original evidence ceiling. |
+| 13. Polish proposals versus current owners | Several original findings describe capabilities now delivered; others retain a live gap. | The [per-item review](polish_finding_disposition_review.md) maps all 44 findings and five architecture options; resolve seven ambiguous items before proposing any shortening. |
 | 14. `HARNESS-01` status versus source gap | The row is Verification pending, yet its acceptance names a remaining test-simulation admission mismatch also visible in fixtures and production records. | Review the owner boundary and status definition; retain simulation proof without calling it scientific execution. |
 
 ## Initial discoveries
@@ -322,10 +322,10 @@ disposition. The CV-26 record after line 3785 and CV-U28 historical resource
 reconstruction after line 1760 contain unique evidence or decisions. A simple
 deletion by age would lose that support.
 
-**Next:** Review the [61-card retention ledger](cv_card_retention_review.md)
-against exact source and hosted evidence before proposing specific reductions.
-Keep current acceptance with each card, exact observations with their limits,
-and unknown causes unknown. This first pass authorizes no removal.
+**Next:** Use the [61-card retention ledger](cv_card_retention_review.md) to
+transfer exact observations and decisions before proposing specific reductions.
+Keep current acceptance with each card and unknown causes unknown. This first
+pass authorizes no removal.
 
 **Index sweep:** All 61 card IDs occur once in both indexes and once as a
 detailed heading. The current index labels are 52 Verification pending, four
@@ -351,8 +351,12 @@ closure or Viking qualification.
 
 CV-01's selected 130-pair disposable-Slurm journey still needs the exact
 hosted and site proof named in its card (cluster backlog lines 2259–2295).
-CV-10 and CV-18 also keep hosted checks and institutional cancellation
-acceptance separate. The older resource coverage map at cluster backlog line
+CV-10 and CV-18 now cite ordinary hosted software checks at
+`2f4a0313050ba254c273b480d9913e0b82fa7a7e` and the integrated baseline;
+the selected real synthetic E2E job was skipped in both runs. Their selected
+real-Slurm and institutional cancellation/recovery acceptance remains separate.
+CV-14 and CV-22 now distinguish baseline ordinary CI from novice/site
+acceptance. The older resource coverage map at cluster backlog line
 4103 should identify CV-U06/CV-U28 as the current allocation-policy owners;
 CV-07/11/22 retain selection, fit, and disclosure responsibilities.
 
@@ -464,105 +468,16 @@ status is changed by this finding.
 
 ### 13. Polish proposals versus current owners
 
-**Observed:** Several original premises in the [polish campaign](polish-campaign.md)
-have changed at the audit baseline. Item 7 (lines 313–327) says Init preview
-shows only output locations, but the current public preview in
-[`onboarding.py`](../../src/emrys/orchestration/run_coordinator/onboarding.py)
-lines 1163–1258 includes libraries, Analysis/site, reference, scientific
-choices, and defaults, with detailed manifests behind verbose output. That
-invalidates the old "only output locations" premise but does not yet prove
-full preview/publication agreement; GTF and individual paths remain in
-verbose detail. Item 8
-(lines 329–339) says Doctor lacks a profile selector, but
-[`doctor.py`](../../src/emrys/orchestration/run_coordinator/doctor.py) lines
-1976–1982 offers `--profile` and lines 484–510 select it. Item 9's old
-direct-storage-plan premise (lines 341–358) is narrowed by Doctor's current
-Slurm branch at lines 835–857; site behavior still needs review. Item 36
-(lines 798–811) describes explicit-memory preflight as missing, while the
-[current `SCHED-01` row](backlog_matrix.md) line 172 says its source is
-implemented and verification remains.
+**Observed:** The [per-item polish review](polish_finding_disposition_review.md)
+maps all 44 numbered findings and five architecture options to current
+source, accepted owners, and remaining evidence. Several old missing-feature
+premises are superseded, while items 6, 7, 9, 11, 12, 33, and 35 need direct
+checks or a policy decision. Delivered source capability does not by itself
+close a larger backlog outcome or institutional acceptance.
 
-**Still live or undecided:** Item 11's environment-parity question persists:
-[Quickstart](../../quickstart.md) line 44 uses
-`--no-default-groups --group workflow`, while the managed golden CI lane in
-[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) lines 632–638
-lacks `--no-default-groups`. Item 12's draft versus admitted FASTQ identity
-question also remains: the draft rejects reused physical files by device and
-inode (`onboarding.py` lines 1441–1457), while Project normalization checks
-path equality and caches by path
-([`normalization.py`](../../src/emrys/orchestration/run_coordinator/normalization.py)
-lines 359–385). This is a policy comparison, not an established defect.
-
-**First complete item inventory:** Each line below maps one numbered
-[polish discussion](polish-campaign.md) at `3a672fdf`. "Delivered" means its
-described source capability exists at this revision; it is not independent
-acceptance of a larger backlog outcome or institutional proof. "Unselected"
-means the campaign itself does not authorize implementation. The original
-finding and any unique rationale remain available in the campaign while a
-durable disposition is decided.
-
-| Item | Audit reading at baseline | Remaining disposition or evidence |
-| ---: | --- | --- |
-| 1 | Validation-report recovery defect remains documented by its owner. | Keep with validation recovery and direct fault checks. |
-| 2 | Storage-inventory replacement proposal is explicitly retired. | Historical rationale can be condensed after checking unique decisions. |
-| 3 | Reference-provenance replacement recovery defect remains owner-documented. | Keep recovery evidence with that owner. |
-| 4 | Runtime-report publication proposal is explicitly retired. | Historical rationale only after retention check. |
-| 5 | Current-artifact admission through the public validator is delivered. | Avoid re-presenting it as a missing feature. |
-| 6 | Timestamp checker policy remains uncertain; dependency/source inspection alone does not reproduce malformed admission. | Retain as a question until a focused reproduction or policy decision. |
-| 7 | Init preview now shows major scientific choices, but detailed paths are verbose and final bytes follow admission. | Replace the old missing-preview premise; verify exact preview/publication agreement before closing acceptance. |
-| 8 | Doctor `--profile` supports default, named, and absolute selections in source and focused tests. | Mark source delivery; keep site acceptance with CV-07. |
-| 9 | Current Slurm repair planning skips the formerly alleged direct-storage plan. | Re-evaluate full placement behavior and site evidence; do not claim the old source-predicted failure persists. |
-| 10 | Novice institutional walkthrough remains accepted under `SITE-PARITY-01`. | Keep its exact site evidence requirement. |
-| 11 | Quickstart and managed-golden CI still select different `uv` groups. | Retain parity question; compare actual installed environments. |
-| 12 | Draft FASTQ physical-identity check differs from Project normalization's path-based check. | Preserve explicit mate-path proposal and settle admission policy before calling this a defect. |
-| 13 | Ineffective reporting-memory control is retired. | Historical disposition only. |
-| 14 | Standalone dashboard retirement is implemented, with CI/site visual checks pending. | Reconcile with `DASHBOARD-RETIRE-01` and legacy readers. |
-| 15 | Per-script Bash syntax checking is delivered. | Keep owner check, not an open proposal. |
-| 16 | ShellCheck is delivered under `DEV-01`. | Keep its locked-tool owner. |
-| 17 | Selected Ruff correctness rules are delivered. | Do not infer all possible rules were adopted. |
-| 18 | Consistent Python formatting is delivered under `DEV-01`. | Keep the accepted formatting baseline. |
-| 19 | A Python type checker remains an unselected proposal. | Decide value and exact supported scope before adding a gate. |
-| 20 | Optional fast local hooks are delivered under `DEV-01`. | Keep existing hook owner. |
-| 21 | Local/CI validation inventory work is delivered. | Retain distinct check coverage. |
-| 22 | Ordinary CI on supported stacked PRs is delivered. | Recheck effective hosted rules only if making a new policy claim. |
-| 23 | The bounded CI critical-path work is delivered under `CI-01`. | Retain measured evidence rather than an assumed current duration. |
-| 24 | Dependency-update bot remains an unselected tooling proposal. | Check current hosted configuration before selection. |
-| 25 | Vulnerability assessment remains an unselected tooling proposal. | Identify an actual tool and maintenance owner before adding a gate. |
-| 26 | Bounded R static analysis remains unselected. | Preserve distinct real-R and scientific tests. |
-| 27 | Shell formatting remains unselected; a declared `SHFMT_BIN` is not a selected gate. | Prove need and scope before tooling growth. |
-| 28 | Local secret detection remains an unselected gap-dependent proposal. | Require a demonstrated need and data-safe workflow. |
-| 29 | External Analysis/reporter usability is accepted as Open `EXTENSION-01`. | Keep complete real discovery/installation acceptance with that row. |
-| 30 | Release path is accepted as Open `RELEASE-01`. | Date-bound old distribution observations; do not claim release readiness. |
-| 31 | Citation guidance remains an unselected proposal. | Decide authoritative format and owner. |
-| 32 | Release dependency inventory/provenance remains an unselected proposal. | Coordinate with `RELEASE-01` before making a release artifact. |
-| 33 | Merge-rule observations were an audit-time hosted snapshot. | Re-read effective rules before a current claim or settings change. |
-| 34 | Complete R dependency closure is accepted as Open `RUNTIME-CLOSURE-01`. | Keep recursive closure and snapshot-off acceptance with the row. |
-| 35 | Installed Snakemake content guarantee remains unresolved. | Trace current package binding before calling an escape or solution proven. |
-| 36 | Explicit Slurm memory preflight is implemented; `SCHED-01` is Verification pending. | Replace the old missing-implementation premise; keep final-source no-submit checks and site limits. |
-| 37 | Browser/copy/print report review remains pending under report rows 01–03. | Retain rendered visual and link acceptance separate from receipts. |
-| 38 | Pre-execution cancellation policy remains unselected. | Decide expected signal/EOF behavior before changing public exits. |
-| 39 | Machine-readable inspection needs a concrete consumer and remains unselected. | Preserve human inspection authority and exit meaning. |
-| 40 | The documentation checker validates structure, not fenced-command behavior. | Select safe examples before adding a command check. |
-| 41 | Normal inspection still favors verified report locations; scientific paths are in verbose detail. | Retain the processing-only/no-report output-location UX question. |
-| 42 | Run selection still lacks sufficient admitted Analysis context. | Retain presentation proposal without treating labels as integrity proof. |
-| 43 | `emrys --version` is delivered under `CLI-VERSION-01`. | Keep current source identity and foreign-directory limits. |
-| 44 | Contributor/problem-reporting route remains unselected. | Choose a data-safe public route without inventing contact details. |
-
-The five integration-scale architecture options are also unselected; the
-campaign withdrew its 6,400–9,200-line estimate. Their prerequisites differ:
-
-| Option | Required evidence before selection |
-| --- | --- |
-| Unified Inspect/Watch observation | One admitted observation and caller-complete selection/presentation retirement with scheduler state remaining observational. |
-| Shared operation kernel | Equivalent trust and mutation boundaries across every migrated owner, with unchanged exits, claims, logs, receipts, and recovery. |
-| Declarative records/scenarios | Smaller fixture surface with distinct failure modes and independent scientific/evidence oracles intact. |
-| Common reporting transaction | A smaller caller-complete replacement for both publishers despite their different commit/recovery order. |
-| Narrow supported surfaces | Exact consumer inventory, migration/rollback, and separate public-contract approval. |
-
-**Next:** Check ambiguous items 6, 7, 9, 11, 12, 33, and 35 against direct
-tests or live policy before recommending their final disposition. The
-campaign's old PR chronology can be shortened only after unique decisions
-and dated evidence have a verified owner.
+**Next:** Resolve those ambiguous items against direct tests or live policy.
+Transfer any unique decision and dated evidence before shortening the
+campaign chronology. The companion review proposes no deletion.
 
 ### 14. `HARNESS-01` status versus source gap
 

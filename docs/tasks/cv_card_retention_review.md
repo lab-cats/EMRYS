@@ -28,11 +28,11 @@ commit; no candidate is approved for removal by this review.
 | CV-07 · VP · 2588–2628 | Site/workload profile selection without manual YAML; preserve profile authority and fixture-versus-cohort/queue-cost limits. Institutional selection remains. | Two implementation checkpoints at 2598–2613 may condense after current profile behavior and evidence are retained. |
 | CV-08 · VP · 2629–2710 | Compatible two-Project runtime reuse with content-bound seal, selector, repair refusal, and no unseal; retain 462-line decision, content-roster limit, and same-invocation freshness correction. Compute accessibility remains. | Earlier maintenance prerequisite and test sequence at 2641–2659 may become Git chronology after lock/claim semantics survive. |
 | CV-09 · VP · 2711–2737 | Selected-versus-system runtime, head/compute/storage scope, eligible-node rather than hostname policy, probe/ABI limits, and compatible-node site acceptance. | Single implementation checkpoint at 2724–2734 can link to the present owner and guide. |
-| CV-10 · VP · 2738–2985 | Exact job 621154 timeout with lock/no receipt/no recovery; positive closed-abort and prepared-finalization ownership contract, CI/artifact hashes and failed-suite distinction, accepted equal-byte recycled-inode limit. Exact hosted prepared-finalization and institutional cancellation remain. | Long implementation and prerequisite sequences at 2754–2788 and 2805–2858 are evidence-transfer projects, not simple prose cleanup. |
+| CV-10 · VP · 2738–2985 | Exact job 621154 timeout with lock/no receipt/no recovery; positive closed-abort and prepared-finalization ownership contract, CI/artifact hashes and failed-suite distinction, accepted equal-byte recycled-inode limit. Ordinary hosted software checks later passed; selected real-Slurm and institutional cancellation/recovery remain. | Long implementation and prerequisite sequences at 2754–2788 and 2805–2858 are evidence-transfer projects, not simple prose cleanup. |
 | CV-11 · VP · 2987–3030 | Profile fit versus node capacity, unknown-memory and symbolic-policy rules, no automatic budget reduction, separate SCHED-01 source owner, heterogeneous-site gap. | Declaration/reservation progress at 3005–3027 may condense after fit decisions and checks remain. |
 | CV-12 · Discard · 3032–3043 | E01's failed check and cause remain unknown; discard only historical causal reconstruction, without attribution to later memory or UID defects. | Short decision record has no useful trimming target. |
 | CV-13 · VP · 3047–3068 | Not-prepared versus failed versus blocked language, invalid storage refusal, and operator acceptance gap. | Implementation sequence at 3056–3062 may condense after current labels and checks survive. |
-| CV-14 · VP · 3070–3097 | Tracked Projects home, no move or registry, exact hosted software result and fresh novice/site need. | Earlier fixture description can condense; ordinary exact-revision CI now needs citation in the card. |
+| CV-14 · VP · 3070–3097 | Tracked Projects home, no move or registry, exact ordinary hosted software result and fresh novice/site need. | Earlier fixture description can condense; the current card now cites baseline CI separately from novice acceptance. |
 | CV-15 · VP · 3098–3133 | Remote ownership remains unverified and non-resumable until admitted; preserve Task-state labels and no scheduler/live-host inference. Cross-node site evidence remains. | Fixture checkpoint can condense only after its trust limits survive. |
 | CV-16 · VP · 3135–3222 | Installed watch owner and standalone retirement boundary; preserve contradictory 36/36 versus UNKNOWN/WAITING screenshot, read-only selection/log protections, offline UNKNOWN with no scheduler query, and visual site gap. | Older 182-test checkpoint at 3188–3191 may become Git chronology; 3183–3187 is current offline/online policy. |
 | CV-17 · VP · 3223–3245 | Init phase/elapsed progress without invented byte percent or speedup; preserve nine-line approved exception and large-input site gap. | Short source/check sequence can condense after the progress owner and evidence remain. |
@@ -40,7 +40,7 @@ commit; no candidate is approved for removal by this review.
 | CV-19 · VP · 3314–3338 | Verification versus repair language comes from actual planned work; missing storage still fails, with operator review outstanding. | Mostly present contract; little removable chronology. |
 | CV-20 · VP · 3339–3477 | Pre-Run request/queue/preparation and reconnect with exact identity, ambiguity/no duplicate submission, 64-KiB reader bound, v1 historical-read/v2 bound-stream trust rules, diagnostic-only association, CI 34977917662 and site gap. | Intermediate stream/test narration at 3385–3425 mixes current identity rules with history; no complete span is nominated. |
 | CV-21 · VP · 3478–3553 | Truthful report transaction states, verified-location gate and real-producer fault limits; September 21 owner decision drops E06 causal reconstruction, while current site behavior remains. | Early test sequence at 3492–3507 may condense only after decision and defense remain; never imply E06 cause was proved. |
-| CV-22 · VP · 3554–3592 | Complete compact preapproval resource disclosure, frozen profile, unknown capacity versus reservation, 51-line approved expansion, SUBMISSION-PREVIEW-01 owner and site preview gap. | Earlier fixture counts at 3577–3582 may condense; exact ordinary CI has since passed and needs separate wording from site acceptance. |
+| CV-22 · VP · 3554–3592 | Complete compact preapproval resource disclosure, frozen profile, unknown capacity versus reservation, 51-line approved expansion, SUBMISSION-PREVIEW-01 owner and site preview gap. | Earlier fixture counts at 3577–3582 may condense; the current card now cites baseline ordinary CI separately from site acceptance. |
 | CV-23 · Deferred · 3595–3633 | CLEANUP-01 owns future scope; retain six-class ownership/consequence table, unknown-is-not-unused rule, and separate evidence-deletion authority. | No safe short form until the decision and candidate-class boundary have a durable owner. |
 | CV-24 · Completed · 3634–3679 | Watch handoffs only to supported CLI operations; no action authority from inspected state, and new analysis stays in the explicit Run CLI. Site watch use remains CV-16. | Implementation/test narrative at 3648–3665 may condense after selected action scope survives. |
 | CV-25 · Completed · 3680–3751 | Admitted Task and application log discovery, bounded selected-Run scope, no implicit scan, started-streams-not-liveness rule, and no recovery proof from association. | Staged test narration may condense after diagnostic contract and CI identity transfer. |
@@ -103,11 +103,14 @@ CV-01 or CV-U06; a separate run would need its own exact retained identity.
 
 For CV-10 and CV-18, [ordinary CI 35733826838](https://github.com/lab-cats/EMRYS/actions/runs/35733826838)
 passed at 2f4a0313050ba254c273b480d9913e0b82fa7a7e; its selected E2E job
-was skipped. The integrated baseline's ordinary CI also passed. Thus their
-exact hosted *software regression* pending language is stale, while selected
-real-Slurm and institutional stop/recovery remain unproved. CV-14 and CV-22
-likewise have later integrated ordinary-suite success but still need their
-novice/site acceptance. No card status changes follow from these checks.
+was skipped. The integrated baseline's ordinary CI also passed. The
+authoritative CV-10 and CV-18 card wording now cites those ordinary software
+results and leaves selected real-Slurm and institutional stop/recovery
+unproved. CV-14 and CV-22 now cite integrated ordinary-suite success while
+retaining novice/site acceptance. The linked main-matrix rows also distinguish
+baseline CI from their remaining acceptance. No card status changes follow
+from these checks. Hosted checks for this newer audit PR head must be assessed
+separately.
 
 The dated Viking [E01–E12 record](../history/2026-09-14-viking-walkthrough.md)
 preserves the charter observations. Searches of the current history directory

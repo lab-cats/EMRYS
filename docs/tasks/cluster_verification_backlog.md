@@ -70,12 +70,12 @@ real-Slurm lane nor an institutional walkthrough.
 
 | Remaining acceptance | Current owner and required work or evidence |
 | --- | --- |
-| Implemented audit follow-ups | `SCHED-USAGE-01`, `SUBMISSION-PREVIEW-01`, `INIT-01`, `INIT-03` and `QUICKSTART-01` are source-complete and **Verification pending** for exact hosted and relevant novice/site evidence. `INIT-02` remains **Open** for automatic maintained-study selection without a manifest argument; the explicit-manifest route is delivered. `VIKING-POLICY-01` and `CV-DOCS-01` are completed source/documentation corrections; institutional policy and report acceptance remain separate. |
-| Recently implemented outcomes awaiting verification | CV-10's prepared-finalization `resume` path and CV-18's active-native-task stop outcome are **Verification pending**. Their exact hosted checks and institutional cancellation journeys remain unverified; site execution alone cannot substitute for the hosted checks, and neither status claims a reproduced E09 cause. CV-10's equal-byte recycled-inode ownership limit is an accepted residual risk in a trusted operator-controlled workspace, not a proven defense. |
+| Implemented audit follow-ups | `SCHED-USAGE-01`, `SUBMISSION-PREVIEW-01`, `INIT-01`, `INIT-03` and `QUICKSTART-01` are source-complete; ordinary hosted software and documentation checks passed at the exact integrated baseline in [CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692). They remain **Verification pending** for relevant novice/site evidence. `INIT-02` remains **Open** for automatic maintained-study selection without a manifest argument; the explicit-manifest route is delivered. `VIKING-POLICY-01` and `CV-DOCS-01` are completed source/documentation corrections; institutional policy and report acceptance remain separate. |
+| Recently implemented outcomes awaiting verification | CV-10's prepared-finalization `resume` path and CV-18's active-native-task stop outcome are **Verification pending**. Ordinary hosted software checks passed at `2f4a0313` in [CI 35733826838](https://github.com/lab-cats/EMRYS/actions/runs/35733826838) and at the integrated baseline in [CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692); both runs skipped the selected real synthetic E2E job. Selected real-Slurm and institutional cancellation/recovery journeys remain unverified, and neither status claims a reproduced E09 cause. CV-10's equal-byte recycled-inode ownership limit is an accepted residual risk in a trusted operator-controlled workspace, not a proven defense. |
 | Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27 and CV-U28: exercise the maintained [Quickstart](../../quickstart.md) and its linked optional smoke guide on one exact installed revision; retain selected profile/runtime, resolved allocation-aware policy and report identities. Visual review is separate. |
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
 | Historical unexplained failures | CV-12/E01 and CV-21/E06 remain unexplained historical observations whose causal reconstruction is not an acceptance requirement. CV-21 now needs only ordinary institutional execution of current reporting/inspection behavior. CV-10 retains verification of the implemented prepared-finalization recovery path. E09 remains unexplained, and missing prepared evidence still cannot authorize recovery. |
-| Postentry Task retry and finalization | CV-10: current-version closed-abort retry has hosted acceptance evidence. The prepared-finalization path through `resume` is implemented and **Verification pending** for its exact hosted CI and institutional cancellation journey. The owner accepted the equal-byte recycled-inode residual limitation for a trusted operator-controlled workspace; existing blocked receipts and missing prepared evidence remain ineligible. |
+| Postentry Task retry and finalization | CV-10: current-version closed-abort retry and the later prepared-finalization path through `resume` have ordinary hosted software evidence at the exact revisions cited above. The latter remains **Verification pending** for selected real-Slurm and institutional cancellation/recovery evidence. The owner accepted the equal-byte recycled-inode residual limitation for a trusted operator-controlled workspace; existing blocked receipts and missing prepared evidence remain ineligible. |
 | Doctor operation | CV-26's structural reduction removed one redundant full head diagnosis and passed exact implementation CI. CV-26 remains Open against its original complete-operation attribution, comparable before/after measurements and institutional E11 timing. No speedup is claimed. |
 | Optional interface and retirement | CV-23 and CV-U19 transfer their Deferred acceptance to `CLEANUP-01` and `INTERACTIVE-01` in the [main backlog](backlog_matrix.md#deferred-operational-work); CV-24 retains explicit new-analysis selection in the CLI. `DASHBOARD-RETIRE-01` records the implemented standalone entry-point/caller and stream-name retirement while institutional visual verification remains. |
 
@@ -2966,10 +2966,15 @@ prepared blocked/succeeded outcomes create no new scientific Attempt. Legacy
 missing-prepared states, lost workers and unclosed Tasks stay blocked; E09 is
 neither adopted nor repaired.
 
-CV-10 is **Verification pending** for exact hosted CI of this extension,
-including interrupted publication, refusal and public preview/confirmation
-behavior, and for institutional cancellation acceptance. No new local, hosted
-or institutional results are claimed here.
+The prepared-finalization extension's ordinary hosted software checks passed
+at `2f4a0313050ba254c273b480d9913e0b82fa7a7e` in
+[CI 35733826838](https://github.com/lab-cats/EMRYS/actions/runs/35733826838)
+and at integrated baseline `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d` in
+[CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692).
+Both runs skipped the selected real synthetic E2E job. CV-10 remains
+**Verification pending** for separately selected real-Slurm and institutional
+cancellation/recovery acceptance. These ordinary results neither establish
+those journeys nor explain or repair the historical E09 Run.
 
 **Owner-accepted ownership limit (2026-09-22):** The cross-preview candidate
 binds exact bytes and device/inode identity. If the original file is removed
@@ -3087,13 +3092,15 @@ retains absolute `--output-dir` selection. Both reuse canonical-parent/absent-ch
 Existing Projects remain at their original paths; no Project registry or move
 operation is added.
 
-**Earlier verification:** Public onboarding tests exercise synthetic and own-data
+**Verification:** Public onboarding tests exercise synthetic and own-data
 creation beneath the tracked Projects parent. They preserve no-write preview,
 external input references and bytes, ignored Project children, and
 existing-destination refusal. Focused execution and documentation checks passed
-in the locked integrated CI environment. The selected-home correction now
-requires the exact hosted and novice evidence recorded by `INIT-01`; earlier
-results do not establish that new behavior.
+in the locked integrated CI environment. The later selected-home correction
+passed ordinary hosted checks at the exact integrated baseline in
+[CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692).
+Fresh Viking novice acceptance recorded by `INIT-01` remains pending; ordinary
+CI does not establish that operator journey.
 
 ### CV-15 Cross-node active Run status
 
@@ -3293,7 +3300,7 @@ fixture intentionally creates no Run, so stopping during an active native taskâ€
 the card's required caseâ€”is not implemented end to end. CV-18 returns to
 **Open**.
 
-**Selected outcome slice (exact CI pending):** After the single cancellation
+**Selected outcome slice:** After the single cancellation
 request, re-read the same exact retained submission request, its application
 association and independently admitted Run evidence. Association is diagnostic:
 only an association to the Run's current Attempt can support a Run/Task outcome;
@@ -3307,9 +3314,14 @@ action, not already-available recovery. Preserve transport exit-code meaning
 and all uncertain records. The public active-native-Task fixture must exercise
 real Snakemake, Task and native child cancellation through this path. Hosted
 software checks cannot prove the Viking controller or institutional native-task
-outcome. CV-18 is **Verification pending** for exact hosted CI of this outcome
-and institutional queued and active-native-task cancellation; neither check
-is claimed to have passed here.
+outcome. Ordinary hosted software checks passed at
+`2f4a0313050ba254c273b480d9913e0b82fa7a7e` in
+[CI 35733826838](https://github.com/lab-cats/EMRYS/actions/runs/35733826838)
+and at the integrated baseline in
+[CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692);
+both runs skipped the selected real synthetic E2E job. CV-18 remains
+**Verification pending** for selected real-Slurm and institutional queued and
+active-native-task cancellation. Neither site outcome is claimed here.
 
 ### CV-19 Verification and repair vocabulary
 
@@ -3586,9 +3598,11 @@ verbose output for Doctor and all Run/resume/report submission routes; profile
 authoring retains the detailed view. CV-22, CV-U02 and CV-U04 use the acceptance
 above. `SUBMISSION-PREVIEW-01` in the
 [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up) records
-the correction. CV-22 is **Verification pending** for exact hosted regression
-and institutional preview acceptance; source/test changes do not establish
-site behavior.
+the correction. Ordinary hosted regression passed at the exact integrated
+baseline in
+[CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692).
+CV-22 is **Verification pending** for institutional preview acceptance; the
+hosted software result does not establish site behavior.
 
 ## P2 outcomes
 
