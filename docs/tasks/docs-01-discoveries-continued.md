@@ -128,6 +128,11 @@ arrows are data or contract dependencies. The authoritative
 BED12 from `convert_GTF_to_BED12` as a second RSeQC input; BAM QC has no
 such fan-in. Add the annotation dependency or split the evidence branches.
 Do not turn either non-gating evidence branch into a Run completion gate.
+The same diagram's reference node at lines 2, 18, 24–27, and 35 presents
+FAI/BED12 alongside supplied FASTA/GTF, including a direct FAI continuation.
+The stage map at lines 47–50 and 69–79 instead identifies FASTA/GTF as external
+and Steps `00b`/`00c` as BED12/FAI producers. This is a generated-versus-supplied
+provenance ambiguity in the diagram, not evidence that the DAG is wrong.
 
 ### F38 — Slurm request in the reliability diagram
 
@@ -501,6 +506,10 @@ repair and no-post-run-cleanup boundaries so an operator does not infer the
 long lane is dependency read-only. Preserve explicit repair, disposable
 Project ownership, and retained partial evidence. This static comparison
 does not establish that an installation occurred in any particular run.
+The [engineering guide](../operations/ENGINEERING_CONVENTIONS.md) lines 44–52
+also says tests never install packages. Ordinary validation remains separate
+from this opt-in driver, but its explicit Doctor repair route makes that
+unqualified sentence too broad. No installation was observed in this pass.
 
 ### F57 — Make fixture public target label
 

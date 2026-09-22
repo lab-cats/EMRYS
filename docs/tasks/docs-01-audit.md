@@ -116,6 +116,10 @@ permission to change or delete the source.
   contains EV/PUM1 paths and Slurm steps. Base-revision findings remain pinned
   as stated; the current-head limit is recorded below. No further guide or
   product edits or runtime checks were made in this pass.
+- The sixteenth read-only pass at `b67e0eeb` compared diagram, decision, and
+  test-tool claims with their current owners. It refined F37 and F56 and added
+  F62–F64. Source and tests were read, not executed; no owner guide, product
+  source, or retained evidence was changed.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -185,7 +189,7 @@ and the boundary for each row.
 | [F34](docs-01-discoveries-continued.md#f34-prepared-finalization-in-the-reliability-diagram) | Diagram omission | Reliability diagram sends every resume to a new Attempt; prepared finalization may complete the old Attempt. | Show finalization and eligible continuation as distinct paths. |
 | [F35](docs-01-discoveries-continued.md#f35-fastq-pairing-language) | Wording ambiguity | Glossary and engineering guide say names never infer pairing; guided Init detects R1/R2 mates from names. | Distinguish mate discovery from authored biological pairing. |
 | [F36](docs-01-discoveries-continued.md#f36-cross-owner-history-in-runtime-test-guidance) | Placement candidate | Runtime test README ends with a sentence about retired report-publisher tests. | Check whether that history belongs with reporting evidence, then keep this README to runtime test scope. |
-| [F37](docs-01-discoveries-continued.md#f37-bed12-dependency-in-the-scientist-diagram) | Diagram omission | Combined QC/orientation node lacks the BED12 dependency required by RSeQC. | Show the fan-in or split the evidence branches. |
+| [F37](docs-01-discoveries-continued.md#f37-bed12-dependency-in-the-scientist-diagram) | Diagram ambiguity | Combined QC/orientation node lacks RSeQC's BED12 dependency; the upstream reference node also groups produced FAI/BED12 with external FASTA/GTF. | Stage map defines the artifact edges; no execution defect was observed. |
 | [F38](docs-01-discoveries-continued.md#f38-slurm-request-in-the-reliability-diagram) | Diagram omission | Slurm authorization is drawn as direct Attempt creation, omitting the pre-Run submission request. | Show request/submission and compute-side admission separately. |
 | [F39](docs-01-discoveries-continued.md#f39-validation-roster-inventory-claim) | Evidence ceiling | Fixed map covers 14 current validation-report producers, not every validator, and cannot discover a new source producer. | Name scope and future-discovery limit; preserve literal rosters and owner checks. |
 | [F40](docs-01-discoveries-continued.md#f40-concurrency-in-the-local-workflow-profile) | Terminology drift | Local workflow profile guide says “sample concurrency”; current policy resolves per-stage concurrency. | Align wording with resource schema and policy. |
@@ -204,19 +208,23 @@ and the boundary for each row.
 | [F53](docs-01-discoveries-continued.md#f53-dependent-project-in-shared-runtime-replacement) | Recovery instruction | Troubleshooting replacement commands omit the borrower selector; the adjacent Runbook names an unqualified source-Project Doctor command. | Show exact borrower and source Project selection while preserving preview and admission checks. |
 | [F54](docs-01-discoveries-continued.md#f54-analysis-reporter-return-shape) | API description | Two report guides say the analysis provider returns HTML bytes; the admitted return is a structured carrier containing bytes and provenance inputs. | Compare both descriptions with `AnalysisScientificReportV1`; provider behavior is unchanged. |
 | [F55](docs-01-discoveries-continued.md#f55-ci-lane-selection-route) | Navigation overclaim | Workflow README says the test baseline defines each CI lane; that section gives broad categories, while exact jobs and selection live in the workflow. | Route precise lane selection to `ci.yml` and retain the baseline's evidence ceiling. |
-| [F56](docs-01-discoveries-continued.md#f56-synthetic-driver-dependency-mutation-claim) | Mutation-scope wording | Test-tool guide says the real synthetic driver does not install dependencies; the driver invokes confirmed Doctor repair in each disposable Project. | State the explicit Project-owned repair and the narrower no-post-run-cleanup boundary. |
+| [F56](docs-01-discoveries-continued.md#f56-synthetic-driver-dependency-mutation-claim) | Mutation-scope wording | Test-tool and engineering guides imply tests do not install dependencies; the opt-in synthetic driver invokes confirmed Doctor repair in each disposable Project. | Ordinary tests and opt-in Doctor repair have different mutation scopes; no installation was observed. |
 | [F57](docs-01-discoveries-continued.md#f57-make-fixture-public-target-label) | Audience classification | Make fixture guide calls every covered target public, while the test map includes internal lanes and operator mutations. | Name the complete target-expansion inventory and preserve applicability classes. |
 | [F58](docs-01-discoveries-continued.md#f58-nonoverlapping-validation-lane-claim) | Protection overlap candidate | Test-tool guide and driver call four lanes non-overlapping, but Python sharding and guarded-R selection can both include the same real-R pytest file. | Narrow the claim; route any gate deduplication to ASSURANCE-01 with surviving protection proof. |
 | [F59](docs-01-discoveries-continued.md#f59-pre-run-submission-recovery-route) | Recovery omission | Troubleshooting's no-Run path checks an exact scheduler ID but does not route readers through the retained request roster, which can exist with no confirmed job ID. | Inspect the request before resubmission and preserve unknown/partial observations. |
 | [F60](docs-01-discoveries-continued.md#f60-submission-request-promise-for-direct-execution) | Placement overclaim | Runbook says Run/resume/report print a submission request after approval; direct placement executes without one. | Scope that promise to Slurm submissions while preserving pre-Run request retention. |
 | [F61](docs-01-discoveries-continued.md#f61-run-summary-commit-marker-pronoun) | Publication wording | Run-summary README places “Installing it last” after the QC TSV sentence, although the summary JSON is the last installed member. | Owner code and coordinator contract both define JSON-last publication; no behavior defect observed. |
+| [F62](docs-01-discoveries-third.md#f62-benchmark-value-can-be-label-only) | Benchmark evidence ceiling | Scripts guide says the helper measures commands at declared resource values; producer argv need not contain the value placeholder. | Actual resource substitution depends on manifest argv; no benchmark was run. |
+| [F63](docs-01-discoveries-third.md#f63-background-cohort-in-the-scientist-diagram) | Diagram ambiguity | Scientist diagram depicts an optional background cohort entering only ranking; selected background samples traverse upstream processing. | The optional filter acts during ranking; no source behavior defect was observed. |
+| [F64](docs-01-discoveries-third.md#f64-star-mechanics-in-a-scientific-decision) | Responsibility overlap | Scientific pipeline decision repeats STAR derivation and compatibility mechanics in config and coordinator owners. | Original-study values, rationale, and cited manual remain distinct decision context. |
 
 ## Discovery notes
 
 The [first discovery notes](docs-01-discoveries.md) and
-[continued notes](docs-01-discoveries-continued.md) give sources, uncertainty,
-and preservation boundaries for every matrix row. The temporary split keeps
-each document below the 600-line review threshold.
+[continued notes](docs-01-discoveries-continued.md), plus the
+[third file](docs-01-discoveries-third.md), give sources, uncertainty, and
+preservation boundaries for every matrix row. The temporary split keeps each
+document below the 600-line review threshold.
 
 ## Preservation boundaries for the next pass
 
