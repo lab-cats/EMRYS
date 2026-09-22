@@ -328,7 +328,9 @@ That integration baseline gives a 19.44% product reduction; it does not replace
 the agreed campaign baseline above. Git and the linked PRs retain the card
 history, individual changes and review decisions. Scientific computation,
 data, provenance, current Run recovery, both reports, figures and the dashboard
-remain. Dashboard retirement still requires a validated replacement.
+remain. At this September 14 closeout, dashboard retirement still required a
+validated replacement; `DASHBOARD-RETIRE-01` records the later implementation
+and remaining standard CI and institutional visual verification.
 
 [Ordinary hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34857271894)
 and [130-pair synthetic E2E](https://github.com/lab-cats/EMRYS/actions/runs/34857300341)

@@ -52,15 +52,17 @@ to that earlier approved slice; it is not a blanket allowance for this campaign.
 
 ## Remaining delivery scope
 
-The selected source and documentation corrections are implemented:
+The following selected source and documentation corrections are implemented;
+`INIT-02` remains Open for automatic maintained-study selection:
 
 - Viking allocation and scratch guidance now describe the current owners.
 - `SCHED-USAGE-01` preserves selected-cluster terminal accounting and explicitly
   bounds live sampling; `SUBMISSION-PREVIEW-01` provides compact resource
   disclosure for every Slurm approval, including Doctor.
-- `INIT-01` through `INIT-03` honor the selected Projects home, read the
-  explicitly selected maintained study manifest, and confirm Project creation
-  after review in the same invocation.
+- `INIT-01` uses the selected Projects home; guided Init reads the maintained
+  study manifest when Quickstart passes its path; `INIT-03` confirms Project
+  creation after review in the same invocation. The explicit-manifest route
+  avoids a 25-name paste but does not complete `INIT-02`'s automatic selection.
 - The focused Quickstart includes output orientation and links the separate
   optional smoke guide. CV-12/CV-27 wording and report-transfer navigation are
   reconciled, and Deferred work has named enduring owners.
@@ -70,7 +72,7 @@ owns these outcomes and their remaining acceptance. Its
 [closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
 is the single remaining verification and handoff sequence. Applicable hosted
 checks and institutional observations remain required on the selected revision;
-this source-completeness disposition claims no new execution evidence.
+these bounded source corrections claim no new execution evidence.
 
 CV-U06's one-line accounting exception is approved and settled; it proves
 neither functional behavior nor institutional resource policy. CV-10's accepted

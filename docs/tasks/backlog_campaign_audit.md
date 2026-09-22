@@ -17,9 +17,9 @@ The review compares wording at the named commit with its original outcome,
 current source and tests, operator guidance, and retained evidence. A changed
 source blob flags a question to recheck; it does not invalidate a dated
 observation. Hosted checks, disposable Slurm, institutional Viking execution,
-scientific review, and biological interpretation remain different claims. No
-new runtime, CI, site, performance, or scientific result was produced for this
-draft.
+scientific review, and biological interpretation remain different claims.
+Documentation-only changes here supply no new runtime, site, performance, or
+scientific evidence for campaign acceptance.
 
 ## Coverage and method
 
@@ -41,6 +41,8 @@ the repository before changing a destination or heading. A completed audit
 must reconcile the matrix, both CV indexes, detailed cards, charter, owner
 guidance, and any transferred acceptance; it cannot infer completeness from a
 status label or a passing suite alone.
+Line numbers in this working record refer to the named baseline unless an
+entry explicitly says otherwise; later wording corrections can shift them.
 
 The 51 main-matrix rows are accounted for across maintainability/release
 (seven), novice follow-up (nine), deferred operation (two), reliability
@@ -66,10 +68,10 @@ discovery below and names the next evidence needed before changing authority.
 | Finding | Baseline discovery | Next verification or disposition |
 | --- | --- | --- |
 | 1. Status vocabulary and placement | The matrix uses `Needs decision` without defining it; the delegated backlog uses `Discard`; two Completed rows sit under Active backlog. | Reconcile lifecycle meanings and place completed outcomes without changing their acceptance. |
-| 2. `INIT-02` and dependent onboarding claims | Automatic maintained-study selection is Open, but CV summaries call `INIT-01`–`INIT-03` source-complete. Quickstart supplies a manifest path explicitly. | Correct the source-completeness summary; review CV-06, CV-U08, CV-U20, and CV-U21 against their own acceptance before any status change. |
+| 2. `INIT-02` and dependent onboarding claims | Automatic maintained-study selection is Open, but CV summaries call `INIT-01`–`INIT-03` source-complete. Quickstart supplies a manifest path explicitly. | Present-tense summaries are corrected in this branch. Review CV-06, CV-U08, CV-U20, and CV-U21 against their own acceptance before any status change. |
 | 3. `CV-U22` runtime reuse | The card remains Open for compatible-donor discovery before installation; the documented known-smoke route is narrower. | Retain Open and the no-silent-donor rule; distinguish known-smoke evidence from the undecided general selection design. |
 | 4. `CV-26` Doctor cost | One redundant full diagnosis was removed; original complete-operation attribution and comparable measurements remain Open. | Separate exact retained measurements and the serial-probe decision from implementation checkpoints and unmeasured speedup claims. |
-| 5. Dashboard retirement | The matrix says the standalone entry point and callers are retired; several CV summaries still say that retirement remains. | Correct current-sounding text while keeping shared watch code, historical readers, and pending visual verification. |
+| 5. Dashboard retirement | The matrix says the standalone entry point and callers are retired; several CV summaries still say that retirement remains. | Current-sounding text is corrected in this branch; keep shared watch code, historical readers, and pending visual verification. |
 | 6. Repeated cluster closure instructions | The main checklist, cluster backlog summary, and charter repeat remaining work. | Keep one operative sequence and retain unique card acceptance and evidence limits at their owners. |
 | 7. Viking walkthrough chronology | The main matrix holds dated jobs, a qualification hash, capacity observations, approvals, and a last-supplied Run state. | Map unique evidence and decisions to durable homes before shortening current-task prose. |
 | 8. Compression closeout chronology | The completed section combines the user closure, quantified shortfall, exact CI, and PR chronology. | Keep the closure decision; preserve unique measurements and evidence ceiling before condensing routine integration history. |
@@ -127,14 +129,12 @@ automatic Init selection. CV-U08's delivered-journey claim at lines 605–619
 needs the same original-intent review. CV-U21's STAR-parameter assistance is
 separate from study selection; its status does not follow `INIT-02`.
 
-**Proposed wording change:** In the CV backlog introduction and remaining-work
-table (lines 24–30 and 72), and charter delivery summary (lines 55–73), call
-`INIT-01`, `INIT-03`, and the focused guide corrections implemented. Describe
-the delivered route as an *explicit* Quickstart `--partition-manifest` choice
-that avoids a 25-name paste. Keep `INIT-02` Open for automatic selection without
-that argument, and retain CV-06/CV-U08/CV-U20's separate novice and hosted
-acceptance. The CV-U20 paragraph at cluster backlog lines 1323–1329 should
-name the explicit argument rather than credit `INIT-02` with selection.
+**Documentation correction:** The CV backlog introduction, remaining-work
+table, CV-06/CV-U08/CV-U20 passages, and charter delivery summary now name
+the delivered *explicit* Quickstart `--partition-manifest` route separately
+from `INIT-02`'s Open automatic-selection outcome. They retain `INIT-01` and
+`INIT-03` implementation and each CV card's own pending hosted/novice
+acceptance. No card status changed.
 
 ### 3. `CV-U22` runtime reuse
 
@@ -204,14 +204,13 @@ lines 426–435 explicitly preserves historical stream reads. Shared
 `dashboard.py` remains part of installed watch, so its presence is not proof
 that the old standalone entry point survives.
 
-**Proposed wording change:** Reconcile the CV backlog remaining-work row at
-line 79 and current-sounding CV-16/CV-24/CV-25 summaries at lines 3173–3184,
-3661, 3724–3725, and 3744–3746 with `DASHBOARD-RETIRE-01`: the standalone
-entry point/callers and new-name transition are implemented; standard CI and
-institutional visual verification remain. Date-bound the matrix's compression
-closeout sentence at line 331 to its September 14 checkpoint. Preserve the
-earlier local-test limit and read compatibility for v1–v3 stream names; do not
-retire shared watch parsing/rendering merely because its module says dashboard.
+**Documentation correction:** The CV backlog remaining-work row and
+current-sounding CV-16/CV-24/CV-25 summaries now agree with
+`DASHBOARD-RETIRE-01`: standalone entry point/callers and new-name transition
+are implemented, while standard CI and institutional visual verification
+remain. The matrix's compression closeout sentence is bound to September 14.
+The earlier local-test limit, v1–v3 stream reads, and shared watch
+parsing/rendering remain explicit. No evidence or card status changed.
 
 ### 6. Repeated cluster closure instructions
 
@@ -527,7 +526,7 @@ as though that transfer has already happened.
 
 | Candidate content | Proposed treatment | Gate before shortening or removal |
 | --- | --- | --- |
-| Current `INIT-02` and dashboard summaries | Correct present-tense claims at their existing owners; keep card acceptance and dated test limits. | Review the proposed wording in findings 2 and 5 against the selected source. |
+| Current `INIT-02` and dashboard summaries | Corrected present-tense claims at their existing owners; card acceptance and dated test limits remain. | Confirm the exact documentation diff and hosted structure check; no evidence transfer is involved. |
 | Charter's earlier development grant and running-job reference | Date-bound the original authorization and job circumstance; keep the enduring active-installation safety rule. | Confirm the historical approval wording and current workflow authority. |
 | Roughly 205 lines across the three cluster closure regions | Link secondary delivery prose to the matrix's operative checklist. | Compare each condition with card acceptance and the E register; the region size is not a duplicate-line count. |
 | Matrix walkthrough and charter E01–E12 | Transfer exact dated observations to an approved history home before reducing either narrative. | Preserve all job/hash identities, unknown causes, absent receipts, limits, and inbound links. |
