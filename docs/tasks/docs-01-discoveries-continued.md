@@ -75,6 +75,11 @@ the successful scientific Run, but `emrys report --execute` creates absent
 owned outputs ([reporting owner](../../src/emrys/reporting/README.md) lines
 3–16). Clarify read-only scientific inputs versus create-only report
 publication so the diagram does not imply no files are written.
+The [test baseline](../design/TEST_BASELINE.md) lines 108–111 also lists
+“report read-only behavior” without naming the input boundary. Narrow that
+checklist phrase to immutable scientific inputs and create-only report
+publication alongside the diagram correction; this is a documentation
+ambiguity, not a report transaction defect.
 
 ### F34 — Prepared finalization in the reliability diagram
 
@@ -88,18 +93,20 @@ new Attempt. [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 35–50
 already explains this. Show both paths without implying that missing or
 ambiguous evidence can authorize finalization.
 
-### F35 — FASTQ pairing in the glossary
+### F35 — FASTQ pairing language
 
 [Glossary](../reference/GLOSSARY.md) lines 45 and 67 says EMRYS does not infer
-R1/R2 pairing from filenames. Guided Init does recognize `_R1/_R2` and
-`_1/_2` mates and displays detected pairs
+R1/R2 pairing from filenames. The [engineering guide](../operations/ENGINEERING_CONVENTIONS.md)
+lines 18–20 also broadly bans inference of “pairing” from names. Guided Init
+does recognize `_R1/_R2` and `_1/_2` mates and displays detected pairs
 ([onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
 lines 964–1006; [Quickstart](../../quickstart.md) lines 79–81). The operator
 still authors condition and biological pairing group at onboarding lines
 1010–1016; the [sample manifest guide](../../configs/README.md) lines
-144–170 makes those values authoritative. Clarify mate discovery versus
-authored experimental pairing; this is ambiguous wording, not a demonstrated
-scientific-inference defect.
+144–170 makes those values authoritative. Clarify mate discovery in both
+guides versus authored experimental pairing; retain the ban on inferred
+biological meaning or sample order. This is ambiguous wording, not a
+demonstrated scientific-inference defect.
 
 ### F36 — Cross-owner history in runtime test guidance
 
@@ -207,11 +214,11 @@ structure in the test guide without implying rendered user acceptance.
 
 The opening of the [STAR contract](../../src/emrys/stages/star_alignment/CONTRACT.md)
 lines 3–6 calls its producer an explicit repository-path command, which is
-literally how the Run invokes it and does not itself promise standalone support. The
-[RSeQC contract](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md)
+literally how the Run invokes it and does not itself promise standalone
+support. The [RSeQC contract](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md)
 lines 3–8 additionally calls the operation independently runnable, an ambiguous
-supported-command claim. Both
-contracts later call their shells internal Run workers (STAR lines 65–68;
+supported-command claim. Both contracts later call their shells internal Run
+workers (STAR lines 65–68;
 RSeQC lines 58–61), as do their adjacent READMEs (STAR lines 12–18; RSeQC
 lines 11–16). The STAR shell requires runner-supplied `EMRYS_TASK_WORK_DIR`
 at lines 3, 22–23, and 51–52; the RSeQC shell does likewise at lines 3,
@@ -226,6 +233,17 @@ The coordinator's `TaskBackend` and `CommandResult` docstrings
 100–104 and 146–154) also call delegated producer and validator commands
 “public.” This is the definite ownership error. Call them delegated/recorded
 commands while retaining exact argv and exit evidence and Run-owned publication.
+The [public-CLI tests](../../tests/test_public_cli_contracts.py) lines 113–154
+also group ten shell workers as entry points and label three nonexecutable
+scripts `INTERPRETER_ONLY_SHELL_DEFECTS`; lines 829–865 call their modes
+“public shell” defects. The [stage index](../../src/emrys/stages/README.md)
+lines 30–39 and RSeQC, duplicate-marking, and split-N-cigar contracts instead
+classify these producers as internal Run workers. Git records the three modes
+as `100644`, but that alone does not make them defects in a public CLI. Review
+the test classification and names against supported command ownership;
+preserve useful `--help`, arbitrary-working-directory, missing-argument,
+file-mode, argv, and exit protections. No test removal follows from this
+wording question.
 
 ### F45 — Watch and stop in the command-audience map
 
@@ -382,3 +400,50 @@ lead a reader to expect replacement of an existing or partial bundle; no
 actual misuse is observed. Clarify absent-output generation and complete-bundle
 reuse in the root overview, with recovery routed to the existing operator
 guidance. Preserve create-only publication and retained evidence.
+
+### F53 — Dependent Project in shared-runtime replacement
+
+[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 149–159 says to
+preview and apply a sealed-runtime replacement from each dependent Project,
+but both pasteable commands specify only `--from-project` and omit the
+borrower's `--project`. Runtime discovery resolves an omitted Project to
+`project.yaml` in the current working directory
+([onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+lines 270–285 and 2304–2321). From outside the dependent Project, those
+commands can fail or select another current Project for inspection; the
+separate source-selection and admission checks still govern any mutation.
+The [Runbook](../operations/RUNBOOK.md) lines 683–693 already shows the exact
+dependent `--project /absolute/dependent/project.yaml` selector for the same
+replacement. Add it to both recovery commands or state the required working
+directory. Preserve preview before `--execute`, exact-source replacement,
+the old managed generation, seals, claims, and blocked-state evidence. This
+is a static reader-route finding; no runtime replacement was exercised.
+
+### F54 — Analysis reporter return shape
+
+The [private report guide](../../src/emrys/reporting/_run_report/README.md)
+lines 24–26 says the selected `emrys.analysis_reporters` provider “returns
+the scientific HTML bytes.” The public
+[carrier](../../src/emrys/reporting/__init__.py) lines 57–63 is
+`AnalysisScientificReportV1`: it holds `html_bytes` plus input, renderer, and
+figure evidence. [Context admission](../../src/emrys/reporting/_run_report/context.py)
+lines 225–252 rejects a bare bytes return and validates the carrier; the
+[built-in provider](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/provider.py)
+lines 121–160 returns that carrier. The [reporting owner](../../src/emrys/reporting/README.md)
+lines 22–27 already names the correct return annotation. Clarify the private
+guide's API shape without changing provider behavior or core-owned fixed
+outputs. This is a source-level wording mismatch; no provider was run.
+
+### F55 — CI lane selection route
+
+The [workflow README](../../.github/workflows/README.md) lines 3–6 says the
+[test baseline](../design/TEST_BASELINE.md#validation-lanes) “defines each
+lane.” That section at lines 73–85 describes the assembled local gate,
+verified CI shards, broad long-lane categories, and trigger limits, but does
+not enumerate each hosted job or its exact selection. The
+[workflow](../../.github/workflows/ci.yml) owns those job conditions (for
+example, lines 109–114) and the schedule plus Sunday 100,000-pair selection
+(lines 51–53 and 1385–1394). Point readers to `ci.yml` for exact current
+lanes and retain the baseline for test policy and evidence ceilings. This
+does not imply a CI failure or that a green workflow proves cluster or
+scientific acceptance; no workflow was run in this pass.
