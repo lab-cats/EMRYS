@@ -158,6 +158,12 @@ permission to change or delete the source.
   owner boundaries, and placement guidance with current source and tests. It
   added F78–F83. The fixture consumer count is limited to tracked references;
   no shard, reconciler, task, or scientific Run was executed.
+- A further read-only pass at `ce9a3289` compared stage contracts, schema and
+  configuration guides, optimization candidates, and the active backlog with
+  their owners. It added F84–F88. All 62 pinned GitHub source-blob citations in six selected task
+  and history files resolved to retained local commits, paths, and in-range
+  line numbers; that verifies coordinates, not claims or external artifacts.
+  No product, test, runtime, or cluster operation ran in this pass.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -274,6 +280,11 @@ and the boundary for each row.
 | [F81](docs-01-discoveries-third.md#f81-terminal-task-result-versus-verified-marker) | Evidence overclaim | Orchestration index assigns every task a terminal result and verified marker; failed tasks can retain a terminal result without a marker, and interruption can leave neither. | Marker publication remains success-gated; no behavior defect is inferred. |
 | [F82](docs-01-discoveries-third.md#f82-reference-provenance-private-test-calls) | Test-scope wording | Reference-provenance test guide says private reconciler calls only inject failures; the suite also calls parsing, rendering, and publication directly. | Direct private coverage and public-command coverage remain distinct; tests were not run. |
 | [F83](docs-01-discoveries-third.md#f83-direct-host-study-versus-allocation-only-rule) | Placement-scope question | Delivery decision limits heavy science to Slurm allocations, while root and Runbook admit own-data Runs on approved non-Slurm compute hosts. | The intended boundary for a direct study is unstated; no runtime safety conclusion follows. |
+| [F84](docs-01-discoveries-third.md#f84-copied-init-manifest-path-fields) | Conditional copy wording | Config guide says named Init copies and retains supplied manifest content; Init resolves relative FASTQ and regions-file paths to absolute paths when publishing the Project manifests. | The path referents are retained, but the persisted path fields can differ; no Run was executed. |
+| [F85](docs-01-discoveries-third.md#f85-undefined-report-roster-status) | Status vocabulary | Main matrix defines six states, but `REPORT-ROSTER-01` uses `Needs decision`; the polish campaign calls it open. | The pending decision remains; this audit does not assign a task status or implementation authority. |
+| [F86](docs-01-discoveries-third.md#f86-step-02b-parallel-validation-claim) | Execution-order wording | Step 02b contract says it may overlap the Step 02 validator; the current Run graph waits for Step 02's verified marker, which follows validation. | An internal worker's local input needs are distinct from the admitted Run order; no Run was executed. |
+| [F87](docs-01-discoveries-third.md#f87-step-05-scratch-owner-in-optimization-candidate) | Historical owner drift | Optimization candidate attributes Step 05 GATK spill placement to its worker; the current runner supplies output-adjacent scratch and binds the worker's temp options. | The candidate's storage and performance question remains unmeasured; no placement change is inferred. |
+| [F88](docs-01-discoveries-third.md#f88-old-slurm-memory-preflight-proposal) | Prior-revision proposal | Polish item 36 calls explicit Slurm memory preflight missing; current `SCHED-01` records the implemented check with verification still pending. | The institutional heterogeneous-node limit remains open; no new software proof is inferred. |
 
 ## Discovery notes
 

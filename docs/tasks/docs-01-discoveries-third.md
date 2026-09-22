@@ -4,7 +4,7 @@ This temporary companion to the [findings matrix](docs-01-audit.md#findings-matr
 holds F62 onward. F62–F64 use PR head `b67e0eeb`; F65–F66 began at
 `cf94af08`, with F66 extended at `9c4fafdc`; F67–F70 use `c0a6027a`;
 F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`; F74–F77 use `ab25ea9b`;
-F78–F83 use PR head `7a07d502`,
+F78–F83 use PR head `7a07d502`; F84–F88 use `ce9a3289`,
 all read on 2026-09-22.
 These are documentation observations, not runtime results or accepted changes.
 
@@ -314,3 +314,75 @@ lines 3–5 and 365–375 also defines direct placement. The decision does not
 state where a direct study ceases to be local development and becomes the
 “heavy” work it reserves for Slurm. This is an operator scope question, not
 a claim that direct execution is unsafe or that either route was exercised.
+
+### F84 — Copied Init manifest path fields
+
+The [configuration guide](../../configs/README.md) lines 20–22 says named
+Init copies validated manifest content into the Project, and lines 80–85
+says copied manifests retain supplied content. For a supplied sample manifest,
+[Init](../../src/emrys/orchestration/run_coordinator/onboarding.py) lines
+1125–1139 resolves relative FASTQ paths from that manifest's directory and
+serializes absolute paths into the Project copy. It similarly resolves a
+partition `regions_file` at 1141–1158; a
+[focused test](../../tests/orchestration/run_coordinator/test_onboarding.py)
+lines 1561–1592 asserts the resulting absolute regions-file path. The guide's
+Project-relative path rule at lines 24–29 and 229–231 describes persisted
+Project use, while supplied external manifests cross an Init boundary.
+“Copy” preserves the referenced inputs but can change path fields and bytes.
+No Init or Run was executed in this audit.
+
+### F85 — Undefined REPORT-ROSTER status
+
+The [main backlog](backlog_matrix.md) lines 24–29 defines Open, In progress,
+Verification pending, Deferred, Completed, and Closed. Its active
+`REPORT-ROSTER-01` row at line 295 instead uses `Needs decision`, the only
+undefined status among 51 ID rows in a static count. The
+[polish campaign](polish-campaign.md) line 435 calls that outcome open. The
+decision itself remains unresolved; this finding concerns the matrix's
+status vocabulary and assigns no new authority or acceptance state.
+
+### F86 — Step 02b parallel-validation claim
+
+The [Step 02b contract](../../src/emrys/evidence/canonical_bam_qc/CONTRACT.md)
+lines 25–28 says the operation may run in parallel with the Step 02 validator
+once a stable canonical pair exists. The current
+[processing profile](../../src/emrys/workflow/contracts/local_cmh_v2.json)
+lines 118–123 makes Step 02 a direct predecessor of 02b. The
+[task loader](../../src/emrys/contracts/orchestration/artifact_inventory.py)
+lines 42–57 carries that edge into `predecessors`, and the
+[Snakefile](../../src/emrys/workflow/Snakefile) lines 402–424 waits for the
+predecessor's verified marker. The [task runner](../../src/emrys/orchestration/run_coordinator/task.py)
+validates and checks semantic all-pass at lines 2763–2779 before publishing
+that marker at 2883–2920. Thus an ordinary Run cannot overlap 02b with Step
+02 validation. This is a timing statement about the admitted Run graph, not
+an observed execution defect or a claim about a standalone worker invocation.
+
+### F87 — Step 05 scratch owner in optimization candidate
+
+The [optimization campaign](optimization_campaign.md) lines 199–212 says
+Step 05 deliberately puts GATK spill under the output directory because CSU
+`/tmp` can be too small, citing an earlier pinned Step 05 revision. The
+current [worker](../../src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh)
+lines 121–124 passes `EMRYS_TASK_WORK_DIR` to both Java and GATK temporary
+options. The [stage contract](../../src/emrys/stages/split_n_cigar/CONTRACT.md)
+lines 56–60 calls it runner scratch. The
+[runner](../../src/emrys/orchestration/run_coordinator/task.py) derives an
+output-staging-adjacent scratch path at 1465–1469, creates it at 1546–1575,
+and binds both `EMRYS_TASK_WORK_DIR` and `TMPDIR` at 2698–2704. Thus the
+candidate's present-tense ownership explanation has drifted, while the
+scratch remains output-adjacent. The institutional fast-scratch performance
+question was not measured or decided in this audit.
+
+### F88 — Old Slurm memory preflight proposal
+
+The [polish campaign](polish-campaign.md) dates its source audit to
+`fdf76760` at lines 35–44, then item 36 at 798–811 calls explicitly
+undersized Slurm-memory preflight missing and describes rejection as the
+remaining outcome. The current [main backlog](backlog_matrix.md) line 172
+marks `SCHED-01` Verification pending and records the effective-profile CPU
+and explicit-memory check before submission, Doctor repair planning, and
+profile creation. The [CV-11 card](cluster_verification_backlog.md) lines
+2994–2996 and 3014–3024 records that implemented slice and integrated CI
+checks while retaining institutional heterogeneous-node acceptance. Item
+36 is a dated proposal, not the current software status. This audit did not
+rerun the checks or establish institutional behavior.
