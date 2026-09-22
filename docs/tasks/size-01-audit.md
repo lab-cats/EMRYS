@@ -4,11 +4,11 @@ This working audit annex belongs to the [EMRYS polish campaign](polish-campaign.
 
 ## Scope and method
 
-Inventory snapshot: 3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d, descended from the PR #302 head. This inventory covers every tracked, non-test text file at that commit, not just files changed on the integration branch. A file qualifies when it has more than 600 physical lines; a final line without a newline counts. The 38 qualifying files contain 56,985 lines: 15 coordinator Python files, 11 other Python files, two R files, four Markdown files, three dependency locks, one CI workflow, one JSON profile, and one stylesheet.
+Inventory snapshot: 3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d. This inventory covers every tracked, non-test text file at that commit, not just files changed on the integration branch. A file qualifies when it has more than 600 physical lines; a final line without a newline counts. The 38 qualifying files contain 56,985 lines: 15 coordinator Python files, 11 other Python files, two R files, four Markdown files, three dependency locks, one CI workflow, one JSON profile, and one stylesheet.
 
 The tables separate observed responsibility from the next question. A proposed reduction requires a caller-complete review of behavior, protection, evidence, and ownership. No path-specific size exception has been approved. If a file is retained above the limit, record its exact path, reason, explicit user approval, and a retirement condition when the exception is temporary.
 
-This pass used source, contracts, callers, tests, and documentation. It did not run product tests, hosted CI, Slurm, scientific analysis, or report visual review.
+The audit reviewed implementation, contracts, callers, tests, and documentation. Its findings are source observations; product tests, hosted CI, Slurm, scientific analysis, and report visual review are separate evidence layers.
 
 ## File responsibility matrix
 
@@ -67,7 +67,7 @@ Paths are relative to the repository root. Line counts belong to the snapshot ab
 | src/emrys/workflow/contracts/local_cmh_v2.json | 712 | Defines the canonical workflow profile, owners, edges, and artifact templates. | Evaluate repeated owner-key lists under SCHEMA-01 and PROFILE-CONTRACT-01 across every consumer. |
 | uv.lock | 2,287 | Records the resolved Python package set. | Review declared dependencies through their owner; retention requires its own explicit exception. |
 
-## First detailed discoveries
+## Cross-owner discoveries
 
 1. **Resource compatibility view.** [ResourcePlan](../../src/emrys/orchestration/run_coordinator/resource_policy.py#L213) presents one policy and one Attempt resolution through forwarding properties. Static source search found no direct production use of its declaration property; allocation is used inside policy_record. Removing those accessors would save only a few lines and leave the file above 600. The next review must trace typed callers and determine whether the compatibility view can be retired as a whole while preserving symbolic Run policy and numeric Attempt resolution.
 
@@ -94,9 +94,8 @@ Paths are relative to the repository root. Line counts belong to the snapshot ab
 | Documentation | Init detail across Runbook and coordinator contract; campaign chronology. | Operator usability, owner-local exact behavior, and retained evidence. |
 | Mutable state | Separate scheduler trace caches and selected-tail state in watch. | Stream rotation, bounded reads, sanitized output, and read-only inspection. |
 
-No reduction in this record is counted as a saving. No test, protection, evidence, or generated lock content is proposed for deletion. Before closing the audit, every retained oversized path needs its own approved exception record or a verified reduction, and the inventory must be rerun against the final revision. At polish-campaign closure, transfer durable findings and approved exceptions to their owners; review retirement of this working annex under the applicable evidence-retention rule.
 
-## Second pass: coordinator caller and evidence boundaries
+## Coordinator command, recovery, and watch boundaries
 
 These path reviews inspect committed source and direct tests at the inventory snapshot. Reading a test establishes the intended protection, not that the test passed on this audit branch.
 
@@ -120,7 +119,7 @@ Guided Project creation and the separate manifest-draft command already use the 
 
 The [full-history trace pass](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py#L664) and [bounded selected tail](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py#L371) can observe one scheduler stream twice per refresh. [Dashboard stream tests](../../tests/orchestration/run_coordinator/test_dashboard.py#L528) and [watch tail tests](../../tests/orchestration/run_coordinator/test_inspection_presentation.py#L589) protect different history, byte-bound, sanitization, and generation behavior. One admitted observation with two projections is a possible mutable-state and I/O reduction, not yet a proven code reduction. Next proof: establish identical path admission, rotation, timing, diagnostics, and selected-tail behavior before changing cache ownership.
 
-## Third pass: scientific, reporting, and evidence boundaries
+## Scientific, reporting, and evidence boundaries
 
 These findings are source and test inspections at the inventory snapshot. They neither change scientific meaning nor establish runtime or biological proof.
 
@@ -148,7 +147,7 @@ The storage owner shares one [root probe](../../src/emrys/evidence/storage_inven
 
 The bundled [renv autoloader](../../src/emrys/renv/activate.R#L5) declares renv version 1.2.3 and its MD5. An earlier product-code campaign excluded generated activate.R from its count; SIZE-01's non-test rule still includes this path. The [shell test](../../tests/shell/test_local_r_environment.sh#L64) checks presence and later uses a stub, so it does not prove the bundled bootstrap itself. Before proposing a generated-file exception, verify upstream provenance, exact selected-environment behavior, and the explicit repair route. Hand editing the generated autoloader is not a line-count reduction.
 
-## Fourth pass: documentation, workflow, configuration, and generated inputs
+## Documentation, workflow, configuration, and generated inputs
 
 ### ci.yml
 
@@ -170,7 +169,7 @@ These are separate package-manager resolutions for Python, native/R base, and R 
 
 The [Runbook's Project creation section](../operations/RUNBOOK.md#create-a-project-for-your-own-data) includes hashing and filesystem identity internals also explained in the coordinator [publication contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries). DOCS-01 can retain the operator choices, confirmation, and recovery cue while linking exact implementation guarantees to the owner. The [polish campaign's history](polish-campaign.md#existing-capabilities-and-overlapping-work) needs proposal disposition before shortening, and the [cluster backlog](cluster_verification_backlog.md#verified-scope-and-remaining-evidence) owns live CV acceptance until evidence transfer. Both are possible temporary exceptions with explicit retirement triggers, not immediate deletion candidates. Exact evidence deletion requires its own approval and commit.
 
-## Fifth pass: remaining coordinator owners
+## Coordinator planning, admission, and submission owners
 
 ### materialization.py
 
@@ -208,7 +207,7 @@ The [fixture owner](../../src/emrys/orchestration/run_coordinator/synthetic_fixt
 
 The [dashboard owner](../../src/emrys/orchestration/run_coordinator/dashboard.py#L249) contains descriptor-pinned stream caching, exact scheduler/log selection, diagnostic trace parsing, and terminal layout. Watch consumes all of these; moving sections into new files would improve navigation without reducing maintained behavior. The strongest cross-file candidate remains one admitted stream observation with full-history and bounded-tail projections. [Stream tests](../../tests/orchestration/run_coordinator/test_dashboard.py#L528) protect generation resets, path and UID admission, timeouts, and diagnostics; watch tests protect bounded escaped display. A smaller candidate is the resource fallback text stored in STAGES: for 11 known stage keys, the only production caller passes it to [stage_resource_text](../../src/emrys/orchestration/run_coordinator/dashboard.py#L903), which returns observed text or “not yet reported” without displaying that fallback. Four other known keys can still use it. Removing dormant strings needs a full consumer check and would not bring this file below 600. Scheduler ambiguity and log-derived completion claims remain separate from admitted Run inspection.
 
-## Sixth pass: remaining contracts, logging, and display owners
+## Contracts, logging, and candidate display owners
 
 ### api.py
 
@@ -233,3 +232,7 @@ The [AttemptLog](../../src/emrys/libraries/application_logging/handler.py#L131) 
 ### candidate_display.py
 
 The [candidate display owner](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/candidate_display.py#L548) builds one immutable roster for the provider, HTML, and two figure modules. Its [fallback Step 09 scan](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/candidate_display.py#L206) and [Step 10-selected scan](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/candidate_display.py#L259) repeat snapshot and duplicate-ID checks but make different ranking and membership decisions. Sharing only the equivalent traversal mechanics may reduce code; preserve roster, fallback, and snapshot behavior covered by [display tests](../../tests/reporting/test_candidate_display.py#L284). A small helper that leaves parallel scans or adds surface without net reduction would not close SIZE-01.
+
+## Audit decision boundary
+
+No reduction in this record is counted as a saving. No test, protection, evidence, or generated lock content is proposed for deletion. Before closing the audit, every retained oversized path needs its own approved exception record or a verified reduction, and the inventory must be rerun against the final revision. At polish-campaign closure, transfer durable findings and approved exceptions to their owners; review retirement of this working annex under the applicable evidence-retention rule.
