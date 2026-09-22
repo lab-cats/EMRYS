@@ -30,7 +30,8 @@ collect_diagnostics() {
     trap - EXIT
     set +e
     slurmctld -V > "$evidence_dir/slurmctld-version.txt" 2>&1
-    slurmdbd -V > "$evidence_dir/slurmdbd-version.txt" 2>&1
+    # shellcheck disable=SC2024 # Slurm reads its private config; the runner owns the evidence file.
+    sudo -u slurm -- slurmdbd -V > "$evidence_dir/slurmdbd-version.txt" 2>&1
     slurmd -V > "$evidence_dir/slurmd-version.txt" 2>&1
     scancel -V > "$evidence_dir/scancel-version.txt" 2>&1
     mysql --version > "$evidence_dir/mysql-version.txt" 2>&1
@@ -143,7 +144,11 @@ config_pending=""
 # The production stop path needs a version with exact cluster-scoped scancel.
 slurm_release=""
 for command in scancel slurmctld slurmdbd slurmd; do
-    version="$($command -V)"
+    if [[ "$command" == slurmdbd ]]; then
+        version="$(sudo -u slurm -- "$command" -V)"
+    else
+        version="$("$command" -V)"
+    fi
     [[ "$version" =~ ^slurm(-wlm)?[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+)$ ]] ||
         die "cannot determine $command Slurm release"
     if [[ -z "$slurm_release" ]]; then
@@ -158,15 +163,22 @@ dpkg --compare-versions "$slurm_release" ge 23.11.6 ||
 printf '%s\n' "$slurm_release" > "$evidence_dir/qualified-slurm-release.txt"
 
 sudo systemctl start mysql
-# Fail closed if the disposable runner cannot administer its local database
-# through socket authentication; no image-default password is embedded here.
-sudo mysql --protocol=socket --batch --skip-column-names -e 'SELECT 1' \
-    >/dev/null || die "local MySQL socket administration is unavailable"
-sudo mysql --protocol=socket <<SQL
+# GitHub's disposable Ubuntu 26.04 image documents root/root for MySQL. Keep
+# that public image default in a private, runner-local client file rather than
+# a command argument, environment variable, log, or uploaded evidence root.
+config_pending="$(mktemp "$RUNNER_TEMP/emrys-mysql-admin.XXXXXX")"
+printf '[client]\nuser=root\npassword=root\n' > "$config_pending"
+sudo mysql --defaults-file="$config_pending" --no-login-paths \
+    --protocol=socket --batch --skip-column-names -e 'SELECT 1' \
+    >/dev/null || die "documented CI image MySQL administration is unavailable"
+sudo mysql --defaults-file="$config_pending" --no-login-paths \
+    --protocol=socket <<SQL
 CREATE DATABASE IF NOT EXISTS emrys_ci_slurm;
 CREATE USER IF NOT EXISTS 'emrys_ci_slurm'@'localhost' IDENTIFIED BY '$db_password';
 GRANT ALL PRIVILEGES ON emrys_ci_slurm.* TO 'emrys_ci_slurm'@'localhost';
 SQL
+rm -f -- "$config_pending"
+config_pending=""
 unset db_password
 
 sudo systemctl restart munge
