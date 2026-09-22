@@ -18,10 +18,17 @@ FINAL rows even when unscheduled (1573–1608). Current
 `src/emrys/orchestration/run_coordinator/reporting_boundary.py:43–44` define
 two publication operations after scientific completion. The
 [Snakefile](../../src/emrys/workflow/Snakefile) lines 394–397 ends the backend
-at verified scientific tasks. This is user-facing product text drift, not a
-request to delete historical log aliases. Review watch projection and old-log
-compatibility before selecting a separate product correction; scheduler text
-still cannot prove admitted Run completion.
+at the `cohort_slice` target after verified scientific tasks. That target and
+its FINAL row remain meaningful, but reporting does not precede the target.
+The dashboard also says “Three dependent reporting transactions” when an
+identity has reporting-memory fields (dashboard lines 974–980); its source
+test at `tests/orchestration/run_coordinator/test_dashboard.py:439–443`
+retains the old `artifact_index`, `run_summary`, and `html_report` keys.
+Current reporting instead names `run_summary` and `html_report`. Correct both
+user-facing explanations and the test fixture under a separate product
+change, preserving old log aliases and current `cohort_slice` mapping
+(`test_dashboard.py:362–374`). Scheduler text still cannot prove admitted
+Run completion.
 
 ### F31 — Historical Slurm username recovery advice
 
@@ -63,6 +70,11 @@ lines 3–8 identify artifact entries v4, Run result manifest v8, and report
 receipt v8. Correct the diagram's grouping and receipt label without
 conflating these separate formats. The diagram is non-authoritative, but it is the
 architecture's linked reader path at `docs/architecture/ARCHITECTURE.md:56`.
+The same node says “Read-only reporting.” Reporting reads and does not change
+the successful scientific Run, but `emrys report --execute` creates absent
+owned outputs ([reporting owner](../../src/emrys/reporting/README.md) lines
+3–16). Clarify read-only scientific inputs versus create-only report
+publication so the diagram does not imply no files are written.
 
 ### F34 — Prepared finalization in the reliability diagram
 

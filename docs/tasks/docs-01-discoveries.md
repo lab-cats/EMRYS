@@ -19,6 +19,13 @@ lines 682–707 and [control implementation](../../src/emrys/orchestration/run_c
 around line 1940 describe the same bounded interface; a source test at
 `tests/orchestration/run_coordinator/test_materialization.py:3705–3725` exercises
 its preview. These are current source and test claims, not a test run today.
+The contract's line 684 still says stop admits only v3 requests. Current
+`slurm_submission.py:55–59,303–313` creates v4 requests and admits complete
+named v3/v4 requests for stop. The cited public preview fixture builds v3
+(`test_slurm_submission.py:113–123`); the later native-task stop fixture also
+selects a v3 request (`test_materialization.py:6400–6417,6800–6802`). Those
+tests do not establish a v4 public stop journey. Reconcile the present-tense
+contract with F50, while preserving CV-18's v3 selected-slice history.
 The decision needs to acknowledge that narrow command. It must not imply a
 generic Run stop or completed cluster proof: CV-18 retains queued/native-task
 cancellation and recovery verification pending in the
@@ -29,6 +36,12 @@ coordinator contract lines 1008–1035 also allow `emrys resume RUN` to complete
 an exact prepared Attempt finalization. A prepared success starts no new
 scientific work. Correct both decision claims without implying every resume
 creates another Attempt or that ambiguous evidence authorizes finalization.
+`tests/orchestration/run_coordinator/test_lifecycle.py:2192–2256` exercises
+public preview/execute for prepared succeeded and blocked outcomes without a
+new Attempt; lines 2259–2349 cover a finalization-only Slurm-profile path
+without submission. These are local fixtures, not hosted or Viking proof.
+The contract's trusted-workspace/equal-byte recycled-inode limit at 1021–1027
+and the CV backlog's pending verification at 70–77 remain in force.
 
 ### F02 — Standalone resource floor
 
@@ -38,12 +51,19 @@ and 240 GiB for the default workflow. The packaged
 lines 4–14 selects allocation-based cores and automatic concurrency; the
 [resource resolver](../../src/emrys/contracts/orchestration/application_model.py)
 lines 842–879 admits what fits and refuses a task that cannot fit. A source
-test at `tests/orchestration/run_coordinator/test_execution_profile.py:106–112`
-resolves the default on an 11-CPU/65,536-MiB fixture. This disproves the fixed
-floor as a rule. The profile still has per-task planning minima, including
-40,960 MiB for a large repeated stage; smaller host success and real-study
-capacity are not established by that test. Operator wording should direct
-users to actual planned admission and workload sizing.
+test at `tests/orchestration/run_coordinator/test_execution_profile.py:66–112`
+shows that direct and Viking defaults share the resource policy and resolves
+it on a synthetic 11-CPU/65,536-MiB allocation. This disproves a fixed
+*policy admission* floor; it is not a standalone-host Run or proof that this
+capacity suits real data. The profile still has per-task planning minima,
+including 40,960 MiB for STAR alignment; singleton stages use the workflow
+envelope. The [config guide](../../configs/README.md) lines 281–286 says fixed
+caps were removed and 324–328 says minima are planning numbers, not dataset
+bounds. The coordinator contract lines 721–727 treats visible RAM as a
+ceiling, not guaranteed free memory, and 788–789 says Snakemake does not
+enforce per-process RSS. CV-U28 institutional resource verification remains
+pending. Operator wording should direct users to actual planned admission,
+available memory, disk, and study workload sizing.
 
 ### F03 — INIT-02 in cluster summaries
 
@@ -57,6 +77,14 @@ lines 695–704 and 1104–1119 accepts that path. Thus explicit-manifest behavi
 is real, while the selected automatic experience is not complete. The campaign
 itself acknowledges the gap at lines 149–150. Reconcile only the current summary
 claim; do not change INIT-02 status or erase the explicit-manifest evidence.
+Without that flag, onboarding lines 1027–1061 asks for regions/FASTA names or
+refuses missing noninteractive input; lines 1114–1143 load a partition file
+only when its path was supplied. The direct guided source test at
+`tests/orchestration/run_coordinator/test_onboarding.py:1492–1530` passes the
+flag and checks preview, so it establishes explicit admission, not automatic
+study selection. CV-U20 at CV backlog 1323–1329 and CV-06 at 2505–2511
+accurately describe the *selected* Quickstart file. The overclaim is the
+grouped source-complete/Verification-pending summary, not every dated CV card.
 
 ### F04 — Root Quickstart description
 
@@ -107,6 +135,17 @@ native/R work through Pixi and `renv`, with Python dependencies left to
 separate package-manager setup. The Doctor implementation's manager commands
 in `doctor.py` lines 1235–1265 call Pixi and Rscript, not `uv`. Correct the
 decision's owner list without suggesting Doctor repairs Python itself.
+Verification-only means no package-manager work, not necessarily a read-only
+operation. A ready runtime produces a plan with `runtime=None`
+(`doctor.py:835–870`), but confirmed Slurm repair/verification opens a
+maintenance log (`doctor.py:1657–1676`) and calls compute-side qualification
+(`doctor.py:1902–1908`). The source test at `test_doctor.py:2956–2963,3046–3054`
+expects a submitted qualification job while asserting no native/R installation.
+Plain diagnosis and declined preview remain no-write (`doctor.py:2089–2119`);
+ready direct execution returns without a repair plan. Describe both the
+possible Pixi/renv work and separate verification effects; manager output
+establishes whether packages were reused or changed. Neither readiness nor
+this fixture proves real-study performance or scientific validity.
 
 ### F08 — `--version` and local `.env`
 

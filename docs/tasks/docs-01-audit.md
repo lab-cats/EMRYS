@@ -79,6 +79,12 @@ permission to change or delete the source.
   after audit-only commit `b4356f48`. It refined F16, F20, F25, and F28. The
   quantified F28 reduction remains a proposal, and no source, test, or
   retained evidence was changed.
+- The ninth pass checked high-consequence stop/resume, resources, guided Init,
+  Doctor, watch, and reporting-diagram claims against the same source after
+  audit-only commit `b3656a05`. It refined F01–F03, F07, F30, and F33,
+  including which direct tests exercise only v3 stop requests and which
+  statements are merely outdated summaries. No product command or cluster
+  operation was run.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -112,13 +118,13 @@ and the boundary for each row.
 
 | ID | Kind | Observation at the pinned revision | Next check or likely owner |
 | --- | --- | --- | --- |
-| [F01](docs-01-discoveries.md#f01-public-stop-in-the-platform-decision) | Contradiction | Platform decision denies public stop and limits resume to failed/interrupted Runs; exact-request stop and prepared finalization exist. | Reconcile both decision claims with the stop/resume contracts and CV-18 ceiling. |
-| [F02](docs-01-discoveries.md#f02-standalone-resource-floor) | Contradiction | Runbook gives a fixed 12-CPU/240-GiB standalone floor; defaults resolve against capacity and reject unmet task minima. | Check resource resolver and planning minima; correct operator capacity advice. |
-| [F03](docs-01-discoveries.md#f03-init-02-in-cluster-summaries) | Contradiction | CV summaries call INIT-01–03 source-complete while INIT-02 is Open. | Preserve explicit-manifest proof; reconcile present status with the authoritative backlog. |
+| [F01](docs-01-discoveries.md#f01-public-stop-in-the-platform-decision) | Contradiction | Platform decision denies public stop and limits resume to failed/interrupted Runs; exact-request stop and prepared finalization exist. | Reconcile both decision claims and stale v3-only stop wording; preserve CV-18 evidence limits. |
+| [F02](docs-01-discoveries.md#f02-standalone-resource-floor) | Contradiction | Runbook gives a fixed 12-CPU/240-GiB standalone floor; defaults resolve against capacity and reject unmet task minima. | Correct the fixed policy claim while retaining real-study capacity cautions. |
+| [F03](docs-01-discoveries.md#f03-init-02-in-cluster-summaries) | Summary overclaim | Grouped CV summaries call INIT-01–03 source-complete while INIT-02 remains Open; detailed cards describe explicit manifest selection. | Narrow the summary without erasing explicit-manifest proof or dated cards. |
 | [F04](docs-01-discoveries.md#f04-root-quickstart-description) | Reader route | Root README calls Quickstart a synthetic first Run; Quickstart leads with real EV/PUM1. | Align root journey and retain optional smoke link. |
 | [F05](docs-01-discoveries.md#f05-generic-study-versus-named-evpum1-route) | Reader route | “Own study” Runbook route points into fixed EV/PUM1 inputs and choices. | Separate generic study guidance from the named example. |
 | [F06](docs-01-discoveries.md#f06-existing-project-and-new-project-recovery) | Reader route | Troubleshooting combines existing-Project navigation with absent-child Init. | Give each failure its own recovery instruction. |
-| [F07](docs-01-discoveries.md#f07-doctor-repair-does-not-always-install) | Contradiction | Runbook, decision, and coordinator contract imply Doctor always installs; the decision also assigns it uv work, but Python setup is separate. | Align operator, owner, and decision wording with Doctor plan and package-manager ownership. |
+| [F07](docs-01-discoveries.md#f07-doctor-repair-does-not-always-install) | Contradiction | Guides imply Doctor always installs and the decision assigns it uv; verified Slurm plans can skip package work while still submitting checks. | Separate managed package work, preview, and confirmed verification effects. |
 | [F08](docs-01-discoveries.md#f08---version-and-local-env) | Behavior question | Runbook promises `--version` from any directory; `.env` is parsed before the version response. | Exercise malformed marked `.env` in a tiny local fixture before changing the promise. |
 | [F09](docs-01-discoveries.md#f09-runbook-entry-order) | Reader route | Advanced request/watch/stop procedures precede Runbook orientation. | Test whether moving the orientation improves entry without hiding recovery commands. |
 | [F10](docs-01-discoveries.md#f10-contract-location-claim) | Contradiction | Two indexes claim every source owner has an adjacent `CONTRACT.md`; many use a README or schema instead. | State actual owner-specific contract locations. |
@@ -141,10 +147,10 @@ and the boundary for each row.
 | [F27](docs-01-discoveries.md#f27-old-fixed-resource-provenance) | Compression candidate | Resource-profile README repeats old 12-core provenance. | Retain current resource contract and historical evidence at their owners. |
 | [F28](docs-01-discoveries.md#f28-repeated-owner-boilerplate) | Compression candidate | Six stage owners and their tests repeat 48 generic lines. | Evaluate a roughly 31–32-line net reduction while retaining commands and owner-specific limits. |
 | [F29](docs-01-discoveries.md#f29-library-subowner-navigation) | Navigation mismatch | Tests point to a library index that does not route readers to six documented Python subowners. | Add a concise subowner route without copying contracts. |
-| [F30](docs-01-discoveries-continued.md#f30-dashboard-reporting-stage-text) | Product-facing text | Dashboard still describes three reporting transactions and a final workflow target after reporting. | Check current workflow/reporting owners and historical log aliases before selecting a product correction. |
+| [F30](docs-01-discoveries-continued.md#f30-dashboard-reporting-stage-text) | Product-facing text | Dashboard places final target after reporting and, with a test fixture, retains three reporting operations; current target precedes two reporting operations. | Correct explanations and fixture while preserving FINAL and historical rule mapping. |
 | [F31](docs-01-discoveries-continued.md#f31-historical-slurm-username-recovery-advice) | Recovery wording | Troubleshooting gives an undated upgrade instruction for a Slurm username incident whose submission fix is already present. | Preserve incident evidence and give current-version diagnosis. |
 | [F32](docs-01-discoveries-continued.md#f32-mermaid-checks-stated-ceiling) | Evidence ceiling | Documentation guides overstate Mermaid syntax and all-file heading checks; checker covers declarations/fences and canonical H1s. | Narrow both READMEs to the actual structural checks. |
-| [F33](docs-01-discoveries-continued.md#f33-report-receipt-version-in-the-scientist-diagram) | Diagram contradiction | Scientist pipeline diagram names a v4 receipt and groups summary TSV with HTML reporting; current report receipt is v8. | Separate summary and HTML publication, using reporting/schema owners. |
+| [F33](docs-01-discoveries-continued.md#f33-report-receipt-version-in-the-scientist-diagram) | Diagram contradiction | Scientist diagram groups summary with HTML, names a v4 report receipt, and calls create-only reporting “read-only.” | Separate summary and HTML publication and distinguish input immutability from new outputs. |
 | [F34](docs-01-discoveries-continued.md#f34-prepared-finalization-in-the-reliability-diagram) | Diagram omission | Reliability diagram sends every resume to a new Attempt; prepared finalization may complete the old Attempt. | Show finalization and eligible continuation as distinct paths. |
 | [F35](docs-01-discoveries-continued.md#f35-fastq-pairing-in-the-glossary) | Wording ambiguity | Glossary says filenames never infer R1/R2 pairing; guided Init detects mate pairs from names. | Distinguish mate discovery from authored biological pairing. |
 | [F36](docs-01-discoveries-continued.md#f36-cross-owner-history-in-runtime-test-guidance) | Placement candidate | Runtime test README ends with a sentence about retired report-publisher tests. | Check whether that history belongs with reporting evidence, then keep this README to runtime test scope. |
