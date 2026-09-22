@@ -95,3 +95,27 @@ Paths are relative to the repository root. Line counts belong to the snapshot ab
 | Mutable state | Separate scheduler trace caches and selected-tail state in watch. | Stream rotation, bounded reads, sanitized output, and read-only inspection. |
 
 No reduction in this record is counted as a saving. No test, protection, evidence, or generated lock content is proposed for deletion. Before closing the audit, every retained oversized path needs its own approved exception record or a verified reduction, and the inventory must be rerun against the final revision. At polish-campaign closure, transfer durable findings and approved exceptions to their owners; review retirement of this working annex under the applicable evidence-retention rule.
+
+## Second pass: coordinator caller and evidence boundaries
+
+These path reviews inspect committed source and direct tests at the inventory snapshot. Reading a test establishes the intended protection, not that the test passed on this audit branch.
+
+### control.py
+
+[Run and Resume share admission](../../src/emrys/orchestration/run_coordinator/control.py#L1962) rather than keeping separate command implementations. Watch reuses Inspect's parser and handler, and [Stop delegates its plan](../../src/emrys/orchestration/run_coordinator/control.py#L2405) to the submission owner. Watch actions call fresh public handlers with exact selectors rather than acting on a stale display observation. Run selection and submission-request selection make distinct decisions, with [direct selector tests](../../tests/orchestration/run_coordinator/test_run_locator.py#L104). Moving handlers into another file would redistribute lines without an established net reduction. Next proof: inventory every remaining command branch and its direct tests for duplicated equivalent policy before proposing retention or a caller-complete deletion.
+
+### task.py and lifecycle.py
+
+The Task worker imports the existing [process-group quiescer](../../src/emrys/orchestration/run_coordinator/lifecycle.py#L927), so that behavior has already been consolidated across its two callers. Task also owns descendant reaping, stream capture, and native publication; Lifecycle owns the Snakemake Attempt and receipt transaction. [Task failure tests](../../tests/orchestration/run_coordinator/test_task.py#L934) and [Lifecycle recovery tests](../../tests/orchestration/run_coordinator/test_lifecycle.py#L868) protect different failure boundaries. Extracting the shared quiescer merely to shorten either file would add a product file without demonstrated reduction. Next proof: compare the remaining child and Attempt cleanup branches for equivalent inputs and outcomes, including partial publication and lock preservation.
+
+### onboarding.py
+
+Guided Project creation and the separate manifest-draft command already use the same [manifest drafting helper](../../src/emrys/orchestration/run_coordinator/onboarding.py#L1073). Publication also uses the create-absent tree owner. [Onboarding tests](../../tests/orchestration/run_coordinator/test_onboarding.py#L1416) cover independent manifest drafts and runtime reuse. Setup, Project creation, validation, and runtime selection cross different mutation boundaries. The file warrants navigation review, but a split alone would not satisfy SIZE-01. Next proof: trace each public route and its create, preview, and interruption behavior before judging any route redundant.
+
+### doctor.py
+
+[Read-only diagnosis](../../src/emrys/orchestration/run_coordinator/doctor.py#L526), repair planning, fresh re-admission, and storage work have different mutation authority. The timing collector is an explicit observation contract and cannot direct repair. [Doctor tests](../../tests/orchestration/run_coordinator/test_doctor.py#L972) protect no-write preview, timing limits, fresh re-admission, and preserved evidence claims. No safe deletion is established by file size. Next proof: compare the complete diagnosis and repair call graph with onboarding and site qualification for truly equivalent decisions, rather than merging checks across trust boundaries.
+
+### _inspection_presentation.py
+
+The [full-history trace pass](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py#L664) and [bounded selected tail](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py#L371) can observe one scheduler stream twice per refresh. [Dashboard stream tests](../../tests/orchestration/run_coordinator/test_dashboard.py#L528) and [watch tail tests](../../tests/orchestration/run_coordinator/test_inspection_presentation.py#L589) protect different history, byte-bound, sanitization, and generation behavior. One admitted observation with two projections is a possible mutable-state and I/O reduction, not yet a proven code reduction. Next proof: establish identical path admission, rotation, timing, diagnostics, and selected-tail behavior before changing cache ownership.
