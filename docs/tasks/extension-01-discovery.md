@@ -60,7 +60,7 @@ command, and retained artifact. A green core check alone cannot close an externa
 | `EX-11` | `examples/` would be outside default Ruff, pre-commit, coverage, core-wheel, and source-import checks; conventional example tests enter unscoped collection. CI commands and Make targets have contract tests. | Observed / Open | Route explicit example checks and update affected gate contracts, with no unmeasured core coverage credit. |
 | `EX-12` | Provider/configuration callbacks, planning, selected worker commands, and reporter execution run with the operator's authority; admission attributes provider code but does not sandbox commands. | Observed / Open | State the trusted-package boundary and check example command origins and owned paths without claiming a sandbox. |
 | `EX-13` | **Reporting blocker:** artifact indexing registers external adapters but unconditionally applies built-in CMH Step `09` reconciliation to every complete Step `09` scope. The proposed tally has none of its four required CMH adapters. Optional external Step `10` has the same built-in assumption. | Observed source path / Open repair | Establish a bounded module-aware reconciliation decision; retain built-in defenses and prove generic external Run-summary/report admission before claiming end-to-end fit. |
-| `EX-14` | Installed watch labels Step `09` as paired CMH, expects built-in owner keys, and says reporting follows Step `10`; these may misdescribe a one-task external Analysis. | Observed source path / Open public effect | Exercise external Run/watch presentation and choose an owner-local correction without making scheduler text completion authority. |
+| `EX-14` | Installed watch and verbose inspection assume the built-in statistical/context tail. External owners are unmapped, Step `09` is labeled paired CMH, reporting is said to follow Step `10`, and REPORT says three transactions although the owner defines two. | Observed source path / Open public effect | Exercise external Run/watch presentation and correct labels, mapping, next action, and transaction count without making scheduler text completion authority. |
 
 ## Source discoveries by finding
 
@@ -369,8 +369,9 @@ submission preview planning evidence. No public external execution has been perf
 | `emrys doctor --project --analysis` | Selected runtime dependency and reporter readiness. | No worker or validator result. |
 | Direct-profile no-write `emrys run` | Full task planning when Doctor and storage admission pass. | No native publication or report. |
 | Slurm-profile no-write `emrys run` | Project shape/selection and scheduler submission preview. | External provider admission and task planner have not run. |
-| `emrys report` without `--execute` for complete Results | Run-summary preparation and evidence-index preflight. | Does not invoke the selected reporter or render/check its HTML. |
+| `emrys report` without `--execute` for complete Results and absent reporting | Run-summary preparation and evidence-index preflight. | Does not invoke the selected reporter or render/check its HTML. |
 | `emrys report --execute` with complete Results and absent reporting | Invokes the reporter and attempts HTML publication; inspection must then admit a complete report. | A reporting failure leaves scientific Results complete and requires state-specific disposition. |
+| `emrys report` on an already complete report | Re-admits and reuses retained reporting. | Returns before fresh Run-summary preparation and does not invoke today's reporter. |
 | Approved grouped Run, exact `inspect`, and `report` | Execution and report claims only when retained Task, Result, and report admissions pass at the tested commit. | No site, scientific-review, or biological claim. |
 
 The smallest supplied real-tool synthetic dataset, `smoke-v1`, contains four libraries with 130
@@ -381,6 +382,13 @@ intended candidate positions and does not demonstrate `NA` or a multi-gene assig
 `--from-processing-run` can reuse Steps `00`–`06` but still runs Step `07` onward; it does not inject
 a finished Step `08` table for Step `09` only. Keep a literal hand-authored unit oracle separate
 from any later public end-to-end oracle, and budget the latter's real-tool cost.
+
+The current [real-synthetic driver](../../tests/tools/real_synthetic_e2e.py) also replaces the
+generated default execution profile with a direct CI resource document that lowers repeated-stage
+memory floors for tiny fixtures. An external `smoke-v1` proof needs its own explicit, measured
+profile/resource policy and should record that edited Project/profile as an authored fixture
+variation. Installing the external wheel alone does not establish that the stock fixture is a
+feasible tiny CI Run.
 
 **Proposed public proof route, after separate setup and execution authority:** author a named
 external Analysis in `project.yaml` and install the exact core and selected example wheel(s) in the
@@ -521,6 +529,37 @@ artifact registry. Audit all first-publication and retained-inspection callers, 
 and generic-external tests, and count core-code/test/gate growth under EX-10 before approval. A
 public external Run-summary/report result is necessary to close this row.
 
+The selected module is already admitted in
+[`prepare_context`](../../src/emrys/reporting/_artifact_index/context.py) before reconciliation,
+and retained [Run-summary validation](../../src/emrys/reporting/transaction_validation.py) calls
+that same preparation path. These are the design candidates to review, not implementation
+authority:
+
+| Candidate | Expected effect | Review condition |
+| --- | --- | --- |
+| Select native Step `09`/`10` reconcilers from the admitted module identity, keeping Steps `00c`–`08` common. | Existing paired-CMH and context checks remain attached to their owner; external declared outputs use generic artifact and scope checks plus their independent validator. | Preferred source-level candidate. Check first publication and retained validation together, and confirm no built-in source/hash/sample-order or receipt-graph defense is weakened. |
+| Infer the owner from whether CMH adapters happen to be present. | Smaller-looking dispatch, but a missing built-in adapter could select the generic route and bypass the very check meant to catch it. | Do not use without an independent, exact built-in roster check; currently no demonstrated net advantage. |
+| Add a provider-supplied reconciliation callback or second artifact registry. | Lets each provider run custom report-time checks. | No concrete need in this one-task example; it expands the public interface and maintained authority. |
+
+| Required proof before closing EX-13 | Expected observation |
+| --- | --- |
+| Built-in Step `09`/`10` valid fixture and existing mutation cases | Same complete results and same failure propagation for changed CMH source/hash/sample order, significant subset, spectrum, context receipt, and context outputs. A missing built-in adapter must fail, not enter a generic fallback. |
+| External Step `09` valid result and validation report with distinct adapter IDs | Run-summary preview/preparation, executed publication, reporter HTML, and retained admission complete without a built-in CMH projection. |
+| External missing or malformed result, changed native bytes, or mismatched inventory | Generic admission and scope/receipt checks refuse or mark incomplete at the relevant boundary; no uncaught `StopIteration`, adopted output, or promoted report claim. |
+| Retained Run summary and HTML after original publication | Re-enter the corrected common artifact-index path, bind original bytes and ledgers, and avoid invoking today's reporter during reuse. |
+
+These proofs must use a genuinely installed external provider for the acceptance claim. A
+private artifact-index fixture can isolate the reconciliation decision first, but cannot close
+public discovery, Run execution, or reporting on its own.
+
+The existing generic index checks the exact adapter roster for each inventory scope it sees,
+adapter shape and validation-report status, then propagates incomplete required scopes. It does
+not independently recompute an external tally or prove that all expected scopes appear in a
+hand-authored inventory. The public materialized inventory and Attempt binding, plus the package's
+independent validator, must supply those distinct checks. Retained validation compares recorded
+source, availability, and completion facts against a fresh context; a fallback that skips built-in
+native checks could falsely retain an old CMH result.
+
 ### EX-14 — installed watch assumes the built-in tail
 
 The installed [dashboard](../../src/emrys/orchestration/run_coordinator/dashboard.py) labels Step
@@ -534,6 +573,23 @@ unmapped while the overview gives a CMH label; no external Run/watch trace was e
 Test the public display with the installed example and select the smallest owner-local correction
 for truthful labels, stage detail, resources, and next action. Scheduler text remains diagnostic,
 not completion evidence.
+
+Additional source-level display mismatches: the shared inspection/watch milestone calls Steps
+`09`/`10` “Statistical/context processing,” even when the selected method is a descriptive tally;
+the REPORT stage describes **three** transactions and its resource text repeats that count, while
+the [reporting boundary](../../src/emrys/orchestration/run_coordinator/reporting_boundary.py) and
+[owner contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#resume-inspection-results-and-reporting)
+define two. This count is wrong for built-in Runs as well.
+
+| Owner-local candidate | Evidence to preserve or add |
+| --- | --- |
+| Derive external `owner_key` to Step mapping from the admitted Run/task roster and pass it to the existing parser; before a Run is admitted, leave unknown log rules unknown. | External active/completed owner trace maps to `09` only when bound to that Run; built-in and unrelated log behavior remains unchanged. Scheduler text never becomes completion authority. |
+| Use generic Step `09`/`10` titles and resource wording for external methods, retaining CMH/context wording only when the admitted built-in module is selected. Use the selected task roster for next-unlock text. | Step `09`-only external overview, detail, and verbose `inspect` do not promise CMH or Step `10`; the built-in presentation stays accurate. No new provider display-title API or report-time provider invocation is needed. |
+| Correct REPORT stage descriptions to the owner's two transactions. | Both built-in and external public snapshots agree with the Run-summary and HTML ledgers, without treating a report file as scientific completion. |
+
+The [watch Runbook](../operations/RUNBOOK.md#watch-one-fixed-selection) already owns selection
+and diagnostics. The runnable collaborator instructions belong in the package guide under EX-09,
+with a short owner link where needed.
 
 ## Proposed bounded delivery sequence
 
@@ -597,8 +653,9 @@ not completion evidence.
     computation.
 11. **Exercise the installed public route.** After disposable setup authority, test the core and
     selected example wheels outside the checkout with missing/duplicate entry-point refusal and no
-    checkout import leakage. After execution authority, use an explicitly authored Project for
-    public validation, Doctor, preview, Run, inspect, and report. On Slurm, count preview as
+    checkout import leakage. Record the exact wheel identities and core commit. After execution
+    authority, use an explicitly authored Project and measured direct resource profile for the
+    `smoke-v1` public validation, Doctor, preview, Run, inspect, and report. On Slurm, count preview as
     submission evidence only; require compute-delegate provider admission and task planning.
     Count report preview as Run-summary preflight only; require executed reporting and an admitted
     successful report at the exact commit. Exercise installed watch with the external owner and
