@@ -25,7 +25,7 @@ when the bounded outcome is accepted; move lasting behavior to its owner documen
 | ID | Finding and current discovery | Level | Next discovery or proof |
 | --- | --- | --- | --- |
 | `EX-01` | The accepted row requires one independently installable Analysis and reporter through real discovery, configuration, planning, execution, independent validation, and reporting. The prior collaborator test substitutes loaders. | Observed | Trace one public path without loader substitution and preserve the mocked test's distinct checks. |
-| `EX-02` | Step `08` sites permit a descriptive candidate-to-annotated-gene tally from transcript-span assignments, with `NA` and multi-gene rows. Only the sites adapter is needed for that calculation; method and edge-case policy remain open. | Observed / Proposed / Open | Select the method; freeze a literal oracle, input adapters, threshold, `NA`, ordering, and header-only semantics before coding. |
+| `EX-02` | Step `08` sites permit a descriptive candidate-to-annotated-gene tally from transcript-span assignments, with `NA` and multi-gene rows. A one-task descriptor can use only the sites adapter; method and edge-case policy remain open. | Observed / Proposed / Open | Freeze the oracle, threshold/`NA`/zero-row rules, artifact names/paths, and measured resource floor. |
 | `EX-03` | Discovery requires one package-level entry point per name and distribution-owned callbacks. Its digest covers owned sibling files but excludes distribution metadata; one versus two example wheels remains a packaging decision. | Observed / Open | Prove real wheel ownership and missing/duplicate refusal; decide whether reporter source changes may couple to Analysis readmission. |
 | `EX-04` | The planner checks all **declared** inputs. External Step `09` publishes native outputs before validation; nonzero and nonpassing validators fail without a verified-task, and postpublication continuation is blocked. | Observed | Check exact consumed inputs and check roster; exercise both failure modes and retained state through the public runner. |
 | `EX-05` | New reporting re-admits Analysis and reporter; retained inspection checks old bytes without invoking today's reporter but still re-admits Analysis. In a shared wheel, reporter source changes can alter the Analysis digest. | Observed / Open | Test new publication, retained inspection, metadata-only reporter removal, and shared-wheel source drift separately. |
@@ -55,6 +55,24 @@ artifact kinds and path prefixes. A result TSV plus validation TSV fits without 
 built-in provider demonstrates a Step `09` dependency on Step `08` sites, input receipt, and summary
 in [`paired_cmh_candidate_ranking/__init__.py`](../../src/emrys/analyses/paired_cmh_candidate_ranking/__init__.py), lines 358–376. Step `08` gives each candidate `gene_ids` as `NA` or a
 semicolon-delimited, duplicate-free list ([`step08.py`](../../src/emrys/contracts/scientific_evidence/step08.py), lines 64–87 and 267–299).
+
+For the proposed tally, the smallest descriptor shape using the current
+[`AnalysisTaskV1` and `AnalysisArtifactV1` rules](../../src/emrys/analyses/__init__.py) is:
+
+| Surface | Proposed value or required constraint | Still to decide |
+| --- | --- | --- |
+| Task | One unique owner at Step `09`; `stage_memory_mb` is positive or `"workflow"`, and `minimum_threads` is at least `1`. | Owner ID and measured resource floor. |
+| Predecessor | Exact Step `08` owner `emrys.stage.preprocess_and_annotate_cohort_candidates.v1`, selecting only `step08_sites_v1` for this calculation. | Add another adapter only for a named use. |
+| Result | One required `tsv` with declared header `gene_id`, `candidate_count`; `results/gene-counts/{analysis_id}/{analysis_id}.candidate_gene_counts.tsv` is a candidate path. | Artifact/adapter names, final path, and whether a header-only file is valid. |
+| Validation | One required `validation_report` after the result, under `products/native/`, with `{analysis_id}` and the exact seven-column core header. | Literal check IDs/order and then the exact data-row count; a header-only report cannot pass all-pass. |
+| Planner | One provenance `TaskInputV1` for the sites path; installed Python producer writes its supplied `working_outputs` result, and installed Python validator reads final `outputs` and writes the report path. | Exact command arguments and whether any additional input is genuinely consumed. |
+| Dependencies | No custom dependency for a standard-library-only example; reuse fixed runtime checks or declare a custom check only for an actual need. | Package requirements and measured runtime needs. |
+
+Every declared output is required in the composed profile, even if a result table has zero data
+rows. Artifact names and adapters must be unique and avoid processing-profile collisions. Each
+source path template must contain `{analysis_id}`, use an allowed root, and avoid extra template
+fields or traversal components. `exact_data_rows` can later pin the validation report's row count,
+while its check roster/order remains the example validator's and literal tests' responsibility.
 
 The [Step `08` annotation owner](../../src/emrys/stages/cohort_candidate_preprocessing/_step_08_annotation.R) assigns those IDs from strand-compatible **transcript-span** overlaps, including introns, then sorts and deduplicates them. The [sites contract](../../src/emrys/contracts/scientific_evidence/step08.py) admits a header-only table and requires unique candidate IDs. Step `08` can retain intergenic candidates, and its orientation-to-strand mapping remains provisional under the [stage contract](../../src/emrys/stages/cohort_candidate_preprocessing/CONTRACT.md). Thus a row is one mechanically labeled candidate, not necessarily one genomic locus or an exonic event. Two orientation candidates at one locus remain two candidates if present.
 
@@ -172,9 +190,9 @@ custom dependencies. Product computation, validation, and reporting must never i
 test environment. It also generates a temporary `uv.lock`; its build and sync commands specify
 `--offline`, but the lock command does not. The repository lock is unchanged. Treat both temporary
 lock generation and installation as policy questions, not automatic authority for a second setup.
-A bounded test plan must say exactly who creates the disposable environment, what two wheels enter
-it, and whether the convention needs clarification. Do not invent a dependency solely to make the
-example look complete.
+A bounded test plan must say exactly who creates the disposable environment, which core and example
+wheels enter it, and whether the convention needs clarification. Do not invent a dependency solely
+to make the example look complete.
 
 The [descriptor](../../src/emrys/analyses/__init__.py) may reuse an existing fixed runtime check by
 ID or declare an executable, R namespace, file, or package-tree check. IDs must be unique and avoid
@@ -186,8 +204,8 @@ The [installed-wheel test](../../tests/test_package_distribution.py), lines 341�
 portion, lines 486–610, uses a built-in fixture and reporter through private `prepare_context` and
 `publish_report` calls, so it is not public `emrys report` evidence. The [real-synthetic driver](../../tests/tools/real_synthetic_e2e.py), lines 1652–1664,
 initializes the built-in Analysis. Neither currently executes an external provider and reporter via
-a public Run. A proposed proof is one tiny disposable Project with the example wheel installed
-alongside the exact EMRYS wheel, followed by public validation, no-write preview, execution,
+a public Run. A proposed proof is one tiny disposable Project with the selected example wheel(s)
+installed alongside the exact EMRYS wheel, followed by public validation, no-write preview, execution,
 inspection, and reporting. Ordinary PR CI runs the static/wheel lane with a 20-minute cap, but the [real-synthetic job](../../.github/workflows/ci.yml),
 lines 1099–1106 and 1275–1305, runs on schedule or manual dispatch. Select the narrowest complete
 lane after measuring setup and runtime; green ordinary PR checks cannot close the external
@@ -203,6 +221,14 @@ the planner runs after compute delegation. A direct-profile preview can plan tas
 Doctor and storage readiness. Record these as distinct proof levels rather than calling a Slurm
 submission preview planning evidence. No public external execution has been performed here.
 
+| Public exercise | Evidence it can supply | Limit |
+| --- | --- | --- |
+| `emrys validate --project` | Installed Analysis discovery and normalized Project admission. | No Doctor readiness, task plan, or execution. |
+| `emrys doctor --project --analysis` | Selected runtime dependency and reporter readiness. | No worker or validator result. |
+| Direct-profile no-write `emrys run` | Full task planning when Doctor and storage admission pass. | No native publication or report. |
+| Slurm-profile no-write `emrys run` | Scheduler submission preview. | External task planner has not run. |
+| Approved grouped Run, exact `inspect`, and `report` | Execution and report claims only when retained Task, Result, and report admissions pass at the tested commit. | No site, scientific-review, or biological claim. |
+
 The smallest supplied real-tool synthetic dataset, `smoke-v1`, contains four libraries with 130
 read pairs each and a 100 kb reference. It initializes a built-in Analysis and hashes a completion
 manifest, so substituting an external `project.yaml` is an authored variation with its own expected
@@ -213,7 +239,8 @@ a finished Step `08` table for Step `09` only. Keep a literal hand-authored unit
 from any later public end-to-end oracle, and budget the latter's real-tool cost.
 
 **Proposed public proof route, after separate setup and execution authority:** author a named
-external Analysis in `project.yaml` and install both exact wheels in the selected environment;
+external Analysis in `project.yaml` and install the exact core and selected example wheel(s) in the
+selected environment;
 run `emrys validate --project PROJECT`, `emrys doctor --project PROJECT --analysis NAME`, and
 `emrys run --project PROJECT --analysis NAME` for a read-only preview. After runtime readiness and
 an approved execution location, run `emrys run --project PROJECT --analysis NAME --execute` and
@@ -319,11 +346,12 @@ decisions; do not infer them from the core distribution.
     lint/format/compile/build checks. Keep the existing core wheel test and Python shard scope
     honest; do not claim core coverage for an unmeasured example or expand local checks into heavy
     science computation.
-11. **Exercise the installed public route.** After disposable setup authority, test both wheels
-    outside the checkout with missing/duplicate entry-point refusal and no checkout import
-    leakage. After execution authority, use an explicitly authored Project for public validation,
-    Doctor, preview, Run, inspect, and report. On Slurm, count preview as submission evidence only;
-    require compute-delegate task planning and an admitted successful report at the exact commit.
+11. **Exercise the installed public route.** After disposable setup authority, test the core and
+    selected example wheels outside the checkout with missing/duplicate entry-point refusal and no
+    checkout import leakage. After execution authority, use an explicitly authored Project for
+    public validation, Doctor, preview, Run, inspect, and report. On Slurm, count preview as
+    submission evidence only; require compute-delegate task planning and an admitted successful
+    report at the exact commit.
 12. **Transfer documentation and reconcile acceptance.** Put the runnable walkthrough beside the
     package; link owner guides and retire only demonstrably duplicated hypothetical prose. Compare
     literal expected bytes, tests, hosted checks, retained artifacts, and footprint against each
@@ -333,8 +361,9 @@ decisions; do not infer them from the core distribution.
 
 ## Open decisions before implementation
 
-Resolve the selected example method and its expected output, the package metadata and license, the
-allowed disposable-install setup, and the smallest complete CI scenario. For each new discovery,
+Resolve the selected method's edge cases and expected output; one shared wheel versus separate
+Analysis/reporter wheels; package metadata and license; the quantified growth exception and
+disposable lock/install policy; and the smallest complete CI scenario. For each new discovery,
 identify its exact revision and source or executed artifact, then revise the corresponding matrix
 row. A source inference stays labeled as such until an actual public-path check supplies execution
 evidence.
