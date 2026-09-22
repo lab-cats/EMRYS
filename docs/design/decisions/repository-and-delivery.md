@@ -58,6 +58,10 @@ owns the commands.
   adapters, generated configuration, and compatibility paths. Large files are
   reviewed for mixed responsibility; line count alone does not justify an
   arbitrary split.
+- Every non-test file over 600 physical lines requires an explicitly
+  user-authorized exception recording its path, reason, and approval, plus a
+  retirement condition if temporary. The [maintainability backlog](../../tasks/backlog_matrix.md#maintainability-and-release)
+  owns the inventory and acceptance; this rule adds no automated size gate.
 - Coverage is a regression signal, not a replacement for scenario, transaction,
   real-R, runtime, scheduler, numerical-oracle, or scientific review.
 - Automate a repository workflow only after repeated use stabilizes its inputs,

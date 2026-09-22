@@ -49,6 +49,12 @@ finalization. The preview explains the required action; declining changes
 nothing, and `--execute` is the automation route. A prepared success starts no
 new scientific work; a prepared blocked outcome remains blocked.
 
+Prepared-finalization recovery assumes a trusted, operator-controlled workspace.
+Its byte and device/inode checks cannot distinguish an equal-byte replacement
+after inode recycling; they do not defend against adversarial same-UID
+replacement. The [lifecycle contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
+owns this accepted limitation.
+
 Missing prepared evidence, lost workers and unclosed Tasks remain blocked.
 Scheduler state, logs or absence of a PID do not supply the missing proof.
 Preserve the Run, lock and partials and consult the named component's owner;

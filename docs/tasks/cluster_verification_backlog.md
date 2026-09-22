@@ -14,6 +14,13 @@ Use the main matrix's status meanings. Recording a card accepts the finding
 for tracking; it does not authorize a new command, recovery rule, installation,
 cluster action, evidence promotion, or product-growth exception.
 
+New maintenance, setup and source follow-ups live in the enduring
+[main backlog](backlog_matrix.md#maintainability-and-release). In particular,
+`SCHED-USAGE-01` and `SUBMISSION-PREVIEW-01` own the new source/policy acceptance
+referenced below; CV-U33 and CV-22 keep their campaign status and institutional
+acceptance here. The [closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+records required dispositions before this temporary document can retire.
+
 ## Verified scope and remaining evidence
 
 The combined standard suite passed for product
@@ -53,6 +60,7 @@ real-Slurm lane nor an institutional walkthrough.
 
 | Remaining acceptance | Current owner and required work or evidence |
 | --- | --- |
+| Source and documentation follow-ups | CV-U33 and CV-22 are **Open** pending `SCHED-USAGE-01` and `SUBMISSION-PREVIEW-01` in the main matrix; site evidence alone cannot close them. `VIKING-POLICY-01` and `CV-DOCS-01` own the remaining guidance/wording corrections. |
 | Recently implemented outcomes awaiting verification | CV-10's prepared-finalization `resume` path and CV-18's active-native-task stop outcome are **Verification pending**. Their exact hosted checks and institutional cancellation journeys remain unverified; site execution alone cannot substitute for the hosted checks, and neither status claims a reproduced E09 cause. CV-10's equal-byte recycled-inode ownership limit is an accepted residual risk in a trusted operator-controlled workspace, not a proven defense. |
 | Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27 and CV-U28: exercise the maintained RUNBOOK on one exact installed revision; retain selected profile/runtime, resolved allocation-aware policy and report identities. Visual review is separate. |
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
@@ -91,7 +99,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Verification pending | Name verification-only work accurately. |
 | [CV-20](#cv-20-submission-state-before-run-creation) | P1 | Verification pending | Show queued and preparing jobs before a Run exists. |
 | [CV-21](#cv-21-reporting-in-progress-and-visibility) | P1 | Verification pending | Distinguish unfinished report publication from failed reporting. |
-| [CV-22](#cv-22-complete-submission-preview) | P1 | Verification pending | Show effective placement and computational limits before approval. |
+| [CV-22](#cv-22-complete-submission-preview) | P1 | Open | Reconcile compact resource disclosure before approval. |
 | [CV-23](#cv-23-safe-project-or-artifact-cleanup) | P2 | Deferred | Decide and scope safe cleanup of unused owned state. |
 | [CV-24](#cv-24-run-center-actions) | P2 | Completed | Explore a dashboard that invokes supported CLI operations. |
 | [CV-25](#cv-25-log-discovery-and-readable-output) | P2 | Completed | Find the correct logs without memorizing scheduler IDs. |
@@ -149,7 +157,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U30](#cv-u30-dashboard-color-and-pane-layout) | Restore dashboard colors and readable pane layout | Verification pending |
 | [CV-U31](#cv-u31-dashboard-automatic-run-selection) | Select the current Run without parameters; record lost functionality | Verification pending |
 | [CV-U32](#cv-u32-dashboard-independent-of-working-directory) | Open the dashboard from outside the Project directory | Verification pending |
-| [CV-U33](#cv-u33-dashboard-resource-usage) | Restore resource-usage display; keep future wall-time tuning separate | Verification pending |
+| [CV-U33](#cv-u33-dashboard-resource-usage) | Restore resource-usage display; keep future wall-time tuning separate | Open |
 
 ### September 17 adversarial implementation audit
 
@@ -223,6 +231,11 @@ presentation checks passed locally. Standard CI and Viking visual acceptance
 remain, so CV-U01 is **Verification pending**.
 
 ### CV-U02 Default CLI verbosity
+
+The outstanding resource-disclosure conflict with CV-22 and CV-U04 is owned by
+`SUBMISSION-PREVIEW-01` in the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up).
+Its policy, affected card wording and presentation tests must agree before
+CV-22 acceptance; concise output does not itself settle that policy.
 
 **Operator report:** “Overall cli output is far too verbose by default, there
 should be an option to get all that output but by default it should return only
@@ -314,6 +327,10 @@ choices; verbose still owns individual sample/mate paths and assignments.
 CV-U03 remains **Verification pending** for hosted CI and Viking visual review.
 
 ### CV-U04 Doctor presentation
+
+`SUBMISSION-PREVIEW-01` in the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up)
+owns the outstanding preapproval resource-summary reconciliation with
+CV-U02/CV-22, including Doctor submissions.
 
 **Operator report:** “Doctor output is also just wall of text; needs to be more
 user friendly.”
@@ -2012,8 +2029,15 @@ drift leave the admitted root state visible while reporting usage unknown. The
 shared renderer labels live samples and final accounting distinctly, and both
 interactive and snapshot request watches ask for resources. Focused local fault
 and rendering matrices pass; standard CI and institutional accounting/display
-remain pending, so CV-U33 is **Verification pending**. Future wall-time tuning
+remain pending. Future wall-time tuning
 and its measurements remain with the optimization campaign, not this card.
+
+**Current source disposition:** CV-U33 is **Open**. The new cluster-scope
+defect and its corrective acceptance are transferred to `SCHED-USAGE-01` in
+the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up).
+Resolving or explicitly narrowing that source outcome is required before this
+card can become source-complete; institutional accounting/display acceptance
+remains here. Canned scheduler responses do not resolve the defect.
 
 ## Additional Viking UX findings — 2026-09-16
 
@@ -2870,6 +2894,9 @@ this recycled-inode case. The owner accepts that residual limitation for a
 trusted, operator-controlled workspace while retaining the exact-byte,
 device and inode checks. This does not claim protection against adversarial
 same-UID replacement, and passing CI would not prove such protection.
+The enduring [recovery contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
+and [operator guidance](../operations/TROUBLESHOOTING.md#run-and-reporting-state)
+retain this accepted boundary independently of campaign retirement.
 
 ### CV-11 Resource profile compatibility
 
@@ -2916,6 +2943,11 @@ integrated standard CI recorded above. CV-11 is **Verification pending** for
 institutional heterogeneous-node acceptance.
 
 ### CV-12 Unexplained initial runtime qualification failure
+
+`CV-DOCS-01` in the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up)
+owns reconciliation of the older acceptance wording below with the current
+**Discard** disposition. Recording that wording defect does not reopen causal
+reconstruction or establish an explanation for E01.
 
 **Finding:** The first repaired runtime failed qualification after successful
 package installation; the failing individual check is still unknown (E01).
@@ -3463,6 +3495,12 @@ pass locally; public Control and Doctor execution passed the integrated standard
 CI. These provide software evidence; institutional preview acceptance remains
 pending.
 
+**Current policy disposition:** CV-22 is **Open**. Its conflict with the later
+concise-output behavior is transferred to `SUBMISSION-PREVIEW-01` in the
+[main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up), which
+owns reconciliation with CV-U02/U04. That source/policy follow-up blocks
+acceptance; the existing institutional preview requirement remains here.
+
 ## P2 outcomes
 
 ### CV-23 Safe Project or artifact cleanup
@@ -3931,6 +3969,11 @@ data; future measured Doctor tuning remains independently selectable.
 ## P3 outcome
 
 ### CV-27 Terminal-only report access
+
+`CV-DOCS-01` in the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up)
+owns the missing direct Quickstart link claimed below. Generated-report
+portability, links, rendering and institutional transfer remain unverified by
+the tiny-directory fixture; their existing acceptance is preserved.
 
 **Finding:** The terminal operator declined a suggested web-server/SSH-tunnel
 workflow; visual review was deferred (E04).

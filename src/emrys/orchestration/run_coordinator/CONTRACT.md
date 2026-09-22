@@ -997,6 +997,14 @@ Publication stages same-inode released-lock and terminal-receipt aliases before
 retiring either active source name. A released lock plus a prepared receipt
 without that terminal alias is not ownership proof and remains ineligible.
 
+Across preview and confirmation, exact bytes and device/inode observations
+assume a trusted, operator-controlled workspace. An equal-byte replacement
+after the filesystem recycles the original inode cannot be distinguished by
+those observations. This is an accepted residual limitation, not protection
+against adversarial same-UID replacement. The substitution regression covers
+a distinct-inode replacement; passing it does not prove ownership continuity
+through inode recycling. Exact-byte, device and inode checks remain required.
+
 Preview and declined confirmation leave the prepared transaction untouched;
 confirmed resume or `--execute` completes only that exact finalization before
 rechecking ordinary continuation eligibility. A failed or interrupted outcome

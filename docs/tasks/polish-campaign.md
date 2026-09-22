@@ -606,6 +606,10 @@ finding or authorization to scan unrelated private data.
 
 ### 29. Document a minimal external Analysis and reporter
 
+Current accepted outcome and acceptance are owned by `EXTENSION-01` in the
+[main backlog](backlog_matrix.md#maintainability-and-release). The proposal
+below is supporting context, not a second task authority.
+
 **Finding:** [Analysis extension interfaces](../../src/emrys/analyses/README.md)
 exist, but a practical end-to-end provider/reporter walkthrough is missing.
 The [sampled collaborator composition test][provider-composition-test]
@@ -620,8 +624,8 @@ configuration, input/output ownership, resource/dependency declarations,
 independent validation, execution, and reporting. Exercise the documented
 example through public production interfaces without a generic workflow DSL
 or test-only production behavior. Consolidate existing extension guidance.
-This item owns the proposal, which still requires bounded selection and
-footprint accounting.
+`EXTENSION-01` owns the accepted outcome; implementation still requires bounded
+selection and footprint accounting.
 
 Make the example separately installable and exercise actual discovery,
 configuration admission, planning, production, independent validation, and
@@ -634,6 +638,10 @@ This sharpens the existing example's acceptance, not a second extension task.
 
 ### 30. Establish a reviewed alpha release path
 
+`RELEASE-01` in the [main backlog](backlog_matrix.md#maintainability-and-release)
+owns the current request for a path to product v1, using this earlier alpha
+proposal as context. This section does not establish current release readiness.
+
 **Finding:** Quickstart asks users to select a release or commit; the GitHub
 releases endpoint returned no published releases during the audit. Package
 version is `0.1.0.dev0`. No claim was made that Git tags are absent.
@@ -645,8 +653,8 @@ on the original checkout for workflow assets and source admission. Approved
 replaced that requirement with installed workflow/R assets and exact package
 identity. Its hosted integration checks passed in PR #169; neither packaging
 nor synthetic reports establish institutional scientific operation. This card
-still owns release selection and the independently installed Project-to-Results
-release journey.
+provides context for `RELEASE-01`, which owns release selection and the
+independently installed Project-to-Results release journey.
 
 The [wheel installer][release-constraints] also constrains dependencies to
 the versions in `uv.lock`.

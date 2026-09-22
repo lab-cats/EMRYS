@@ -121,6 +121,15 @@ have owners; avoid parallel authorities in new commands or the dashboard.
 
 ## Completion and handoff
 
+The enduring main backlog records the
+[remaining closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+and named follow-up owners. Use it to reconcile source defects, the separate
+CV-U06 accounting exception, exact-revision software evidence, institutional
+acceptance and transfer of Deferred work. Recording that sequence neither
+closes this campaign nor retires its backlog. Optional novice smoke guidance
+must be reconciled with required synthetic acceptance before closure; a change
+in guide placement alone waives no evidence requirement.
+
 For each card, retain the selected scope, implementation revision, applicable
 local/CI checks, site observations, and remaining limits. A statement that
 code appears fixed is insufficient for Completed status. Record visual report
