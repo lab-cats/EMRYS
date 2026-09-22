@@ -8,6 +8,20 @@ The [backlog matrix](backlog_matrix.md) owns the accepted outcome and task statu
 
 All `path:line` references below refer to the pinned commit. **Source reviewed** means code or documentation was inspected, without execution in this audit. **Test characterized** means a committed test explicitly asserts the behavior; that test was not rerun for this record. **Inference** identifies a conclusion still needing a focused reproduction. No product or repository test suite, institutional Slurm run, scientific review, or biological validation was performed for this pass. Focused helper reproductions are identified in their entries; they do not execute a full Run or report transaction.
 
+## Coverage ledger for the pinned tree
+
+The pinned commit contains 575 tracked files. The counts below inventory every top-level surface; "sampled" means specific paths were inspected for the entries in this document, not that every file in a group has been cleared. A file-by-file disposition, distinct-fault map, and any proposal to retire protection remain open.
+
+| Surface | Tracked files | This pass | Remaining review |
+|---|---:|---|---|
+| `src/emrys/` | 316 | Sampled stage, analysis, evidence, ingestion, reporting, contract, library, workflow, and coordinator boundaries | Trace every candidate's callers and complete owner-level contract and test comparison |
+| `tests/` | 186 | Sampled direct owners, fixtures, independent oracles, CI tests, and shared tooling | Map distinct failures, retained evidence, and measured cost before any test reduction |
+| `docs/` | 35 | Sampled architecture, task, operator, design, and owner-contract text | Reconcile every affected claim and documentation gate with its source authority |
+| `configs/` | 11 | Compared Viking and example profiles with packaged defaults | Check remaining profile variants and operator uses |
+| `scripts/` | 6 | Reviewed documentation checks, Make quality recipes, sharding, benchmarking | Finish each script's supported caller and retirement boundary |
+| `.github/` | 3 | Reviewed CI workflow jobs and their source tests | Verify branch/trigger behavior and exact hosted checks on the audit PR head |
+| Other tracked paths | 18 | Sampled packaging, lockfile, Makefile, root policy, and Project templates | Complete root/support file review; legal and data templates have distinct owners |
+
 ## Findings matrix
 
 | ID | Surface | Initial reading | Basis | Next investigation or decision |
@@ -66,6 +80,17 @@ All `path:line` references below refer to the pinned commit. **Source reviewed**
 | A01-52 | Reference contig parsers | Raw exceptions escape shared malformed-input contract | Source; tests; focused helper reproduction | Normalize shared errors across Project, sidecar, provenance callers |
 | A01-53 | Step 07 receipt parsing | Missing fields can escape controlled exit with traceback | Source; owner contract | Compare strict TSV reader after caller-boundary decision |
 | A01-54 | Public manifest validator | Blank condition and unsafe sample ID pass before stricter Run admission | Source; focused fixture | Decide public validator promise; preserve Step 08 refusal |
+| A01-55 | Step 00c sidecar producer | Final pair comparison can pass duplicate names absent from its contract | Source inference | Preserve ordered validator; decide producer uniqueness fault coverage |
+| A01-56 | Step 04 Picard metrics | Duplicate column masks invalid value and passes report parser | Source; isolated parser reproduction | Require unique headers if promised; keep numerical checks |
+| A01-57 | Validation stdout timing | Failed publication can leave printed pass rows | Source; tiny fixture reproduction | Define CLI stream claim; retain exit and persisted-report gates |
+| A01-58 | BAM quickcheck expected text | Reports say empty diagnostics but check exit only | Source; fake-tool reproduction | Decide expected field or stricter rule across owners |
+| A01-59 | Execution profile path | Lexical nonroot path can normalize to filesystem root | Source; regex/path reproduction | Decide admission at normalized boundary; preserve batch guard |
+| A01-60 | Resource benchmark trial status | Zero-exit validator with failed rows can count as passing trial | Source; focused synthetic benchmark fixture | Define semantic status for advisory recommendation |
+| A01-61 | New shared-module coverage | Elevated floor applies to manually listed paths only | Source | Define discovery obligation; retain global and owner gates |
+| A01-62 | STAR mapping summary | Three percentages are range checked independently | Source; contract | Retain structural ceiling; decide whether reconciliation is needed |
+| A01-63 | DICT field projection | Duplicate SN tags silently take the last value | Source; test characterized | Decide per-row field grammar while preserving ordered contigs |
+| A01-64 | Benchmark mixed repetitions | A value with one failed repetition can still be recommended | Source; isolated summary reproduction | Require all planned repetitions before recommendation |
+| A01-65 | Local validation lane launch | A later spawn error can leave an earlier lane running | Source; tiny two-lane reproduction | Close process groups and retain logs on launch exceptions |
 
 ## Discovery notes
 
@@ -285,6 +310,66 @@ The Step 03 worker publishes nonempty RSeQC output; the validator checks three e
 ### A01-54 — Public manifest pass is weaker than Run admission
 
 The legacy public manifest validator lists `condition` as required but accepts a blank value, prints “Conditions: none,” and checks sample IDs only for nonempty uniqueness (`src/emrys/ingestion/sample_manifest_admission/validator.py:18-21,120-175`). Step 08 requires nonempty condition, replicate, and safe IDs (`src/emrys/contracts/scientific_evidence/step08.py:326-353`). Tiny temporary fixtures confirmed that blank condition and `S/1` pass the public helper but fail Step 08. The existing test named “empty required fields fail” covers sample ID and FASTQ fields, not condition (`tests/ingestion/sample_manifest_admission/test_validate_manifest.py:190-203`). Decide the public command's promised scope; preserve Step 08's stricter Run-boundary refusal and intentional optional-replicate distinction.
+
+### A01-55 — Step 00c final pair check omits uniqueness
+
+`src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh:57-111,128-149` parses FAI and DICT rows, sorts their name/length pairs, and compares the multisets. It has no duplicate-name rejection, although `src/emrys/stages/fasta_sidecars/CONTRACT.md:41-45` promises unique names. The independent validator parses all three inputs and requires ordered FASTA agreement (`src/emrys/stages/fasta_sidecars/validator.py:68-100`). This is a source-level postprocessing gap, not proof that samtools or GATK emit duplicate sidecars in normal use. Retain the validator; decide whether a faulty-tool producer case should enforce the worker's uniqueness promise. Its unordered comparison is already disclosed in the contract.
+
+### A01-56 — Duplicate Picard header can hide malformed data
+
+`src/emrys/libraries/quality/picard.py:19-42` tests required header membership, then converts the header and row to a dictionary, so a later duplicate column overwrites the first. The isolated exact function accepted `READ_PAIRS_EXAMINED` columns containing `bogus` then `10` and returned a passing summary. Step 04 uses that result for `duplication_metrics` (`src/emrys/stages/duplicate_marking/validator.py:68-70,102-107`). Tests protect normal and reordered headers but have no duplicate-header negative (`tests/libraries/test_shared_domain_helpers.py:225-261`). Reporting has its own similarly permissive metric projection (`src/emrys/reporting/_artifact_index/_text_genomic.py:231-258`); reconcile status and lexical policy before reuse. Preserve numeric bounds and native evidence checks. The reproduction did not execute Picard or a full Run.
+
+### A01-57 — Validation stdout can precede a failed publication
+
+The shared `--execute` path prints report bytes before rechecking input snapshots or publishing (`src/emrys/libraries/validation/runtime.py:27-49`). An isolated in-process fixture returned exit 2 and no report while stdout already contained a `pass` row after input mutation. Step 04/05 mutation tests protect exit and predecessor preservation, but do not assert that stdout (`tests/stages/duplicate_marking/test_validate_step_04_mark_duplicates.py:257-275`; `tests/stages/split_n_cigar/test_validate_step_05_split_ncigar.py:267-284`). Run requires validator exit 0 and a retained semantic all-pass report (`src/emrys/orchestration/run_coordinator/task.py:2765-2807`), so this does not establish a Run acceptance bypass. Decide whether stdout on `--execute` is preview or evidence before changing order; printing after commit also has failure semantics. Retain the authoritative exit, file, and hash-bound task evidence.
+
+### A01-58 — BAM quickcheck report labels exceed the gate
+
+`src/emrys/libraries/alignments/bam.py:32-44` treats `samtools quickcheck -v` as passing on exit 0 even with nonempty stderr, while Step 02, 04, and 05 report an expected value of "exit=0 with empty diagnostics" (`src/emrys/stages/canonical_bam/validator.py:99-104`; `src/emrys/stages/duplicate_marking/validator.py:84-89`; `src/emrys/stages/split_n_cigar/validator.py:115-120`). A fake-tool helper reproduction returned success with `warning-success` diagnostics. Step 02's contract already records this asymmetry (`src/emrys/stages/canonical_bam/CONTRACT.md:142-147`); owner success fixtures use empty stderr. Decide whether the report's expected text is descriptive or a gate across all three owners. Preserve quickcheck exit, header, and pair-container defenses.
+
+### A01-59 — Profile nonroot pattern does not survive normalization
+
+The v3-directory execution-profile schema's `absolute_nonroot_path` pattern accepts `/tmp/..` for `scratch_parent` and exact module init (`src/emrys/contracts/schemas/orchestration/v3/execution_profile.schema.json:17-20,37-40,120-121`). Source admission normalizes with `os.path.abspath`, producing `/` (`src/emrys/orchestration/run_coordinator/execution_profile.py:359-383`), and the placement document emits that normalized path (`src/emrys/orchestration/run_coordinator/execution_profile.py:153-172`). A standard-library regex/path reproduction confirmed the lexical transition; full profile admission was not run. The batch script independently rejects a root scratch parent before use (`src/emrys/orchestration/run_coordinator/slurm_submission.py:749-755`). Decide whether profile admission itself must reject normalized root, and whether module init has an equivalent guard. Preserve the batch refusal and path tests.
+
+### A01-60 — Benchmark pass can mean process success only
+
+The opt-in benchmark captures validator logs but sets trial `status=pass` from setup, producer, and validator exit codes plus optional artifact byte equality (`scripts/benchmark_stage_resources.py:461-510`). EMRYS validators can publish `status=fail` rows and return 0; Run separately invokes semantic all-pass (`src/emrys/libraries/validation/runtime.py:27-49`; `src/emrys/orchestration/run_coordinator/task.py:2765-2807`). Source composition therefore implies a benchmark manifest using an EMRYS owner validator could count a failed report in a successful repetition and recommendation. Existing benchmark tests cover nonzero exits and a passing result, not zero-exit failed rows (`tests/test_benchmark_stage_resources.py:156-264`). A tiny synthetic benchmark fixture ran the actual trial and summary code with an in-memory stub for unavailable PyYAML: validator stdout contained a failed TSV row, yet the script exited 0, wrote `status=pass`, and recommended the value. No native stage or cluster run occurred. Keep the raw trial logs and advisory-only boundary; decide whether the helper needs exact owner-report semantics or should call its result process success. `docs/operations/RUNBOOK.md:770-774` currently calls it validation status.
+
+### A01-61 — Elevated shared-module floor is declared manually
+
+`scripts/make_quality.mk:10-18,184-187` supplies a fixed list of six shared Python files to the elevated coverage check. `tests/tools/python_coverage_baseline.py:427-449` checks only paths passed as `--new-shared-module`; it does not discover newly added shared files. `docs/design/TEST_BASELINE.md:36-45` calls them "newly declared," which is accurate if declaration is the intended gate. The global and critical-owner nonregression checks remain (`tests/tools/python_coverage_baseline.py:407-424`). Decide who declares a new shared module and whether automation is needed before changing the floor or list. This is a gate-scope observation, not evidence of an uncovered new module.
+
+### A01-62 — STAR mapping report does not reconcile percentages
+
+`src/emrys/libraries/alignments/star.py:53-66` checks that each of three mapping percentages is syntactically valid and in 0..100; it does not reconcile their sum. Step 01 reports exactly that bounded claim (`src/emrys/stages/star_alignment/validator.py:105-110`), and its contract identifies the checks as container/report structure, not alignment proof (`src/emrys/stages/star_alignment/CONTRACT.md:102-106`). The all-pass fixture uses synthetic BAM bytes and a simple log (`tests/stages/star_alignment/test_validate_step_01_star_alignment.py:25-45`). Retain independent native and scientific evidence; decide whether inconsistent but individually bounded values need a distinct check. This is an evidence-ceiling and owner-decision candidate, not a demonstrated contract violation.
+
+### A01-63 — DICT parser collapses duplicate tags within a row
+
+`src/emrys/libraries/references/contigs.py:61-72` converts DICT `@SQ` fields to a dictionary, retaining the last value for duplicate tags. `tests/libraries/test_reference_contigs.py:29-46` explicitly characterizes `SN:old` followed by `SN:chr1` as `chr1`. This differs from the parser's separate duplicate-contig-name rejection across rows and the raw conversion errors in A01-52. Decide whether multiple `SN` or `LN` fields in one row are a supported projection or an ambiguity that should fail. Keep ordered FASTA/FAI/DICT reconciliation and caller error behavior in scope; no full provenance or Run fixture was executed for this note.
+
+### A01-64 — Benchmark recommendation can omit failed repetitions
+
+`scripts/benchmark_stage_resources.py:322-366` filters to passing trial rows before grouping resource values, then recommends by the passing subset's median. The exact summary helper, given one pass and one fail for the same case/value, wrote `successful_repetitions=1` and `recommended=yes`. The outer benchmark still exits nonzero when any trial fails (`scripts/benchmark_stage_resources.py:477-510`), and raw trial rows remain, so this is a misleading advisory summary rather than suppressed aggregate failure. `docs/tasks/backlog_matrix.md:173` and `docs/tasks/optimization_campaign.md:364-370` explicitly require rejecting a candidate with any failed repetition. Existing summary tests include an entirely failed value, not a mixed one (`tests/test_benchmark_stage_resources.py:267-310`). Preserve raw rows and exit behavior; condition recommendation on every planned repetition or label incomplete candidates.
+
+### A01-65 — Launch exception can strand a local validation lane
+
+`tests/tools/run_validation.py:269-297,391-394` starts concurrent lanes sequentially and re-raises a failed spawn. The `finally` block closes log handles and restores signal handlers but does not terminate already started process groups (`tests/tools/run_validation.py:490-495`); cancellation occurs for observed nonzero exits or interrupts (`tests/tools/run_validation.py:395-413,466-487`). A tiny two-lane fixture reproduced the gap: the second executable was missing, the call raised `FileNotFoundError`, and the first child wrote a marker afterward. Existing tests cover peer failure and SIGINT cleanup (`tests/test_validation_orchestrator.py:407-559`), not launch exceptions. Preserve current process-group termination and retained diagnostics, and define cleanup for internal launch failure. No full `make all-checks` or long lane was run.
+
+## Reduction and retirement inventory
+
+These are concrete search targets for a smaller maintained system, not approved removals. A candidate is only actionable after its surviving defense, callers, and evidence level are established.
+
+| Surface | Candidate and existing authority | Boundary to preserve |
+|---|---|---|
+| Product code | A01-14 identifies two equivalent R scalar ID/hash helpers already sourcing `src/emrys/libraries/input_contract.R`; `REDUCE-01` and `OPS-03` own broader simplification (`docs/tasks/backlog_matrix.md:66,171`) | Move all equivalent callers together; Step 08's guard differs; quantify net product-code reduction |
+| Tests | A01-30's 36 scheduler combinations and A01-39's repeated suite collection are cost candidates under `QUAL-01` (`docs/tasks/backlog_matrix.md:155`) | Keep distinct scheduler faults, independent oracles, complete/disjoint shard proof, and exact receipts |
+| Scripts | A01-17 and A01-36 ask which Make checks/targets operators use; `SETUP-02` explicitly defers whole-helper retirement of `scripts/benchmark_stage_resources.py` and its tests, CLI checks, and docs (`docs/tasks/backlog_matrix.md:173`) | Until retirement, preserve raw trials, failed-repetition refusal, and advisory limits; do not replace with parallel machinery |
+| Schemas | `PROFILE-CONTRACT-01` proposes deriving `owner_tasks[].rule_name` and scope selectors only during a justified profile transition (`docs/tasks/backlog_matrix.md:176`); common safe-ID/hash patterns also repeat across schema families | Active versioned `$id` values and references protect different artifacts; no unilateral deletion or version bump for cleanup |
+| Configuration | A01-37 records duplicate Snakemake dependency declaration; A01-47 records repeated Viking resource defaults | Preserve installed dependencies, placement admission, generated defaults, and operator examples before trimming |
+| Documentation | Seven version-directory schema READMEs total 61 lines and partly repeat family indexes (`src/emrys/contracts/schemas/artifacts/README.md:1-10`; `src/emrys/contracts/schemas/orchestration/README.md:1-17`); `DOCS-01` owns compression (`docs/tasks/backlog_matrix.md:65`) | Transfer unique semantics and links before removal; keep current contract and operator discoverability |
+| Mutable state | Old sealed runtime generations and selector references merit a reachability preview (`src/emrys/evidence/runtime_availability/README.md:76-95`); `CLEANUP-01` owns any future exact cleanup (`docs/tasks/backlog_matrix.md:100`) | Retained Run/Attempt selectors, Project borrowers, and failure claims block an inferred safe class; evidence deletion has its own approval |
+
+No schema file, test, script, document, receipt, or runtime generation has been shown safe to delete by this source pass alone.
 
 ## Protections to preserve during the next pass
 
