@@ -1936,6 +1936,35 @@ def test_task_subreaper_types_sigchld_establishment_failure(monkeypatch, fault):
         task._TaskChildren()
 
 
+@pytest.mark.parametrize("disposition", (signal.SIG_DFL, signal.SIG_IGN))
+def test_task_subreaper_reestablishes_initial_default_sigchld(
+    monkeypatch, disposition
+):
+    descendants = task._TaskChildren.__new__(task._TaskChildren)
+    descendants.owner = os.getpid()
+    descendants.children = Mock()
+    descendants.children.parent.parent.iterdir.return_value = [
+        Path(str(os.getpid()))
+    ]
+    descendants.children.read_text.return_value = ""
+    descendants.process = object()
+    get_signal = Mock(side_effect=(disposition, signal.SIG_DFL))
+    set_signal = Mock()
+    monkeypatch.setattr(task.signal, "getsignal", get_signal)
+    monkeypatch.setattr(task.signal, "signal", set_signal)
+    monkeypatch.setattr(
+        task.os,
+        "waitid",
+        Mock(side_effect=ChildProcessError("no existing children")),
+    )
+
+    descendants.prepare(reset_initial_sigchld=True)
+
+    set_signal.assert_called_once_with(signal.SIGCHLD, signal.SIG_DFL)
+    assert get_signal.call_count == 2
+    assert descendants.process is None
+
+
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux child-subreaper proof")
 def test_task_subreaper_refuses_initial_custom_sigchld_handler(monkeypatch):
     monkeypatch.setattr(task.signal, "getsignal", lambda _signal: lambda: None)
