@@ -123,7 +123,17 @@ cluster backlog lines 2474–2484 permits either a short guided path or a
 supported import, so an Open `INIT-02` does not mechanically reopen CV-06.
 CV-U20 lines 1323–1329 describe the Quickstart's explicit manifest, not
 automatic Init selection. CV-U08's delivered-journey claim at lines 605–619
-needs the same original-intent review.
+needs the same original-intent review. CV-U21's STAR-parameter assistance is
+separate from study selection; its status does not follow `INIT-02`.
+
+**Proposed wording change:** In the CV backlog introduction and remaining-work
+table (lines 24–30 and 72), and charter delivery summary (lines 55–73), call
+`INIT-01`, `INIT-03`, and the focused guide corrections implemented. Describe
+the delivered route as an *explicit* Quickstart `--partition-manifest` choice
+that avoids a 25-name paste. Keep `INIT-02` Open for automatic selection without
+that argument, and retain CV-06/CV-U08/CV-U20's separate novice and hosted
+acceptance. The CV-U20 paragraph at cluster backlog lines 1323–1329 should
+name the explicit argument rather than credit `INIT-02` with selection.
 
 ### 3. `CV-U22` runtime reuse
 
@@ -192,6 +202,15 @@ and retains old names for older records. The
 lines 426–435 explicitly preserves historical stream reads. Shared
 `dashboard.py` remains part of installed watch, so its presence is not proof
 that the old standalone entry point survives.
+
+**Proposed wording change:** Reconcile the CV backlog remaining-work row at
+line 79 and current-sounding CV-16/CV-24/CV-25 summaries at lines 3173–3184,
+3661, 3724–3725, and 3744–3746 with `DASHBOARD-RETIRE-01`: the standalone
+entry point/callers and new-name transition are implemented; standard CI and
+institutional visual verification remain. Date-bound the matrix's compression
+closeout sentence at line 331 to its September 14 checkpoint. Preserve the
+earlier local-test limit and read compatibility for v1–v3 stream names; do not
+retire shared watch parsing/rendering merely because its module says dashboard.
 
 ### 6. Repeated cluster closure instructions
 
@@ -474,6 +493,17 @@ controlled partial-failure/resume tests, but label their simulation level
 without implying real scientific execution. This source review is not itself
 a status change or proof of a weaker/stronger replacement defense.
 
+**Boundary check:** The production [contract](../../src/emrys/contracts/orchestration/api.py)
+lines 483–494 requires Python and storage qualification for local science
+mode, and [lifecycle](../../src/emrys/orchestration/run_coordinator/lifecycle.py)
+lines 1343–1366 uses actual admission callbacks. The fixture emits the same
+mode while its test callback checks the name without doing that admission.
+The schema also accepts `test-double` at line 145, but this checkout has no
+production writer for it; its observed uses are a contract fixture and test
+diagnostics. This makes it a contract-retirement *candidate*, not proof that
+retained Attempts or compatible readers permit removal. The partial-failure
+and resume tests remain useful at their stated fixture level.
+
 ## Retention boundary for later edits
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
@@ -485,6 +515,14 @@ must keep the originating commit, run date, job/artifact/hash identity,
 observation, and its limits before removing the old location. This working
 record should be retired or reduced to durable findings once the authoritative
 documents and evidence homes are reconciled.
+
+The [validation history](../history/validation-evidence.md) does not yet hold
+E01–E12. The charter remains the complete bounded E register; the matrix's
+Viking walkthrough also holds exact jobs, a qualification hash, approvals, and
+limits not reproduced by that register. A later transfer must preserve both
+sets, including unknown E01/E06 causes, absent E09 terminal recovery evidence,
+and E12's active-only observation. The charter and matrix cannot be shortened
+as though that transfer has already happened.
 
 Inbound links constrain later placement changes: the matrix's
 `#viking-walkthrough-findings` heading is referenced by `SITE-PARITY-01` and
