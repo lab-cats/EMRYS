@@ -1546,8 +1546,7 @@ def _admitted_completion(
         interruption_index = int(failure is not None)
         completed_index = interruption_index + 1
         if (
-            str(attempts[interruption_index]["workflow_attempt_id"])
-            != interrupted_id
+            str(attempts[interruption_index]["workflow_attempt_id"]) != interrupted_id
             or attempts[completed_index]["operation"] != "resume"
             or attempts[completed_index]["supersedes_workflow_attempt_id"]
             != interrupted_id
@@ -1818,9 +1817,7 @@ def _stop_active_run(
             value in preview.stdout
             for value in ("Preview only", "--ctld", "--clusters=", "--name=", "--me")
         ):
-            raise DriverError(
-                "native-stop", "controller-filtered stop preview differs"
-            )
+            raise DriverError("native-stop", "controller-filtered stop preview differs")
         stop_started = True
         stopped = transcripts.run(
             "slurm-stop-execute",
@@ -2191,9 +2188,7 @@ def run_driver(
             cwd=repo,
             timeout_seconds=arguments.slurm_timeout_seconds,
             poll_seconds=arguments.poll_seconds,
-            expected=("FAILED", "1:0")
-            if recovery_journey
-            else ("COMPLETED", "0:0"),
+            expected=("FAILED", "1:0") if recovery_journey else ("COMPLETED", "0:0"),
         )
         execution_stderr = _stream(initial_job.stderr)
         if recovery_journey and (

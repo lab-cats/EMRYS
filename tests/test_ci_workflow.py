@@ -811,9 +811,7 @@ def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:
         final = _named_step(job, "Require the scenario and retained evidence to pass")
         assert "steps.synthetic.outcome" in final["env"]["SYNTHETIC_OUTCOME"]
         assert "steps.upload-synthetic.outcome" in final["env"]["UPLOAD_OUTCOME"]
-        assert "steps.checkout-unchanged.outcome" in final["env"][
-            "CHECKOUT_OUTCOME"
-        ]
+        assert "steps.checkout-unchanged.outcome" in final["env"]["CHECKOUT_OUTCOME"]
 
 
 def test_artifact_actions_are_node24_releases() -> None:
