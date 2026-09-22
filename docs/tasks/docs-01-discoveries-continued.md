@@ -447,3 +447,57 @@ example, lines 109–114) and the schedule plus Sunday 100,000-pair selection
 lanes and retain the baseline for test policy and evidence ceilings. This
 does not imply a CI failure or that a green workflow proves cluster or
 scientific acceptance; no workflow was run in this pass.
+
+### F56 — Synthetic driver dependency mutation claim
+
+The [test-tool guide](../../tests/tools/README.md) lines 11–12 says
+`real_synthetic_e2e.py` runs managed synthetic direct/Slurm checks “without
+installing or cleaning dependencies.” The
+[driver](../../tests/tools/real_synthetic_e2e.py) lines 1701–1736 invokes
+`emrys doctor --project … --repair --execute` for each disposable Project.
+Confirmed Doctor repair may install Project-owned dependencies through the
+selected package managers
+([coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 159–166). The driver's retained summary at lines 2244–2252 says no
+*post-run* cleanup or repair; the failed summary at 2268–2277 makes the
+same post-failure claim. Narrow the guide to the actual controlled Doctor
+repair and no-post-run-cleanup boundaries so an operator does not infer the
+long lane is dependency read-only. Preserve explicit repair, disposable
+Project ownership, and retained partial evidence. This static comparison
+does not establish that an installation occurred in any particular run.
+
+### F57 — Make fixture public target label
+
+The [fixture guide](../../tests/fixtures/public_cli_contracts/README.md)
+lines 3–4 calls `make_target_expansions.json` the expansion contract for
+“every public Make target.” The
+[test map](../../tests/test_public_cli_contracts.py) lines 182–205 includes
+`internal_lane` targets such as `validation-static` and
+`python-coverage-shard`, plus `operator_mutation` targets such as `r-restore`
+and `python-coverage-baseline-update`. Its inventory assertion at 877–903
+requires all declared `.PHONY` targets, not just supported public commands.
+Call this the complete Make target expansion inventory and preserve the
+explicit applicability classes. The fixture still protects literal command
+expansion and runs no recipe, as its guide correctly states at lines 10–13.
+No Make target was run for this finding.
+
+### F58 — Nonoverlapping validation lane claim
+
+The [test-tool guide](../../tests/tools/README.md) line 6 says
+`run_validation.py` runs “non-overlapping test groups,” and the
+[driver](../../tests/tools/run_validation.py) lines 167–174 calls its four
+lanes non-overlapping. The Python sharder collects all pytest node IDs except
+two explicitly ignored files
+([sharder](../../tests/tools/python_test_shards.py) lines 19–24 and 93–100),
+so its selection can include
+`tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_real_r_projection.py`.
+The guarded-R lane calls the
+[real-R wrapper](../../tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh)
+lines 66–68, which selects that same file explicitly; the
+[Make routing](../../scripts/make_quality.mk) lines 87–90 and 112–124
+connects it to the guarded lane. The same pytest IDs can therefore be
+selected in both lanes when their prerequisites are available. No lane was
+run here, so duplicate execution in a particular CI run is unverified.
+Narrow “non-overlapping” to the distinct lane purposes. Any selection change
+belongs with [ASSURANCE-01](backlog_matrix.md) and needs proof that Python
+coverage, guarded real-R comparison, and separate failure detection survive.

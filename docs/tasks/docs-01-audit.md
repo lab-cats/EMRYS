@@ -100,6 +100,11 @@ permission to change or delete the source.
   against the same source after audit-only commit `c55d7f47`. It refined
   F33, F35, and F44 and added F53–F55. This was source and document comparison
   only; no runtime replacement, product test, or cluster operation was run.
+- The thirteenth pass checked test-tool mutation claims, Make target
+  applicability, and lane selection overlap against the same source after
+  audit-only commit `bb1961fb`. It added F56–F58 and independently found no
+  further coordinator recovery mismatch in the selected paths. The lanes
+  were not executed; possible duplicate selection is not a measured CI run.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -188,6 +193,9 @@ and the boundary for each row.
 | [F53](docs-01-discoveries-continued.md#f53-dependent-project-in-shared-runtime-replacement) | Recovery instruction | Troubleshooting tells each dependent Project to replace its shared runtime but omits the borrower `--project` selector in both commands. | Give the exact dependent path, consistent with the Runbook, while preserving preview and admission checks. |
 | [F54](docs-01-discoveries-continued.md#f54-analysis-reporter-return-shape) | API description | Private report guide says the analysis provider returns HTML bytes; the admitted return is a structured carrier containing bytes and provenance inputs. | Name `AnalysisScientificReportV1` without changing the provider interface. |
 | [F55](docs-01-discoveries-continued.md#f55-ci-lane-selection-route) | Navigation overclaim | Workflow README says the test baseline defines each CI lane; that section gives broad categories, while exact jobs and selection live in the workflow. | Route precise lane selection to `ci.yml` and retain the baseline's evidence ceiling. |
+| [F56](docs-01-discoveries-continued.md#f56-synthetic-driver-dependency-mutation-claim) | Mutation-scope wording | Test-tool guide says the real synthetic driver does not install dependencies; the driver invokes confirmed Doctor repair in each disposable Project. | State the explicit Project-owned repair and the narrower no-post-run-cleanup boundary. |
+| [F57](docs-01-discoveries-continued.md#f57-make-fixture-public-target-label) | Audience classification | Make fixture guide calls every covered target public, while the test map includes internal lanes and operator mutations. | Name the complete target-expansion inventory and preserve applicability classes. |
+| [F58](docs-01-discoveries-continued.md#f58-nonoverlapping-validation-lane-claim) | Protection overlap candidate | Test-tool guide and driver call four lanes non-overlapping, but Python sharding and guarded-R selection can both include the same real-R pytest file. | Narrow the claim; route any gate deduplication to ASSURANCE-01 with surviving protection proof. |
 
 ## Discovery notes
 
