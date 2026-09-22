@@ -487,6 +487,29 @@ verify those three public behaviors. No dependency was installed for the audit.
 The selected PR #307 synthetic E2E timing assertion also needs a passing run
 on its exact commit before it supports even that hosted claim.
 
+## Proposed Viking/PUM1 journey
+
+This is a candidate interaction sequence for the study in the
+[Quickstart](../../quickstart.md), not accepted prompt wording or a new command
+contract. The public entry, INIT-02 integration, optional donor selection, and
+nonterminal behavior remain decisions. Each answer with scientific meaning
+must be supplied or explicitly reviewed by the operator.
+
+| Checkpoint | Proposed visible decision | Owner boundary and stop condition |
+| --- | --- | --- |
+| Installed start | Follow the Quickstart's one head-node install path, then enter guidance from the checkout. | The CLI cannot perform its own uv/Pixi installation before it exists. A failed install stops before the guide. |
+| Entry | Enter the settled default guide while keeping its approved manual route available; show what Project and settings are in scope. | Changing bare `emrys` or adding a flag needs a separate public-interface decision. Malformed saved settings stop before argument parsing today. |
+| Saved settings | Show the Projects home, `viking` site, optional log root, and value precedence; ask before one create-absent `.env` publication. | Setup owns the file. A dry-run/decline does not continue as a saved setting; same-invocation values are carried explicitly. |
+| Project context | Choose new or an exact existing `project.yaml`; show the canonical path. | No latest/parent/global lookup, adoption of a partial tree, or implicit Project switch. |
+| New study | Ask for reference FASTA/GTF and the FASTQ directory; review six detected pairs, the Quickstart's EV/PUM1 assignments, study-wide `reverse`, and `EV -> PUM1`. | Init owns pairing and scientific admission. A missing or incompatible input stops before Project publication. |
+| Scope and thresholds | Review the maintained `1`–`22`, `X`, `Y`, `MT` selection only after an explicit study choice if INIT-02 is integrated; otherwise retain the exact manifest route. Ask for `A>G` and review the five disclosed paired-CMH values and inactive background. | A site or Project name cannot choose scientific scope. `--preview`, refusal, or input EOF must retain their distinct no-write/error outcomes. |
+| Project creation | Show the complete Init preview, then ask once to create and explain FASTQ hashing time. | Init owns absent publication and completion re-admission. A declined preview is not creation; a failed partial tree requires inspection, not automatic retry. |
+| Validation | Show the selected Project and a read-only compatibility check, including repeated FASTQ reads. | Validate owns a current observation. Failure stops; later owners re-admit rather than trust an earlier PASS. |
+| Runtime source | If an inventory is already admitted, proceed. Otherwise explain the current-environment, explicit donor, or Doctor-managed path; review donor and borrower writes when reuse is chosen. | Runtime owns admission; a listed donor is unverified, skip is no write, and retained partials or existing selections are never silently replaced. |
+| Doctor | Show the exact Analysis/profile and diagnosis; only offer Doctor-owned repair when it has a plan. | External remediation, refused repair, or incomplete Slurm qualification stops before Run. The same profile is rechecked at Run. |
+| Launch | Review the exact Analysis and direct frozen plan or Slurm submission/resource request; ask once. | Control owns duplicate-risk review and submission. Slurm approval returns an exact request and job, not a created or completed Run. |
+| Watch and return | Offer request-bound Project watch, show how to recheck, then show the exact Project/request for the operator to retain for later inspection. | Inspection owns later association, completion, and supported recovery. Leaving watch never stops a job or authorizes another submission. |
+
 ## Proposed design and delivery order
 
 These are review proposals, not accepted interface decisions or authority to
