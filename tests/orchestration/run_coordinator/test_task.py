@@ -1194,7 +1194,12 @@ while True:
 
 def _task_subreaper_child(root: Path, mode: str) -> None:
     """A fresh supervisor, never the pytest process or its other children."""
+    if mode == "inherited-sigchld":
+        signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+        assert signal.getsignal(signal.SIGCHLD) == signal.SIG_IGN
     descendants = task._TaskChildren()
+    if mode == "inherited-sigchld":
+        assert signal.getsignal(signal.SIGCHLD) == signal.SIG_DFL
     runner = task.default_task_ops(descendants=descendants).run_command
     command = (
         sys.executable,
@@ -1252,6 +1257,7 @@ def _kill_subreaper_fixture(root: Path) -> None:
         "detached",
         "double-fork",
         "nested-subreaper",
+        "inherited-sigchld",
         "closed-streams",
         "failed-leader",
         "cancel",
@@ -1903,6 +1909,44 @@ def test_task_subreaper_refuses_changed_reaping_owner(monkeypatch, ownership):
     with pytest.raises(task.TaskProcessGroupAmbiguity, match="ownership changed"):
         descendants.prepare()
     descendants.children.read_text.assert_not_called()
+
+
+@pytest.mark.parametrize("fault", ("observation", "reset"))
+def test_task_subreaper_types_sigchld_establishment_failure(monkeypatch, fault):
+    monkeypatch.setattr(
+        task.signal,
+        "getsignal",
+        Mock(
+            side_effect=ValueError("fixture cannot observe SIGCHLD")
+            if fault == "observation"
+            else None,
+            return_value=signal.SIG_IGN,
+        ),
+    )
+    monkeypatch.setattr(
+        task.signal,
+        "signal",
+        Mock(side_effect=ValueError("fixture is not the main thread")),
+    )
+
+    with pytest.raises(
+        task.TaskProcessGroupAmbiguity,
+        match="child ownership could not be checked before native entry",
+    ):
+        task._TaskChildren()
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux child-subreaper proof")
+def test_task_subreaper_refuses_initial_custom_sigchld_handler(monkeypatch):
+    monkeypatch.setattr(task.signal, "getsignal", lambda _signal: lambda: None)
+    monkeypatch.setattr(
+        task.signal,
+        "signal",
+        lambda *_args: pytest.fail("reset an unsupported custom SIGCHLD handler"),
+    )
+
+    with pytest.raises(task.TaskProcessGroupAmbiguity, match="ownership changed"):
+        task._TaskChildren()
 
 
 def test_task_subreaper_keeps_kill_escalation_for_later_adoptions(monkeypatch):

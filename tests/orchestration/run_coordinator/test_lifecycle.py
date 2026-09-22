@@ -1321,42 +1321,72 @@ def test_preblocked_ordinary_signal_is_refused_without_run_evidence(
         signal.pthread_sigmask(signal.SIG_SETMASK, prior_mask)
 
 
-def test_process_group_leader_exit_still_quiesces_grandchild(tmp_path: Path) -> None:
-    pid_file = tmp_path / "grandchild.pid"
-    launcher = tmp_path / "launcher.py"
-    launcher.write_text(
-        "import os, pathlib, subprocess, sys\n"
-        "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
-        "pathlib.Path(sys.argv[1]).write_text(f'{os.getpgrp()} {child.pid}')\n",
-        encoding="utf-8",
-    )
+def test_process_group_leader_exit_still_quiesces_remaining_member(
+    tmp_path: Path,
+) -> None:
+    leader: subprocess.Popen[bytes] | None = None
+    member: subprocess.Popen[bytes] | None = None
+
+    def spawn(
+        argv: tuple[str, ...], cwd: Path, environment: Mapping[str, str]
+    ) -> subprocess.Popen[bytes]:
+        nonlocal leader, member
+        leader = subprocess.Popen(
+            argv,
+            cwd=cwd,
+            env=dict(environment),
+            stdin=subprocess.PIPE,
+            process_group=0,
+        )
+        member = subprocess.Popen(
+            (sys.executable, "-c", "import time; time.sleep(60)"),
+            cwd=cwd,
+            env=dict(environment),
+            process_group=leader.pid,
+        )
+        assert os.getpgid(leader.pid) == leader.pid
+        assert os.getpgid(member.pid) == leader.pid
+        assert leader.stdin is not None
+        leader.stdin.close()
+        return leader
+
+    def group_exists(process_group_id: int) -> bool:
+        if member is not None:
+            member.poll()
+        return lifecycle._process_group_exists(process_group_id)
+
     signals = lifecycle.TransactionSignalController(
         lifecycle.DEFAULT_SIGNAL_OPS,
         lifecycle.DEFAULT_PROCESS_GROUP_OPS,
     )
-
-    result = lifecycle._run_process_group(
-        (sys.executable, str(launcher), str(pid_file)),
-        tmp_path,
-        signals,
-        ops=lifecycle.ProcessGroupOps(
-            terminate_grace_seconds=0.2,
-            kill_grace_seconds=0.5,
-        ),
-    )
-
-    assert result == lifecycle.WorkflowResult(0, None, None)
-    process_group_id, grandchild_pid = (
-        int(value) for value in pid_file.read_text(encoding="utf-8").split()
-    )
     try:
+        result = lifecycle._run_process_group(
+            (
+                sys.executable,
+                "-c",
+                "import sys; sys.stdin.buffer.read()",
+            ),
+            tmp_path,
+            signals,
+            ops=lifecycle.ProcessGroupOps(
+                spawn=spawn,
+                group_exists=group_exists,
+            ),
+        )
+
+        assert result == lifecycle.WorkflowResult(0, None, None)
+        assert leader is not None and member is not None
+        assert leader.returncode == 0
+        assert member.wait(timeout=5) == -signal.SIGTERM
         with pytest.raises(ProcessLookupError):
-            os.killpg(process_group_id, 0)
+            os.killpg(leader.pid, 0)
     finally:
-        try:
-            os.kill(grandchild_pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
+        for process in (member, leader):
+            if process is not None and process.poll() is None:
+                process.kill()
+        for process in (member, leader):
+            if process is not None:
+                process.wait(timeout=5)
 
 
 def _bound(role: str, path: Path) -> dict[str, Any]:
