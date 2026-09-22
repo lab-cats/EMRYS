@@ -1,7 +1,8 @@
 # DOCS-01 discovery notes
 
 This companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds source-backed observations and next checks. Unless a subsection
+holds F01–F29 source-backed observations and next checks. The
+[continued notes](docs-01-discoveries-continued.md) hold F30 onward. Unless a subsection
 names another revision, all source line references are pinned to
 `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`. These are audit
 observations, not accepted changes or a task-status registry.
@@ -88,12 +89,12 @@ no-adoption and no-symlink rules.
 
 ### F07 — Doctor repair does not always install
 
-The [Runbook](../operations/RUNBOOK.md) lines 585–587 and 654–656, plus the
+The [Runbook](../operations/RUNBOOK.md) lines 585–587 and 654–656, the
 [reporting decision](../design/decisions/execution-evidence-and-reporting.md)
-lines 44–53, speak of Doctor installing tools on the head node as a certainty.
+lines 44–53, and the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 164–166 speak of Doctor installing tools on the head node as a certainty.
 The same Runbook lines 700–706 and the
-[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 217–233 distinguish a repair-and-verification plan from a
+coordinator contract lines 217–233 distinguish a repair-and-verification plan from a
 verification-only plan. A direct Doctor source test at
 `tests/orchestration/run_coordinator/test_doctor.py:2956–2960,3046–3054`
 expects no native/R installation when a ready Slurm runtime is rechecked.
@@ -174,7 +175,7 @@ selector at its dated audit. [Doctor](../../src/emrys/orchestration/run_coordina
 lines 1976–1982 accepts `--profile`, and the
 [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 729–742 describes default, named, and absolute selection. A focused
-source test at `tests/orchestration/run_coordinator/test_doctor.py:464–510`
+source test at `tests/orchestration/run_coordinator/test_doctor.py:464–515`
 covers the path. Reconcile the old proposal against the authoritative backlog
 and actual validation before retaining any remaining acceptance gap.
 
@@ -328,9 +329,11 @@ approved alpha cleanup changed the carrier and retired an alias, then gives
 the current field/callable shape. That is the only explicit collaborator
 reporter API guidance found in this pass; the current carrier is in
 `src/emrys/reporting/__init__.py:24–63`, with a built-in provider caller in
-`src/emrys/analyses/paired_cmh_candidate_ranking_report/provider.py:32–33`.
-Historical framing may be shortened only while retaining actionable snapshot
-paths, types, and positional guidance.
+`src/emrys/reporting/paired_cmh_candidate_ranking_report/provider.py:32–33`.
+This is a five-line passage; deleting its historical opening alone saves little.
+Retain its actionable snapshot paths, types, and positional guidance unless a
+larger owner-document edit provides an equally clear home. No standalone
+compression is selected by this observation.
 
 ### F27 — Old fixed-resource provenance
 
@@ -366,230 +369,3 @@ subpackages—alignments, application logging, evidence, quality, references,
 and validation—have no route from it. A short list of links could repair this
 navigation gap without copying contracts; assess the added lines against the
 reader benefit rather than assuming a new index is required.
-
-### F30 — Dashboard reporting-stage text
-
-[Dashboard source](../../src/emrys/orchestration/run_coordinator/dashboard.py)
-lines 183–202 tells watch readers that reporting uses three dependent
-transactions and that a final workflow target follows reporting. Its rule map
-at 206–214 retains old reporting aliases; the stage table renders REPORT and
-FINAL rows even when unscheduled (1573–1608). Current
-[reporting](../../src/emrys/reporting/README.md) lines 3–16 and
-`src/emrys/orchestration/run_coordinator/reporting_boundary.py:43–44` define
-two publication operations after scientific completion. The
-[Snakefile](../../src/emrys/workflow/Snakefile) lines 394–397 ends the backend
-at verified scientific tasks. This is user-facing product text drift, not a
-request to delete historical log aliases. Review watch projection and old-log
-compatibility before selecting a separate product correction; scheduler text
-still cannot prove admitted Run completion.
-
-### F31 — Historical Slurm username recovery advice
-
-[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 65–72 tells a reader
-with Snakemake's `No username set in the environment` to “Update EMRYS to the
-submission fix,” without identifying a fixed revision or distinguishing a
-current installation. The [backlog incident](backlog_matrix.md) lines 243–252
-records the original failure and fix; current
-[submission code](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
-lines 861–870 preserves four login-name variables, with direct source tests
-at `tests/orchestration/run_coordinator/test_slurm_submission.py:2027–2099`.
-Keep the incident and safe resume/evidence advice. Current recovery should
-first identify the installed revision and actual submission diagnostic;
-this audit has not reproduced a current Slurm failure.
-
-### F32 — Mermaid check's stated ceiling
-
-[Documentation test README](../../tests/documentation/README.md) lines 3–8
-says cases cover “standalone Mermaid syntax.” The
-[checker](../../scripts/documentation/validate_structure.py) lines 235–251
-checks only a first nonblank `flowchart` declaration and absence of Markdown
-fences; its [tests](../../tests/documentation/test_validate_structure.py)
-lines 290–323 exercise those refusals. The
-[tool README](../../scripts/documentation/README.md) lines 3–7 correctly
-describes declarations and fences but broadly says it checks first headings.
-The checker at lines 199–206 checks H1 only for required canonical pages;
-other Markdown files receive link checks, not an H1 requirement. Narrow both
-guides: this gate does not parse Mermaid grammar or verify rendering.
-
-### F33 — Report receipt version in the scientist diagram
-
-The linked [scientist-facing diagram](../architecture/diagrams/current_user_pipeline.mmd)
-line 15 groups summary TSV with two HTML reports and says a validated v4
-receipt comes last. [Reporting](../../src/emrys/reporting/README.md) lines
-10–16 and 29–49 separates summary JSON/TSVs in the artifact-summary
-publication from HTML and `report_outputs.tsv` under Results. The
-[artifact schema index](../../src/emrys/contracts/schemas/artifacts/README.md)
-lines 3–8 identify artifact entries v4, Run result manifest v8, and report
-receipt v8. Correct the diagram's grouping and receipt label without
-conflating these separate formats. The diagram is non-authoritative, but it is the
-architecture's linked reader path at `docs/architecture/ARCHITECTURE.md:56`.
-
-### F34 — Prepared finalization in the reliability diagram
-
-[Reliability diagram](../architecture/diagrams/reliability.mmd) lines 20–22
-sends every failed/interrupted Attempt through `emrys resume` to a new
-Attempt and Task. The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 1008–1035 permits a distinct first action: complete an exact prepared
-terminal receipt on the existing Attempt. A prepared success starts no new
-scientific work; an eligible failed/interrupted outcome may then continue in a
-new Attempt. [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 35–50
-already explains this. Show both paths without implying that missing or
-ambiguous evidence can authorize finalization.
-
-### F35 — FASTQ pairing in the glossary
-
-[Glossary](../reference/GLOSSARY.md) lines 45 and 67 says EMRYS does not infer
-R1/R2 pairing from filenames. Guided Init does recognize `_R1/_R2` and
-`_1/_2` mates and displays detected pairs
-([onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
-lines 964–1006; [Quickstart](../../quickstart.md) lines 79–81). The operator
-still authors condition and biological pairing group at onboarding lines
-1010–1016; the [sample manifest guide](../../configs/README.md) lines
-144–170 makes those values authoritative. Clarify mate discovery versus
-authored experimental pairing; this is ambiguous wording, not a demonstrated
-scientific-inference defect.
-
-### F36 — Cross-owner history in runtime test guidance
-
-[Runtime test README](../../tests/evidence/runtime_availability/README.md)
-lines 3–13 describes runtime probes, Snakemake startup, and their site limit.
-Line 14 then says tests solely for a retired report publisher were removed;
-lines 15–18 turn to `emrys init manifests`. Neither topic describes a runtime
-test in that directory. Trace whether either sentence preserves unique
-evidence, then retain current runtime scope here and place any durable
-reporting/ingestion context with its actual owner. This is a placement
-candidate, not permission to discard evidence.
-
-### F37 — BED12 dependency in the scientist diagram
-
-[Scientist diagram](../architecture/diagrams/current_user_pipeline.mmd)
-lines 9 and 22 combines canonical BAM QC with RSeQC mechanical orientation
-under one inspection node fed only by BAM/BAI. Its legend at line 39 says
-arrows are data or contract dependencies. The authoritative
-[stage map](../../src/emrys/contracts/STAGE_MAP.md) lines 67–70 requires
-BED12 from `convert_GTF_to_BED12` as a second RSeQC input; BAM QC has no
-such fan-in. Add the annotation dependency or split the evidence branches.
-Do not turn either non-gating evidence branch into a Run completion gate.
-
-### F38 — Slurm request in the reliability diagram
-
-[Reliability diagram](../architecture/diagrams/reliability.mmd) lines 2–6
-draws approval straight to Attempt creation. For whole-Run Slurm placement,
-the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 410–418 and 431–449 creates and synchronizes a retained submission
-request before `sbatch`; a request can exist before any Run or Attempt. The
-[Runbook](../operations/RUNBOOK.md) lines 9–25 gives that request its own
-inspection route. Show request/submission and compute-side Run admission as
-distinct from direct execution; scheduler status cannot supply Run truth.
-
-### F39 — Validation roster inventory claim
-
-[Contract-integration index](../../tests/contract_integration/README.md)
-lines 8–9 says roster expectations cover “every current validator.” The
-[roster guide](../../tests/contract_integration/validation_rosters/README.md)
-lines 3–6 claims producer inventory coverage. At the pinned revision there
-are 16 source `validator.py` owners; the
-[roster test](../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py)
-lines 23–41 lists 14 grouped validation-report producers. Its inventory
-assertion at 84–95 checks that fixed map's paths and discovers only legacy
-`scripts/validate_step_*.py`, so a new source-owner validator is not
-automatically found. Name the narrower producer scope and maintenance limit;
-artifact-contract and sample-manifest validators have different contracts.
-
-### F40 — Concurrency in the local workflow profile
-
-[Local profile README](../../src/emrys/workflow/profiles/local/README.md)
-lines 5–7 says the Execution Plan and Attempt supply “sample concurrency.”
-The current [resource schema](../../src/emrys/contracts/schemas/orchestration/v3/resource_config.schema.json)
-lines 41–53 defines `stage_concurrency` for repeated stages 01–07, including
-cohort partitions; [resource policy](../../src/emrys/orchestration/run_coordinator/resource_policy.py)
-lines 37–48 resolves that keyed control. The Snakemake profile sets engine
-defaults, not one sample-wide policy. Use the current per-stage term without
-promising that any particular allocation will admit every task.
-
-### F41 — Step 05 check's read-only help
-
-[Retained Step 05 check](../../tests/data_checks/validate_step05_outputs.sh)
-line 20 calls itself “Read-only validation,” while its own help at 13–18
-names a status TSV. Execution creates an output directory, writes/removes a
-probe, and writes or replaces the TSV at 75–95. The
-[owner README](../../tests/data_checks/README.md) lines 3–7 correctly says
-BAM/BAI are not mutated and lists the writes. Narrow script help to read-only
-*inputs* and disclose output mutation, including existing TSV replacement.
-Do not alter this retained operator check's behavior under DOCS-01.
-
-### F42 — Report transfer in the coordinator test index
-
-[Coordinator test README](../../tests/orchestration/run_coordinator/README.md)
-lines 11–20 places report transfer in a table of checks, but that row links a
-Runbook procedure, not a repeatable test. The [CV card](cluster_verification_backlog.md)
-lines 4079–4090 records the tiny local copy/comparison observation and its
-limit. Route this historical command-mechanics evidence to the CV record;
-generated-bundle contents, rendering, and institutional transfer remain
-pending rather than proved by a coordinator fixture.
-
-### F43 — Print behavior in the reporting test guide
-
-[Reporting test README](../../tests/reporting/README.md) lines 3–7 says tests
-pin “print behavior.” The checked source cases assert print CSS, generated
-HTML text, and an SVG height attribute, not browser or PDF layout review.
-The [backlog](backlog_matrix.md) lines 291–294 still keeps REPORT-01–04 visual
-or layout acceptance pending. Name source-level print rules and generated
-structure in the test guide without implying rendered user acceptance.
-
-### F44 — Internal workers described as standalone commands
-
-The opening of the [STAR contract](../../src/emrys/stages/star_alignment/CONTRACT.md)
-lines 3–6 calls its producer an explicit repository-path command. The
-[RSeQC contract](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md)
-lines 3–8 additionally calls the operation independently runnable. Both
-contracts later call their shells internal Run workers (STAR lines 65–68;
-RSeQC lines 58–61), as do their adjacent READMEs (STAR lines 12–18; RSeQC
-lines 11–16). The STAR shell requires runner-supplied `EMRYS_TASK_WORK_DIR`
-at lines 3, 22–23, and 51–52; the RSeQC shell does likewise at lines 3,
-18–19, and 43–44. Correct the opening command-ownership claims while
-retaining direct `--help` for these scripts and the public grouped validators.
-No standalone production or recovery route is established by the help tests.
-The coordinator's `TaskBackend` and `CommandResult` docstrings
-([task source](../../src/emrys/orchestration/run_coordinator/task.py) lines
-100–104 and 146–154) also call delegated producer and validator commands
-“public.” Correct that generic ownership label without exposing internal
-producers or changing Run-owned publication.
-
-### F45 — Watch and stop in the command-audience map
-
-The [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
-lines 22–29 maps commands to audiences but omits `watch` and `stop`. Both
-commands are registered in the public parser
-([CLI](../../src/emrys/__main__.py) lines 275–288); the
-[Quickstart](../../quickstart.md) lines 176–185 teaches `watch` to scientists,
-and the [Runbook](../operations/RUNBOOK.md) lines 139–157 teaches exact-request
-`stop` to operators. The inventory says `emrys --help` owns the complete
-roster, so this is an audience-routing gap rather than a false claim about
-command existence. Add those audience examples or explicitly say the table
-is selective; preserve `stop`'s exact-request and evidence ceilings.
-
-### F46 — Artifact common-schema description
-
-The public [common artifact schema](../../src/emrys/contracts/schemas/artifacts/v1/common.schema.json)
-line 5 describes definitions for “artifact-schema-v1 record contracts.” Its
-[owner README](../../src/emrys/contracts/schemas/artifacts/v1/README.md)
-lines 3–5 says active schemas still use these definitions after record schemas
-moved to later versions. The [registry](../../src/emrys/contracts/artifacts/_artifact_contracts/schema.py)
-lines 68–74 loads this file with current records, whose [index](../../src/emrys/contracts/schemas/artifacts/README.md)
-lines 3–8 names artifact entries v4, Run manifest v8, and report receipt v8.
-Correct only the stale description after checking schema-byte references and
-compatibility; the README calls those bytes a public contract.
-
-### F47 — R-probe concurrency candidate after CV-26
-
-The [optimization campaign](optimization_campaign.md) lines 292–319 still
-proposes comparing bounded concurrency of independent R namespace probes.
-The [CV-26 record](cluster_verification_backlog.md) lines 3949–3987 already
-retains a four-trial serial/two-worker hosted steady-ready comparison and a
-decision to retain serial checks: a one-CPU profile is supported, diagnosis
-has no admitted concurrency budget, and concurrent-child cancellation is not
-owned. The campaign links CV-26 for a different source reduction, so this is
-a candidate-selection context gap, not proof that a new resource-aware study
-is forbidden. Link the measured disposition at the proposal before any new
-selection; complete Doctor-path attribution and cancellation proof remain open.
