@@ -74,6 +74,7 @@ local navigation labels, not new backlog items.
 | `R14` | Performance and capacity claims | Allocation-aware profiles, Doctor timing, scheduler observations, and selected hosted runs describe configuration or dated operation; the optimization campaign audited an older revision. | Decide whether release notes make any quantitative promise; refresh affected candidates against the selected source, and measure comparable whole-operation results only if promised. | `RELEASE-01`; optimization campaign, `SITE-PARITY-01`, conditional `SETUP-02` |
 | `R15` | Cross-owner release coverage | The architecture index maps ingestion, stages, evidence, Analysis, workflow, reporting, contracts, and tests; all 61 tracked package assets in scope match static patterns, but the wheel test samples 43 and no complete installed Run has been exercised. | Trace the selected public journey through each relevant owner and its packaged assets, callers, validators, contracts, and tests; record what remains unexamined. | `RELEASE-01`; functional-owner inventory and existing owners |
 | `R16` | Input-admission claim | Named Init checks individual FASTQ records on creation, but not R1/R2 ID or count concordance; Project validation and specialist manifest validation are narrower, and the optional pair helper checks only a prefix of IDs. | State exactly which input checks a release promises; trace the selected checkout study through public Init, validation, and first Run preview, and route any stronger pairing claim to the ingestion owner. | `RELEASE-01`; ingestion/onboarding owners |
+| `R17` | Obsolete-Run refusal before Slurm report submission | `report --execute` with Slurm placement schedules before the reporting owner inspects the selected Run; source tests show submission from a dummy Run. | If this operation is promised, require obsolete-Run refusal before creating a request or calling `sbatch`; retain a public candidate-artifact check across preview, direct execution, and Slurm placement. | `RELEASE-01`; coordinator/reporting owners and R09 |
 
 ## Discovery record
 
@@ -308,6 +309,7 @@ not public `emrys report`. It does not run a complete Project through Doctor, sc
 execution, Results, and independent report regeneration. Extend the existing
 package/public-CLI and synthetic-journey owners for the chosen promise rather
 than create a second release harness.
+
 The [public CLI tests](../../tests/test_public_cli_contracts.py) already own
 broad help/entry-point enumeration, and adjacent coordinator/reporting tests
 own detailed mutation and recovery cases. Use the existing distribution test
@@ -328,7 +330,9 @@ tiny complete Project only when that full installed operation is selected. A
 public report exercise can finish a Run with `--no-report`, then check
 `emrys report [RUN]` preview and `--execute` publication into empty owned
 state, followed by verified reuse. It must not assume existing reports may be
-overwritten. These are future checks, not checks performed for this document.
+overwritten. Preview prepares only the Run summary, so the execute path is
+needed to check reporter discovery, HTML resources, rendering, and publication.
+These are future checks, not checks performed for this document.
 
 ### R09 — Record and schema support
 
@@ -347,8 +351,19 @@ historical Attempt before Task mutation. Neither is a public installed-command
 exercise of obsolete-Run `inspect`, `resume`, and `report`. Select an
 owner-identified historically emitted obsolete format, distinguish it from
 malformed current data, verify useful original-environment guidance, and
-compare every retained file before and after each command. Current-version
+compare retained Run, scientific, and evidence membership and bytes before and
+after each command. Classify any newly created application failure log for an
+execute refusal separately from those retained artifacts; preview and inspect
+have a stronger read-only expectation. R17 records a distinct Slurm submission
+boundary that cannot be inferred from eventual delegate refusal. Current-version
 Attempt recovery still requires full identity and evidence checks. The
+[immutable-record reader](../../src/emrys/contracts/orchestration/application_model.py)
+reports an unsupported application record and inspection wraps it as invalid
+authority, without a visible original-environment remedy in that path. An
+older Attempt under current Run authority can instead appear as blocked
+inspection. Set diagnostics and exit expectations for the selected historical
+record type; an inspect display is not evidence that its recovery or reporting
+is supported. The
 [schema rules](../../src/emrys/contracts/schemas/README.md#version-and-identity-rules)
 say present IDs are exact and their numbered directories span unrelated
 families. The [reporting owner](../../src/emrys/reporting/README.md) identifies
@@ -543,6 +558,30 @@ sources; preserve that authority while extending only a missing installed
 operation check. Do not create a second exhaustive asset roster merely because
 the wheel test samples assets.
 
+For Stages `00a`–`05` and Evidence `02b`/`03`, the
+[wheel smoke](../../tests/test_package_distribution.py) already calls the
+installed `processing_tasks` map and checks that each producer exists. It does
+not execute that graph through public `emrys run`; its fixed byte-parity sample
+contains only one of these nine producers. The owner contracts, validators,
+and tests already cover their distinct source behavior. A candidate-artifact
+check should trace the mapped producer bytes to the reviewed artifact and run
+one tiny public installed journey at the selected environment, using existing
+owner tests for detailed faults. Do not add nine duplicate existence or
+behavior suites. The [workflow profile](../../src/emrys/workflow/contracts/local_cmh_v2.json)
+and [materializer](../../src/emrys/orchestration/run_coordinator/materialization.py)
+bind these stages, evidence branches, inputs, and native tools through the
+admitted installed package.
+
+The built-in paired-CMH [descriptor](../../src/emrys/analyses/paired_cmh_candidate_ranking/__init__.py)
+declares **both** Analysis `09` and `10`; Step `10` is optional only in the
+collaborator interface. The wheel test checks their entry points and selected
+R, shell, and motif bytes, while Doctor checks declared runtime dependencies.
+It does not run either analysis from the candidate wheel, and
+`RUNTIME-CLOSURE-01` still owns transitive R dependency assurance. The Step
+`09` validator does not recompute CMH statistics; Step `10` rederives selected
+context and transaction rules but does not rerun R. Keep owner oracles, real
+R exercise, installed operation, and independent scientific review separate.
+
 For reporting, the package patterns and wheel test include the single HTML
 template and stylesheet. The [reporting owner](../../src/emrys/reporting/README.md)
 binds them to report preparation and receipts; its
@@ -553,12 +592,26 @@ defines complete-tree transfer and checksum comparison. These checks still do
 not exercise the public installed `emrys report` command against a complete
 candidate Run or render/review the copied bundle. Keep those as separate proof
 items if the release promises report regeneration or portable visual Results.
+Doctor confirms reporter discovery and ownership, not successful rendering;
+the wheel's reporter fixture uses internal APIs. A custom reporter's lazy
+dependencies also remain outside Doctor's default load check.
+
+The [stage map](../../src/emrys/contracts/STAGE_MAP.md#direct-dag-edges)
+marks Evidence `02b`/`03` as non-gating branches. Owner documentation for
+[Stage 06](../../src/emrys/stages/mechanical_orientation/README.md),
+[Stage 07](../../src/emrys/stages/partitioned_cohort_mpileup/README.md), and
+[Stage 08](../../src/emrys/stages/cohort_candidate_preprocessing/README.md)
+states that their validators check declared structure, receipts, counts, and
+staged tables without rerunning samtools, bcftools, or R candidate construction.
+These are important independent contract checks with specific limits, not an
+independent scientific-method review. A release note using “validated” must
+identify its exact check and evidence layer.
 
 | Owner boundary | Next targeted release check if its operation is promised |
 |---|---|
 | Ingestion and reference admission | Trace manifests, FASTQ/reference identities, preview no-write behavior, publication-time incomplete-state recovery, and checkout/package resources from Init through the first Run plan. Keep the limited `validate manifest` and `init manifests` contracts distinct (R16). |
 | Workflow, processing Stages `00`–`08`, and Evidence `02b`/`03` | For each selected DAG node, map packaged producer/validator assets, native/R tools, declared inputs, outputs/receipts, independent checks, and smallest real installed exercise. Preserve evidence branches as distinct from scientific completion. |
-| Analysis `09`/optional `10` and external providers | Check selected module ID/version, entry points, dependencies, output/validator boundary and reporter pairing; leave method review with `SCI-AUDIT-01` and collaborator proof with `EXTENSION-01`. |
+| Built-in Analysis `09`+`10` and external providers | Check selected module ID/version, entry points, dependencies, output/validator boundary and reporter pairing; `10` is optional only for collaborators. Leave method review with `SCI-AUDIT-01` and collaborator proof with `EXTENSION-01`. |
 | Reporting and copied Results | Trace template, stylesheet, figure and data-input resource closure, exact receipt and public `emrys report` behavior; verify complete-tree transfer and relative links independently of rendered visual review. |
 | Contracts, source libraries, and recovery | Cross-check current Run/Attempt/schema readers, installed-code identity, reuse, locks, no-write paths and obsolete-Run refusal against the selected public route. |
 | Owner tests and CI | Reuse adjacent fault/scientific checks; add only missing public candidate-artifact and exact-environment edges. A source test, wheel smoke, selected hosted run, and institutional walkthrough remain different evidence. |
@@ -612,6 +665,29 @@ first Run preview, comparing the tree only for the operations documented as
 read-only. If full mate concordance is promised, decide its explicit admission
 or operator evidence contract with the ingestion owner; do not silently merge
 the helper's limited prefix policy with strict Run input admission.
+
+### R17 — Obsolete-Run refusal before Slurm report submission
+
+Public `inspect`, `resume` planning, and `report` preview reach Run inspection
+before acting on a selected Run. Direct `report --execute` also reaches the
+[reporting owner](../../src/emrys/orchestration/run_coordinator/reporting_operation.py)
+before publication. In the [coordinator](../../src/emrys/orchestration/run_coordinator/control.py),
+however, public `report --execute` with Slurm placement calls the scheduler
+submission path before `run_reporting` inspects that Run. Submission creates a
+request record and can call `sbatch`; an existing
+[placement test](../../tests/orchestration/run_coordinator/test_materialization.py)
+demonstrates submission from a dummy Run without local report admission. This
+does not show that retained Run or scientific files are changed, and the
+delegate may later refuse. It does mean an immediate public obsolete-Run
+refusal without a new request/job is not established for that placement.
+
+If Slurm report generation is in the release promise, the coordinator/reporting
+owners need a bounded pre-submission admission decision before the candidate
+check can pass. Exercise a historically emitted obsolete Run through public
+`inspect`, `resume`, and `report` preview and execute on every promised
+placement. For Slurm refusal, assert no new submission request or `sbatch`
+call; for all paths, compare retained Run/scientific/evidence bytes and
+membership. Keep current-format success/recovery as a positive control.
 
 ## Conditional owner routing
 
@@ -672,8 +748,9 @@ R11.
    preview, publication into empty owned state, and verified reuse. Source
    fixtures, installed-command checks, and real local execution remain
    distinct evidence layers.
-6. **Collect exact-revision assurance (R09/R11/R14).** Test public obsolete-Run
-   refusal for `inspect`, `resume`, and `report` with retained bytes unchanged.
+6. **Collect exact-revision assurance (R09/R11/R14/R17).** Test public obsolete-Run
+   refusal for `inspect`, `resume`, and `report` with retained bytes unchanged;
+   if Slurm reporting is promised, refuse before a request or `sbatch` call.
    Record targeted local checks and ordinary CI jobs with their actual
    outcomes and skips. Dispatch selected real-tool hosted profiles at the
    candidate ref if those claims are needed; keep 130-pair direct/Slurm parity
