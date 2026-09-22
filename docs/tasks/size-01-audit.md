@@ -147,3 +147,25 @@ The storage owner shares one [root probe](../../src/emrys/evidence/storage_inven
 ### renv/activate.R
 
 The bundled [renv autoloader](../../src/emrys/renv/activate.R#L5) declares renv version 1.2.3 and its MD5. An earlier product-code campaign excluded generated activate.R from its count; SIZE-01's non-test rule still includes this path. The [shell test](../../tests/shell/test_local_r_environment.sh#L64) checks presence and later uses a stub, so it does not prove the bundled bootstrap itself. Before proposing a generated-file exception, verify upstream provenance, exact selected-environment behavior, and the explicit repair route. Hand editing the generated autoloader is not a line-count reduction.
+
+## Fourth pass: documentation, workflow, configuration, and generated inputs
+
+### ci.yml
+
+[Ordinary and selected CI lanes](../../.github/workflows/ci.yml#L1) coexist in one workflow. Selected synthetic-lane truth recurs in the job condition, seed environment, and final gate, while setup already shares YAML anchors. [Workflow tests](../../tests/test_ci_workflow.py#L72) pin selection semantics and [evidence-upload tests](../../tests/test_ci_workflow.py#L785) pin retained artifacts. A shorter selector expression is a candidate only if job names, required checks, selected-lane behavior, and failure artifacts remain equivalent. Adding a selector job or splitting workflows could increase maintained surface. The 191-line Doctor measurement program is exercised by extracted-driver tests; moving it to a new file would not itself resolve the workflow's size.
+
+### local_cmh_v2.json
+
+The profile repeats its 12 owner keys in semantic, task, and required-owner lists. [Contract validation](../../src/emrys/contracts/orchestration/api.py#L355) currently enforces equality. The 57 base artifact templates are the canonical workflow inventory; [profile tests](../../tests/orchestration/run_coordinator/test_profile.py#L303) pin the composed roster and native-result semantics. Deriving one repeated list is a concrete schema question, but removes fewer than the 112 lines needed to reach 600 and can change profile and immutable Run identity. It belongs to a separately approved SCHEMA-01 and PROFILE-CONTRACT-01 transition after all consumers and retained records are reviewed.
+
+### run_report.css
+
+One [stylesheet](../../src/emrys/reporting/styles/run_report.css#L553) is embedded in both HTML views. The print-specific candidate group and image rules have distinct media behavior from their screen counterparts. The [report receipt](../../src/emrys/reporting/_run_report/receipt.py#L100) binds the exact stylesheet path and hash; [report tests](../../tests/reporting/test_report.py#L695) check print-source tokens and embedding, not visual parity. Splitting or minifying for a line count would alter asset wiring or receipt identity. A real rule consolidation needs screen and print rendering, receipt validation, and installed-wheel review before a size disposition.
+
+### uv.lock, pixi.lock, and renv.lock
+
+These are separate package-manager resolutions for Python, native/R base, and R packages. Doctor reads and stages exact [Pixi lock bytes](../../src/emrys/orchestration/run_coordinator/doctor.py#L905); a [wheel test](../../tests/test_package_distribution.py#L250) parses the Python lock; [CI](../../.github/workflows/ci.yml#L1223) retains all three with runtime evidence. Each retained path requires its own reason and explicit exception approval. Dependency pruning, if useful, belongs to declared dependency owners and manager regeneration with exact runtime and CI checks. Hand editing, splitting, or deleting lock evidence is not authorized by SIZE-01.
+
+### RUNBOOK.md, CONTRACT.md, and campaign records
+
+The [Runbook's Project creation section](../operations/RUNBOOK.md#create-a-project-for-your-own-data) includes hashing and filesystem identity internals also explained in the coordinator [publication contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries). DOCS-01 can retain the operator choices, confirmation, and recovery cue while linking exact implementation guarantees to the owner. The [polish campaign's history](polish-campaign.md#existing-capabilities-and-overlapping-work) needs proposal disposition before shortening, and the [cluster backlog](cluster_verification_backlog.md#verified-scope-and-remaining-evidence) owns live CV acceptance until evidence transfer. Both are possible temporary exceptions with explicit retirement triggers, not immediate deletion candidates. Exact evidence deletion requires its own approval and commit.
