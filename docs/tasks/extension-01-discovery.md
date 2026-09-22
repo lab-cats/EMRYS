@@ -20,21 +20,47 @@ when the bounded outcome is accepted; move lasting behavior to its owner documen
   implements the behavior; `Proposed` is a design candidate; `Open` requires a decision or execution
   evidence.
 
+## Repository-wide EXTENSION-01 impact sweep and limit
+
+The 2026-09-22 review inventoried the 576 tracked paths in the audit worktree, searched source, tests,
+documentation, configuration, scripts, packaging, and CI for Analysis and reporter boundaries,
+and followed relevant owners in both directions: Step `07`/`08` inputs; provider discovery and
+Project admission; Doctor and runtime binding; direct and Slurm planning; worker/validator
+publication and recovery; Results and reporting; package identity; and local/hosted checks. This
+is an **EXTENSION-01 impact audit across the repository**, not a line-by-line review of every file
+or a general defect audit of unrelated functionality. The matrix below records material findings
+from that sweep. The review did not execute an external provider, establish live Slurm or Viking
+behavior, test arbitrary collaborator packages, or validate scientific/biological meaning.
+
+| Repository surface | Reviewed for this extension | What source review still cannot prove |
+| --- | --- | --- |
+| Scientific producers and contracts | Step `07` selection, Step `08` sites and GTF assignment, Step `09` comparison; stage/contract tests and synthetic fixtures. | Real overlapping-gene output or a public external-Analysis result. |
+| Provider and Project boundary | Entry-point discovery, owned code digest, descriptor/schema normalization, Project selection, identity and readmission. | A separately built wheel's actual installation, imports, or compatibility. |
+| Execution and recovery | Doctor, direct/Slurm preview, task planning, published outputs, validator outcomes, Attempt/Result admission and continuation. | External commands' true input/read set, resource use, or live scheduler behavior. |
+| Reporting and evidence | Artifact index, reporter context, run-summary and HTML transactions, retained inspection, public report command. | Rendering or recovery with the proposed external reporter. |
+| Quality and operator surfaces | Packaging, `all-checks`, Make and CI contracts, pre-commit/source-dependency scope, owner documentation and accepted backlog. | A timed, passing example gate or an operator walkthrough. |
+
+Any later execution result must name the exact commit, installed distributions, environment,
+command, and retained artifact. A green core check alone cannot close an external-provider row.
+
 ## Findings matrix
 
 | ID | Finding and current discovery | Level | Next discovery or proof |
 | --- | --- | --- | --- |
 | `EX-01` | The accepted row requires one independently installable Analysis and reporter through real discovery, configuration, planning, execution, independent validation, and reporting. The prior collaborator test substitutes loaders. | Observed | Trace one public path without loader substitution and preserve the mocked test's distinct checks. |
-| `EX-02` | Step `08` sites permit a descriptive candidate-to-annotated-gene tally from transcript-span assignments, with `NA` and multi-gene rows. A one-task descriptor can use only the sites adapter; method and edge-case policy remain open. | Observed / Proposed / Open | Freeze the oracle, threshold/`NA`/zero-row rules, artifact names/paths, and measured resource floor. |
+| `EX-02` | A Step `08` sites tally would count supported pre-CMH SNV allele rows after Step `07` selection, using exon-derived transcript spans; `NA` and multi-gene rows are possible. Its inclusion and edge-case policy remain open. | Observed / Proposed / Open | Freeze the inclusion policy and literal oracle; exercise a real Step `08` overlap fixture and measure resources. |
 | `EX-03` | Discovery requires one package-level entry point per name and distribution-owned callbacks. Its digest covers owned sibling files but excludes distribution metadata; one versus two example wheels remains a packaging decision. | Observed / Open | Prove real wheel ownership and missing/duplicate refusal; decide whether reporter source changes may couple to Analysis readmission. |
-| `EX-04` | The planner checks all **declared** inputs. External Step `09` publishes native outputs before validation; nonzero and nonpassing validators fail without a verified-task, and postpublication continuation is blocked. | Observed | Check exact consumed inputs and check roster; exercise both failure modes and retained state through the public runner. |
-| `EX-05` | New reporting re-admits Analysis and reporter; retained inspection checks old bytes without invoking today's reporter but still re-admits Analysis. In a shared wheel, reporter source changes can alter the Analysis digest. | Observed / Open | Test retained behavior under the chosen packaging; distinguish reporter source drift from entry-point metadata removal. |
-| `EX-06` | Analysis ID, provider readmission, and Attempt runtime binding cover different facts. Provider bytes and selected policy fields are re-admitted; distribution-version-only drift and some dependency metadata are excluded. | Observed | Test each boundary separately, including module/byte refusal and target-only runtime drift. |
-| `EX-07` | Doctor accepts fixed-check IDs or declared tools/files/R packages and checks reporter readiness, without installing. Current wheel smoke generates a temporary lock and installs despite prose that tests never do either. | Observed / Open | Resolve disposable lock/install policy and custom dependency rules; choose the reporter or `--no-report` path. |
-| `EX-08` | Core wheel smoke calls private report preparation; ordinary PR CI runs a 20-minute static/wheel lane, while real-synthetic runs only on schedule/manual. Neither proves an external public Run. | Observed | Choose a tiny public execution scenario and CI lane; measure cost and retain exact-commit results. |
+| `EX-04` | The planner checks all **declared** inputs and command shape, not worker ownership or the complete read set. External Step `09` publishes native outputs before validation; both validator failure modes leave no verified task. | Observed | Check installed command imports, exact consumed inputs and roster; exercise both failure states through the public runner. |
+| `EX-05` | New reporting re-admits Analysis and reporter; retained inspection checks old bytes without today's reporter but still re-admits Analysis. Reporter lookup has no module-version negotiation; variable TSV rows require snapshot reads. Separate reporting ledgers can leave Results complete and reporting blocked. | Observed / Open | Test version pairing, literal multi-row render, reporter drift, and pre/post-ledger failures for the chosen layout. |
+| `EX-06` | Analysis ID, provider readmission, and Attempt runtime binding cover different facts. Provider bytes and selected policy fields are re-admitted; distribution-version-only drift, some dependency metadata, and environment-dependent descriptor output are not directly bound. | Observed / Inferred | Test each boundary plus repeated descriptor/profile equivalence, module/byte refusal, and target-only runtime drift. |
+| `EX-07` | Doctor accepts fixed-check IDs or declared tools/files/R packages and checks reporter lookup, without installing or proving render-time dependencies. Current wheel smoke generates a temporary lock and installs despite prose that tests never do either. | Observed / Open | Resolve disposable lock/install policy and reporter dependency/version proof; choose the reporter or `--no-report` path. |
+| `EX-08` | Core wheel smoke calls private report preparation; Slurm Run preview does not admit the provider, and report preview does not render HTML. Ordinary PR CI and scheduled/manual real-synthetic checks do not prove an external public Run. | Observed | Choose a tiny installed public scenario, distinguish each preview level, and retain exact-commit results. |
 | `EX-09` | Provider, Project YAML, and reporting guidance are split across owners; the YAML sample is hypothetical. Core version `0.1.0.dev0` cannot identify this PR's exact code. | Observed | Write one package-adjacent walkthrough with the tested core commit/wheel identity; link from owner guides after transfer review. |
 | `EX-10` | No `examples/` files are tracked. A separate example adds maintained files, requiring an explicit quantified `AC-GUARD-006` exception before implementation. | Observed / Open | Inventory planned files and net lines by surface; protect unique mock assertions and propose only caller-complete retirements. |
-| `EX-11` | `examples/` would be outside current lint, coverage, and core-wheel selection; conventional example tests enter unscoped collection and shards unless routed explicitly. | Observed / Open | Specify an explicit separate build/lint/test gate and selection, with no core coverage credit. |
+| `EX-11` | `examples/` would be outside default Ruff, pre-commit, coverage, core-wheel, and source-import checks; conventional example tests enter unscoped collection. CI commands and Make targets have contract tests. | Observed / Open | Route explicit example checks and update affected gate contracts, with no unmeasured core coverage credit. |
+| `EX-12` | Provider/configuration callbacks, planning, selected worker commands, and reporter execution run with the operator's authority; admission attributes provider code but does not sandbox commands. | Observed / Open | State the trusted-package boundary and check example command origins and owned paths without claiming a sandbox. |
+| `EX-13` | **Reporting blocker:** artifact indexing registers external adapters but unconditionally applies built-in CMH Step `09` reconciliation to every complete Step `09` scope. The proposed tally has none of its four required CMH adapters. Optional external Step `10` has the same built-in assumption. | Observed source path / Open repair | Establish a bounded module-aware reconciliation decision; retain built-in defenses and prove generic external Run-summary/report admission before claiming end-to-end fit. |
+| `EX-14` | Installed watch labels Step `09` as paired CMH, expects built-in owner keys, and says reporting follows Step `10`; these may misdescribe a one-task external Analysis. | Observed source path / Open public effect | Exercise external Run/watch presentation and choose an owner-local correction without making scheduler text completion authority. |
 
 ## Source discoveries by finding
 
@@ -55,6 +81,8 @@ artifact kinds and path prefixes. A result TSV plus validation TSV fits without 
 built-in provider demonstrates a Step `09` dependency on Step `08` sites, input receipt, and summary
 in [`paired_cmh_candidate_ranking/__init__.py`](../../src/emrys/analyses/paired_cmh_candidate_ranking/__init__.py), lines 358–376. Step `08` gives each candidate `gene_ids` as `NA` or a
 semicolon-delimited, duplicate-free list ([`step08.py`](../../src/emrys/contracts/scientific_evidence/step08.py), lines 64–87 and 267–299).
+This is a descriptor and planner fit only. The current reporting reconciliation does not admit a
+generic Step `09` result as proposed; see EX-13 before claiming an end-to-end interface fit.
 
 For the proposed tally, the smallest descriptor shape using the current
 [`AnalysisTaskV1` and `AnalysisArtifactV1` rules](../../src/emrys/analyses/__init__.py) is:
@@ -74,19 +102,63 @@ source path template must contain `{analysis_id}`, use an allowed root, and avoi
 fields or traversal components. `exact_data_rows` can later pin the validation report's row count,
 while its check roster/order remains the example validator's and literal tests' responsibility.
 
-The [Step `08` annotation owner](../../src/emrys/stages/cohort_candidate_preprocessing/_step_08_annotation.R) assigns those IDs from strand-compatible **transcript-span** overlaps, including introns, then sorts and deduplicates them. The [sites contract](../../src/emrys/contracts/scientific_evidence/step08.py) admits a header-only table and requires unique candidate IDs. Step `08` can retain intergenic candidates, and its orientation-to-strand mapping remains provisional under the [stage contract](../../src/emrys/stages/cohort_candidate_preprocessing/CONTRACT.md). Thus a row is one mechanically labeled candidate, not necessarily one genomic locus or an exonic event. Two orientation candidates at one locus remain two candidates if present.
+The [Step `08` annotation owner](../../src/emrys/stages/cohort_candidate_preprocessing/_step_08_annotation.R)
+derives each transcript span from its exons, including introns between them, then assigns
+strand-compatible overlaps and sorts and deduplicates their gene IDs. GTF `gene` or `transcript`
+feature spans are not the assignment range. The
+[sites contract](../../src/emrys/contracts/scientific_evidence/step08.py) admits a header-only
+table and requires unique candidate IDs. Step `08` can retain intergenic candidates, and its
+orientation-to-strand mapping remains provisional under the
+[stage contract](../../src/emrys/stages/cohort_candidate_preprocessing/CONTRACT.md). Thus a row is
+one mechanically labeled candidate, not necessarily one genomic locus or an exonic event. Two
+orientation candidates at one locus remain two candidates if present.
+
+The proposed tally's **population** also needs to be explicit.
+[Step `07`](../../src/emrys/stages/partitioned_cohort_mpileup/producer.py) applies its bcftools
+filter before Step `08`; [Step `08` processing](../../src/emrys/stages/cohort_candidate_preprocessing/_step_08_vcf_processing.R)
+retains every supported SNV allele from that input and carries QUAL, FILTER, and depth values
+without a second candidate-selection rule. The built-in
+[Step `09` method](../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md) can
+subsequently label rows untested or nonsignificant. A sites-only tally therefore counts
+**pre-CMH candidate-to-annotation assignments across the cohort**, including rows that Step `09`
+does not test or select. Decide whether all RNA changes, intronic/intergenic rows, low-depth rows,
+and carried non-PASS FILTER values belong in this demonstration; never label the counts as
+validated editing sites, selected discoveries, or gene-level biological activity.
 
 **Proposed example, pending method selection:** count candidate-to-gene assignments from Step `08`
 in Step `09`. A candidate with two gene IDs contributes once to each, so the sum can exceed the
 number of candidate rows. The descriptor can name only the `step08_sites_v1` input adapter for this
 calculation; include the input receipt or summary only if the method actually consumes it for a
-stated check. The Step `08` predecessor edge still supplies the task completion barrier. One
+stated check. The built-in provider declares the Step `08` summary as a dependency/provenance input
+even though its worker and validator arguments consume sites and input receipt
+([provider](../../src/emrys/analyses/paired_cmh_candidate_ranking/__init__.py),
+[owner contract](../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md)). That declaration
+is not evidence that this example needs the summary as a method input. The Step `08` predecessor
+edge still supplies the task completion barrier. One
 possible literal oracle, **if** lexicographic gene ordering and threshold `1` are selected, is
 assignments `A;B`, `A`, `NA` producing UTF-8 bytes
 `gene_id\tcandidate_count\nA\t2\nB\t1\nNA\t1\n`. Threshold `2` would retain only `A\t2`.
 Decide whether the threshold applies to `NA`, how `NA` sorts, and whether empty input or filtering
 produces a header-only TSV. A same-strand overlapping-gene fixture is needed to demonstrate a real
-multi-gene Step `08` row; the existing [stage test](../../tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.R) does not establish that case. This is a descriptive computational demonstration, not an editing-site or biological claim.
+multi-gene Step `08` row; the existing
+[stage test](../../tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.R)
+does not establish that case. A hand-authored
+[scientific evidence fixture](../../tests/scientific_evidence_test_support.py) has
+`gene1;gene_overlap`, but its parsing check cannot establish that a real GTF yields that row. The
+Step `08` validator checks lexical and count invariants, not a fresh GTF overlap computation. The
+existing `smoke-v1` GTF has only nonoverlapping transcripts; its engineered rows suggest
+`GENE_PLUS=1` and `GENE_MINUS=2` as an **unexecuted** public oracle, with neither `NA` nor
+multi-gene coverage. This is a descriptive computational demonstration, not an editing-site or
+biological claim.
+
+**Inferred representational limit, untested:** GTF admission requires nonempty IDs on relevant
+features but does not explicitly reserve literal `NA` or `;` in gene IDs
+([annotation import](../../src/emrys/stages/cohort_candidate_preprocessing/_step_08_annotation.R));
+Step `08` writes missing values as `NA`, while the
+[sites reader](../../src/emrys/contracts/scientific_evidence/step08.py) treats `NA` as missing and
+`;` as an ID separator. Before promising arbitrary collaborator GTF compatibility for this tally,
+state the supported-ID assumption or run a tiny admission/serialization test. This observation
+alone does not authorize redesign of Step `08`.
 
 The [configuration admission boundary](../../src/emrys/analyses/__init__.py) validates authored JSON,
 passes a canonical copy and path-neutral Project facts to the normalizer, validates the normalized
@@ -126,7 +198,11 @@ Do not change core hashing to hide the tradeoff.
 threads, and a controlled Python command builder. [`materialization.py`](../../src/emrys/orchestration/run_coordinator/materialization.py), lines 1066–1207, checks that the
 returned plan includes every declared input, unique paths, and unique provenance roles. It cannot
 discover an extra file that the worker actually reads but never declares, so the example test must
-compare planned roles and paths with worker consumption. Its `validator_command` helper targets core
+compare planned roles and paths with worker consumption. The core checks command argument shape,
+but does not establish that the producer or validator load from the provider's installed wheel;
+descriptor admission checks ownership of the provider, normalizer, and planner callables. The
+example must exercise its commands outside the checkout and verify their import origin. Its
+`validator_command` helper targets core
 `emrys validate` routes (lines 285–295); a collaborator's own validator should use `python_command` with
 its installed module. The validator must independently recompute the proposed counts and publish the
 exact seven-column report header defined by [`emrys.libraries.validation`](../../src/emrys/libraries/validation/report.py), lines 13–21. The core [`all_pass.py`](../../src/emrys/orchestration/run_coordinator/all_pass.py),
@@ -141,7 +217,16 @@ generic TSV admission checks shape and rows, not tally semantics.
 owners. External Step `09` publishes native outputs, runs its validator, then requires all-pass.
 Both a nonzero validator exit and a zero-exit report with a nonpassing row can leave committed
 native outputs and a failed Task attempt without a verified-task. The validation report may be
-absent after a nonzero exit. The [runner's preservation contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle) leaves postpublication failures ineligible for automatic continuation; preserve that state for operator disposition rather than promise retry or rollback. Test both failure routes through the external Step `09` path; the existing generic failed-row test does not prove it. The producer must write to supplied working/scratch paths. The independent validator must read final `outputs` and write its report at the supplied `validation_report_path`, which is excluded from producer outputs. Any other temporary writes remain within owned paths. Neither process may delegate relevant work to preexisting or remote processes.
+absent after a nonzero exit. The
+[runner's preservation contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
+leaves postpublication failures ineligible for automatic continuation; preserve that state for
+operator disposition rather than promise retry or rollback. Test both failure routes through the
+external Step `09` path; the existing generic failed-row test does not prove it. The producer must
+write to supplied working/scratch paths. The independent validator must read final `outputs` and
+write its report at the supplied `validation_report_path`, which is excluded from producer outputs.
+Any other temporary writes remain within owned paths. Neither process may delegate relevant work
+to preexisting or remote processes. These are trusted-worker obligations, not behavior proved by
+structural admission or a filesystem/network sandbox.
 
 ### EX-05 — scientific reporter boundary
 
@@ -153,16 +238,45 @@ landmark, heading order, report identity and computational banner, safe resource
 tables. The example reporter must satisfy this contract without importing a built-in reporter's
 private renderer or recalculating the scientific result.
 
+Reporter selection and Doctor readiness are keyed only by module ID
+([`reporting/__init__.py`](../../src/emrys/reporting/__init__.py),
+[`doctor.py`](../../src/emrys/orchestration/run_coordinator/doctor.py)). There is no separate core
+negotiation of a reporter version against the admitted Analysis module version, and
+`AnalysisReportContextV1` does not carry that version as a direct field. The Run summary binds the
+Analysis policy file by path and hash rather than copying its module-version value into the reporter
+context. If a separately versioned reporter reads that policy to refuse an unsupported pair, it
+must declare the additional read through `AnalysisReportInputV1` and recheck its identity. Freeze
+and test the example's supported Analysis/reporter pairing; decide whether the existing context is
+sufficient for the selected one- or two-wheel layout before promising wrong-version refusal.
+Doctor's successful lookup does not prove compatibility.
+
 `AnalysisScientificReportV1.inputs` may be empty. The core rechecks admitted Analysis artifacts
 even when the reporter does not repeat them in that returned roster. If the reporter opens an
 additional report-only file, it must return that file's `AnalysisReportInputV1` identity for
 snapshot and receipt checks ([`context.py`](../../src/emrys/reporting/_run_report/context.py), lines 253–291). The proposed tally reporter should avoid extra file inputs unless the method needs them.
+For a variable-length tally TSV, generic
+[TSV inspection](../../src/emrys/reporting/_artifact_index/_text_tabular.py) provides row count and
+limited metadata, not a full row projection. The reporter must open the admitted artifact snapshot
+to render every count; core rechecks the admitted bytes after rendering. Test multiple literal
+result rows and changed-input refusal rather than assuming projected rows contain the whole tally.
 
 New publication re-admits the current Analysis and reporter. The [report context](../../src/emrys/reporting/_run_report/context.py) passes only required, present, complete artifacts whose Step, scope, hash, size, and media type match the admitted summary. The [artifact index](../../src/emrys/reporting/_artifact_index/_text_tabular.py) checks declared TSV header and row shape/count, but does not recompute the proposed tally; that remains the independent validator's job. Test malformed or missing artifacts at admission, and test the reporter only with admitted snapshots/projections. Doctor requires a matching reporter for the ordinary through-report Run, while `--no-report` allows execution before reporter installation and later reporting.
 
 [Retained report validation](../../src/emrys/reporting/transaction_validation.py) checks the original receipt, data inputs, and HTML without invoking today's reporter. Upstream Run-summary and artifact validation still re-admits the current **Analysis** provider. If Analysis and reporter share a wheel, changing reporter source bytes changes that wheel's provider digest and can block Analysis readmission even though the renderer is never called. Removing only the reporter entry-point metadata is a different case because `.dist-info` is excluded from the provider digest; whether retained inspection succeeds must be tested with the exact remaining Analysis package and receipt. For the chosen layout, test new publication and retained inspection with reporter source drift; test metadata-only entry-point removal separately.
 
 [Public report admission](../../src/emrys/orchestration/run_coordinator/reporting_operation.py) requires valid Run integrity, a succeeded Attempt and receipt, and complete Results. Blocked reporting or a nonempty unadmitted destination refuses generation rather than adopting present HTML; an admitted complete report is rechecked and reused. Inspect the exact Run before and after reporting, and do not count an HTML file's presence as report completion.
+
+Automatic reporting begins only after the scientific Attempt succeeds. A reporter or publication
+failure returns a reporting failure while leaving complete scientific Results intact
+([`control.py`](../../src/emrys/orchestration/run_coordinator/control.py)). The
+[reporting operation](../../src/emrys/orchestration/run_coordinator/reporting_operation.py)
+publishes a Run-summary transaction before the HTML transaction. Each has a separate immutable
+start and verified marker; once a start exists,
+[publication refuses a second start](../../src/emrys/orchestration/run_coordinator/reporting_boundary.py).
+The example's recovery checks must distinguish reporter/HTML preparation failing before HTML ledger
+entry, after a successful Run-summary transaction, from a failure after HTML start. Record the
+admitted status, ledgers, outputs, and next action in each case; do not promise rerun, cleanup, or
+adoption of partial files.
 
 ### EX-06 — identity and version refusal
 
@@ -184,6 +298,15 @@ These identities sit at different boundaries:
 
 The [installed distribution digest](../../src/emrys/libraries/installed_package_identity.py) excludes `.dist-info` and `.egg-info`. It does not attest `Requires-Dist` metadata or the installed versions of external Python libraries. For a proposed standard-library-only example this is a stated identity limit, not a demonstrated need for new core machinery. A collaborator that uses external Python libraries would require a separate concrete dependency-closure decision if those versions must be bound to scientific behavior.
 
+The persisted module identity does not fingerprint the descriptor's task roster, input/output
+declarations, or resource floors separately from installed bytes. Project admission composes a
+profile once; materialization later readmits and invokes a fresh descriptor
+([`materialization.py`](../../src/emrys/orchestration/run_coordinator/materialization.py)).
+Identical package bytes with environment-dependent descriptor output could therefore change those
+declarations without a direct descriptor-to-profile equality check. This is an **inferred trusted
+provider limit**, not a reproduced defect. Keep the example descriptor deterministic and test
+repeat admission/profile equivalence; a general descriptor-binding change needs separate review.
+
 ### EX-07 — dependency and installation authority
 
 The [provider guide](../../src/emrys/analyses/README.md#collaborator-providers) says Doctor checks declared tools and packages and managed repair does not install
@@ -200,6 +323,11 @@ to make the example look complete.
 The [descriptor](../../src/emrys/analyses/__init__.py) may reuse an existing fixed runtime check by
 ID or declare an executable, R namespace, file, or package-tree check. IDs must be unique and avoid
 reserved/fixed-check collisions; non-R custom targets must be absolute. [Doctor](../../src/emrys/orchestration/run_coordinator/doctor.py) checks those declarations but has no Python-distribution check. Python requirements belong in wheel metadata and explicit package-manager setup; loading the installed example then exercises their availability. Doctor also checks the matching reporter by default, with `--no-report` as a documented execution route for later report generation. A standard-library-only example can avoid an unnecessary custom dependency declaration.
+
+The reporter entry point has no dependency-declaration interface of its own; Doctor's reporter
+readiness check only loads and attributes that callable. A lazy or render-only reporter dependency
+can pass Doctor and fail during HTML preparation. Keep the example reporter within explicit wheel
+requirements and exercise its actual render path in the installed package proof.
 
 ### EX-08 — public-path evidence gap
 
@@ -220,7 +348,9 @@ The public entry route starts with an explicit collaborator `project.yaml`: curr
 and `emrys init synthetic` select the built-in Analysis, without a module-selection option.
 `emrys validate --project PATH` can then admit the external package and configuration. On a Slurm
 profile, a no-write `emrys run` previews submission and returns before external task planning;
-the planner runs after compute delegation. A direct-profile preview can plan tasks, subject to
+that preview checks Project YAML and the selected Analysis name but does **not** load the external
+provider. Provider admission and planning occur after compute delegation. A direct-profile preview
+can plan tasks, subject to
 Doctor and storage readiness. Record these as distinct proof levels rather than calling a Slurm
 submission preview planning evidence. No public external execution has been performed here.
 
@@ -229,7 +359,9 @@ submission preview planning evidence. No public external execution has been perf
 | `emrys validate --project` | Installed Analysis discovery and normalized Project admission. | No Doctor readiness, task plan, or execution. |
 | `emrys doctor --project --analysis` | Selected runtime dependency and reporter readiness. | No worker or validator result. |
 | Direct-profile no-write `emrys run` | Full task planning when Doctor and storage admission pass. | No native publication or report. |
-| Slurm-profile no-write `emrys run` | Scheduler submission preview. | External task planner has not run. |
+| Slurm-profile no-write `emrys run` | Project shape/selection and scheduler submission preview. | External provider admission and task planner have not run. |
+| `emrys report` without `--execute` for complete Results | Run-summary preparation and evidence-index preflight. | Does not invoke the selected reporter or render/check its HTML. |
+| `emrys report --execute` with complete Results and absent reporting | Invokes the reporter and attempts HTML publication; inspection must then admit a complete report. | A reporting failure leaves scientific Results complete and requires state-specific disposition. |
 | Approved grouped Run, exact `inspect`, and `report` | Execution and report claims only when retained Task, Result, and report admissions pass at the tested commit. | No site, scientific-review, or biological claim. |
 
 The smallest supplied real-tool synthetic dataset, `smoke-v1`, contains four libraries with 130
@@ -252,7 +384,8 @@ report; `emrys report --project PROJECT RUN_ID` must re-admit/reuse it. If Resul
 reporting was deliberately skipped, preview that report command before an authorized `--execute`,
 then inspect again. On Slurm, the compute delegate must see the same installed wheels, and report
 generation may itself schedule work. These commands are proposed proof steps, not checks performed
-for this draft.
+for this draft. Report preview is only Run-summary preflight; executed reporting is needed to test
+the selected reporter. Doctor checks reporter discovery and ownership, not rendered content.
 
 ### EX-09 — one collaborator walkthrough
 
@@ -266,6 +399,10 @@ authors. Record the exact tested EMRYS commit and wheel identity alongside inter
 `emrys.analysis-module.v2`; the current core version is `0.1.0.dev0`, so a version pin alone cannot
 distinguish PR heads. Choose the separate example distribution name, version, and license explicitly
 rather than copying the core package's metadata by assumption.
+The current [Analysis owner guide](../../src/emrys/analyses/README.md) says core checks the
+producer and independent validator. The source establishes command-shape admission and runner
+supervision but cannot prove validator independence, code origin, or complete reads. Correct that
+wording during owner-document transfer once the installed example supplies narrower evidence.
 
 ### EX-10 — compression and footprint
 
@@ -305,36 +442,117 @@ existing gate; claim no core coverage credit for unmeasured example code. Count 
 configuration or tooling. Its package name, version, and license terms remain explicit design
 decisions; do not infer them from the core distribution.
 
+The [pre-commit hooks](../../.pre-commit-config.yaml) also name only `src/`, `tests/`, `scripts/`,
+and `setup.py` for Python checks. The [source-dependency gate](../../tests/tools/source_dependencies.py)
+checks `src/emrys`, so it will not police private-owner imports in an external example tree.
+[`test_ci_workflow.py`](../../tests/test_ci_workflow.py) fixes the CI static/wheel command roster and
+manual inputs, while [`test_public_cli_contracts.py`](../../tests/test_public_cli_contracts.py)
+classifies every Make target and compares its command expansion to a golden. If a new gate or Make
+target is chosen, update these protections deliberately. [`all-checks`](../../tests/tools/run_validation.py)
+preflights the exact locked development environment and four lanes; installing a separate example
+wheel into that environment is not an implicit route. Use a disposable package-proof environment
+after resolving the setup policy in EX-07. Keep the external validator's literal ordered check
+roster with its package tests: the existing central Step `09` [roster expectation](../../tests/contract_integration/validation_rosters/validation_roster_expectations.py)
+is for the built-in Analysis, not a universal external Step `09` registry. Any change to generic
+roster authority belongs to the separate [`REPORT-ROSTER-01`](backlog_matrix.md) decision, not this
+example by default.
+
+### EX-12 — trusted extension code
+
+[`admit_installed_provider`](../../src/emrys/libraries/installed_package_identity.py) imports an
+entry point; [`load_analysis_module` and `admit_configuration`](../../src/emrys/analyses/__init__.py)
+call collaborator-supplied provider and normalizer code during Project admission. Planning calls
+the provider's planner, execution runs its commands, and new report publication calls its
+reporter. Distribution ownership and content identity make selected code attributable; they do
+not make it safe to execute or confine its filesystem/network effects. The [worker contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
+explicitly assumes trusted code that keeps relevant work in descendants and owned paths.
+
+The example walkthrough must tell operators to install a trusted, reviewed distribution in the
+selected environment. An example-specific test can assert its commands import installed code
+outside the checkout and use only declared inputs and owned outputs. This does not prove arbitrary
+third-party provider behavior or introduce a new sandbox into EXTENSION-01.
+
+### EX-13 — reporting reconciliation blocks generic Step 09
+
+The [artifact registry](../../src/emrys/reporting/_artifact_index/registry.py) adds outputs from the
+selected external descriptor. But [native reconciliation](../../src/emrys/reporting/_artifact_index/reconciliation.py)
+dispatches solely by Step ID: every complete Step `09` scope goes to the built-in
+[`reconcile_step09`](../../src/emrys/reporting/_artifact_index/reconcile_step09.py), which uses
+unconditional `next(...)` lookups for four paired-CMH adapters. A one-task tally declares its own
+result and validation adapters, so a complete tally scope has none of those four. Source review
+therefore predicts `StopIteration` during Run-summary preparation; that exception is outside the
+operation's handled `ArtifactIndexError` path. This is a **source-derived blocker**, not an observed
+external-Run failure. It affects report preview before the external reporter runs, new publication,
+and the retained Run-summary admission path. Generic adapter registration alone does not close it.
+
+The same Step-only dispatch applies the built-in
+[`reconcile_step10`](../../src/emrys/reporting/_artifact_index/reconcile_step10.py) to any complete
+external Step `10` scope. It requires the built-in context receipt, three built-in CMH Step `09`
+sources, reference inputs, and four built-in context outputs. The proposed single-task example
+avoids Step `10`, so this is a documented limit unless the accepted outcome later requires an
+external Step `10` example. Do not claim optional external Step `10` is reportable from the current
+source.
+
+**Open owner-local design decision:** use the admitted Analysis descriptor/profile to select when
+the existing CMH and context reconcilers apply, while still admitting declared external artifacts
+and independent validation. Preserve the built-in Step `09` source/hash/sample-order defense and
+Step `10` receipt graph defense at equal strength; do not globally remove them or create a parallel
+artifact registry. Audit all first-publication and retained-inspection callers, add built-in parity
+and generic-external tests, and count core-code/test/gate growth under EX-10 before approval. A
+public external Run-summary/report result is necessary to close this row.
+
+### EX-14 — installed watch assumes the built-in tail
+
+The installed [dashboard](../../src/emrys/orchestration/run_coordinator/dashboard.py) labels Step
+`09` as paired-CMH ranking and Step `10` as scientific context. Its default owner-key map names the
+built-in providers. Although `parse_workflow` accepts an override, the production
+[_inspection presentation](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py)
+does not supply one. The dashboard also says reporting begins after Step `10`, which is false for
+the proposed Step `09`-only descriptor. The source suggests an external `analysis_owner` may appear
+unmapped while the overview gives a CMH label; no external Run/watch trace was executed here.
+Test the public display with the installed example and select the smallest owner-local correction
+for truthful labels and next action. Scheduler text remains diagnostic, not completion evidence.
+
 ## Proposed bounded delivery sequence
 
 1. **Refresh the review facts against the exact implementation target.** Recheck PR #304's live head,
    changed source paths, accepted backlog row, and guardrails. Revise any drifted discovery before
    treating a quoted line or contract as current.
 2. **Choose one collaborator method.** Accept or replace the proposed candidate-to-annotated-gene
-   tally. Confirm its full input is available from Step `08`, fits Step `09`/optional `10`, and needs
-   only existing artifact kinds. Stop for separate interface review if it does not fit.
+   tally. Define the pre-CMH population after Step `07` selection and decide inclusion of `NA`,
+   intronic/intergenic, low-depth, non-PASS, and untested rows. Confirm its full input is available
+   from Step `08` and needs only existing artifact kinds. The descriptor fits Step `09`, but EX-13
+   blocks Run-summary/report admission. Review a bounded module-aware reconciliation choice,
+   including first publication and retained inspection, before claiming end-to-end fit. Preserve
+   built-in CMH and Step `10` defenses; leave optional external Step `10` open unless separately
+   demonstrated. Stop for interface review if the selected method needs a new task boundary.
 3. **Freeze literal behavior.** Specify the sites-only input or a reason for each additional
    adapter; define unique-candidate, multi-gene, `NA`, sorting, threshold, zero-row, header-only,
-   newline, and UTF-8 rules. Keep a unit oracle separate from a real-tool public-Run oracle and
-   state that the tally is descriptive, not biological interpretation.
+   newline, UTF-8, and supported GTF-ID rules. Keep a unit oracle, a real Step `08` same-strand
+   overlap fixture, and a real-tool public-Run oracle as distinct proofs. State that the tally is
+   descriptive, not biological interpretation.
 4. **Quote the footprint and seek bounded authority.** Inventory planned new, changed, and retired
    files and net lines by core code, example code, tests, gates, configuration, docs, and state.
-   Preserve the mock's unique checks and all exact evidence. Resolve temporary lock/install policy
-   and obtain implementation plus any quantified `AC-GUARD-006` growth authority before edits.
+   Include the reporting reconciliation and watch-presentation candidates, preserve the mock's
+   unique checks and all exact evidence, and resolve temporary lock/install policy. Obtain
+   implementation plus any quantified `AC-GUARD-006` growth authority before edits.
 5. **Define the external package boundary.** Choose one shared wheel or two separately installed
    wheels after accounting for reporter-source changes in the Analysis digest and the maintenance
    cost of separation. Specify names, versions, licenses, supported exact EMRYS wheel/commit, and
    standard-library or explicit Python requirements. Use package-level matching entry points and
-   distribution-owned callbacks/workers; add no core registry or installer.
+   distribution-owned callbacks/workers; state that installing and admitting the selected package
+   executes trusted code and that admission is not a sandbox. Add no core registry or installer.
 6. **Admit one immutable configuration.** Add a closed JSON schema and normalizer for the selected
    method. Verify unknown-key refusal, equivalent authored forms normalizing to one policy and
-   Analysis ID. Test provider readmission and Attempt runtime bindings separately, including changed
-   module metadata/bytes and target-only drift. State the distribution-version and dependency-field
-   identity limits.
+   Analysis ID. Keep descriptor construction deterministic and check repeated admission/profile
+   equivalence. Test provider readmission and Attempt runtime bindings separately, including
+   changed module metadata/bytes and target-only drift. State the distribution-version,
+   dependency-field, and descriptor-output identity limits.
 7. **Declare and plan one task.** State every input adapter and consumed path, native TSV and
    validation-report outputs, Step/scope, minimum resources, and genuinely needed dependencies.
    Use working outputs for the producer and final outputs for the validator. Verify no-write direct
-   planning, provenance roles, input completeness, path safety, and resource floor.
+   planning, provenance roles, input completeness, path safety, installed command origins, and
+   resource floor. Do not count Slurm submission preview as provider admission or task planning.
 8. **Implement separate producer and validator.** The producer writes deterministic bytes only to
    supplied working paths. The validator reads admitted sites and final published output,
    independently recomputes the tally, and writes the seven-column report to its separate path.
@@ -343,18 +561,27 @@ decisions; do not infer them from the core distribution.
    passing process or generic TSV shape check, or assume automatic continuation after publication.
 9. **Implement one reporter.** Render only from admitted artifact snapshots/projections and return
    identities for any additional report-only files it opens; core rechecks admitted artifacts.
-   Produce a scientific HTML view that satisfies core checks. Verify literal tally content,
-   new-publication refusal, retained reuse, and source/metadata drift for the chosen wheel layout.
+   Read the variable-length tally through its admitted snapshot; the generic projection does not
+   contain every row. Produce a scientific HTML view that satisfies core checks. Verify literal
+   multi-row content, supported Analysis/reporter pairing, new-publication refusal, retained reuse,
+   and source/metadata drift for the chosen wheel layout.
+   Exercise failure before and after HTML ledger start, keeping scientific Results and reporting
+   status separate; report preview does not prove the reporter.
 10. **Add the package-specific quality lane.** Choose an intentional test selection and package
-    lint/format/compile/build checks. Keep the existing core wheel test and Python shard scope
-    honest; do not claim core coverage for an unmeasured example or expand local checks into heavy
-    science computation.
+    lint/format/compile/build checks. Route pre-commit and source-import checks as appropriate;
+    update CI-command and Make-target contract tests for any changed gate. Keep the locked
+    development environment, existing core wheel test, and Python shard scope honest; do not
+    claim core coverage for an unmeasured example or expand local checks into heavy science
+    computation.
 11. **Exercise the installed public route.** After disposable setup authority, test the core and
     selected example wheels outside the checkout with missing/duplicate entry-point refusal and no
     checkout import leakage. After execution authority, use an explicitly authored Project for
     public validation, Doctor, preview, Run, inspect, and report. On Slurm, count preview as
-    submission evidence only; require compute-delegate task planning and an admitted successful
-    report at the exact commit.
+    submission evidence only; require compute-delegate provider admission and task planning.
+    Count report preview as Run-summary preflight only; require executed reporting and an admitted
+    successful report at the exact commit. Exercise installed watch with the external owner and
+    Step `09`-only tail; correct misleading CMH/Step `10` presentation without making diagnostic
+    text a completion authority.
 12. **Transfer documentation and reconcile acceptance.** Put the runnable walkthrough beside the
     package; link owner guides and retire only demonstrably duplicated hypothetical prose. Compare
     literal expected bytes, tests, hosted checks, retained artifacts, and footprint against each
@@ -364,9 +591,10 @@ decisions; do not infer them from the core distribution.
 
 ## Open decisions before implementation
 
-Resolve the selected method's edge cases and expected output; one shared wheel versus separate
-Analysis/reporter wheels; package metadata and license; the quantified growth exception and
-disposable lock/install policy; and the smallest complete CI scenario. For each new discovery,
+Resolve the Step `09` reporting reconciliation blocker and built-in parity; the selected method's
+edge cases and expected output; one shared wheel versus separate Analysis/reporter wheels and
+their version pairing; watch presentation; package metadata and license; the quantified growth
+exception and disposable lock/install policy; and the smallest complete CI scenario. For each new discovery,
 identify its exact revision and source or executed artifact, then revise the corresponding matrix
 row. A source inference stays labeled as such until an actual public-path check supplies execution
 evidence.
