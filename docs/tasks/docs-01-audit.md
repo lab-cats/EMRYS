@@ -124,6 +124,10 @@ permission to change or delete the source.
   source-attestation path. Four installed-package observations remain before
   producer entry, but the historical 24-Git-call count no longer describes
   that path. This is a source count, not a timing measurement.
+- The eighteenth read-only pass at `cf94af08` compared runtime, reporting,
+  and Step 08/09 owner descriptions with their current source. It narrowed
+  F22 and added F65–F66. These are static documentation observations; no
+  execution, guide change, or scientific conclusion followed.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -178,7 +182,7 @@ and the boundary for each row.
 | [F19](docs-01-discoveries.md#f19-doctor-experiment-evidence-in-workflow-readme) | Evidence placement | CI workflow README repeats a shorter Doctor experiment summary already detailed in the CV backlog. | Use the CV card as evidence source before considering a history transfer. |
 | [F20](docs-01-discoveries.md#f20-independent-golden-migration-comparisons) | Evidence placement | Independent-golden README mixes current oracle use with successive migration history. | Preserve comparison evidence before shortening owner instructions. |
 | [F21](docs-01-discoveries.md#f21-coordinator-contracts-no-write-section) | Navigation candidate | Coordinator contract has a 632-line no-write section without subheadings; one owner-index link names watch selection but lands on the later Run/Results section. | Account for both contract sections when tracing selection, admission, and recovery; no deletion inferred. |
-| [F22](docs-01-discoveries.md#f22-coordinator-cross-owner-detail) | Ownership question | Coordinator, logging, runtime, and Runbook descriptions overlap but have different trust boundaries, including narrow styling and watch-key repeats. | Distinguish repeated summaries from unique prompt, diagnostic, and action rules. |
+| [F22](docs-01-discoveries.md#f22-coordinator-cross-owner-detail) | Ownership question | Coordinator, logging, runtime, and Runbook descriptions have narrow overlaps across distinct trust boundaries; coordinator publication details and runtime seal formats are unique. | Distinguish repeated summaries from unique prompt, diagnostic, and action rules. |
 | [F23](docs-01-discoveries.md#f23-init-details-in-the-runbook) | Compression candidate | Baseline Runbook Init guidance mixes operator choices with hashing and file-identity internals; the PR head removes 40 net lines from that section. | Check the current-head reader route with F05; the audit does not close DOCS-01. |
 | [F24](docs-01-discoveries.md#f24-named-profile-procedure-placement) | Audience question | Config guide holds a long named-profile operator procedure while Runbook routes there. | Decide whether Runbook needs a concise command path and config guide the format. |
 | [F25](docs-01-discoveries.md#f25-reporting-decision-versus-migration-history) | Compression candidate | Reporting decision retains predecessor failure provenance and some retired-symbol inventory. | Preserve predecessor and recovery limits; compare narrow symbol inventory with current owners. |
@@ -221,6 +225,8 @@ and the boundary for each row.
 | [F62](docs-01-discoveries-third.md#f62-benchmark-value-can-be-label-only) | Benchmark evidence ceiling | Scripts guide says the helper measures commands at declared resource values; producer argv need not contain the value placeholder. | Actual resource substitution depends on manifest argv; no benchmark was run. |
 | [F63](docs-01-discoveries-third.md#f63-background-cohort-in-the-scientist-diagram) | Diagram ambiguity | Scientist diagram depicts an optional background cohort entering only ranking; selected background samples traverse upstream processing. | The optional filter acts during ranking; no source behavior defect was observed. |
 | [F64](docs-01-discoveries-third.md#f64-star-mechanics-in-a-scientific-decision) | Responsibility overlap | Scientific pipeline decision repeats STAR derivation and compatibility mechanics in config and coordinator owners. | Original-study values, rationale, and cited manual remain distinct decision context. |
+| [F65](docs-01-discoveries-third.md#f65-report-template-owner-description) | Ownership wording | Template README credits Python view builders with title, introduction, sections, and end note; the packaged template defines these elements and Python supplies values. | The discrepancy is in owner description, not observed output. |
+| [F66](docs-01-discoveries-third.md#f66-step-09-qc-summary-input-scope) | Input-scope wording | Step 08/09 guides say CMH does not consume the Step 08 QC summary; producer and validator omit it, but the Run task declares and binds it as an input. | Distinguish computational reads from Run dependency and stability checks. |
 
 ## Discovery notes
 

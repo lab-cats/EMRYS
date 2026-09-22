@@ -443,10 +443,13 @@ in the broad no-write section, so its navigation precision remains limited.
 The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 236–287 owns Doctor observation and admission timing; the
 [logging contract](../design/LOGGING_CONTRACT.md) lines 172–189 owns emitted
-event shape and flushing. Coordinator runtime orchestration at lines 313–339
+event shape and flushing. Coordinator runtime orchestration at lines 326–339
 overlaps the
 [runtime owner](../../src/emrys/evidence/runtime_availability/README.md)
-lines 59–104, which owns the closed seal and fixed-content boundary. Watch
+lines 85–104 on generation replacement, exact selectors, and fixed-content
+limits. Coordinator lines 313–325 separately explain cross-Project publication,
+no-write behavior, prompts, and output; runtime-owner lines 70–83 define the
+seal and selector formats. Watch
 keys at contract lines 622–624 also appear in the Runbook table at lines
 96–104; presentation lines 289–297 overlap label/value and plain-output rules
 in the [logging owner](../../src/emrys/libraries/application_logging/README.md)
