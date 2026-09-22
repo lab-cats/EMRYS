@@ -14,16 +14,19 @@ The source review is pinned to [PR #304](https://github.com/lab-cats/EMRYS/pull/
 head `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`. PR #303 is a sibling,
 not part of that head. The checkout used for this document started clean at the
 named commit. [PR #307](https://github.com/lab-cats/EMRYS/pull/307) head
-`f32260f0408fe1826af401fc1ddce0f2478ae6ce` descends from that commit;
+`ba1fbdd3cc56196fc2ece35b73ddba56b786d223` descends from that commit;
 its two-file delta adds selected Doctor timing checks to the synthetic E2E
 runner and updates the CV-26 record. It changes no product owner, Quickstart,
 or INTERACTIVE-01 text cited below. [PR #316](https://github.com/lab-cats/EMRYS/pull/316)
-is a separate open sibling implementing part of INIT-02; its changes are also
-compared, not included in this documentation branch. Source, owner contracts,
-tests, and guides were inspected; no product test, installed-command trial,
-PTY walkthrough, dependency
-installation, or Viking execution has been completed. The line references below
-are to the pinned source revision and must be rechecked if the target changes.
+and [PR #320](https://github.com/lab-cats/EMRYS/pull/320) are separate open
+branches proposing INIT-02 study selection and CV-U22 runtime donor selection;
+their changes are compared, not included in this documentation branch.
+PR #320 is stacked on an earlier #316 head, so its integration remains to be
+reconciled. Source, owner contracts, tests, and guides were inspected; no
+product test, installed-command trial,
+PTY walkthrough, dependency installation, or Viking execution has been completed.
+The line references below are to the pinned source revision and must be
+rechecked if the target changes.
 
 The proposed journey begins once `emrys` is installed on the Viking head node.
 The [Quickstart](../../quickstart.md) still owns the preceding uv, Pixi, clone,
@@ -39,12 +42,12 @@ creation or completion.
 | --- | --- | --- | --- |
 | [1](#1-public-entry-and-manual-route) | Public entry | Bare `emrys` currently requires a command. Explicit owner commands already provide manual control. | Select the guided entry, default transition, manual route, and nonterminal behavior. |
 | [2](#2-bootstrap-and-saved-settings) | Setup | Setup is checkout-bound, defaults to a dry-run, and creates one `.env` only with `--execute`; the CLI loads saved settings once before dispatch. | Decide same-invocation approval and exact propagation of newly saved values. |
-| [3](#3-project-context) | Project | Named Init uses the selected Projects home or current directory; Project-aware commands use an exact Project path. | Define new versus existing selection without newest-Project or partial-root inference. |
+| [3](#3-project-context) | Project | Named Init uses the selected Projects home or current directory; Project-aware commands use an exact Project path and never search parents for one. | Define new versus existing selection without newest-Project or partial-root inference. |
 | [4](#4-scientific-input-questions) | Scientific intent | Init already asks for reference, FASTQs, assignments, comparison, regions, target, and disclosed defaults. | Reuse its questions; review a complete prompt transcript and refusal paths. |
 | [5](#5-maintained-study-selection) | Study selection | This branch still needs an explicit EV/PUM1 manifest; sibling PR #316 proposes an explicit packaged selection. | Reconcile that pending implementation and verify installed-package and novice behavior. |
 | [6](#6-project-preview-and-publication) | Init approval | Init confirms after review and preserves create-absent and input-change checks. Decline and creation can both return zero. | Expose an owner outcome without parsing text or treating file presence as proof. |
-| [7](#7-read-only-project-validation) | Validation | Existing validation re-admits Project inputs and scientific compatibility without writing. | Pass the exact selected Project; stop on failure without promoting it to runtime proof. |
-| [8](#8-runtime-source-and-admission) | Runtime | Discovery uses an explicit donor or current environment, previews probes, then confirms and rechecks admission. Donor reuse can write in two Projects. | Keep source choice explicit, report both mutation paths, and preserve partial evidence. |
+| [7](#7-read-only-project-validation) | Validation | Existing validation re-admits Project inputs and scientific compatibility without writing, including FASTQ content rehashing. | Budget repeated reads and stop on failure without promoting it to runtime proof. |
+| [8](#8-runtime-source-and-admission) | Runtime | This branch uses an exact donor or current environment; sibling PR #320 proposes a bounded donor picker. Reuse can write in two Projects. | Keep source choice explicit, report both mutation paths, and preserve partial evidence. |
 | [9](#9-doctor-readiness-and-repair) | Doctor | Diagnosis is read-only; confirmed maintenance and Slurm qualification remain Doctor-owned. | Distinguish ready, declined, blocked, and repaired outcomes; carry one exact profile. |
 | [10](#10-direct-and-slurm-run-approval) | Run | Direct execution confirms a frozen Run plan. Slurm confirms a submission/resource request; its Run plan is built later on compute. | Specify truthful review language and retain duplicate-request refusal. |
 | [11](#11-submission-and-watch-handoff) | Monitoring | Submission retains a request before `sbatch`. Numeric `watch JOB_ID` is scheduler-only diagnostic selection. | Hand off the exact Project request, then re-admit any later Run association. |
@@ -100,12 +103,18 @@ at `test_onboarding.py` lines 212 and 301.
 and requires an absent child of a canonical writable parent (`onboarding.py`
 lines 464-492 and 1261-1269). `project_definition_path` accepts a current
 Project or one exact directory/YAML selector and rejects path aliases (lines
-270-295). The existing Run selector never chooses the latest Run
+270-295). Its implicit selection is only `project.yaml` in the current
+directory: it does not search parents or a global Project registry. The
+existing Run selector never chooses the latest Run
 ([coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#public-model-and-admission)).
 
-**To settle.** Specify a new/existing choice and retain the selected absolute
-Project path across validation, Doctor, Run, and inspection. A fresh Setup starts
-inside the checkout; returning use from elsewhere needs an exact Project path.
+**To settle.** Specify a new/existing choice and retain the canonical absolute
+`project.yaml` path returned by admission across validation, Doctor, Run, and
+inspection. A fresh Setup starts inside the checkout; returning use from
+elsewhere needs an exact Project path.
+Creating a new Project outside the checkout also needs an explicitly carried
+Projects home, because `.env` is loaded only from the current directory's
+ancestry. Do not silently fall back to the return directory as the new home.
 Do not select by directory order, adopt an incomplete creation, or infer a
 Project from scheduler text. Check missing, ambiguous, external, and changed
 paths using the existing path admission owner.
@@ -160,7 +169,7 @@ the exact 25-name selection, missing contigs, and the existing explicit-manifest
 and generic-region routes. Do not add another selector validator.
 
 **Pending sibling implementation.** PR #316 head
-`0e4c42245c65b1b60c2295747e8b2b39abbca33f` adds a yes/no EV/PUM1
+`bd3f1399305732e76435679e08c504ad6793010b` adds a yes/no EV/PUM1
 whole-sequence offer after the user has assigned exactly those two conditions
 and left partition selectors absent. Acceptance reads a packaged 25-name TSV
 through the existing partition admission; refusal continues to generic regions,
@@ -178,7 +187,10 @@ confirms creation. Enter, no, EOF, `--preview`, and nonterminal omission of
 `--execute` leave it uncreated; successful creation and declined preview can
 both return zero (`onboarding.py` lines 1261-1398). Preview avoids FASTQ
 content hashing; creation hashes each FASTQ once, rechecks inputs and reference,
-and publishes `project.yaml` last. Failure preserves partial state
+and publishes `project.yaml` last. Scientific and input refusal before
+publication creates no Project. Publication reserves an absent output
+directory, writes `project.yaml` last, then re-admits the tree; a failure here
+retains any partial directory and even a present `project.yaml` may be invalid
 ([contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries)).
 
 **To settle.** A composed guide must receive an explicit owner result for
@@ -192,30 +204,61 @@ publication, and exact created identity (`test_onboarding.py` lines 328-558 and
 
 **Observed.** `validate_project` returns a Project admission and reference,
 annotation, sample, and partition compatibility observations without invoking
-external tools (`onboarding.py` lines 1686-1815). It is a read-only input and
-configuration check, not runtime qualification or scientific proof.
+external tools (`onboarding.py` lines 1686-1815). It rehashes declared FASTQ
+bytes without decoding their records, and checks reference/partitions across
+all Analyses (`normalization.py` lines 238-257 and 345-365). Runtime discovery,
+Doctor, and direct Run repeat relevant admission at their own boundaries. It is
+a read-only input and configuration check, not a cheap metadata lookup, runtime
+qualification, or scientific proof.
 
-**To settle.** Validate the exact selected Project and stop the journey on an
-invalid or changed input. Reuse its admission; do not create a second validator
-or present `PASS` as readiness to submit. Check multiple Analyses, failures,
-concise/plain output, and no-write behavior.
+**To settle.** Validate the exact selected Project and stop if its current
+admission fails. The resulting observation neither compares FASTQ bytes with
+those at Init nor guarantees they remain unchanged after validation. Reuse this
+capability while leaving later owners' fresh admission intact; budget repeated
+FASTQ reads and do not add a second validator or present `PASS` as readiness to
+submit. Check multiple Analyses, failures, concise/plain output, and no-write
+behavior.
 
 ### 8. Runtime source and admission
 
 **Observed.** Runtime discovery probes the current declared environment unless
 an exact `--from-project` donor is given (`onboarding.py` lines 2268-2356).
 Preview and refusal write nothing; confirmation rechecks bindings and publishes
-the selected inventory. Both refusal and admission can return zero. Reusing an
+the selected inventory. Current-environment admission creates an absent
+`runtime.tsv`; rerunning `--execute` with an existing inventory refuses and
+preserves it. Both refusal and admission can return zero. Reusing an
 unsealed donor may first publish its `runtime/shared.json`, then the borrowing
 Project's `runtime.tsv`; a borrower failure can retain donor seal/claim evidence
 ([contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries),
 lines 313-320). General compatible-donor discovery remains with CV-U22.
+Donor reuse refuses the same Project as donor/borrower, an unresolved donor
+claim, or a borrower inventory that would be replaced without explicit
+`--replace`. Replacement is limited to an existing shared selection from that
+same donor (`onboarding.py` lines 2105-2151 and 2231-2251).
 
 **To settle.** Ask for an explicit known donor or use the current-environment
 route. Review both Projects' possible writes before confirmation; never promise
 atomic rollback, silently replace a selection, or retry over retained partials.
-Expose an exact admitted/declined owner result. Existing protection cases include
+First distinguish an existing admitted inventory, which can continue to Doctor,
+from an absent inventory needing discovery or Doctor preparation. Keep
+`--replace` as the owner's explicit same-donor operation.
+
+The present Quickstart skips runtime discovery when there is no smoke-test donor
+and proceeds to Doctor, so the guide must settle whether discovery is needed
+for each path rather than make it unconditional. Expose an exact
+admitted/declined owner result. Existing protection cases include
 `test_onboarding.py` lines 2993, 3124, 3190, 3286, and 3338.
+
+**Pending sibling implementation.** PR #320 head
+`62b874785b88d1edf29747bf54241461338d021a` makes a bare
+`--from-project` on a terminal list at most 256 immediate Projects under the
+canonical Projects home with runtime inventories. The list is explicitly
+unverified; a numbered choice still runs the existing donor admission.
+Omitting a choice returns zero without a write. A bare source in a nonterminal
+call, or combined with `--execute`/`--replace`, is refused. This proposal is
+absent here, its base predates PR #316's current head, and hosted/site evidence
+is pending. A future guide must recheck the integrated result; it must not
+interpret a listed candidate or zero exit as admitted reuse.
 
 ### 9. Doctor readiness and repair
 
