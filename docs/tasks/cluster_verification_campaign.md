@@ -146,10 +146,10 @@ historical observations; neither requires causal reconstruction. New failures
 found during verification belong with their existing source or operational
 owner. Doctor validation, runtime inspection, CLI planning, application logging,
 lifecycle recovery and reporting publication retain their existing authorities.
-`INIT-02` still needs hosted and novice acceptance of its explicit guided study
-choice. CV-U22's donor picker needs exact hosted and institutional acceptance;
-its listed inventories are not compatibility proof until the selected reuse
-plan passes.
+`INIT-02` passed exact branch-head hosted CI and still needs novice acceptance
+of its explicit guided study choice. CV-U22's donor picker passed exact
+branch-head hosted CI and still needs institutional acceptance; its listed
+inventories are not compatibility proof until the selected reuse plan passes.
 
 ## Completion and handoff
 
@@ -204,8 +204,9 @@ Campaign closure requires:
 - The [optimization campaign](optimization_campaign.md) owns future tuning
   candidates. CV-26's source reduction removed one full head diagnosis while
   retaining exact readmission, storage finalization and final readiness.
-  CV-26 remains Open for its original complete-operation attribution,
-  comparable before/after measurements and institutional E11 timing. The
+  The owner superseded CV-26's original full-attribution and institutional E11
+  timing criteria on 2026-09-22. CV-26 is Completed to its structural outcome
+  and exact hosted checks; E11 remains historical and unexplained. The
   structural change alone establishes no speedup.
 - The [polish campaign](polish-campaign.md) retains earlier audit observations.
   Its overlap is reconciled through the existing main-matrix owners, not a
