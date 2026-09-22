@@ -1,0 +1,329 @@
+# INTERACTIVE-01 guided operation discovery
+
+This working record supports [INTERACTIVE-01](backlog_matrix.md#deferred-operational-work).
+The main backlog alone owns its status, priority, outcome, and acceptance. Finding
+numbers below are navigation, not new backlog items or implementation approval.
+The [CV-U19 record](cluster_verification_backlog.md#cv-u19-long-term-interactive-cli)
+preserves the operator's eventual direction: guided setup and analysis launch by
+default, with an optional manual route. It does not select a prompt sequence,
+transition, or `--advanced` spelling.
+
+## Review basis and evidence limit
+
+This first discovery pass reads [PR #304](https://github.com/lab-cats/EMRYS/pull/304)
+head `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`. PR #303 is a sibling,
+not part of that head. The checkout used for this document started clean at the
+named commit. Source, owner contracts, tests, and guides were inspected; no
+product test, installed-command trial, PTY walkthrough, dependency installation,
+or Viking execution was performed for this pass. The line references below are
+to that pinned source revision and must be rechecked if the target changes.
+
+The proposed journey begins once `emrys` is installed on the Viking head node.
+The [Quickstart](../../quickstart.md) still owns the preceding uv, Pixi, clone,
+and locked-environment installation because an EMRYS CLI cannot run before it
+is installed. This scope boundary is a proposal to settle, not a narrowing of
+the accepted backlog outcome. For the Viking path, the intended endpoint is one
+confirmed Slurm submission and an exact inspection handoff, never inferred Run
+creation or completion.
+
+## Findings matrix
+
+| No. | Boundary | Source-grounded discovery | Unsettled choice or next evidence |
+| --- | --- | --- | --- |
+| [1](#1-public-entry-and-manual-route) | Public entry | Bare `emrys` currently requires a command. Explicit owner commands already provide manual control. | Select the guided entry, default transition, manual route, and nonterminal behavior. |
+| [2](#2-bootstrap-and-saved-settings) | Setup | Setup is checkout-bound, dry-run-first, and creates one `.env`; the CLI loads saved settings once before dispatch. | Decide same-invocation approval and exact propagation of newly saved values. |
+| [3](#3-project-context) | Project | Named Init uses the selected Projects home or current directory; Project-aware commands use an exact Project path. | Define new versus existing selection without newest-Project or partial-root inference. |
+| [4](#4-scientific-input-questions) | Scientific intent | Init already asks for reference, FASTQs, assignments, comparison, regions, target, and disclosed defaults. | Reuse its questions; review a complete prompt transcript and refusal paths. |
+| [5](#5-maintained-study-selection) | Study selection | The EV/PUM1 25-name manifest is still supplied explicitly; `INIT-02` owns using it after an explicit study choice. | Set the dependency on `INIT-02` and verify installed-package availability. |
+| [6](#6-project-preview-and-publication) | Init approval | Init confirms after review and preserves create-absent and input-change checks. Decline and creation can both return zero. | Expose an owner outcome without parsing text or treating file presence as proof. |
+| [7](#7-read-only-project-validation) | Validation | Existing validation re-admits Project inputs and scientific compatibility without writing. | Pass the exact selected Project; stop on failure without promoting it to runtime proof. |
+| [8](#8-runtime-source-and-admission) | Runtime | Discovery uses an explicit donor or current environment, previews probes, then confirms and rechecks admission. Donor reuse can write in two Projects. | Keep source choice explicit, report both mutation paths, and preserve partial evidence. |
+| [9](#9-doctor-readiness-and-repair) | Doctor | Diagnosis is read-only; confirmed maintenance and Slurm qualification remain Doctor-owned. | Distinguish ready, declined, blocked, and repaired outcomes; carry one exact profile. |
+| [10](#10-direct-and-slurm-run-approval) | Run | Direct execution confirms a frozen Run plan. Slurm confirms a submission/resource request; its Run plan is built later on compute. | Specify truthful review language and retain duplicate-request refusal. |
+| [11](#11-submission-and-watch-handoff) | Monitoring | Submission retains a request before `sbatch`. Numeric `watch JOB_ID` is scheduler-only diagnostic selection. | Hand off the exact Project request, then re-admit any later Run association. |
+| [12](#12-return-recovery-and-completion) | Return | Inspection owns completion and recovery from admitted evidence, including ambiguous requests. | Define re-entry without persistent wizard state or automatic resubmission. |
+| [13](#13-owner-results-and-maintenance-footprint) | Composition | Several public handlers return zero for both no-write preview and success; owners already implement admission, repair, and scheduling. | Audit private outcomes and caller-complete consolidation; quantify any product-growth exception. |
+| [14](#14-presentation-documentation-and-proof) | Acceptance | The Quickstart still chains separate commands; terminal and evidence levels have distinct contracts. | Draft novice wording, terminal cases, hosted checks, and separate Viking acceptance. |
+
+## First-pass discoveries
+
+### 1. Public entry and manual route
+
+**Observed.** [`__main__.py`](../../src/emrys/__main__.py) lines 224-241 and
+349-384 registers owner commands and errors if `COMMAND` is absent. `--help`,
+`--version`, and explicit commands already have public behavior. The installed
+CLI is the interaction owner and carries no scientific semantics
+([architecture](../architecture/ARCHITECTURE.md#responsibility-boundaries)).
+
+**To settle.** A candidate is bare `emrys` on a TTY for guidance, retaining
+explicit subcommands as the manual route. An explicit guide command or an
+`--advanced` flag would change the public surface differently. Check TTY and
+non-TTY invocation, help/version, unknown flags, exits, and installed-command
+parity before selecting a transition. No spelling is approved here.
+
+### 2. Bootstrap and saved settings
+
+**Observed.** [`onboarding.py`](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+lines 153-260 loads the nearest marked `.env` only from the current directory's
+ancestry. Process values take precedence. Setup requires an EMRYS checkout,
+shows Projects home/site/log root, returns zero on either preview or publication,
+and writes an absent mode-`0600` `.env` only with `--execute`.
+[`__main__.py`](../../src/emrys/__main__.py) lines 349-358 loads that environment
+once before parsing. A setting published later in the same invocation has not
+automatically changed the already parsed defaults.
+
+**To settle.** Show a distinct save confirmation in the guide and carry the
+admitted values explicitly to following stages. Do not overwrite existing
+settings, search an unrelated checkout, or create global Project, profile,
+runtime, or scientific defaults. Check refusal/EOF, an existing `.env`, process
+precedence, and a returning user outside the checkout. Existing coverage starts
+at `test_onboarding.py` lines 212 and 301.
+
+### 3. Project context
+
+**Observed.** Named Init selects `EMRYS_PROJECTS_ROOT` or the current directory
+and requires an absent child of a canonical writable parent (`onboarding.py`
+lines 464-492 and 1261-1269). `project_definition_path` accepts a current
+Project or one exact directory/YAML selector and rejects path aliases (lines
+270-295). The existing Run selector never chooses the latest Run
+([coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#public-model-and-admission)).
+
+**To settle.** Specify a new/existing choice and retain the selected absolute
+Project path across validation, Doctor, Run, and inspection. A fresh Setup starts
+inside the checkout; returning use from elsewhere needs an exact Project path.
+Do not select by directory order, adopt an incomplete creation, or infer a
+Project from scheduler text. Check missing, ambiguous, external, and changed
+paths using the existing path admission owner.
+
+### 4. Scientific input questions
+
+**Observed.** Init already collects admitted reference FASTA/GTF, recognized
+FASTQ pairs, study or per-sample strandedness, conditions and pairing groups,
+comparison direction where it is unambiguous to offer both directions, partition
+source, target change, and disclosed paired-CMH defaults (`onboarding.py` lines
+654-704, 812-893, 939-1096, and 1163-1258). An explicit comparison direction
+and selected reference regions are scientific intent, not site defaults.
+
+**To settle.** Compose the existing prompts and review rather than create a
+second scientific question set. Draft a complete plain-English transcript for
+two-condition, mixed-strand, multi-condition, background, and invalid-input
+cases. Keep color optional and every default readable with `NO_COLOR`. Inspect
+the current prompt tests at `test_onboarding.py` lines 609-728 and 1092-1152.
+
+### 5. Maintained study selection
+
+**Observed.** [Quickstart](../../quickstart.md) lines 92-110 still passes
+`configs/step_07_partitions.primary_contigs.tsv` explicitly. Init supports a
+supplied partition manifest or generic regions, validates the selected names,
+and copies normalized content (`onboarding.py` lines 685-704 and 1027-1160).
+The [INIT-02 backlog row](backlog_matrix.md#novice-setup-and-operational-follow-up)
+remains Open for a guided EV/PUM1 study choice that supplies the maintained
+selection without a manifest path, including its installed-package supply. Its
+completion cannot be assumed from a checkout file or inferred from `viking`, a
+Project name, or FASTA headers.
+
+**To settle.** Reconcile INTERACTIVE-01's journey with the separate INIT-02
+outcome before proposing an automatic study route. Check the installed package,
+the exact 25-name selection, missing contigs, and the existing explicit-manifest
+and generic-region routes. Do not add another selector validator.
+
+### 6. Project preview and publication
+
+**Observed.** Init reviews the interpreted study, then explicit `y`/`yes`
+confirms creation. Enter, no, EOF, `--preview`, and nonterminal omission of
+`--execute` leave it uncreated; successful creation and declined preview can
+both return zero (`onboarding.py` lines 1261-1398). Preview avoids FASTQ
+content hashing; creation hashes each FASTQ once, rechecks inputs and reference,
+and publishes `project.yaml` last. Failure preserves partial state
+([contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries)).
+
+**To settle.** A composed guide must receive an explicit owner result for
+`created` versus `previewed/declined`; it must not parse `Project ready`, trust
+an exit code, or rely on path existence. Keep public exits and text unchanged.
+Check refusal, input changes during review, one-pass hashing, partial
+publication, and exact created identity (`test_onboarding.py` lines 328-558 and
+1011-1044).
+
+### 7. Read-only Project validation
+
+**Observed.** `validate_project` returns a Project admission and reference,
+annotation, sample, and partition compatibility observations without invoking
+external tools (`onboarding.py` lines 1686-1815). It is a read-only input and
+configuration check, not runtime qualification or scientific proof.
+
+**To settle.** Validate the exact selected Project and stop the journey on an
+invalid or changed input. Reuse its admission; do not create a second validator
+or present `PASS` as readiness to submit. Check multiple Analyses, failures,
+concise/plain output, and no-write behavior.
+
+### 8. Runtime source and admission
+
+**Observed.** Runtime discovery probes the current declared environment unless
+an exact `--from-project` donor is given (`onboarding.py` lines 2268-2356).
+Preview and refusal write nothing; confirmation rechecks bindings and publishes
+the selected inventory. Both refusal and admission can return zero. Reusing an
+unsealed donor may first publish its `runtime/shared.json`, then the borrowing
+Project's `runtime.tsv`; a borrower failure can retain donor seal/claim evidence
+([contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries),
+lines 313-320). General compatible-donor discovery remains with CV-U22.
+
+**To settle.** Ask for an explicit known donor or use the current-environment
+route. Review both Projects' possible writes before confirmation; never promise
+atomic rollback, silently replace a selection, or retry over retained partials.
+Expose an exact admitted/declined owner result. Existing protection cases include
+`test_onboarding.py` lines 2993, 3124, 3190, 3286, and 3338.
+
+### 9. Doctor readiness and repair
+
+**Observed.** [`doctor.py`](../../src/emrys/orchestration/run_coordinator/doctor.py)
+lines 484-738 has a read-only diagnosis with blockers and selected-profile
+readiness. A saved Viking site does not admit an implicit direct profile. The
+confirmed `--repair` path alone may use established package managers and, for
+Slurm placement, qualifies compute runtime/storage then finalizes on the head
+node (lines 1537-1785 and 2023-2134). Head readiness alone does not skip that
+site qualification. Declined or blocked repair can both return one.
+
+**To settle.** Carry the same explicitly selected profile into Doctor and Run.
+Keep diagnosis, repair approval, package installation, and qualification with
+Doctor; distinguish `already ready`, `declined`, `blocked`, and `qualified` in an
+owner result. Preserve one maintenance log and retained partial evidence. Check
+read-only diagnosis and refusal (`test_doctor.py` lines 432, 972, 1077, 2575).
+
+### 10. Direct and Slurm Run approval
+
+**Observed.** Direct `run` builds and shows one frozen plan before its execution
+confirmation (`control.py` lines 1766-1789). For Slurm, `_finish_control` calls
+`_schedule` *before* building the Run plan (lines 1755-1765); the head node
+shows the Analysis label and admitted allocation request, while the immutable
+Run plan is built on the compute delegate. The retained duplicate-request
+check refuses a matching active or unconfirmed request before `sbatch` unless
+the operator explicitly supplies the advanced override (lines 1104-1165).
+
+**To settle.** Describe the Slurm screen as a submission/resource preview,
+not a frozen Run-plan review. A stronger pre-submission scientific preview would
+need its own approved design without claiming head-side compute admission.
+Never auto-add the duplicate override, retry, or treat an absent Run as proof
+that a queued job is gone. Preserve the direct and Slurm approval boundaries;
+see `test_materialization.py` lines 3048, 3158, 4692, 4783, and 5027-5218.
+
+### 11. Submission and watch handoff
+
+**Observed.** Control writes an exact `submission-<uuid>` request context before
+`sbatch`, then prints the request, scheduler ID/name, streams, and a
+submission-only statement (`control.py` lines 1172-1225). A numeric
+`emrys watch JOB_ID` selects raw scheduler diagnostics and excludes Project/Run
+admission (lines 2656-2724 and 3016-3027). The Project inspection owner can
+watch an exact retained request using `inspect --project PROJECT --submission
+REQUEST --watch`; its later association with a Run is separately re-admitted.
+
+**To settle.** Return the exact request identity from the submission owner to
+the guide without parsing stdout. Offer watch on that Project request, not a
+job-ID-only path presented as verified Run inspection. An interrupted or
+unconfirmed submission retains evidence and does not trigger an automatic
+second submission. Check request ambiguity, delayed Run creation, and exact
+handoff (`test_run_locator.py` and `test_slurm_submission.py`).
+
+### 12. Return, recovery, and completion
+
+**Observed.** Project watch inventories requests and Runs without choosing the
+newest (`control.py` lines 226-329 and 3033-3075). A refresh may admit a later
+request-to-Run association; failed re-verification clears earlier admission.
+Completion and recovery come from admitted Attempt, Results, and reporting
+evidence, not a scheduler success line or file presence
+([inspection owner](../../src/emrys/orchestration/run_coordinator/README.md)).
+
+**To settle.** Re-entry should ask for or show exact Project/request/Run choices
+and then use existing Inspect/Watch and supported recovery action. Do not add
+persistent last-used selection, automatic resume, or auto-reporting. A queued
+submission may have no Run yet. Check reconnect, multiple submissions for one
+Run, unknown scheduler state, and failed re-verification.
+
+### 13. Owner results and maintenance footprint
+
+**Observed.** Setup, Init, runtime admission, and direct/Slurm Run return zero
+for both a declined no-write preview and an action (`onboarding.py` lines
+252-257, 1313-1398, 2341-2356; `control.py` lines 1165-1225 and 1769-1789).
+The CLI already owns dispatch, Init owns scientific admission/publication,
+Doctor owns repair, and Control owns Run/submission. Their yes/no prompts make
+different trust decisions; similar text alone does not justify one policy owner.
+
+**To settle.** Evaluate private structured outcomes at each real owner boundary
+while keeping the public integer adapter and output contract. Compare exact
+input, EOF, stream, and exit semantics before consolidating prompt mechanics.
+Inventory duplicate code, callers, compatibility, tests, docs, scripts,
+configuration, and mutable state; record product lines/files separately from
+tests, docs, and evidence. Existing `argparse`, `sys.stdin`, `pathlib`, Rich,
+and the installed terminal-menu dependency appear sufficient. Do not add a
+second validator, scheduler reader, wizard store, shell wrapper, or dependency
+without a demonstrated gap. The [architecture guardrails](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails)
+default to meaningful net product-code reduction and no product-file growth;
+any measured exception needs separate approval.
+
+The first-pass compression inventory is deliberately conservative:
+
+| Surface | Candidate or current limit |
+| --- | --- |
+| Product code | Reuse owner plans/admission and compare the three terminal yes/no mechanics for exact parity before consolidating; no deletion is proven yet. |
+| Tests and protections | Extend current owner and public CLI cases for guide composition; do not retire independent input-change, refusal, request, or recovery defenses. No redundant test is established. |
+| Scripts | Keep bootstrap installation instructions outside the installed CLI. A new shell launcher has no demonstrated need; no existing script retirement is established. |
+| Schemas and configuration | Reuse `.env`, Project, runtime, and request contracts. No wizard schema or saved scientific selector is indicated; no existing field is established as dead. |
+| Documentation | Replace novice copy-and-run sequencing in Quickstart only after the guide works; keep exact manual commands and recovery with their owners. |
+| Mutable state and evidence | Hold only exact in-invocation selections; add no persistent last-Project or wizard checkpoint. Retain `.env`, Project/runtime records, requests, locks, logs, and partials. |
+
+### 14. Presentation, documentation, and proof
+
+**Observed.** The [Quickstart](../../quickstart.md) lines 54-205 still directs
+separate Setup, Init, Validate, optional runtime reuse, Doctor, Run, Watch, and
+Inspect commands. The [Runbook](../operations/RUNBOOK.md) owns advanced
+commands; [Troubleshooting](../operations/TROUBLESHOOTING.md) owns recovery.
+Current terminal output must remain understandable without color, in redirected
+output, and in a dumb terminal. Source review does not prove an installed or
+novice Viking journey.
+
+**To settle.** Once a selected guide works, make Quickstart one linear head-node
+journey and retain manual procedures with their owners. Use tiny local fixtures
+for TTY/PTY, refusal and EOF at every approval boundary, source-bound and
+installed CLI entry, `NO_COLOR`, nonterminal behavior, changed inputs, exact
+runtime/profile selection, duplicate submission, and request-based watch.
+Run applicable hosted checks on the exact implementation commit. A fresh
+novice Viking walkthrough and site observations remain separate; no biological
+interpretation follows from software or scheduler success.
+
+## Proposed design and delivery order
+
+These are review proposals, not accepted interface decisions or authority to
+edit product code.
+
+1. Set the installed starting point, guided entry, manual route, nonterminal
+   behavior, and full prompt/exit transcript. Resolve the `INIT-02` dependency.
+2. Map each existing public handler's no-write, success, blocked, and partial
+   outcomes. Select the smallest private result interface that preserves public
+   exits and text. Measure the affected product footprint before adding code.
+3. Compose Setup and exact Project selection, then Init and Validate. Carry
+   admitted settings explicitly within the invocation; do not reload into
+   global state or infer a Project.
+4. Compose exact runtime admission and Doctor diagnosis/confirmed maintenance.
+   Review any donor and borrower writes and preserve all partial evidence.
+5. Compose direct Run planning or Slurm submission preview with their existing
+   confirmations and duplicate guard. Hand off the exact retained request to
+   Project inspection; never label submission as completion.
+6. Replace novice copy/paste sequencing only after the complete path works.
+   Keep manual commands, owner contracts, and recovery instructions accurate.
+   Verify with focused local checks, applicable hosted CI, and separately
+   authorized institutional novice acceptance.
+
+Stop and return for a decision if the design needs a new public command/flag,
+unapproved scientific default, new persistent state/schema/dependency,
+cross-owner policy, changed mutation or recovery authority, evidence deletion,
+or a quantified product-code/file-growth exception. Implementation uses one
+authorized worktree and branch based on a rechecked target head.
+
+## Next discovery pass
+
+The matrix is populated with source-level observations. The next iteration
+should pin the then-current target, inspect exact caller and installed-package
+behavior, execute tiny source-bound/installed PTY cases without cluster work,
+record literal prompt/exit differences, and quantify the full affected
+product/test/documentation/configuration/evidence footprint. Revise individual
+findings from those observations; keep INTERACTIVE-01 status and acceptance in
+the main backlog.

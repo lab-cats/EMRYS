@@ -100,6 +100,10 @@ They are outside the selected pre-closure implementation tranche.
 | `CLEANUP-01` | Ownership design | Deferred | `3` | `4` | Select a safe owner-backed cleanup scope before implementing deletion. | Retains CV-23. Current owners establish no retained candidate class with both exclusive ownership and absence of references. Select a specific class, then preview exact candidates, references and consequences. Protect active/ambiguous Runs, older Attempts and reused outputs, shared inputs/sidecars, runtime borrowers and linked caches, receipts, locks, partials and recovery evidence. Unknown is not unused; age, scheduler disappearance and missing success receipts prove no deletability. Keep transaction-owned temporary cleanup at its existing boundary; reuse existing inspection and ownership rather than adding a generic registry or cleanup engine. Any evidence deletion requires separate explicit authority. |
 | `INTERACTIVE-01` | Guided operation | Deferred | `3` | `4` | Extend guidance through the complete setup and analysis-launch journey. | Retains CV-U19's eventual default guided interaction with an optional manual route. Existing named Init, runtime admission, Doctor and Run confirmations are implemented partial behavior. No full prompt sequence, migration, default-mode transition or `--advanced` spelling is selected. Audit the existing CLI owners before selecting a bounded extension; preserve scientific choices, approval, no-write previews, provenance and recovery. |
 
+The [INTERACTIVE-01 discovery record](interactive-01-discovery.md) traces the
+current owner path and unresolved design choices. This row remains the sole
+status and acceptance authority.
+
 ### Cluster verification closure checklist
 
 `CLUSTER-VERIFY-01` is **Open**. CV-U06's one-line accounting
