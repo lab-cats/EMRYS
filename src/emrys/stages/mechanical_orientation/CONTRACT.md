@@ -97,3 +97,7 @@ Repository tests protect this contract under the shared
 flag-subcounts against merged-BAM counts; the independent validator may publish
 failed rows with exit `0` and, as stated above, neither quickchecks nor recounts
 BAM records.
+
+The task CPU allowance includes the main thread. Samtools view, merge, counts
+and index receive `threads - 1` additional I/O workers; the mechanical flags,
+counts, output ordering and validation rules are unchanged.

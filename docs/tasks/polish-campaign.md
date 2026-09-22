@@ -19,6 +19,19 @@ not duplicate tasks. Numbered headings are
 navigation references, not new backlog IDs. Proposed acceptance below becomes
 authoritative only when selected through the existing workflow.
 
+## Current follow-up scope
+
+The user assigned the broader follow-up work to this campaign:
+`DOCS-01`, `REDUCE-01`, `SIZE-01`, `ASSURANCE-01`, `SCHEMA-01`,
+`EXTENSION-01` and `RELEASE-01`. Their current status and full acceptance remain
+in the [main backlog](backlog_matrix.md#maintainability-and-release).
+This includes the repository-wide 600-line inventory and explicit exception
+dispositions, the 25% reduction target, broad code/test/protection/gate and
+documentation/contract audits, schema review, collaborator guidance and release
+planning. These outcomes remain accepted; none is a cluster-campaign closure
+gate. The focused novice-guide corrections and `INIT-01` through `INIT-03`
+remain in the cluster campaign's approved pre-closure tranche.
+
 ## Evidence and selection
 
 The source audit used GitHub master
@@ -115,6 +128,110 @@ The third pass prioritizes the FASTQ admission-parity audit, checks for
 documented commands, and scientific-output discoverability. Provider and
 upgrade evidence refine the existing extension and release outcomes rather
 than create parallel initiatives.
+
+## Integration-scale architecture reduction options
+
+The September 17 integration review at `e580a763` compared 144 changed files,
+34,623 additions, and 6,038 deletions with merge base `f2c0149e`. Relative to
+the original integration head, the completed compression removed 2,187 net
+maintained lines but reduced the pull-request additions by only 850. A prior
+6,400–9,200-line opportunity estimate is withdrawn: it added overlapping
+candidate ranges and was not supported by caller-complete prototypes. No
+further thousands-of-lines reduction is established by the review.
+
+The options below are unselected architecture investigations, not backlog
+acceptance or implementation authority. Each must start with a current
+caller/dependency audit, one measured vertical prototype, and separate
+product, test/protection, tooling, documentation/configuration, and evidence
+accounting. Selection requires a credible caller-complete deletion plan under
+the [architecture guardrails](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails).
+Watch remains supported, and no option authorizes deleting retained evidence
+or an entire feature family.
+
+### Unified inspection and Watch observation architecture
+
+Define one immutable admitted Run-observation model. `inspect` would read one
+snapshot; `watch` would repeatedly feed snapshots through the same Run
+selection, presentation model, navigation reducer, and renderer. The current
+[dashboard](../../src/emrys/orchestration/run_coordinator/dashboard.py),
+[inspection presentation](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py),
+[inspection evidence](../../src/emrys/orchestration/run_coordinator/_inspection_evidence.py),
+and [scheduler observation](../../src/emrys/orchestration/run_coordinator/scheduler_observation.py)
+are the initial audit surface.
+
+Scheduler state must remain an observation rather than Run-completion or
+recovery authority. Exact Run selection, admitted evidence, streaming
+ownership, terminal navigation, rendering, and all current Watch interactions
+must retain parity. The redesign is acceptable only if every parallel
+selection/presentation path retires; another adapter layer is not reduction.
+
+### Shared application-operation kernel
+
+Evaluate a small lifecycle kernel for mechanics repeated by Doctor,
+onboarding, control, Task, and Slurm submission: exclusive claims, signal
+handling, phase transitions, durable application logging, rollback bookkeeping,
+and terminal receipts. Each owner would supply its own admitted inputs,
+mutation authorization, phase work, failure vocabulary, and recovery policy.
+
+This option must not turn different trust boundaries into configuration flags
+inside a generic controller. A prototype should migrate one complete repeated
+mechanic across every equivalent caller, delete the former implementations,
+and preserve public exits, writes, locks, logs, receipts, recovery states, and
+fault injection. Of the listed options, this has the broadest potential product
+surface, but no deletion quantity is accepted before that prototype.
+
+### Declarative operation records and fault scenarios
+
+Evaluate canonical builders for Project, Run, Task, attempt, scheduler,
+filesystem-fault, and publication scenarios. Tests would declare admitted
+inputs, the exact injected boundary, and literal expected records or outcomes
+instead of rebuilding complete trees and assertion plumbing. Product record
+construction may join the same effort only where equivalent owners already
+make the same decision from the same inputs.
+
+Every distinct failure mode must remain named and independently selectable;
+independent scientific or evidence oracles remain independent. Success is a
+smaller test and fixture surface with unchanged behavioral coverage, not fewer
+tests obtained by merging unlike outcomes or weakening literal expectations.
+
+### Common reporting transaction engine
+
+Evaluate replacing the artifact-index and Run-report publication loops with
+one reporting-owned transaction plan. The plan would have to express staging,
+link order, final completion marker, file modes, directory re-admission,
+rollback ownership proof, recovery evidence, and cleanup without choosing a
+publisher's admission or evidence policy.
+
+The current publishers have materially different commit ordering, exception
+handling, and recovery boundaries. This option is justified only if a
+caller-complete implementation is smaller than both existing publishers,
+preserves every injected fault outcome, and deletes both superseded transaction
+loops. Sharing isolated helpers or adding a second publication framework does
+not meet that bar.
+
+### Narrow supported surfaces without retiring feature families
+
+Audit whether multiple schema generations, selector grammars, compatibility
+routes, output representations, or command paths are still publicly supported
+and used. Where one route can become canonical, retire its superseded adapters,
+branches, tests, configuration, and documentation together while retaining the
+underlying Watch, Doctor, submission, materialization, reporting, and
+scientific feature families.
+
+This is a public-contract decision rather than an internal refactor. Each
+candidate needs an exact consumer inventory, migration and rollback path, and
+separate approval. Absence of a recently observed caller is not sufficient
+evidence for retirement.
+
+### Review structure is not architecture reduction
+
+Stacked pull requests, prerequisite merges, rebuilding from current `master`,
+or retargeting an integration pull request can make each review smaller. They
+do not reduce maintained code or total additions unless equivalent work is
+already independently reviewed in the new base or duplicate ancestry is
+removed. Squashing, renaming branches, or hiding files never counts toward an
+architecture or line-reduction result. Any future campaign must report both
+maintained-line change and the hosting service's pull-request additions.
 
 ## Correctness and recovery
 
@@ -317,21 +434,16 @@ removed; the [Run-coordinator contract](../../src/emrys/orchestration/run_coordi
 defines rejection in new profiles and current-version resume behavior. The broader
 `REPORT-ROSTER-01` outcome remains open.
 
-### 14. Retire the frozen dashboard when its existing row is selected
+### 14. Retire the replaced standalone dashboard
 
-**Finding:** The [coordinator guide](../../src/emrys/orchestration/run_coordinator/README.md)
-describes the dashboard as a stale, unsupported preview frozen under
-**`DASHBOARD-RETIRE-01`**.
-
-**Disposition and acceptance:** The user requires a usable replacement before
-retirement. Keep the dashboard and its protections until that prerequisite is
-implemented and accepted; retirement is excluded from the current tranche.
-The eventual caller-complete change must preserve Project-local inspection,
-required scheduler accounting, sanitized streams, and exact historical reads,
-or obtain an explicit narrower capability decision. Product code, parsers,
-dedicated tests, targets, and stale guidance retire together only under that
-approved scope. The existing row retains the decision and evidence-deletion
-boundaries; potential size reduction does not override the replacement condition.
+**Disposition and acceptance:** On 2026-09-17 the institutional owner accepted
+the installed watch as the replacement and approved a caller-complete compression
+that preserves watch behavior. The standalone curses/CLI wrapper, duplicate
+scheduler query, Make target, dedicated protections, and stale guidance retire
+together. Project-local inspection, strict scheduler accounting, sanitized
+streams, exact historical reads, and the shared watch parser/renderer remain.
+`DASHBOARD-RETIRE-01` has implemented the new-name transition with historical
+read compatibility; institutional verification and evidence deletion remain.
 
 ## Development and CI tooling
 
@@ -507,6 +619,10 @@ finding or authorization to scan unrelated private data.
 
 ### 29. Document a minimal external Analysis and reporter
 
+Current accepted outcome and acceptance are owned by `EXTENSION-01` in the
+[main backlog](backlog_matrix.md#maintainability-and-release). The proposal
+below is supporting context, not a second task authority.
+
 **Finding:** [Analysis extension interfaces](../../src/emrys/analyses/README.md)
 exist, but a practical end-to-end provider/reporter walkthrough is missing.
 The [sampled collaborator composition test][provider-composition-test]
@@ -521,8 +637,8 @@ configuration, input/output ownership, resource/dependency declarations,
 independent validation, execution, and reporting. Exercise the documented
 example through public production interfaces without a generic workflow DSL
 or test-only production behavior. Consolidate existing extension guidance.
-This item owns the proposal, which still requires bounded selection and
-footprint accounting.
+`EXTENSION-01` owns the accepted outcome; implementation still requires bounded
+selection and footprint accounting.
 
 Make the example separately installable and exercise actual discovery,
 configuration admission, planning, production, independent validation, and
@@ -535,6 +651,10 @@ This sharpens the existing example's acceptance, not a second extension task.
 
 ### 30. Establish a reviewed alpha release path
 
+`RELEASE-01` in the [main backlog](backlog_matrix.md#maintainability-and-release)
+owns the current request for a path to product v1, using this earlier alpha
+proposal as context. This section does not establish current release readiness.
+
 **Finding:** Quickstart asks users to select a release or commit; the GitHub
 releases endpoint returned no published releases during the audit. Package
 version is `0.1.0.dev0`. No claim was made that Git tags are absent.
@@ -546,8 +666,8 @@ on the original checkout for workflow assets and source admission. Approved
 replaced that requirement with installed workflow/R assets and exact package
 identity. Its hosted integration checks passed in PR #169; neither packaging
 nor synthetic reports establish institutional scientific operation. This card
-still owns release selection and the independently installed Project-to-Results
-release journey.
+provides context for `RELEASE-01`, which owns release selection and the
+independently installed Project-to-Results release journey.
 
 The [wheel installer][release-constraints] also constrains dependencies to
 the versions in `uv.lock`.

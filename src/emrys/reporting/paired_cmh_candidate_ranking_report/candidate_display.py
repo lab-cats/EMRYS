@@ -146,14 +146,22 @@ class SelectedCandidateProjection:
     candidates: tuple[SelectedCandidate, ...]
 
 
-def _decimal(label: str, value: str, *, allow_na: bool = True) -> Decimal | None:
+def _decimal(
+    label: str,
+    value: str,
+    *,
+    allow_na: bool = True,
+    allow_positive_infinity: bool = False,
+) -> Decimal | None:
     if value == _NA and allow_na:
         return None
     try:
         parsed = Decimal(value)
     except InvalidOperation:
         _fail(f"{label} is not numeric: {value!r}")
-    if not parsed.is_finite():
+    if not parsed.is_finite() and not (
+        allow_positive_infinity and parsed.is_infinite() and not parsed.is_signed()
+    ):
         _fail(f"{label} must be finite: {value!r}")
     return parsed
 
@@ -529,6 +537,7 @@ def _candidate(
         common_odds_ratio=_decimal(
             f"candidate {candidate_id!r} common_odds_ratio",
             row["common_odds_ratio"],
+            allow_positive_infinity=True,
         ),
         location=_location(row),
         pairs=_pairs(row, results),

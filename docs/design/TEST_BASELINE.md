@@ -12,6 +12,10 @@ expectation independence, or replace scenario, transaction, recovery,
 real-runtime, scheduler, numerical-oracle, scientific-review, or biological
 evidence. A ratio is a regression signal, not authority to change behavior.
 
+The [run-coordinator test guide](../../tests/orchestration/run_coordinator/README.md#what-the-checks-establish)
+records the current fixture boundaries for scheduling, recovery, onboarding
+and reporting; a passing fixture establishes only the behavior it exercises.
+
 The vocabulary used in review is:
 
 - **preserved contract:** independent protection covers the declared boundary;

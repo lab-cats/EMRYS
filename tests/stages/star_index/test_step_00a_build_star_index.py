@@ -7,6 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PRODUCER = (
     REPO_ROOT
@@ -105,6 +107,8 @@ def run_producer(
     environment: dict[str, str],
     *,
     cwd: Path,
+    native_memory_mb: int = 800,
+    genome_chr_bin_nbits: int = 18,
 ) -> subprocess.CompletedProcess[str]:
     command = [
         "/bin/bash",
@@ -115,12 +119,16 @@ def run_producer(
         str(reference_gtf),
         "--index-dir",
         str(index_dir),
+        "--native-memory-mb",
+        str(native_memory_mb),
         "--threads",
         "2",
         "--sjdb-overhang",
         "149",
         "--genome-sa-index-nbases",
         "14",
+        "--genome-chr-bin-nbits",
+        str(genome_chr_bin_nbits),
         "--star-bin",
         str(Path(environment["TMPDIR"]).parent / "fake-bin/STAR"),
     ]
@@ -140,7 +148,10 @@ def read_lines(path: Path) -> tuple[str, ...]:
     return tuple(path.read_text(encoding="utf-8").splitlines())
 
 
-def test_worker_builds_complete_star_index_from_arbitrary_cwd(tmp_path: Path) -> None:
+@pytest.mark.parametrize("native_memory_mb", (800, 1600))
+def test_worker_builds_complete_star_index_from_arbitrary_cwd(
+    tmp_path: Path, native_memory_mb: int
+) -> None:
     environment = prepared_environment(tmp_path)
     fasta = tmp_path / "genome.fa"
     gtf = tmp_path / "genome.gtf"
@@ -150,12 +161,22 @@ def test_worker_builds_complete_star_index_from_arbitrary_cwd(tmp_path: Path) ->
     index.mkdir(parents=True)
     invocation_cwd = tmp_path / "elsewhere"
     invocation_cwd.mkdir()
-    result = run_producer(fasta, gtf, index, environment, cwd=invocation_cwd)
+    result = run_producer(
+        fasta,
+        gtf,
+        index,
+        environment,
+        cwd=invocation_cwd,
+        native_memory_mb=native_memory_mb,
+    )
     assert result.returncode == 0, result.stdout + result.stderr
     assert {path.name for path in index.iterdir()} == REQUIRED_MEMBERS
     tool_log = read_lines(Path(environment["FAKE_TOOL_LOG"]))[0]
     assert "--runMode\tgenomeGenerate" in tool_log
     assert "--sjdbOverhang\t149" in tool_log
+    assert "--genomeSAindexNbases\t14" in tool_log
+    assert "--genomeChrBinNbits\t18" in tool_log
+    assert f"--limitGenomeGenerateRAM\t{native_memory_mb * 1024 * 1024}" in tool_log
     assert list(invocation_cwd.iterdir()) == []
 
 
@@ -173,3 +194,41 @@ def test_worker_rejects_incomplete_native_index(tmp_path: Path) -> None:
     assert "STAR index member is missing" in result.stderr
     # Worker diagnostics remain available to the runner's failure handling.
     assert (index / "Genome").is_file()
+
+
+def test_worker_refuses_zero_native_memory_before_star(tmp_path: Path) -> None:
+    environment = prepared_environment(tmp_path)
+    result = run_producer(
+        tmp_path / "unused.fa",
+        tmp_path / "unused.gtf",
+        tmp_path / "index",
+        environment,
+        cwd=tmp_path,
+        native_memory_mb=0,
+    )
+    assert result.returncode != 0
+    assert "positive integer" in result.stderr
+    assert not Path(environment["FAKE_TOOL_LOG"]).exists()
+
+
+def test_worker_refuses_out_of_range_chromosome_bin_before_star(
+    tmp_path: Path,
+) -> None:
+    environment = prepared_environment(tmp_path)
+    fasta = tmp_path / "genome.fa"
+    gtf = tmp_path / "genome.gtf"
+    index = tmp_path / "index"
+    fasta.write_text(">chr1\nACGT\n", encoding="utf-8")
+    gtf.write_text("fixture\n", encoding="utf-8")
+    index.mkdir()
+    result = run_producer(
+        fasta,
+        gtf,
+        index,
+        environment,
+        cwd=tmp_path,
+        genome_chr_bin_nbits=19,
+    )
+    assert result.returncode != 0
+    assert "must be at most 18" in result.stderr
+    assert not Path(environment["FAKE_TOOL_LOG"]).exists()

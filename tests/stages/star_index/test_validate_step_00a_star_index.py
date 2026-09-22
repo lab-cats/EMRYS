@@ -48,7 +48,8 @@ def build_validation_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
         f"genomeFastaFiles {fasta}\n"
         f"sjdbGTFfile {gtf}\n"
         "sjdbOverhang 149\n"
-        "genomeSAindexNbases 14\n",
+        "genomeSAindexNbases 14\n"
+        "genomeChrBinNbits 18\n",
         encoding="utf-8",
     )
     output_dir = tmp_path / "results"
@@ -87,6 +88,8 @@ def run_validator(
             "149",
             "--expected-genome-sa-index-nbases",
             "14",
+            "--expected-genome-chr-bin-nbits",
+            "18",
             "--output",
             str(output),
             *extra,
@@ -97,7 +100,7 @@ def run_validator(
     )
 
 
-def test_execute_publishes_five_passing_checks(tmp_path: Path) -> None:
+def test_execute_publishes_seven_passing_checks(tmp_path: Path) -> None:
     index, fasta, gtf, output = build_validation_fixture(tmp_path)
     result = run_validator(index, fasta, gtf, output, "--execute")
     assert result.returncode == 0, result.stderr
@@ -152,9 +155,9 @@ def test_scientific_mismatches_are_reported_not_repaired(tmp_path: Path) -> None
     (index / "chrLength.txt").write_text("4\n3\n", encoding="utf-8")
     parameters = (index / "genomeParameters.txt").read_text(encoding="utf-8")
     (index / "genomeParameters.txt").write_text(
-        parameters.replace("sjdbOverhang 149", "sjdbOverhang 99").replace(
-            "genomeSAindexNbases 14", "genomeSAindexNbases 7"
-        ),
+        parameters.replace("sjdbOverhang 149", "sjdbOverhang 99")
+        .replace("genomeSAindexNbases 14", "genomeSAindexNbases 7")
+        .replace("genomeChrBinNbits 18", "genomeChrBinNbits 12"),
         encoding="utf-8",
     )
     result = run_validator(index, fasta, gtf, output, "--execute")
@@ -163,6 +166,7 @@ def test_scientific_mismatches_are_reported_not_repaired(tmp_path: Path) -> None
     assert statuses["contig_names_lengths"] == "fail"
     assert statuses["sjdb_overhang"] == "fail"
     assert statuses["genome_sa_index_nbases"] == "fail"
+    assert statuses["genome_chr_bin_nbits"] == "fail"
     assert fasta.read_text(encoding="utf-8") == ">1\nACGT\n>MT\nAA\n"
 
 
@@ -179,6 +183,21 @@ def test_invalid_contract_and_missing_member_fail_closed(tmp_path: Path) -> None
     result = run_validator(index, fasta, gtf, bad_output, "--execute")
     assert result.returncode == 2
     assert not bad_output.exists()
+
+
+def test_out_of_range_expected_chromosome_bin_fails_closed(tmp_path: Path) -> None:
+    index, fasta, gtf, output = build_validation_fixture(tmp_path)
+    result = run_validator(
+        index,
+        fasta,
+        gtf,
+        output,
+        "--expected-genome-chr-bin-nbits",
+        "19",
+    )
+    assert result.returncode == 2
+    assert "must be between 1 and 18" in result.stderr
+    assert not output.exists()
 
 
 def test_foreign_lock_and_invalid_predecessor_are_preserved(tmp_path: Path) -> None:

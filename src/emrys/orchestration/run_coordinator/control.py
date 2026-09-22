@@ -7,12 +7,13 @@ import hashlib
 import os
 import shlex
 import sys
+import time
 import uuid
 from collections import Counter
 from collections.abc import Callable, Mapping
 from contextlib import suppress
-from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
 from typing import Any, TextIO
@@ -22,31 +23,41 @@ from simple_term_menu import TerminalMenu
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.artifact_inventory import validate_processing_graph
 from emrys.contracts.orchestration.application_model import (
-    PROCESSING_STEP_IDS,
     execution_plan_boundary,
 )
 from emrys.libraries.application_logging import (
     ApplicationLogError,
     AttemptIdentity,
+    AttemptLog,
     LogControlError,
     LogControls,
-    LogLevel,
     add_log_arguments,
+    add_verbose_argument,
+    console_field,
     console_print,
+    console_status,
     event,
     field,
     open_attempt_log,
+    phase_progress,
     render_failure_summary,
     resolve_log_controls,
+)
+from emrys.libraries.application_logging.controls import (
+    add_log_root_argument,
+    resolve_log_root,
 )
 from emrys.libraries.source_authority import admit_installed_package
 from emrys.libraries.validation.errors import ValidationError
 from emrys.libraries.validation.inputs import read_bytes
 from emrys.orchestration.run_coordinator import (
+    _inspection_presentation,
+    _submission_inspection,
     capacity,
     doctor,
     inspection,
     lifecycle,
+    normalization,
     onboarding,
     reporting_operation,
     task as task_boundary,
@@ -61,6 +72,7 @@ from emrys.orchestration.run_coordinator.execution_profile import (
 from emrys.orchestration.run_coordinator.materialization import (
     AttemptPlan,
     MaterializationError,
+    PlannedFile,
     admit_run,
     build_attempt_plan,
     build_run_candidate,
@@ -77,23 +89,25 @@ from emrys.orchestration.run_coordinator.resource_policy import (
     overrides_from_args,
     resource_override_argv,
     resolve_resource_policy,
+    resource_workload,
     resume_resource_policy,
 )
 from emrys.orchestration.run_coordinator import slurm_submission
 
 RUN_DESCRIPTION = "Plan an immutable Run; confirm or use --execute. Installs nothing."
-RESUME_DESCRIPTION = "Plan a safe resume, then confirm or use --execute for automation."
-INSPECT_DESCRIPTION = "Derive one Run state from immutable EMRYS records without reading or repairing Snakemake metadata."
+RESUME_DESCRIPTION = "Finish interrupted finalization or continue eligible work; confirm or use --execute."
+INSPECT_DESCRIPTION = (
+    "Show retained Project submissions and inspect one Run without changing state."
+)
+WATCH_DESCRIPTION = (
+    "Watch one selected Run or exact scheduler job without changing state."
+)
+STOP_DESCRIPTION = (
+    "Preview one exact submission stop; use --execute to request cancellation."
+)
 REPORT_DESCRIPTION = (
     "Plan, generate, or reuse the fixed reports for one completed immutable Run. "
     "Dry-run is the default and reporting never creates a scientific Attempt."
-)
-_MILESTONE_STEPS = (
-    ("Preparation", ("00a", "00b", "00c")),
-    ("Alignment and sample processing", ("01", "02", "04", "05", "06")),
-    ("QC evidence", ("02b", "03")),
-    ("Candidate evidence", ("07", "08")),
-    ("Statistical/context processing", ("09", "10")),
 )
 
 
@@ -109,7 +123,28 @@ class _RunSelectionCancelled(ControlError):
     """The operator left the read-only Run picker without selecting a Run."""
 
 
+class _NoProjectRuns(ControlError):
+    """The Project has no selectable Run at the time of inspection."""
+
+
+@dataclass(frozen=True, slots=True)
+class _WatchTarget:
+    """One admitted Project monitoring identity, with no scheduler observation."""
+
+    project: Path
+    run_root: Path | None = None
+    request: slurm_submission.SubmissionRequestObservation | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class _ResumeAction:
+    effective: inspection.RunInspection
+    finalization: inspection.PreparedFinalizationInspection | None = None
+
+
 _CONTROL_ERRORS = (
+    slurm_submission.SlurmSubmissionError,
+    slurm_submission.scheduler_observation.DiscoveryError,
     ControlError,
     ExecutionProfileError,
     ResourceConfigError,
@@ -132,11 +167,30 @@ def _control_failure(exc: Exception) -> int:
     return 0 if isinstance(exc, _RunSelectionCancelled) else 2
 
 
-PlanBuilder = Callable[[], AttemptPlan]
+PlanBuilder = Callable[[], AttemptPlan | int]
 
 
 def _absolute(path: Path) -> Path:
     return Path(os.path.abspath(path))
+
+
+def _terminal_selection(
+    choices: tuple[str, ...],
+    *,
+    interactive: bool,
+    title: str,
+    error: str,
+    canceled: str,
+) -> int:
+    if not interactive:
+        raise ControlError(error + ", ".join(choices))
+    try:
+        selected = TerminalMenu(choices, title=title).show()
+    except (EOFError, KeyboardInterrupt) as exc:
+        raise _RunSelectionCancelled(canceled) from exc
+    if selected is None:
+        raise _RunSelectionCancelled(canceled)
+    return selected
 
 
 def _select_project_run(
@@ -149,7 +203,7 @@ def _select_project_run(
     if selector is not None:
         return inspection.resolve_run_root(run_roots, selector)
     if not run_roots:
-        raise ControlError(f"Project has no Runs: {project_path.parent}")
+        raise _NoProjectRuns(f"Project has no Runs: {project_path.parent}")
     if len(run_roots) == 1:
         return run_roots[0]
     names = tuple(inspection.human_run_name(root.name) for root in run_roots)
@@ -158,19 +212,122 @@ def _select_project_run(
         name if name_counts[name] == 1 else f"{name} ({root.name})"
         for name, root in zip(names, run_roots, strict=True)
     )
-    if not interactive:
-        raise ControlError(
-            "Multiple Runs exist; select one explicitly: " + ", ".join(choices)
+    return run_roots[
+        _terminal_selection(
+            choices,
+            interactive=interactive,
+            title="Select a Run:",
+            error="Multiple Runs exist; select one explicitly: ",
+            canceled="Run selection canceled; nothing was changed.",
         )
+    ]
+
+
+def _project_watch_targets(project: Path) -> tuple[_WatchTarget, ...]:
+    """Inventory request identities and otherwise-unrepresented Runs once."""
+
+    runs = inspection.project_run_roots(project.parent)
+    associated = tuple(
+        (
+            request,
+            _submission_inspection.inspect_submission_application(request).run_root,
+        )
+        for request in slurm_submission.submission_requests(project)
+    )
+    represented = frozenset(run for _request, run in associated if run is not None)
+    return tuple(
+        _WatchTarget(project, run_root=run) for run in runs if run not in represented
+    ) + tuple(
+        _WatchTarget(project, run_root=run, request=request)
+        for request, run in associated
+    )
+
+
+def _projects_home_watch_targets() -> tuple[_WatchTarget, ...]:
+    """Locate immediate Project monitoring targets beneath Projects home."""
+
+    selected = os.environ.get("EMRYS_PROJECTS_ROOT", "").strip()
+    if not selected:
+        return ()
+    declared = Path(selected)
+    if not declared.is_absolute():
+        raise ControlError("EMRYS_PROJECTS_ROOT must be an absolute path")
+    home = _absolute(declared)
     try:
-        selected = TerminalMenu(choices, title="Select a Run:").show()
-    except (EOFError, KeyboardInterrupt) as exc:
-        raise _RunSelectionCancelled(
-            "Run selection canceled; nothing was changed."
+        if home.is_symlink() or home.resolve(strict=True) != home or not home.is_dir():
+            raise ControlError(
+                f"EMRYS_PROJECTS_ROOT must be one canonical real directory: {home}"
+            )
+        children = tuple(sorted(home.iterdir(), key=lambda path: path.name))
+    except OSError as exc:
+        raise ControlError(
+            f"Could not inspect EMRYS_PROJECTS_ROOT {home}: {exc}"
         ) from exc
-    if selected is None:
-        raise _RunSelectionCancelled("Run selection canceled; nothing was changed.")
-    return run_roots[selected]
+    if len(children) > 256:
+        raise ControlError(f"EMRYS_PROJECTS_ROOT has more than 256 entries: {home}")
+    result: list[_WatchTarget] = []
+    for child in children:
+        project = child / "project.yaml"
+        if child.is_symlink() or not child.is_dir() or not os.path.lexists(project):
+            continue
+        result.extend(
+            _project_watch_targets(onboarding.project_definition_path(project))
+        )
+    return tuple(result)
+
+
+def _watch_target_label(target: _WatchTarget) -> str:
+    parts = []
+    if target.run_root is not None:
+        parts.append(
+            f"Run {inspection.human_run_name(target.run_root.name)} "
+            f"({target.run_root.name[:16]}...)"
+        )
+    if target.request is not None:
+        parts.append(
+            f"request {target.request.request_root.name} "
+            f"(job {target.request.recorded_job_id or 'unconfirmed'})"
+        )
+    return f"{target.project.parent.name}: " + "; ".join(parts)
+
+
+def _select_watch_target(
+    candidates: tuple[_WatchTarget, ...],
+    selector: str | None,
+    *,
+    interactive: bool,
+) -> _WatchTarget | None:
+    if len(candidates) > 256:
+        raise ControlError("More than 256 monitoring targets are available")
+    if selector is not None:
+        run_roots = tuple(
+            dict.fromkeys(
+                target.run_root for target in candidates if target.run_root is not None
+            )
+        )
+        try:
+            selected = inspection.resolve_run_root(run_roots, selector)
+        except inspection.InspectionError as exc:
+            if str(exc).startswith("No Project Run matches"):
+                return None
+            raise
+        candidates = tuple(
+            target for target in candidates if target.run_root == selected
+        )
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
+    choices = tuple(_watch_target_label(target) for target in candidates)
+    return candidates[
+        _terminal_selection(
+            choices,
+            interactive=interactive,
+            title="Select a Run or submission:",
+            error="Multiple monitoring targets are available; select one explicitly: ",
+            canceled="Monitoring selection canceled; nothing was changed.",
+        )
+    ]
 
 
 def _resolve_run_argument(
@@ -250,7 +407,11 @@ def _plan_run(
                 target_analysis=readiness.analysis.revision,
                 target_plan=run.execution_plan,
             )
-        resources = resolve_resource_policy(policy, capacity.observe_allocation())
+        resources = resolve_resource_policy(
+            policy,
+            capacity.observe_allocation(),
+            workload=resource_workload(readiness.analysis.revision),
+        )
         plan = build_attempt_plan(
             run,
             readiness,
@@ -276,9 +437,17 @@ def _admit_resume_predecessor(
         observed = inspection.inspect_run(root)
     except (OSError, inspection.InspectionError) as exc:
         raise ControlError(str(exc)) from exc
+    return _require_resume_predecessor(observed)
+
+
+def _require_resume_predecessor(
+    observed: inspection.RunInspection,
+) -> tuple[inspection.RunInspection, dict[str, Any]]:
+    """Require ordinary finalized-receipt continuation admission."""
+
     if not observed.recovery_available or observed.latest_attempt is None:
         raise ControlError(
-            "Run is not at an admissible between-task resume boundary: "
+            "Run is not at an admissible closed-task resume boundary: "
             + "; ".join(
                 observed.blockers
                 or (
@@ -289,6 +458,20 @@ def _admit_resume_predecessor(
         )
     previous = observed.latest_attempt
     return observed, previous
+
+
+def _admit_resume_action(run_root: Path) -> _ResumeAction:
+    """Admit ordinary continuation or one exact prepared-finalization preview."""
+
+    root = _absolute(run_root)
+    try:
+        observed = inspection.inspect_run(root)
+        if observed.prepared_finalization is not None:
+            prepared = inspection.inspect_prepared_finalization(root)
+            return _ResumeAction(prepared.prospective_state, prepared)
+    except (OSError, inspection.InspectionError) as exc:
+        raise ControlError(str(exc)) from exc
+    return _ResumeAction(_require_resume_predecessor(observed)[0])
 
 
 def _resume_predecessor_policy(
@@ -310,17 +493,23 @@ def _resume_predecessor_policy(
 def _retained_tasks(
     observed: inspection.RunInspection,
     attempt: Mapping[str, Any],
-) -> tuple[dict[tuple[str, str], dict[str, Any]], bytes | None]:
+) -> tuple[dict[tuple[str, str], dict[str, Any]], PlannedFile | None]:
     tasks = attempt["tasks"]
     retained: dict[tuple[str, str], dict[str, Any]] = {}
     attempt_reference = {
         "path": f"attempts/{attempt['workflow_attempt_id']}/attempt.json",
         "sha256": orchestration_contracts.canonical_sha256(attempt),
     }
-    selected_manifest: bytes | None = None
+    selected_manifest: PlannedFile | None = None
     selected_projection: bool | None = None
+    historical_ids = {
+        str(item.record["workflow_attempt_id"])
+        for inspected in observed.tasks
+        for item in inspected.terminal_attempts
+    }
     for inspected in observed.tasks:
-        if inspected.state != "verified":
+        retry = inspected.retry_task_attempt_record
+        if inspected.state != "verified" and retry is None:
             continue
         try:
             definition = tasks[inspected.expected.machine_key][
@@ -334,38 +523,57 @@ def _retained_tasks(
         reference = definition.get("workflow_attempt_record", attempt_reference)
         path = observed.run_root / reference["path"]
         try:
-            dispatch = task_boundary.load_task(
-                path,
-                expected_sha256=reference["sha256"],
-                machine_key=inspected.expected.machine_key,
-                scope_id=inspected.expected.scope_id,
-            )
+            if retry is None:
+                dispatch = task_boundary.load_task(
+                    path,
+                    expected_sha256=reference["sha256"],
+                    machine_key=inspected.expected.machine_key,
+                    scope_id=inspected.expected.scope_id,
+                )
+            else:
+                dispatch = task_boundary.recheck_aborted_task(
+                    run_root=observed.run_root,
+                    execution=observed.authority.run_binding.record,
+                    profile=orchestration_contracts.load_json_object(
+                        observed.run_root / "contract" / "profile.json"
+                    ),
+                    machine_key=inspected.expected.machine_key,
+                    scope=inspected.expected.scope,
+                    record_reference=retry,
+                )
         except task_boundary.TaskBoundaryError as exc:
             raise ControlError(
                 f"Reusable task plan is unavailable: {path}: {exc}"
             ) from exc
-        retained[(inspected.expected.machine_key, inspected.expected.scope_id)] = {
-            "workflow_attempt_record": dict(reference)
-        }
+        if retry is None:
+            retained[(inspected.expected.machine_key, inspected.expected.scope_id)] = {
+                "workflow_attempt_record": dict(reference)
+            }
         if inspected.expected.step_id != "07":
             continue
-        manifest_path = (
-            observed.run_root
-            / "contract"
-            / "workflow-inputs"
-            / dispatch.workflow_attempt_id
-            / "samples.tsv"
+        projections = tuple(
+            item
+            for item in dispatch.inputs
+            if item.path.name == "samples.tsv"
+            and item.path.parent.parent
+            == observed.run_root / "contract" / "workflow-inputs"
         )
-        declaration = next(
-            (item for item in dispatch.inputs if item.path == manifest_path),
-            None,
-        )
+        if len(projections) > 1:
+            raise ControlError(
+                "Reusable Step 07 task binds multiple sample projections"
+            )
+        declaration = next(iter(projections), None)
         projected = declaration is not None
         if selected_projection is not None and projected != selected_projection:
             raise ControlError("Reusable Step 07 tasks disagree on sample projection")
         selected_projection = projected
         if not projected:
             continue
+        manifest_path = declaration.path
+        if manifest_path.parent.name not in historical_ids:
+            raise ControlError(
+                "Reusable sample projection has no admitted historical origin"
+            )
         if declaration.expected_binding is None:
             raise ControlError(
                 "Reusable Step 07 sample projection is not content-bound"
@@ -381,9 +589,10 @@ def _retained_tasks(
             raise ControlError(
                 "Reusable Step 07 sample projection differs from its binding"
             )
-        if selected_manifest is not None and data != selected_manifest:
+        projection = PlannedFile(manifest_path, data)
+        if selected_manifest is not None and projection != selected_manifest:
             raise ControlError("Reusable Step 07 tasks disagree on sample projection")
-        selected_manifest = data
+        selected_manifest = projection
     return retained, selected_manifest
 
 
@@ -444,11 +653,16 @@ def _plan_resume(
     resource_overrides: ResourceOverrides = ResourceOverrides(),
     scheduler_job_id: str | None = None,
     report_enabled: bool = True,
+    observed: inspection.RunInspection | None = None,
 ) -> AttemptPlan:
-    """Plan a safe between-task resume without writing run state."""
+    """Plan a safe closed-task resume without writing run state."""
 
     root = _absolute(run_root)
-    observed, previous = _admit_resume_predecessor(root)
+    observed, previous = (
+        _admit_resume_predecessor(root)
+        if observed is None
+        else _require_resume_predecessor(observed)
+    )
     project_path = Path(str(previous["authored_paths"]["request"]))
     workspace = Path(str(previous["workspace"]))
     runtime_profile = _resume_runtime_profile_path(project_path, previous)
@@ -475,7 +689,7 @@ def _plan_resume(
         if retained_sample_manifest is not None:
             analysis = replace(
                 analysis,
-                selected_sample_manifest_bytes=retained_sample_manifest,
+                selected_sample_manifest_bytes=retained_sample_manifest.data,
             )
             readiness = replace(readiness, analysis=analysis)
         policy = execution_profile.resource_policy
@@ -506,7 +720,11 @@ def _plan_resume(
         ):
             raise ControlError("Current inputs resolve to a different Run")
         run = candidate
-        resources = resolve_resource_policy(policy, capacity.observe_allocation())
+        resources = resolve_resource_policy(
+            policy,
+            capacity.observe_allocation(),
+            workload=resource_workload(analysis.revision),
+        )
         plan = build_attempt_plan(
             run,
             readiness,
@@ -515,6 +733,15 @@ def _plan_resume(
             operation="resume",
             supersedes_workflow_attempt_id=str(previous["workflow_attempt_id"]),
             retained_tasks=retained_tasks,
+            retry_task_attempt_records={
+                (
+                    item.expected.machine_key,
+                    item.expected.scope_id,
+                ): item.retry_task_attempt_record
+                for item in observed.tasks
+                if item.retry_task_attempt_record is not None
+            },
+            retained_sample_manifest=retained_sample_manifest,
             placement=execution_profile.attempt_placement(scheduler_job_id),
             processing_source=processing_source,
         )
@@ -561,6 +788,8 @@ def _run_followup(command: str, run_root: Path, run_id: str, *options: str) -> s
 
 
 def _next_supported_action(observed: inspection.RunInspection) -> str:
+    if observed.prepared_finalization is not None:
+        return "Use emrys resume to finish the exact prepared Attempt finalization."
     if observed.integrity == "blocked":
         return "Preserve this Run; review Run integrity blockers. Do not resume."
     if observed.results_status == "blocked":
@@ -584,9 +813,7 @@ def _next_supported_action(observed: inspection.RunInspection) -> str:
         return "Preserve this Run; review the latest Attempt receipt. Do not generate reports."
     if observed.results_status == "complete":
         if observed.reporting_status == "not applicable":
-            return (
-                "Inspect this Run's verified scientific artifacts with --detail debug."
-            )
+            return "Inspect this Run's verified scientific artifacts with --verbose."
         if observed.reporting_status == "complete":
             return "Review the verified Results and report paths."
         return f"Generate reports with {_run_followup('report', observed.run_root, observed.run_id, '--execute')}."
@@ -598,13 +825,11 @@ def _resolve_execution_profile(
     project_path: Path,
     overrides: ResourceOverrides,
     resume_run_root: Path | None = None,
+    resume_state: inspection.RunInspection | None = None,
 ) -> tuple[ExecutionProfile, str | None]:
     """Admit one selected profile and any private Slurm delegate binding."""
 
-    try:
-        expected_sha256 = slurm_submission.delegate_binding()
-    except slurm_submission.SlurmSubmissionError as exc:
-        raise ControlError(str(exc)) from exc
+    expected_sha256 = slurm_submission.delegate_binding()
     profile = load_execution_profile(
         config_path=project_execution_profile_path(
             project_path,
@@ -620,7 +845,11 @@ def _resolve_execution_profile(
         and isinstance(profile.placement, SlurmPlacement)
         and not profile.computational_resources_explicit
     ):
-        _observed, previous = _admit_resume_predecessor(resume_run_root)
+        _observed, previous = (
+            _admit_resume_predecessor(resume_run_root)
+            if resume_state is None
+            else _require_resume_predecessor(resume_state)
+        )
         profile = replace(
             profile,
             resource_policy=_resume_predecessor_policy(
@@ -634,10 +863,8 @@ def _resolve_execution_profile(
         and profile.binding_sha256 != expected_sha256
     ):
         raise ExecutionProfileError("Execution-profile binding SHA-256 differs")
-    try:
-        return profile, slurm_submission.delegate_job_id(profile)
-    except slurm_submission.SlurmSubmissionError as exc:
-        raise ControlError(str(exc)) from exc
+    profile.validate_reservation()
+    return profile, slurm_submission.delegate_job_id(profile)
 
 
 def _resolve_controls(arguments: argparse.Namespace, workspace: Path) -> LogControls:
@@ -646,7 +873,7 @@ def _resolve_controls(arguments: argparse.Namespace, workspace: Path) -> LogCont
         raise ControlError("Workspace must not be the filesystem root")
     try:
         return resolve_log_controls(
-            cli_level=getattr(arguments, "log_level", None),
+            verbose=getattr(arguments, "verbose", False),
             cli_root=getattr(arguments, "log_root", None),
             default_root=root / "logs" / "application",
         )
@@ -710,17 +937,47 @@ def _delegate_argv(
         (
             "--profile",
             str(profile.source_path),
-            "--log-level",
-            controls.level.value,
             "--log-root",
             str(controls.root),
             *resource_override_argv(overrides),
-            "--execute",
         )
     )
+    if controls.verbose:
+        argv.append("--verbose")
+    argv.append("--execute")
     if getattr(arguments, "no_report", False):
         argv.append("--no-report")
     return tuple(argv)
+
+
+class _RunArgumentParser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:
+        raise argparse.ArgumentError(None, message)
+
+
+def _retained_run_arguments(context: Mapping[str, Any]) -> argparse.Namespace | None:
+    argv = tuple(context["emrys_argv"])
+    if argv[1:7] != ("-X", "pycache_prefix=/dev/null", "-I", "-m", "emrys", "run"):
+        return None
+    parser = _RunArgumentParser(add_help=False)
+    configure_run_parser(parser)
+    try:
+        arguments = parser.parse_args(argv[7:])
+        project = arguments.project
+        if not project or str(_absolute(project)) != context["project"]:
+            return None
+        if arguments.from_processing_run is not None:
+            inspection.human_run_name(arguments.from_processing_run)
+        return arguments if arguments.analysis == context["analysis"] else None
+    except (argparse.ArgumentError, inspection.InspectionError):
+        return None
+
+
+def _run_submission_intent(
+    arguments: argparse.Namespace, analysis_names: tuple[str, ...]
+) -> tuple[str, str, str | None]:
+    analysis = normalization.select_analysis_name(analysis_names, arguments.analysis)
+    return analysis, arguments.through, arguments.from_processing_run
 
 
 def _prepare_scheduler_log_dir(workspace: Path) -> Path:
@@ -801,77 +1058,189 @@ def _schedule(
     command: str,
     arguments: argparse.Namespace,
     profile: ExecutionProfile,
-    effective_workflow_cores: int,
     controls: LogControls,
     overrides: ResourceOverrides,
     workspace: Path,
+    *,
+    before_submission: Callable[[], None] | None = None,
 ) -> int:
-    placement = profile.placement
-    if (
-        isinstance(placement, SlurmPlacement)
-        and placement.cpus_per_task < effective_workflow_cores
-    ):
-        raise ControlError(
-            "Slurm CPUs per task cannot be lower than workflow cores: "
-            f"{placement.cpus_per_task} < {effective_workflow_cores}"
-        )
-    try:
-        submission = slurm_submission.plan_submission(
-            profile,
-            emrys_argv=_delegate_argv(
-                command,
-                arguments,
-                profile,
-                controls,
-                overrides,
-            ),
-            log_dir=_absolute(workspace) / "logs",
-        )
-    except slurm_submission.SlurmSubmissionError as exc:
-        raise ControlError(str(exc)) from exc
-    console_print(f"Project: {workspace.name!a}", style="bold")
+    request_token = uuid.uuid4().hex
+    request_root = _absolute(workspace) / "logs" / f"submission-{request_token}"
+    delegate_argv = _delegate_argv(
+        command,
+        arguments,
+        profile,
+        controls,
+        overrides,
+    )
+    submission = slurm_submission.plan_submission(
+        profile,
+        emrys_argv=delegate_argv,
+        log_dir=_absolute(workspace) / "logs",
+        request_token=request_token,
+    )
+    console_field("Project", ascii(workspace.name), value_style="bold")
     if command == "run":
         analysis = getattr(arguments, "analysis", None)
-        console_print(
-            f"Analysis: {analysis!a}"
+        console_field(
+            "Analysis",
+            ascii(analysis)
             if analysis is not None
-            else "Analysis: selected from the Project on the compute node"
+            else "selected from the Project on the compute node",
         )
     else:
-        console_print(f"Run: {inspection.human_run_name(arguments.run)}")
-    console_print("Execution placement: Slurm", style="blue")
-    console_print(
-        f"Allocation: {placement.cpus_per_task} CPUs, {placement.time}, "
-        + (
-            "site-default memory"
-            if placement.memory_mb is None
-            else f"{placement.memory_mb} MiB"
-        )
-    )
-    console_print(
-        f"Account: {placement.account or 'site default'}; "
-        f"partition: {placement.partition or 'site default'}; "
-        f"QoS: {placement.qos or 'site default'}"
-    )
-    if controls.level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
+        console_field("Run", inspection.human_run_name(arguments.run))
+        if before_submission is not None:
+            console_field(
+                "Finalization", "complete exact prepared Attempt receipt first"
+            )
+    for line in profile.submission_summary(verbose=controls.verbose):
+        console_print(line)
+    if controls.verbose:
         console_print(f"Execution profile: {profile.source_path}")
         console_print(f"Scheduler stdout: {submission.stdout_pattern}")
         console_print(f"Scheduler stderr: {submission.stderr_pattern}")
-    if controls.level is LogLevel.DEBUG:
         console_print("Scheduler command: " + shlex.join(submission.argv))
+    if command == "run":
+        try:
+            project = _absolute(arguments.project)
+            definition = orchestration_contracts.load_yaml_object_bytes(
+                read_bytes(project, "Project definition"), f"Project YAML {project}"
+            )
+            orchestration_contracts.validate_record("project", definition)
+            analysis_names = tuple(sorted(definition["analyses"]))
+            intent = _run_submission_intent(arguments, analysis_names)
+            risks = []
+            for request in slurm_submission.submission_requests(project):
+                context = request.context
+                if (
+                    context is None
+                    or context["command"] != "run"
+                    or context["profile_binding_sha256"] != profile.binding_sha256
+                ):
+                    continue
+                retained = _retained_run_arguments(context)
+                try:
+                    retained_intent = retained and _run_submission_intent(
+                        retained, analysis_names
+                    )
+                except orchestration_contracts.ContractValidationError:
+                    retained_intent = None
+                if retained_intent is not None and retained_intent != intent:
+                    continue
+                observed = slurm_submission.observe_submission_request(request)
+                if not bool(observed["terminal"]):
+                    risks.append((request, observed))
+        except (
+            ValidationError,
+            orchestration_contracts.ContractValidationError,
+            slurm_submission.SlurmSubmissionError,
+        ) as exc:
+            raise ControlError(
+                f"Could not check retained submissions; sbatch was not invoked: {exc}"
+            ) from exc
+        if risks:
+            console_print("DUPLICATE SUBMISSION RISK", style="bold white on red")
+            console_print(
+                "An earlier retained request may match this work; its scheduler "
+                "state is active or unconfirmed.",
+                style="bold red",
+            )
+            for request, observed in risks:
+                identifier = request.recorded_job_id or request.request_root.name
+                console_print(f"  {identifier}: scheduler state {observed['state']}")
+            console_print(
+                "Run and inspect displays can take time to populate. An absent Run "
+                "does not mean the earlier submission failed. Use `emrys watch` and "
+                "submit again only if you understand that this may create duplicate jobs."
+            )
+            if not getattr(arguments, "allow_duplicate_submission", False):
+                console_print(
+                    "Submission stopped. Re-run with "
+                    "--allow-duplicate-submission only after reviewing the "
+                    "earlier request.",
+                    style="bold red",
+                )
+                return 2
     if not arguments.execute and not _confirm_execution():
         _print_no_write("scheduler or workspace")
         return 0
+    if before_submission is not None:
+        before_submission()
     _admit_workspace_location(workspace)
     _prepare_scheduler_log_dir(workspace)
     try:
-        job_id = slurm_submission.submit(submission)
-    except slurm_submission.SlurmSubmissionError as exc:
-        raise ControlError(str(exc)) from exc
+        request_root.mkdir(mode=0o700)
+        context = {
+            "schema_version": "emrys.submission-request.v4",
+            "created_at": datetime.now(UTC).isoformat(),
+            "submitter_uid": os.getuid(),
+            "command": command,
+            "project": str(_absolute(arguments.project)),
+            "requested_run": None if command == "run" else arguments.run,
+            "analysis": getattr(arguments, "analysis", None),
+            "application_log_root": str(controls.root),
+            "profile_binding_sha256": profile.binding_sha256,
+            "emrys_argv": list(delegate_argv),
+            "scheduler_stdout_pattern": str(submission.stdout_pattern),
+            "scheduler_stderr_pattern": str(submission.stderr_pattern),
+            "scheduler_job_name": submission.job_name,
+        }
+        context = slurm_submission.validate_request_context(
+            context, _absolute(arguments.project), request_root
+        )
+        with open(
+            request_root / "request.json",
+            "xb",
+            opener=lambda path, flags: os.open(path, flags, 0o600),
+        ) as stream:
+            stream.write(orchestration_contracts.canonical_json_bytes(context))
+            stream.flush()
+            os.fsync(stream.fileno())
+        onboarding._fsync_directory(request_root)
+        onboarding._fsync_directory(request_root.parent)
+    except OSError as exc:
+        raise ControlError(
+            f"Could not prepare submission request {request_root}; sbatch was not invoked: {exc}"
+        ) from exc
+    console_field("Submission request", request_root)
+    job_id = slurm_submission.submit(
+        submission, record_path=request_root / "sbatch.stdout"
+    )
     print(f"JOB_ID={job_id}")
+    print(f"JOB_NAME={submission.job_name}")
     print(f"OUT={str(submission.stdout_pattern).replace('%j', job_id)}")
     print(f"ERR={str(submission.stderr_pattern).replace('%j', job_id)}")
+    console_print(
+        f"Submitted Slurm job {job_id}; completion is not yet verified.",
+        style="bold yellow",
+        file=sys.stdout,
+    )
+    console_field(
+        "Watch progress",
+        f"emrys watch {job_id}",
+        value_style="bold cyan",
+        file=sys.stdout,
+    )
     return 0
+
+
+def _record_submission_context(attempt: AttemptLog, workspace: Path) -> None:
+    binding = slurm_submission.delegate_binding()
+    token = os.environ.get(slurm_submission.REQUEST_TOKEN_ENV)
+    if token is not None:
+        attempt.logger(component="orchestration", phase="initialization").info(
+            "Submission request context recorded.",
+            extra=event(
+                "submission_context",
+                detail="durable_only",
+                fields={
+                    "request_token": field(token),
+                    "profile_binding_sha256": field(binding),
+                    "project_root": field(workspace),
+                },
+            ),
+        )
 
 
 def _execute_plan(
@@ -883,6 +1252,7 @@ def _execute_plan(
     scope_id: str,
     entrypoint: str,
     report_enabled: bool = True,
+    before_plan: Callable[[], None] | None = None,
 ) -> int:
     """Build and execute one plan inside one non-authoritative application log."""
 
@@ -926,6 +1296,7 @@ def _execute_plan(
         warning="WARNING: Application logging degraded; the authoritative Attempt "
         "receipt and lifecycle outcome remain controlling.",
     )
+    log_best_effort(lambda: _record_submission_context(attempt, workspace))
 
     def close_log_best_effort() -> None:
         with suppress(Exception):
@@ -956,6 +1327,8 @@ def _execute_plan(
         )
 
     try:
+        if before_plan is not None:
+            before_plan()
         plan = plan_source() if callable(plan_source) else plan_source
     except KeyboardInterrupt:
         log_best_effort(
@@ -969,7 +1342,7 @@ def _execute_plan(
             next_action="Retry when ready.",
         )
         raise
-    except ControlError as exc:
+    except _CONTROL_ERRORS as exc:
         log_best_effort(
             lambda: attempt.fail(
                 phase="preflight",
@@ -984,6 +1357,17 @@ def _execute_plan(
         )
         raise ControlError(str(exc), reported=True) from exc
 
+    if isinstance(plan, int):
+        log_best_effort(
+            lambda: attempt.terminal(
+                event_name="resume_finalization_completed",
+                message="Prepared Attempt finalization completed without new scientific work.",
+                fields={"exit_status": field(plan)},
+            )
+        )
+        close_log_best_effort()
+        return plan
+
     log_best_effort(
         lambda: logger.info(
             "Preparing analysis.",
@@ -997,7 +1381,7 @@ def _execute_plan(
         )
     )
     if build_at_execution:
-        _print_plan(plan, level=controls.level, report_enabled=report_enabled)
+        _print_plan(plan, verbose=controls.verbose, report_enabled=report_enabled)
     receipt_ready = False
 
     def observe_application_event(event_name: str) -> None:
@@ -1103,21 +1487,29 @@ def _execute_plan(
             )
 
     if status == "succeeded":
-        console_print(f"Evidence: {outcome.receipt_path}")
+        console_field("Evidence", outcome.receipt_path)
         if not _reporting_applicable(plan):
             observe_reporting(
                 "reporting_not_applicable",
                 "Reporting is not applicable to this partial scientific Run.",
             )
             close_log_best_effort()
-            console_print("Reporting: not applicable (partial scientific Run)")
+            console_field("Reporting", "not applicable (partial scientific Run)")
+            console_print(
+                "Run complete: requested scientific work is verified.",
+                style="bold green",
+            )
             return 0
         if not report_enabled:
             observe_reporting(
                 "reporting_skipped", "Reporting was disabled for this execution."
             )
             close_log_best_effort()
-            console_print("Reporting: skipped (--no-report)")
+            console_field("Reporting", "skipped (--no-report)")
+            console_print(
+                "Scientific work complete; reporting was skipped.",
+                style="bold yellow",
+            )
             return 0
         observe_reporting("reporting_started", "Generating downstream reports.")
         try:
@@ -1153,6 +1545,10 @@ def _execute_plan(
         )
         for line in result_lines:
             console_print(line)
+        console_print(
+            "Run complete: scientific Results and reports are verified.",
+            style="bold green",
+        )
         return 0
     close_log_best_effort()
     print_failure(
@@ -1175,14 +1571,13 @@ def _reporting_applicable(plan: AttemptPlan) -> bool:
 
 
 def _print_plan(
-    plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = True
+    plan: AttemptPlan, *, verbose: bool, report_enabled: bool = True
 ) -> None:
     reused = plan.task_count - plan.new_task_count
     resources = plan.resources
-    project_label = plan.run.analysis.source_path.parent.name
-    console_print(f"Project: {project_label!a}", style="bold")
-    console_print(f"Analysis: {plan.run.analysis.name!a}", style="blue")
-    console_print(f"Run: {inspection.human_run_name(plan.run.run_id)}")
+    field = console_field
+    field("Run", inspection.human_run_name(plan.run.run_id), value_style="bold blue")
+    field("Location", plan.run_root)
     full_analysis = _reporting_applicable(plan)
     if full_analysis:
         boundary = "complete analysis"
@@ -1196,40 +1591,33 @@ def _print_plan(
         reporting = "automatic after scientific work"
     else:
         reporting = "disabled for this execution"
-    console_print(f"Scientific boundary: {boundary}")
-    if (
-        processing_source := plan.run.execution_plan.record["identity"].get(
-            "processing_source"
-        )
-    ) is not None:
-        console_print(
-            f"Processing source: {inspection.human_run_name(processing_source['source_run_id'])}",
-        )
-    console_print(f"Work: {plan.new_task_count} pending, {reused} reusable")
-    console_print(f"Reporting: {reporting}")
-    if level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
-        console_print(f"Run ID: {plan.run.run_id}")
-        if processing_source is not None:
-            console_print(
-                f"Processing source Run ID: {processing_source['source_run_id']}",
-            )
-        console_print(
+    processing_source = plan.run.execution_plan.record["identity"].get(
+        "processing_source"
+    )
+    field("Work", f"{plan.new_task_count} pending, {reused} reusable")
+    field("Reporting", reporting)
+    if verbose:
+        details = [
+            f"Project: {plan.run.analysis.source_path.parent.name!a}",
+            f"Analysis: {plan.run.analysis.name!a}",
+            f"Scientific boundary: {boundary}",
+            f"Run ID: {plan.run.run_id}",
             f"Analysis revision: {plan.run.analysis.revision.analysis_revision_id}",
-        )
-        console_print(
             f"Execution Plan ID: {plan.run.execution_plan.execution_plan_id}",
-        )
-        console_print(f"Run root: {plan.run_root}")
-        console_print(
             f"Resources: {resources.workflow_cores} cores, {resources.workflow_memory_mb} MiB",
-        )
+        ]
+        if processing_source is not None:
+            details.insert(
+                1, f"Processing source Run ID: {processing_source['source_run_id']}"
+            )
+        for line in details:
+            console_print(line)
         console_print("Step thread allocations:")
         for step_id, threads in resources.step_threads:
             console_print(f"  Step {step_id}: {threads}")
         console_print("Stage concurrency:")
         for step_id, concurrency in resources.stage_concurrency:
             console_print(f"  Step {step_id}: {concurrency}")
-    if level is LogLevel.DEBUG:
         console_print(
             "Snakemake command: " + shlex.join(plan.attempt_record["snakemake_argv"]),
         )
@@ -1242,10 +1630,113 @@ def _print_plan(
                         f"TASK {machine_key}/{scope_id} {command}: "
                         + shlex.join(record[f"{command}_argv"]),
                     )
-    console_print(
-        "Evidence boundary: this plan or execution proves only the admitted local "
-        "workflow layer; it is not cluster, production, scientific-review, or "
-        "biological proof.",
+        console_print(
+            "Evidence boundary: this plan or execution proves only the admitted local "
+            "workflow layer; it is not cluster, production, scientific-review, or "
+            "biological proof.",
+        )
+
+
+def _complete_resume_finalization(
+    run_root: Path,
+    prepared: inspection.PreparedFinalizationInspection,
+    *,
+    require_recovery: bool = True,
+) -> inspection.RunInspection:
+    """Finish and freshly re-admit one exact prepared Attempt."""
+    try:
+        observed = lifecycle.finalize_prepared_attempt(run_root, prepared.candidate)
+    except (OSError, lifecycle.LifecycleError, inspection.InspectionError) as exc:
+        raise ControlError(str(exc)) from exc
+    if require_recovery:
+        _require_resume_predecessor(observed)
+    return observed
+
+
+def _finish_finalization_only(
+    arguments: argparse.Namespace,
+    run_root: Path,
+    prepared: inspection.PreparedFinalizationInspection,
+    logged: bool = False,
+) -> int:
+    """Complete an exact terminal outcome that cannot start another Attempt."""
+
+    if slurm_submission.delegate_binding() is not None:
+        raise ControlError("Prepared finalization is not a delegate operation")
+    status = str(prepared.candidate.record["status"])
+    if logged == arguments.execute:
+        console_field(
+            "Run", inspection.human_run_name(prepared.prospective_state.run_id)
+        )
+        console_field("Location", run_root)
+        console_field("Attempt", prepared.candidate.record["workflow_attempt_id"])
+        console_field("Finalization", "complete exact prepared Attempt receipt")
+        console_field("Prepared outcome", status)
+        console_field("Scientific continuation", "no new Attempt will be started")
+    if not logged and not arguments.execute and not _confirm_execution():
+        _print_no_write("resume")
+        return 0
+    if not logged:
+        return _execute_resume_locally(
+            arguments, arguments.project, run_root, overrides_from_args(arguments), None
+        )
+    observed = _complete_resume_finalization(run_root, prepared, require_recovery=False)
+    if status == "succeeded" and not observed.blockers:
+        console_print("Finalization complete; no scientific Attempt was created.")
+        return 0
+    detail = "; ".join(observed.blockers) or f"Attempt outcome is {status}"
+    message = "Finalization complete; scientific continuation remains unavailable: "
+    return _control_failure(ControlError(message + detail))
+
+
+def _execute_resume_locally(
+    arguments: argparse.Namespace,
+    project_path: Path,
+    run_root: Path,
+    overrides: ResourceOverrides,
+    expected_profile_source_sha256: str | None,
+) -> int:
+    """Open one local/delegate log before the first Run evidence admission."""
+
+    workspace = project_path.parent
+    report_enabled = not getattr(arguments, "no_report", False)
+
+    def build() -> AttemptPlan | int:
+        action = _admit_resume_action(run_root)
+        if action.finalization is not None and not action.effective.recovery_available:
+            return _finish_finalization_only(
+                arguments, run_root, action.finalization, logged=True
+            )
+        if expected_profile_source_sha256 is None:
+            raise ControlError("Execution profile could not be admitted")
+        profile, scheduler_job_id = _resolve_execution_profile(
+            arguments,
+            project_path,
+            overrides,
+            resume_run_root=run_root,
+            resume_state=action.effective,
+        )
+        # The effective delegated binding is checked by _resolve_execution_profile.
+        if profile.source_raw_sha256 != expected_profile_source_sha256:
+            raise ControlError("Execution profile changed during resume admission")
+        if action.finalization is not None:
+            _complete_resume_finalization(run_root, action.finalization)
+        return _plan_resume(
+            run_root,
+            execution_profile=profile,
+            resource_overrides=overrides,
+            scheduler_job_id=scheduler_job_id,
+            report_enabled=report_enabled,
+        )
+
+    return _execute_plan(
+        build,
+        controls=_resolve_controls(arguments, workspace),
+        workspace=workspace,
+        mode="resume",
+        scope_id=str(arguments.run),
+        entrypoint="emrys-resume",
+        report_enabled=report_enabled,
     )
 
 
@@ -1254,12 +1745,12 @@ def _finish_control(
     *,
     command: str,
     profile: ExecutionProfile,
-    effective_workflow_cores: int,
     controls: LogControls,
     overrides: ResourceOverrides,
     scheduler_job_id: str | None,
     workspace: Path,
     build_plan: PlanBuilder,
+    before_execution: Callable[[], None] | None = None,
 ) -> int:
     report_enabled = not getattr(arguments, "no_report", False)
     if isinstance(profile.placement, SlurmPlacement) and scheduler_job_id is None:
@@ -1267,24 +1758,25 @@ def _finish_control(
             command,
             arguments,
             profile,
-            effective_workflow_cores,
             controls,
             overrides,
             workspace,
+            before_submission=before_execution,
         )
+    if before_execution is not None:
+        console_field("Finalization", "complete exact prepared Attempt receipt first")
+    plan_source: AttemptPlan | PlanBuilder = build_plan
     if not arguments.execute:
         plan = build_plan()
         _print_plan(
             plan,
-            level=controls.level,
+            verbose=controls.verbose,
             report_enabled=report_enabled,
         )
         if not _confirm_execution():
             _print_no_write("workspace" if command == "run" else "resume")
             return 0
-        plan_source: AttemptPlan | PlanBuilder = plan
-    else:
-        plan_source = build_plan
+        plan_source = plan
     return _execute_plan(
         plan_source,
         controls=controls,
@@ -1293,6 +1785,7 @@ def _finish_control(
         scope_id="pending" if command == "run" else str(arguments.run),
         entrypoint=f"emrys-{command}",
         report_enabled=report_enabled,
+        before_plan=before_execution,
     )
 
 
@@ -1316,8 +1809,13 @@ def _add_execution_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _add_run_selector(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("run", nargs="?", metavar="RUN", help="Run name or ID prefix.")
+def _add_run_selector(
+    parser: argparse.ArgumentParser,
+    *,
+    metavar: str = "RUN",
+    help_text: str = "Run name or ID prefix.",
+) -> None:
+    parser.add_argument("run", nargs="?", metavar=metavar, help=help_text)
     onboarding.add_project_argument(parser)
 
 
@@ -1343,6 +1841,14 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
             "execute only the selected Analysis's downstream work."
         ),
     )
+    parser.add_argument(
+        "--allow-duplicate-submission",
+        action="store_true",
+        help=(
+            "Submit despite a matching active or unconfirmed retained request. "
+            "This may create duplicate jobs."
+        ),
+    )
     _add_execution_arguments(parser)
 
 
@@ -1362,92 +1868,91 @@ def configure_report_parser(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
-    _add_run_selector(parser)
+def configure_inspect_parser(
+    parser: argparse.ArgumentParser, *, watch_command: bool = False
+) -> None:
+    _add_run_selector(
+        parser,
+        metavar="RUN_OR_JOB" if watch_command else "RUN",
+        help_text=(
+            "Run name or ID prefix, numeric scheduler job ID, or exact scheduler job name."
+            if watch_command
+            else "Run name or ID prefix."
+        ),
+    )
+    add_verbose_argument(parser)
+    add_log_root_argument(parser)
+    if not watch_command:
+        parser.add_argument(
+            "--watch",
+            action="store_true",
+            help="Watch the exact selection; r refreshes Run verification. Read-only unless --actions is selected.",
+        )
     parser.add_argument(
-        "--detail",
-        choices=("normal", "verbose", "debug"),
-        default="normal",
-        help="Select concise, operational, or exact retained-record detail.",
+        "--actions",
+        action="store_true",
+        help="Enable interactive watch handoffs: p resume plan/confirm, b report preview for a Run; s stop preview for a submission. Run handoffs use the default profile.",
+    )
+    parser.add_argument(
+        "--job-id",
+        nargs="?",
+        const="auto",
+        metavar="JOB_ID",
+        help="Watch a scheduler job without Project admission; omit JOB_ID to discover a current-user EMRYS job. Cannot authorize actions.",
+    )
+    parser.add_argument(
+        "--log-dir",
+        help="Absolute scheduler log directory for historical job selection.",
+    )
+    parser.add_argument("--out", help="Explicit scheduler stdout for --offline.")
+    parser.add_argument("--err", help="Explicit scheduler stderr for --offline.")
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Read an explicit job and log pair without any scheduler queries.",
+    )
+    parser.add_argument(
+        "--refresh",
+        type=int,
+        default=30,
+        metavar="SECONDS",
+        help="Dashboard diagnostic refresh interval, at least 5 seconds (default 30).",
+    )
+    parser.add_argument(
+        "--snapshot",
+        action="store_true",
+        help="Print one plain dashboard snapshot without entering the interactive terminal.",
+    )
+    parser.add_argument(
+        "--submission",
+        metavar="REQUEST",
+        help="Inspect one exact request directory name or absolute path and query its scheduler state; excludes a Run selector.",
     )
 
 
-def _progress_state(tasks: tuple[inspection.TaskInspection, ...]) -> str:
-    if not tasks:
-        return "not applicable"
-    if any(task.state == "blocked" for task in tasks):
-        return "blocked"
-    if all(task.state == "verified" for task in tasks):
-        return "complete"
-    return "incomplete"
+def configure_watch_parser(parser: argparse.ArgumentParser) -> None:
+    """Reuse the inspection selector and dashboard options for ordinary watch."""
+
+    configure_inspect_parser(parser, watch_command=True)
+    parser.set_defaults(watch=True)
 
 
-def _milestone_progress(
-    tasks: tuple[inspection.TaskInspection, ...],
-    *,
-    processing_source_state: str | None = None,
-) -> tuple[tuple[str, str, int, int], ...]:
-    known_steps = {step for _label, steps in _MILESTONE_STEPS for step in steps}
-    unknown = sorted({task.expected.step_id for task in tasks} - known_steps)
-    if unknown:
-        raise ControlError(
-            "Inspected task Steps have no public milestone: " + ", ".join(unknown)
-        )
-    result = []
-    for label, steps in _MILESTONE_STEPS:
-        members = tuple(task for task in tasks if task.expected.step_id in steps)
-        state = (
-            processing_source_state
-            if processing_source_state is not None
-            and not members
-            and set(steps).issubset(PROCESSING_STEP_IDS)
-            else _progress_state(members)
-        )
-        result.append(
-            (
-                label,
-                state,
-                sum(task.state == "verified" for task in members),
-                len(members),
-            )
-        )
-    return tuple(result)
-
-
-def _attempt_elapsed_line(
-    observed: inspection.RunInspection,
-) -> str:
-    attempt = observed.latest_attempt
-    if attempt is None:
-        return "Attempt elapsed: unavailable — no Attempt"
-    label = "Current" if observed.attempt_outcome == "running" else "Latest"
-    try:
-        started = datetime.fromisoformat(
-            str(attempt["created_at"]).replace("Z", "+00:00")
-        )
-        if observed.attempt_outcome == "running":
-            finished = datetime.now(UTC)
-        elif observed.latest_receipt is not None:
-            finished = datetime.fromisoformat(
-                str(observed.latest_receipt["finished_at"]).replace("Z", "+00:00")
-            )
-        else:
-            return f"{label} Attempt elapsed: unavailable — no terminal receipt"
-        if finished < started:
-            raise ValueError("negative Attempt duration")
-        seconds = int((finished - started).total_seconds())
-    except (KeyError, TypeError, ValueError):
-        return f"{label} Attempt elapsed: unavailable — invalid timestamp boundary"
-    if started.tzinfo is None or finished.tzinfo is None:
-        return f"{label} Attempt elapsed: unavailable — invalid timestamp boundary"
-    return f"{label} Attempt elapsed: {timedelta(seconds=seconds)}"
+def configure_stop_parser(parser: argparse.ArgumentParser) -> None:
+    onboarding.add_project_argument(parser)
+    parser.add_argument(
+        "--submission",
+        required=True,
+        metavar="REQUEST",
+        help="Exact retained request directory name or absolute path; no job-ID or Run aliases.",
+    )
+    add_log_arguments(parser)
+    parser.add_argument(
+        "--execute", action="store_true", help="Issue the previewed stop request."
+    )
 
 
 def _print_safe(value: object, *, file: TextIO | None = None) -> None:
-    rendered = "".join(
-        character if character.isprintable() else ascii(character)[1:-1]
-        for character in str(value)
-    )
+    rendered = _inspection_presentation.safe_text(value)
     if file is sys.stderr:
         console_print(rendered, style="red")
     else:
@@ -1462,8 +1967,42 @@ def _run_or_resume_from_args(
 
     try:
         overrides = overrides_from_args(arguments)
+        resume_action = None
         if command == "resume":
             project_path, run_root = _resolve_run_argument(arguments)
+            if arguments.execute:
+                delegate_binding = slurm_submission.delegate_binding()
+                try:
+                    placement_profile = load_execution_profile(
+                        config_path=project_execution_profile_path(
+                            project_path, getattr(arguments, "profile", None)
+                        ),
+                        resource_overrides=overrides,
+                    )
+                except ExecutionProfileError:
+                    action = _admit_resume_action(run_root)
+                    if not action.finalization or action.effective.recovery_available:
+                        raise
+                    return _execute_resume_locally(
+                        arguments, project_path, run_root, overrides, None
+                    )
+                if delegate_binding is not None:
+                    if not isinstance(placement_profile.placement, SlurmPlacement):
+                        raise slurm_submission.SlurmSubmissionError(
+                            "A private Slurm delegate requires Slurm placement"
+                        )
+                    placement_profile.attempt_placement(os.environ.get("SLURM_JOB_ID"))
+                if delegate_binding is not None or not isinstance(
+                    placement_profile.placement, SlurmPlacement
+                ):
+                    return _execute_resume_locally(
+                        arguments,
+                        project_path,
+                        run_root,
+                        overrides,
+                        placement_profile.source_raw_sha256,
+                    )
+            resume_action = _admit_resume_action(run_root)
         else:
             project_path = onboarding.project_definition_path(
                 getattr(arguments, "project", None)
@@ -1471,13 +2010,21 @@ def _run_or_resume_from_args(
             arguments.project = project_path
             run_root = None
         workspace = project_path.parent
+        if (
+            resume_action is not None
+            and resume_action.finalization is not None
+            and not resume_action.effective.recovery_available
+        ):
+            return _finish_finalization_only(
+                arguments, run_root, resume_action.finalization
+            )
         profile, scheduler_job_id = _resolve_execution_profile(
             arguments,
             project_path,
             overrides,
             resume_run_root=run_root,
+            resume_state=(None if resume_action is None else resume_action.effective),
         )
-        effective_workflow_cores = profile.resource_policy.declaration.workflow_cores
         report_enabled = not getattr(arguments, "no_report", False)
         if command == "run":
             source_run_id = None
@@ -1507,17 +2054,24 @@ def _run_or_resume_from_args(
                 resource_overrides=overrides,
                 scheduler_job_id=scheduler_job_id,
                 report_enabled=report_enabled,
+                observed=resume_action.effective,
             )
         return _finish_control(
             arguments,
             command=command,
             profile=profile,
-            effective_workflow_cores=effective_workflow_cores,
             build_plan=build_plan,
             controls=_resolve_controls(arguments, workspace),
             overrides=overrides,
             scheduler_job_id=scheduler_job_id,
             workspace=workspace,
+            before_execution=(
+                None
+                if command == "run" or resume_action.finalization is None
+                else partial(
+                    _complete_resume_finalization, run_root, resume_action.finalization
+                )
+            ),
         )
     except _CONTROL_ERRORS as exc:
         return _control_failure(exc)
@@ -1557,7 +2111,17 @@ def report_from_args(
     if not arguments.execute:
         try:
             planned = reporting_operation.run_reporting(root, execute=False)
-        except (reporting_operation.ReportingOperationError, OSError) as exc:
+            if planned.status == "planned":
+                profile, _job_id = _resolve_execution_profile(
+                    arguments, project_path, ResourceOverrides()
+                )
+                for line in profile.submission_summary(verbose=arguments.verbose):
+                    console_print(line)
+        except (
+            *_CONTROL_ERRORS,
+            reporting_operation.ReportingOperationError,
+            OSError,
+        ) as exc:
             console_print(f"emrys: error: {exc}")
             return 2
         _print_reporting_outcome(planned)
@@ -1575,12 +2139,11 @@ def report_from_args(
                 "report",
                 arguments,
                 profile,
-                profile.resource_policy.declaration.workflow_cores,
                 _resolve_controls(arguments, workspace),
                 overrides,
                 workspace,
             )
-    except (ControlError, ExecutionProfileError, ResourceConfigError) as exc:
+    except _CONTROL_ERRORS as exc:
         return _control_failure(exc)
 
     execution_attempt_id = f"application-{uuid.uuid4().hex}"
@@ -1607,6 +2170,7 @@ def report_from_args(
                 component="reporting",
                 scheduler_environment=os.environ,
             )
+            _record_submission_context(attempt, workspace)
             attempt.logger(component="reporting", phase="execute").info(
                 "Generating downstream reports.",
                 extra=event("reporting_started", fields={"run_root": field(root)}),
@@ -1655,38 +2219,633 @@ def report_from_args(
     return 0
 
 
+def _print_submission_roster(project: Path, selector: str | None = None) -> None:
+    requests = (
+        (slurm_submission.select_submission_request(project, selector),)
+        if selector is not None
+        else slurm_submission.submission_requests(project)
+    )
+    print("Retained submissions:")
+    if not requests:
+        print("  None found; this does not establish that no job was submitted.")
+        return
+    for request in requests:
+        _print_safe(f"  Request: {request.request_root}")
+        print(f"    Records: {request.record_status.replace('-', ' ')}")
+        if request.context is not None:
+            context = request.context
+            _print_safe(
+                f"    Command: {context['command']}; recorded time: {context['created_at']}; "
+                f"requested Run: {context['requested_run'] or 'new Run'}"
+            )
+            _print_safe(f"    Application logs: {context['application_log_root']}")
+            if "scheduler_job_name" in context:
+                _print_safe(
+                    f"    Recorded scheduler name: {context['scheduler_job_name']}"
+                )
+            if selector is not None:
+                for stream in ("stdout", "stderr"):
+                    path = context[f"scheduler_{stream}_pattern"].replace(
+                        "%j", request.recorded_job_id or "%j"
+                    )
+                    _print_safe(f"    Recorded scheduler {stream}: {path}")
+        _print_safe(
+            f"    Recorded response job ID: {request.recorded_job_id or 'unconfirmed'}; "
+            f"cluster: {request.recorded_cluster or 'not recorded'}"
+        )
+        if request.stderr_excerpt:
+            _print_safe(
+                "    Scheduler stderr excerpt: "
+                + request.stderr_excerpt.decode("utf-8", "replace")
+            )
+        for diagnostic in request.diagnostics:
+            _print_safe(f"    Observation: {diagnostic}")
+        if selector is not None:
+            with phase_progress("Reading scheduler state for the selected request"):
+                scheduler = slurm_submission.observe_submission_request(request)
+            _print_safe(
+                f"    Scheduler observation: {scheduler['state']}; "
+                f"source: {scheduler['source'] or 'unavailable'}; "
+                f"cluster: {scheduler['cluster'] or 'unconfirmed'}"
+            )
+            for key, label in (
+                ("reason", "Queue reason"),
+                ("exit_code", "Scheduler exit status"),
+                ("diagnostic", "Observation"),
+            ):
+                if scheduler.get(key):
+                    _print_safe(f"    {label}: {scheduler[key]}")
+            with phase_progress(
+                "Reading application evidence for the selected request"
+            ):
+                application = _submission_inspection.inspect_submission_application(
+                    request
+                )
+            print(
+                f"    Application association: {application.status.replace('-', ' ')}"
+            )
+            if application.application_log is not None:
+                _print_safe(f"    Bound application log: {application.application_log}")
+                print(f"    Log snapshot SHA-256: {application.application_log_sha256}")
+            if application.recorded_event is not None:
+                label = (
+                    "Reporting start recorded"
+                    if application.recorded_event == "reporting_started"
+                    else "Preparation recorded"
+                )
+                _print_safe(
+                    f"    {label}: Run={application.recorded_run_id}; "
+                    f"Attempt={application.recorded_workflow_attempt_id or 'not applicable'}"
+                )
+            for line in _inspection_presentation.application_outcome_lines(application):
+                _print_safe(f"    {line}")
+            if application.run_root is not None:
+                _print_safe(f"    Admitted Run: {application.run_root}")
+                if application.workflow_attempt_id is not None:
+                    _print_safe(
+                        f"    Admitted Attempt record: {application.workflow_attempt_id}"
+                    )
+                _print_safe(
+                    "    Inspect Run evidence: "
+                    + shlex.join(
+                        [
+                            "emrys",
+                            "inspect",
+                            "--project",
+                            str(project),
+                            application.run_root.name,
+                        ]
+                    )
+                )
+            for diagnostic in application.diagnostics:
+                _print_safe(f"    Application observation: {diagnostic}")
+    if selector is None:
+        print(
+            "Current scheduler state and Run association are not established by these records."
+        )
+        print("Query one exact request with: emrys inspect --submission REQUEST")
+    else:
+        print(
+            "Scheduler and application observations do not establish workflow entry, "
+            "Run completion or recovery eligibility, or authorize cancellation."
+        )
+
+
+def _report_stop_run_evidence(
+    project: Path,
+    request: slurm_submission.SubmissionRequestObservation,
+    *,
+    scheduler_terminal: bool,
+) -> None:
+    """Report admitted Run evidence without changing the stop transport result."""
+
+    try:
+        application = _submission_inspection.inspect_submission_application(request)
+        if (
+            scheduler_terminal
+            and application.run_root
+            and application.workflow_attempt_id
+        ):
+            attempt_root = (
+                application.run_root / "attempts" / application.workflow_attempt_id
+            )
+            terminal_receipt = attempt_root / "attempt-receipt.json"
+            deadline = time.monotonic() + 10
+            # A prepared receipt is not terminal. Path appearance only wakes the
+            # final full admission; it is not evidence by itself.
+            while not (terminal_receipt.exists() or terminal_receipt.is_symlink()):
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                time.sleep(min(0.5, remaining))
+        selected = slurm_submission.select_submission_request(
+            project, str(request.request_root)
+        )
+        if selected != request:
+            raise inspection.InspectionError("Selected submission changed after stop")
+        application = _submission_inspection.inspect_submission_application(selected)
+        _print_safe(f"Application association: {application.status}")
+        for diagnostic in application.diagnostics:
+            _print_safe(f"Application diagnostic: {diagnostic}")
+        if application.run_root is None or application.workflow_attempt_id is None:
+            _print_safe("Recovery available: unconfirmed; no admitted current Attempt")
+            return
+        observed = inspection.inspect_run(application.run_root)
+        if (
+            observed.latest_attempt is None
+            or observed.latest_attempt["workflow_attempt_id"]
+            != application.workflow_attempt_id
+        ):
+            _print_safe("Run/Task verification: selected Attempt is not current")
+            _print_safe("Recovery available: unconfirmed")
+            return
+        _print_safe(f"Run outcome: {observed.attempt_outcome}")
+        task_counts = _inspection_presentation.project_run(observed).task_counts
+        _print_safe(
+            "Task evidence: "
+            + ", ".join(f"{count} {state}" for state, count in task_counts)
+        )
+        if observed.prepared_finalization is not None:
+            _print_safe("Attempt receipt: prepared; terminal publication pending")
+            _print_safe("Recovery available: not yet")
+        elif observed.latest_receipt is None:
+            _print_safe("Attempt receipt: not admitted")
+            _print_safe("Recovery available: unconfirmed")
+        else:
+            _print_safe(f"Attempt receipt: {observed.latest_receipt['status']}")
+            _print_safe(
+                f"Recovery available: {'yes' if observed.recovery_available else 'no'}"
+            )
+        _print_safe(f"Next action: {_next_supported_action(observed)}")
+    except (Exception, KeyboardInterrupt) as exc:
+        _print_safe(f"Run/Task verification unavailable: {exc}")
+        _print_safe("Recovery available: unconfirmed")
+
+
+def stop_from_args(arguments: argparse.Namespace) -> int:
+    attempt = None
+    try:
+        project = onboarding.project_definition_path(arguments.project)
+        with phase_progress("Reading the selected stop target and client"):
+            plan = slurm_submission.plan_stop(project, arguments.submission)
+        context = plan.request.context
+        assert context is not None
+        controls = resolve_log_controls(
+            verbose=arguments.verbose,
+            cli_root=arguments.log_root,
+            default_root=Path(str(context["application_log_root"])),
+        )
+        _print_safe(f"Stop request: {plan.request.request_root}")
+        _print_safe(f"Project: {project}")
+        _print_safe(
+            f"Target: job {plan.request.recorded_job_id}; UID {context['submitter_uid']}; "
+            f"cluster {plan.observation['cluster']}; name {context['scheduler_job_name']}"
+        )
+        _print_safe(f"Scheduler observation: {plan.observation['state']}")
+        _print_safe(
+            "Inspect retained evidence: "
+            + shlex.join(
+                [
+                    "emrys",
+                    "inspect",
+                    "--project",
+                    str(project),
+                    "--submission",
+                    plan.request.request_root.name,
+                ]
+            )
+        )
+        print(
+            "Scheduler state does not prove native-task quiescence or authorize resume."
+        )
+        if not plan.argv:
+            print(
+                "The exact scheduler record is already terminal; no stop request is needed."
+            )
+            if arguments.execute:
+                _report_stop_run_evidence(
+                    project, plan.request, scheduler_terminal=True
+                )
+            return 0
+        _print_safe(f"Client: {plan.client_version}; command: {shlex.join(plan.argv)}")
+        if not arguments.execute:
+            print(
+                "Preview only; use --execute to issue this stop request. No files were written."
+            )
+            return 0
+        attempt = open_attempt_log(
+            controls=controls,
+            identity=AttemptIdentity(
+                "maintenance",
+                plan.request.request_root.name,
+                f"application-{uuid.uuid4().hex}",
+                "emrys-stop",
+            ),
+            mode="stop",
+            component="scheduler",
+        )
+        stdout = attempt.path.parent / "scancel.stdout"
+        _print_safe(
+            f"Stop diagnostics: {attempt.path}; {stdout}; {stdout.with_suffix('.stderr')}"
+        )
+        record_intent = partial(
+            attempt.intent,
+            event_name="slurm_stop_intent",
+            message="Exact controller stop request admitted.",
+            fields={
+                name: field(value)
+                for name, value in {
+                    "request_root": plan.request.request_root,
+                    "project": project,
+                    "request_context_sha256": hashlib.sha256(
+                        orchestration_contracts.canonical_json_bytes(dict(context))
+                    ).hexdigest(),
+                    "job_id": plan.request.recorded_job_id,
+                    "submitter_uid": context["submitter_uid"],
+                    "cluster": plan.observation["cluster"],
+                    "scheduler_job_name": context["scheduler_job_name"],
+                    "client_version": plan.client_version,
+                    "client_file_binding": plan.client_binding,
+                    "argv": plan.argv,
+                    "stdout": stdout,
+                    "stderr": stdout.with_suffix(".stderr"),
+                }.items()
+            },
+        )
+        with phase_progress(
+            "Rechecking the target, requesting stop and observing the scheduler"
+        ):
+            result = slurm_submission.stop(
+                plan, record_path=stdout, record_intent=record_intent
+            )
+        if result.invocation_attempted:
+            _print_safe(
+                f"scancel exit status: {result.returncode if result.returncode is not None else 'unconfirmed'}"
+            )
+            print(
+                "A zero exit status means the controller request was processed; it does not prove the job was cancelled."
+            )
+        else:
+            print(
+                "No stop request was sent; the exact scheduler record became terminal."
+            )
+        _print_safe(
+            f"Post-check scheduler observation: {result.observation['state']}; source: {result.observation['source'] or 'unavailable'}"
+        )
+        for label, value in (
+            ("Stop diagnostic", result.diagnostic),
+            ("Scheduler diagnostic", result.observation.get("diagnostic")),
+            ("scancel stdout", result.stdout_excerpt.decode("utf-8", "replace")),
+            ("scancel stderr", result.stderr_excerpt.decode("utf-8", "replace")),
+        ):
+            if value:
+                _print_safe(f"{label}: {value}")
+        recorded = attempt.best_effort(
+            lambda: attempt.terminal(
+                event_name="slurm_stop_observed",
+                message="Stop transport and scheduler observations retained.",
+                fields={
+                    name: field(value)
+                    for name, value in {
+                        "invocation_attempted": result.invocation_attempted,
+                        "returncode": result.returncode,
+                        "scheduler": dict(result.observation),
+                        "diagnostic": result.diagnostic,
+                    }.items()
+                },
+            ),
+            warning="WARNING: stop logging degraded; raw diagnostics are retained and the outcome remains unconfirmed.",
+        )
+        _report_stop_run_evidence(
+            project,
+            plan.request,
+            scheduler_terminal=bool(result.observation["terminal"]),
+        )
+        return (
+            0
+            if (
+                recorded
+                and result.observation["terminal"]
+                and result.diagnostic is None
+                and (not result.invocation_attempted or result.returncode == 0)
+            )
+            else 1
+        )
+    except KeyboardInterrupt:
+        if attempt is not None:
+            attempt.best_effort(
+                lambda: attempt.interrupt_best_effort(
+                    message="Stop invocation interrupted; submitted request outcome is unconfirmed."
+                ),
+                warning="WARNING: stop interruption logging degraded; retained diagnostics remain controlling.",
+            )
+        print(
+            "Stop interrupted; any issued controller request may have been processed. Inspect retained evidence before another request.",
+            file=sys.stderr,
+        )
+        return 130
+    except (
+        slurm_submission.SlurmSubmissionError,
+        onboarding.OnboardingError,
+        ApplicationLogError,
+        LogControlError,
+        ValueError,
+        OSError,
+    ) as exc:
+        error = str(exc)
+        if attempt is not None:
+            attempt.best_effort(
+                lambda: attempt.fail(
+                    phase="stop",
+                    message="Stop failed or was refused.",
+                    fields={"error": field(error)},
+                ),
+                warning="WARNING: stop failure logging degraded; retained diagnostics were preserved.",
+            )
+        _print_safe(f"emrys: error: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        if attempt is not None:
+            with suppress(Exception):
+                attempt.close()
+
+
+def _watch_review_actions(
+    project: Path, selection: Path, *, submission: bool = False
+) -> tuple[tuple[bytes, str, Callable[[], int]], ...]:
+    """Capture exact selectors; leave fresh admission to each public CLI owner."""
+    selected = ("--submission", str(selection)) if submission else (selection.name,)
+    commands = (
+        ((b"s", "stop preview", "stop", configure_stop_parser, stop_from_args),)
+        if submission
+        else (
+            (
+                b"p",
+                "resume plan/confirm",
+                "resume",
+                configure_resume_parser,
+                resume_from_args,
+            ),
+            (
+                b"b",
+                "report preview",
+                "report",
+                configure_report_parser,
+                report_from_args,
+            ),
+        )
+    )
+
+    def review(command, configure, handler):
+        parser = argparse.ArgumentParser(prog=f"emrys {command}")
+        configure(parser)
+        argv = ["--project", str(project), *selected]
+        _print_safe("Reviewing: " + shlex.join(["emrys", command, *argv]))
+        return handler(parser.parse_args(argv))
+
+    return tuple(
+        (key, label, partial(review, command, configure, handler))
+        for key, label, command, configure, handler in commands
+    )
+
+
 def inspect_from_args(
     arguments: argparse.Namespace,
 ) -> int:
     try:
-        _project_path, run_root = _resolve_run_argument(arguments)
-        observed = inspection.inspect_run(run_root)
-        detail = getattr(arguments, "detail", "normal")
-        milestones = _milestone_progress(
-            observed.tasks,
-            processing_source_state=(
-                None
-                if observed.processing_source_run_id is None
-                else "reused"
-                if observed.processing_source is not None
-                else "blocked"
-            ),
+        submission_selector = getattr(arguments, "submission", None)
+        explicit_run = getattr(arguments, "run", None) is not None
+        cli_log_root = getattr(arguments, "log_root", None)
+        if cli_log_root is not None and (
+            submission_selector is not None or not explicit_run
+        ):
+            raise ControlError(
+                "--log-root requires a Run selector and cannot override --submission evidence"
+            )
+        if (
+            submission_selector is not None
+            and getattr(arguments, "run", None) is not None
+        ):
+            raise ControlError("Select a submission or a Run, not both")
+        snapshot_only = getattr(arguments, "snapshot", False)
+        watching = getattr(arguments, "watch", False) or snapshot_only
+        actions = getattr(arguments, "actions", False)
+        refresh_seconds = getattr(arguments, "refresh", 30)
+        if refresh_seconds < 5:
+            raise ControlError("--refresh must be at least 5 seconds")
+        raw_selector = getattr(arguments, "job_id", None)
+        raw_job_name = getattr(arguments, "job_name", None)
+        raw_mode = raw_selector is not None or any(
+            getattr(arguments, key, None)
+            for key in ("job_name", "log_dir", "out", "err", "offline")
         )
-        elapsed = _attempt_elapsed_line(observed)
+        if raw_job_name is not None and (
+            raw_selector is not None
+            or any(
+                getattr(arguments, key, None)
+                for key in ("log_dir", "out", "err", "offline")
+            )
+        ):
+            raise ControlError(
+                "A scheduler job name cannot be combined with job-ID or log selectors"
+            )
+        if (
+            watching
+            and not raw_mode
+            and not actions
+            and not explicit_run
+            and submission_selector is None
+            and getattr(arguments, "project", None) is None
+        ):
+            try:
+                Path("project.yaml").lstat()
+            except FileNotFoundError:
+                raw_mode = True
+        if raw_mode:
+            if not watching:
+                raise ControlError(
+                    "Scheduler dashboard selection requires --watch or --snapshot"
+                )
+            if (
+                actions
+                or explicit_run
+                or submission_selector is not None
+                or getattr(arguments, "project", None) is not None
+                or cli_log_root is not None
+            ):
+                raise ControlError(
+                    "Scheduler diagnostic selection excludes Project, Run, submission, log-root and action selectors"
+                )
+            from . import dashboard
+
+            selected = (
+                dashboard.resolve_named_selection(raw_job_name)
+                if raw_job_name is not None
+                else dashboard.resolve_selection(
+                    (os.environ.get("EMRYS_DASHBOARD_JOB_ID", "").strip() or None)
+                    if raw_selector in (None, "auto")
+                    else raw_selector,
+                    getattr(arguments, "log_dir", None)
+                    or os.environ.get("EMRYS_DASHBOARD_LOG_DIR", "").strip()
+                    or None,
+                    getattr(arguments, "out", None),
+                    getattr(arguments, "err", None),
+                    getattr(arguments, "offline", False),
+                )
+            )
+            return _inspection_presentation.watch(
+                None,
+                raw_job=selected,
+                offline=getattr(arguments, "offline", False),
+                refresh_seconds=refresh_seconds,
+                snapshot_only=snapshot_only,
+                inspect_run=inspection.inspect_run,
+                next_action=_next_supported_action,
+            )
+        if actions and not watching:
+            raise ControlError("--actions requires --watch")
+        if actions and snapshot_only:
+            raise ControlError("--actions cannot be used with --snapshot")
+        if actions:
+            _inspection_presentation.require_action_terminal()
+        if getattr(arguments, "run", None) is None:
+            project = onboarding.project_definition_path(
+                getattr(arguments, "project", None)
+            )
+            if watching and submission_selector is not None:
+                request = slurm_submission.select_submission_request(
+                    project, submission_selector
+                )
+                action_run = getattr(arguments, "_watch_run_root", None)
+                return _inspection_presentation.watch(
+                    project,
+                    request=request,
+                    inspect_run=inspection.inspect_run,
+                    next_action=_next_supported_action,
+                    refresh_seconds=refresh_seconds,
+                    snapshot_only=snapshot_only,
+                    review_actions=(
+                        _watch_review_actions(
+                            project,
+                            action_run or request.request_root,
+                            submission=action_run is None,
+                        )
+                        if actions
+                        else ()
+                    ),
+                )
+            if not watching:
+                _print_submission_roster(project, submission_selector)
+            if submission_selector is not None:
+                return 0
+        try:
+            _project_path, run_root = _resolve_run_argument(arguments)
+        except _NoProjectRuns:
+            print("Runs: none found at inspection time.")
+            print(
+                "Do not submit again solely because a Run is absent; retain the submission records."
+            )
+            return 0
+        watch_target = None
+        if watching and cli_log_root is None:
+            watch_target = _select_watch_target(
+                _project_watch_targets(_project_path),
+                run_root.name,
+                interactive=sys.stdin.isatty() and sys.stderr.isatty(),
+            )
+        log_root = (
+            None
+            if not explicit_run or (watch_target and watch_target.request is not None)
+            else resolve_log_root(
+                cli_root=cli_log_root,
+                default_root=_project_path.parent / "logs" / "application",
+            )[0]
+        )
+        if watching:
+            return _inspection_presentation.watch(
+                _project_path,
+                request=None if watch_target is None else watch_target.request,
+                run_root=(
+                    run_root
+                    if watch_target is None or watch_target.request is None
+                    else None
+                ),
+                application_log_root=log_root,
+                inspect_run=inspection.inspect_run,
+                next_action=_next_supported_action,
+                refresh_seconds=refresh_seconds,
+                snapshot_only=snapshot_only,
+                review_actions=(
+                    _watch_review_actions(_project_path, run_root) if actions else ()
+                ),
+            )
+        observed = inspection.inspect_run(run_root)
+        applications = (
+            None
+            if log_root is None
+            else _submission_inspection.inspect_run_applications(
+                _project_path, run_root, log_root
+            )
+        )
+        verbose = getattr(arguments, "verbose", False)
+        projection = _inspection_presentation.project_run(observed)
         result_lines = _verified_report_location_lines(
             observed.verified_report_locations
         )
     except (
         OSError,
         inspection.InspectionError,
+        _inspection_presentation.PresentationError,
+        slurm_submission.scheduler_observation.DiscoveryError,
         onboarding.OnboardingError,
         ControlError,
+        LogControlError,
+        slurm_submission.SlurmSubmissionError,
     ) as exc:
         return _control_failure(exc)
-    print(f"Run: {inspection.human_run_name(run_root.name)}")
-    print(f"Run integrity: {observed.integrity}")
-    print(f"Attempt outcome: {observed.attempt_outcome}")
-    print(elapsed)
+    present = partial(console_print, file=sys.stdout)
+    present_field = partial(console_field, file=sys.stdout)
+    present_status = partial(console_status, file=sys.stdout)
+    run_name = inspection.human_run_name(run_root.name)
+    present_field("Run", run_name, value_style="bold blue")
+    if completion := projection.completion:
+        present(completion, style="bold green")
+    present_status("Run admission", observed.integrity)
+    latest = observed.latest_attempt
+    present_status("Attempt outcome", observed.attempt_outcome)
+    present_status("Scientific Results", observed.results_status)
+    present_status("Reporting admission", observed.reporting_status)
+    if verbose or observed.lock_observation != "no lock":
+        print(f"Run lock: {observed.lock_observation}")
+    if latest is not None and observed.lock_observation in {
+        "local live owner",
+        "remote ownership unverified",
+        "local process not live",
+    }:
+        _print_safe(
+            f"Recorded lock host: {latest['host']}; scheduler job: "
+            f"{(latest.get('placement') or {}).get('scheduler_job_id') or 'none'}"
+        )
     if observed.processing_source_run_id is not None:
         source_state = (
             "admitted" if observed.processing_source is not None else "blocked"
@@ -1696,17 +2855,30 @@ def inspect_from_args(
             f"{inspection.human_run_name(observed.processing_source_run_id)} "
             f"({source_state})"
         )
-    print("Scientific milestones:")
-    for label, state, verified, total in milestones:
-        print(f"  {label}: {state}")
-        if detail != "normal":
+    terminal_attempts = tuple(
+        terminal for task in observed.tasks for terminal in task.terminal_attempts
+    )
+    receipt = observed.latest_receipt
+    if verbose:
+        if applications is not None:
+            for line in _inspection_presentation.run_application_lines(
+                applications, detail="verbose"
+            ):
+                _print_safe(line)
+        print(projection.elapsed)
+        present("Scientific milestones:", style="bold blue")
+        for label, state, verified, total in projection.milestones:
+            print(f"  {label}: {state}")
             if observed.processing_source_run_id is None or total:
                 print(f"    Verified tasks: {verified}/{total}")
-    print(f"Scientific Results: {observed.results_status}")
-    print(f"Reporting: {observed.reporting_status}")
-    latest = observed.latest_attempt
-    receipt = observed.latest_receipt
-    if detail != "normal":
+        if observed.tasks:
+            print("Scientific task observations:")
+            for label, count in projection.task_counts:
+                print(f"  {label}: {count}")
+        if observed.reporting_status != "not applicable":
+            print("Reporting transactions:")
+            for kind, state in projection.reporting:
+                print(f"  {kind}: {state}")
         print(f"Run ID: {observed.run_id}")
         if observed.processing_source_run_id is not None:
             print(f"Processing source Run ID: {observed.processing_source_run_id}")
@@ -1727,18 +2899,26 @@ def inspect_from_args(
                 f"Execution: {latest['executor']}/{latest['execution_mode']} "
                 f"placement={placement_kind} scheduler_job_id={scheduler_job_id}"
             )
-        if observed.reporting_status != "not applicable":
-            print("Reporting transactions:")
-            for kind, records in observed.reporting_completion_records.items():
-                state = (
-                    "complete"
-                    if records["verified"] is not None
-                    else "incomplete"
-                    if records["start"] is not None
-                    else "pending"
+        if terminal_attempts:
+            print("Recorded Task outcomes and logs:")
+            for terminal in terminal_attempts:
+                record = terminal.record
+                _print_safe(
+                    f"  TASK {record['machine_key']}/{record['scope']['scope_id']}: "
+                    f"recorded {record['status']}; Attempt {record['workflow_attempt_id']}"
                 )
-                print(f"  {kind}: {state}")
-    if detail == "debug":
+                _print_safe(
+                    f"    record: {observed.run_root / terminal.record_reference['path']}"
+                )
+                if record["failure_message"] is not None:
+                    _print_safe(f"    failure: {record['failure_message']}")
+        streams = _inspection_presentation.task_stream_sources(observed)
+        if streams:
+            print(
+                "Task diagnostic streams (paths do not establish existence or liveness):"
+            )
+            for source in streams:
+                _print_safe(f"  {source.label}: {source.path}")
         authority = observed.authority
         print("Run authority records:")
         for label, name, record in (
@@ -1772,22 +2952,27 @@ def inspect_from_args(
                     f"signal={receipt['termination_signal']} "
                     f"message={receipt['message']}"
                 )
-        print("Task records:")
         for task in observed.tasks:
             identity = f"{task.expected.machine_key}/{task.expected.scope_id}"
-            task_detail = f"  TASK {identity}: {task.state}"
+            task_detail = (
+                f"  TASK {identity}: {_inspection_presentation.task_observation(task)}"
+            )
+            if task.start_reference is not None:
+                task_detail += (
+                    f"; start={observed.run_root / task.start_reference['path']}"
+                )
             if task.record_reference is not None:
                 task_detail += (
                     f"; verified={observed.run_root / task.record_reference['path']}"
                 )
             if task.record is not None:
                 attempt_path = (
-                    observed.run_root
-                    / "attempts"
-                    / task.record["workflow_attempt_id"]
-                    / "tasks"
-                    / task.expected.machine_key
-                    / task.expected.scope_id
+                    task_boundary.task_attempt_root(
+                        observed.run_root,
+                        task.record["workflow_attempt_id"],
+                        task.expected.machine_key,
+                        task.expected.scope_id,
+                    )
                     / "task-attempt.json"
                 )
                 task_detail += (
@@ -1809,11 +2994,85 @@ def inspect_from_args(
     ):
         for blocker in blockers:
             _print_safe(f"{blocker_label}: {blocker}")
-    print(f"Recovery available: {'yes' if observed.recovery_available else 'no'}")
-    _print_safe(f"Next supported action: {_next_supported_action(observed)}")
+    if verbose or observed.recovery_available:
+        print(f"Recovery available: {'yes' if observed.recovery_available else 'no'}")
+    present_field(
+        "Next supported action",
+        _next_supported_action(observed),
+        value_style="bold",
+    )
     for line in result_lines:
         _print_safe(line)
     return 0
+
+
+def watch_from_args(arguments: argparse.Namespace) -> int:
+    """Resolve the ordinary monitoring shorthand onto one existing watch path."""
+
+    arguments.watch = True
+    selector = getattr(arguments, "run", None)
+    explicit_project = getattr(arguments, "project", None) is not None
+    interactive = sys.stdin.isatty() and sys.stderr.isatty()
+    if selector is not None and getattr(arguments, "job_id", None) is not None:
+        return _control_failure(
+            ControlError("Select one positional Run/job or --job-id, not both")
+        )
+    if selector is not None and selector.isdecimal():
+        if explicit_project:
+            return _control_failure(
+                ControlError("A scheduler job ID cannot be combined with --project")
+            )
+        arguments.run = None
+        arguments.job_id = selector
+        return inspect_from_args(arguments)
+    if selector is None and any(
+        getattr(arguments, key, None)
+        for key in ("job_id", "job_name", "log_dir", "out", "err", "offline")
+    ):
+        return inspect_from_args(arguments)
+    current_project = explicit_project or os.path.lexists("project.yaml")
+    try:
+        target = None
+        if current_project:
+            project = onboarding.project_definition_path(
+                getattr(arguments, "project", None)
+            )
+            target = _select_watch_target(
+                _project_watch_targets(project),
+                selector,
+                interactive=interactive,
+            )
+            if explicit_project and selector is not None and target is None:
+                return inspect_from_args(arguments)
+            if selector is None and target is None:
+                raise ControlError(
+                    f"Project has no admitted monitoring targets: {project.parent}"
+                )
+        if target is None:
+            target = _select_watch_target(
+                _projects_home_watch_targets(),
+                selector,
+                interactive=interactive,
+            )
+        if target is not None:
+            arguments.project = target.project
+            arguments.run = None if target.request else target.run_root.name
+            arguments.submission = (
+                None if target.request is None else target.request.request_root.name
+            )
+            arguments._watch_run_root = target.run_root
+        elif selector is not None:
+            arguments.run, arguments.job_name = None, selector
+        elif os.environ.get("EMRYS_DASHBOARD_JOB_ID", "").strip():
+            return inspect_from_args(arguments)
+        else:
+            raise ControlError(
+                "No admitted Project monitoring target is available; pass an exact "
+                "job ID or scheduler job name for diagnostic monitoring"
+            )
+    except _CONTROL_ERRORS as exc:
+        return _control_failure(exc)
+    return inspect_from_args(arguments)
 
 
 __all__ = (
@@ -1822,11 +3081,17 @@ __all__ = (
     "REPORT_DESCRIPTION",
     "RESUME_DESCRIPTION",
     "RUN_DESCRIPTION",
+    "STOP_DESCRIPTION",
+    "WATCH_DESCRIPTION",
     "configure_inspect_parser",
+    "configure_watch_parser",
+    "configure_stop_parser",
     "configure_report_parser",
     "configure_resume_parser",
     "configure_run_parser",
     "inspect_from_args",
+    "watch_from_args",
+    "stop_from_args",
     "report_from_args",
     "resume_from_args",
     "run_from_args",

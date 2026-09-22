@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import platform
 import shutil
@@ -11,7 +12,9 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
+from collections.abc import Callable
 from contextlib import suppress
 from functools import partial
 from dataclasses import dataclass, replace
@@ -22,11 +25,22 @@ from emrys import analyses as analysis_modules
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import AnalysisRevision
 from emrys.evidence.runtime_availability.inspector import (
+    PYTHON_CHECK_IDS,
+    RuntimeBinding,
     RuntimeCheck,
     RuntimeInspection,
+    RuntimeContentMismatchError,
     RuntimeInspectionError,
+    RuntimeObservation,
     inspect_runtime_profile_bytes,
+    admit_runtime_seal_bytes,
     load_runtime_profile_contract,
+    runtime_root_for_seal,
+    shared_runtime_profile_bytes,
+    shared_runtime_selection,
+    runtime_seal_bytes,
+    runtime_file_bindings,
+    runtime_profile_checks,
 )
 from emrys.evidence.storage_inventory import qualification as storage_qualification
 from emrys.libraries.application_logging import (
@@ -35,31 +49,38 @@ from emrys.libraries.application_logging import (
     AttemptIdentity,
     LogControlError,
     LogControls,
-    LogLevel,
     add_log_arguments,
+    console_field,
     console_print,
+    console_status,
     event,
     field,
     open_attempt_log,
     phase_progress,
     resolve_log_controls,
 )
-from emrys.libraries.installed_package_identity import (
-    InstalledPackageIdentityError,
-    installed_package_tree_identity,
+from emrys.libraries.exclusive_publication import (
+    acquire_lock,
+    publish_exclusive,
+    release_lock,
 )
-from emrys.libraries.exclusive_publication import publish_exclusive
 from emrys.libraries.process_environment import (
     guarded_r_environment,
     guarded_rscript_argv,
     sanitized_subprocess_environment,
 )
+from emrys.libraries.validation.errors import ValidationError
+from emrys.libraries.validation.inputs import read_bytes_with_identity
 from emrys.libraries.source_authority import (
     InstalledPackage,
     InstalledPackageError,
     admit_installed_package,
 )
-from emrys.orchestration.run_coordinator import onboarding, slurm_submission
+from emrys.orchestration.run_coordinator import (
+    onboarding,
+    scheduler_observation,
+    slurm_submission,
+)
 from emrys.orchestration.run_coordinator.capacity import observe_allocation
 from emrys.orchestration.run_coordinator.execution_profile import (
     ExecutionProfileError,
@@ -76,6 +97,7 @@ from emrys.orchestration.run_coordinator.resource_policy import (
     ResourceConfigError,
     is_canonical_slurm_job_id,
     resolve_resource_policy,
+    resource_workload,
 )
 
 DESCRIPTION = (
@@ -86,7 +108,6 @@ DESCRIPTION = (
 )
 
 StorageRequirement = Literal["direct", "slurm"]
-PYTHON_CHECK_IDS = frozenset({"python", "snakemake", "sha256_python"})
 
 
 class DoctorInputError(RuntimeError):
@@ -97,16 +118,152 @@ class DoctorRepairError(RuntimeError):
     """The managed-runtime repair cannot proceed or did not complete."""
 
 
-@dataclass(frozen=True, slots=True)
-class RuntimeBinding:
-    """One exact path-and-content binding admitted from the runtime inventory."""
+class _DoctorTiming:
+    """Invocation-local observations; never an admission or execution authority."""
 
-    check_id: str
-    path: Path
-    resolved_path: Path
-    sha256: str
-    observed: str
-    identity_kind: Literal["file", "package_tree"] | None = None
+    def __init__(self) -> None:
+        self.context = "head/local"
+        self.detail = False
+        self.summary = False
+        self.phases: list[dict[str, object]] = []
+        self.runtime_probes: list[tuple[str, dict[str, object]]] = []
+        self.scheduler_timing: dict[str, object] | None = None
+        self.flushed = False
+
+    def observe(self, name: str, elapsed: float | None, outcome: str) -> None:
+        values = {"phase_name": name, "elapsed_seconds": elapsed, "outcome": outcome}
+        self.phases.append(values)
+
+    def observe_runtime(
+        self, inspection: RuntimeInspection | None, *, phase: str
+    ) -> None:
+        with suppress(Exception):
+            if inspection is not None:
+                self.runtime_probes.extend(
+                    (phase, _runtime_observation_fields(inspection, item))
+                    for item in inspection.observations
+                    if item.status == "pass"
+                )
+
+    def flush(self, record: Callable[..., bool]) -> None:
+        if self.flushed:
+            return
+        self.flushed = True
+        with suppress(Exception):
+            for values in self.phases:
+                if not record(
+                    "doctor_phase_timing",
+                    "Doctor phase timing observed.",
+                    execution_context=self.context,
+                    **values,
+                ):
+                    return
+            for phase, values in self.runtime_probes:
+                if not record(
+                    "runtime_check_passed",
+                    "Runtime check passed at the recorded Doctor phase.",
+                    phase=phase,
+                    execution_context=self.context,
+                    **values,
+                ):
+                    return
+            if self.scheduler_timing is not None:
+                record(
+                    "doctor_scheduler_timing",
+                    "Recorded Slurm accounting intervals observed.",
+                    **self.scheduler_timing,
+                )
+
+    def observe_scheduler(
+        self,
+        submission: slurm_submission.SlurmSubmission,
+        identity: tuple[str, str | None] | None,
+    ) -> None:
+        observed = scheduler_observation.unknown_observation(
+            "No response-recorded job identity; accounting was not queried"
+        )
+        if identity is not None:
+            try:
+                with phase_progress(
+                    "Reading recorded Slurm timing", on_complete=self.observe
+                ):
+                    observed = scheduler_observation.observe_job(
+                        identity[0],
+                        str(submission.stdout_pattern),
+                        str(submission.stderr_pattern),
+                        identity[1],
+                        job_name=submission.job_name,
+                        include_timing=True,
+                    )
+                    if not isinstance(observed, dict):
+                        raise TypeError("Accounting observation was not a record")
+            except Exception as exc:
+                observed = scheduler_observation.unknown_observation(str(exc)[:4096])
+        self.scheduler_timing = {
+            "scheduler_job_id": identity[0] if identity is not None else None,
+            **observed,
+        }
+
+    def finish(self, elapsed: float | None, status: int | None) -> None:
+        if self.summary:
+            slowest = max(
+                (
+                    values
+                    for values in self.phases
+                    if isinstance(values["elapsed_seconds"], (int, float))
+                ),
+                key=lambda values: float(values["elapsed_seconds"]),
+                default=None,
+            )
+            total = "unavailable" if elapsed is None else f"{elapsed:.3f}s"
+            detail = f"{total} including confirmation"
+            if slowest is not None:
+                detail += (
+                    f"; slowest phase: {slowest['phase_name']} "
+                    f"({float(slowest['elapsed_seconds']):.3f}s)"
+                )
+            outcome = "interrupted or failed" if status is None else f"exit {status}"
+            console_field("Doctor elapsed", f"{detail}; {outcome}", value_style="bold")
+        if self.detail and self.scheduler_timing is not None:
+            observed = self.scheduler_timing
+            _stderr(
+                f"Slurm accounting observation: {observed['state']}; "
+                f"source: {observed.get('source') or 'unavailable'}; "
+                f"scheduler exit status: {observed.get('exit_code') or 'unavailable'}"
+            )
+            timing = observed.get("timing", {})
+            intervals = "; ".join(
+                f"{label}: {timing[key]}s" if key in timing else f"{label}: unavailable"
+                for key, label in (
+                    ("submission_to_start_seconds", "submitted-to-start wait"),
+                    ("eligible_to_start_seconds", "eligible queue wait"),
+                    ("allocation_wall_seconds", "allocation wall time"),
+                )
+            )
+            _stderr(
+                f"Slurm accounting timing (job {observed['scheduler_job_id'] or 'unconfirmed'}; "
+                f"cluster {observed.get('cluster') or 'unconfirmed'}; "
+                f"observed {observed.get('timing_observed_at', 'unavailable')}): {intervals}"
+            )
+            diagnostic = timing.get("diagnostic") or observed.get("diagnostic")
+            if diagnostic:
+                _stderr(f"Slurm timing limitation: {str(diagnostic)!a}")
+        if self.detail:
+            for values in self.phases:
+                seconds = values["elapsed_seconds"]
+                duration = "unavailable" if seconds is None else f"{seconds:.6f}s"
+                _stderr(
+                    f"Doctor phase timing ({self.context}): {values['phase_name']}; "
+                    f"{values['outcome']}; elapsed {duration}"
+                )
+            duration = "unavailable" if elapsed is None else f"{elapsed:.6f}s"
+            outcome = (
+                "interrupted or failed" if status is None else f"exit status {status}"
+            )
+            _stderr(
+                f"Doctor invocation timing ({self.context}, including operator confirmation time): "
+                f"elapsed {duration}; {outcome}"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -324,105 +481,12 @@ def _module_dependency_checks(
     )
 
 
-def runtime_file_bindings(
-    inspection: RuntimeInspection,
-    *,
-    package_tree_ids: frozenset[str] = frozenset(),
-    explicit_file_ids: frozenset[str] = frozenset(),
-) -> tuple[RuntimeBinding, ...]:
-    """Bind executable/jar bytes and exact installed R package trees."""
-
-    bindings: list[RuntimeBinding] = []
-    renv_library = next(
-        Path(item.check.target)
-        for item in inspection.observations
-        if item.check.check_id == "renv_library"
-    )
-    for observation in inspection.observations:
-        check = observation.check
-        if observation.status != "pass" or check.check_id in {
-            "renv_project",
-            "renv_library",
-        }:
-            continue
-        if check.check_type == "r_namespace" or check.check_id in package_tree_ids:
-            try:
-                root = (
-                    renv_library / check.target
-                    if check.check_type == "r_namespace"
-                    else Path(check.target)
-                )
-                resolved_root = root.resolve(strict=True)
-                identity = installed_package_tree_identity(resolved_root)
-                confirmed_root = root.resolve(strict=True)
-            except (OSError, InstalledPackageIdentityError) as exc:
-                raise DoctorInputError(
-                    f"Could not bind runtime package tree {check.check_id}: {exc}"
-                ) from exc
-            expected_root = (
-                observation.resolved_path
-                if check.check_type == "r_namespace"
-                else Path(check.target)
-            )
-            if (
-                expected_root is None
-                or identity.root != expected_root
-                or confirmed_root != resolved_root
-            ):
-                raise DoctorInputError(
-                    f"Runtime package-tree root changed: {check.check_id}"
-                )
-            bindings.append(
-                RuntimeBinding(
-                    check.check_id,
-                    identity.root,
-                    identity.root,
-                    identity.sha256,
-                    observation.observed,
-                    ("package_tree" if check.check_id in package_tree_ids else None),
-                )
-            )
-            continue
-        path = Path(check.target)
-        try:
-            resolved = path.resolve(strict=True)
-            state = path.lstat()
-        except OSError as exc:
-            raise DoctorInputError(
-                f"Could not bind runtime file {check.check_id}: {exc}"
-            ) from exc
-        if check.check_id in explicit_file_ids and (
-            stat.S_ISLNK(state.st_mode)
-            or not stat.S_ISREG(state.st_mode)
-            or resolved != path
-        ):
-            raise DoctorInputError(
-                f"Analysis dependency must be a canonical real file: {check.check_id}"
-            )
-        try:
-            data = resolved.read_bytes()
-        except OSError as exc:
-            raise DoctorInputError(
-                f"Could not bind runtime file {check.check_id}: {exc}"
-            ) from exc
-        bindings.append(
-            RuntimeBinding(
-                check.check_id,
-                path,
-                resolved,
-                hashlib.sha256(data).hexdigest(),
-                observation.observed,
-                "file" if check.check_id in explicit_file_ids else None,
-            )
-        )
-    return tuple(bindings)
-
-
 def diagnose_project(
     project_path: str | Path,
     workspace: str | Path | None = None,
     runtime_inventory: str | Path | None = None,
     *,
+    execution_profile: str | Path | None = None,
     storage_requirement: StorageRequirement | None = None,
     analysis_name: str | None = None,
     expected_analysis_revision: AnalysisRevision | None = None,
@@ -434,9 +498,15 @@ def diagnose_project(
     execution = None
     execution_error: str | None = None
     if storage_requirement is None:
-        execution_path = project_execution_profile_path(project, None)
         try:
+            execution_path = project_execution_profile_path(project, execution_profile)
             execution = load_execution_profile(config_path=execution_path)
+            if (
+                os.environ.get("EMRYS_SITE") == "viking"
+                and execution_profile is None
+                and (execution.placement.kind != "slurm")
+            ):
+                raise ExecutionProfileError("saved Viking site conflicts with direct")
             storage_requirement = execution.placement.kind
         except ExecutionProfileError as exc:
             execution_error = str(exc)
@@ -518,6 +588,7 @@ def diagnose_project(
             profile_bytes, fixed_checks = load_runtime_profile_contract(
                 profile_path, root
             )
+            selected_shared = shared_runtime_selection(profile_bytes)
         except RuntimeInspectionError as exc:
             raise DoctorInputError(str(exc)) from exc
         additions, package_tree_ids, explicit_file_ids = _module_dependency_checks(
@@ -572,30 +643,85 @@ def diagnose_project(
                 "package manager; Doctor repairs only native tools and R."
             )
         if any(item.check.check_id in fixed_ids - PYTHON_CHECK_IDS for item in failed):
-            remediations.append(
-                "Run `emrys doctor --repair` for an EMRYS-managed runtime, or repair "
-                "and re-admit the selected site environment without editing runtime.tsv."
-            )
+            if (
+                selected_shared is not None
+                and runtime_root_for_seal(selected_shared.seal_path)
+                != onboarding.runtime_profile_path(project).parent
+            ):
+                donor = (
+                    runtime_root_for_seal(selected_shared.seal_path).parent
+                    / "project.yaml"
+                )
+                remediations.append(
+                    "The Project that owns these shared tools must prepare their "
+                    "replacement. Then run `emrys runtime discover --from-project "
+                    f"{donor} --replace --execute`."
+                )
+            else:
+                remediations.append(
+                    "Run `emrys doctor --repair` for an EMRYS-managed runtime, or "
+                    "repair and re-admit the selected site environment without "
+                    "editing runtime.tsv."
+                )
         if any(item.check.check_id in custom_ids for item in failed):
             remediations.append(
                 "Install the selected analysis module and its declared dependencies "
                 "with their package manager, then rerun Doctor; managed repair "
                 "restores only the fixed EMRYS runtime."
             )
-        bindings = (
-            *runtime_file_bindings(
+        donor_seal = onboarding.runtime_profile_path(project).parent / "shared.json"
+        content_matches = True
+        try:
+            runtime_bindings = runtime_file_bindings(
                 inspection,
                 package_tree_ids=package_tree_ids,
                 explicit_file_ids=explicit_file_ids,
-            ),
-            *bindings,
-        )
-        runtime_ready = python_ready and not failed
+                donor_seal=donor_seal
+                if profile_path == onboarding.runtime_profile_path(project)
+                and os.path.lexists(donor_seal)
+                and shared_runtime_selection(profile_bytes) is None
+                else None,
+            )
+        except RuntimeContentMismatchError as exc:
+            runtime_bindings = ()
+            content_matches = False
+            blockers.append(str(exc))
+            owner = (
+                None
+                if selected_shared is None
+                else runtime_root_for_seal(selected_shared.seal_path)
+            )
+            if (
+                owner is None
+                or owner == onboarding.runtime_profile_path(project).parent
+            ):
+                remediations.append(
+                    "Run `emrys doctor --repair`; it will prepare a replacement "
+                    "generation without changing the shared tools in place."
+                )
+            else:
+                remediations.append(
+                    "The Project that owns these shared tools must prepare their "
+                    "replacement. Then run `emrys runtime discover --from-project "
+                    f"{owner.parent / 'project.yaml'} --replace --execute`."
+                )
+        except RuntimeInspectionError as exc:
+            raise DoctorInputError(str(exc)) from exc
+        bindings = (*runtime_bindings, *bindings)
+        runtime_ready = python_ready and not failed and content_matches
     if execution_error is not None:
-        blockers.append(f"default execution profile is not admitted: {execution_error}")
+        selection = "default" if execution_profile is None else "selected"
+        blockers.append(
+            f"{selection} execution profile is not admitted: {execution_error}"
+        )
         remediations.append(
-            "Restore a valid Project-owned runtime/profiles/default.yaml; "
+            "Create `viking` with `emrys profile create viking --site viking --execute`; "
+            "then use `--profile viking`, or explicitly use `--profile default`, for Doctor and Run."
+            if execution_error.startswith("saved Viking site")
+            else "Restore a valid Project-owned runtime/profiles/default.yaml; "
             "Doctor preserves operator execution policy."
+            if execution_profile is None
+            else "Select a valid execution profile with --profile; Doctor preserves operator execution policy."
         )
     return DoctorResult(
         project=admitted_project,
@@ -622,6 +748,9 @@ class _ManagedRuntimePlan:
     manifest_bytes: bytes
     lock_bytes: bytes
     r_settings_bytes: bytes
+    source_seal: Path | None = None
+    source_seal_bytes: bytes | None = None
+    replacement_seal: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -634,6 +763,23 @@ class _RepairPlan:
     execution: ExecutionProfile | None = None
     compute: bool = False
     qualification_binding: str | None = None
+
+    @property
+    def operation(self) -> str:
+        return "repair and verification" if self.runtime else "verification"
+
+    @property
+    def runtime_work(self) -> str:
+        if self.runtime is None:
+            return "Selected runtime passed current checks; no package-manager work is needed."
+        action = (
+            "Prepare a managed runtime inventory; package managers check any retained tools and caches."
+            if self.runtime.profile_bytes is None and self.runtime.source_seal is None
+            else "Create and verify a replacement generation; other Projects keep their existing selection until explicitly replaced."
+            if self.runtime.replacement_seal is not None
+            else "Check/update tools selected by the retained managed runtime inventory."
+        )
+        return f"{action} Package-manager output records which packages are reused, installed, or changed."
 
 
 def _profile_is_managed(
@@ -688,11 +834,13 @@ def _file_sha256(path: Path) -> str:
 
 def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
     if result.installed_package is None:
-        raise DoctorRepairError("repair requires an admitted installed EMRYS package")
+        raise DoctorRepairError("Doctor requires an admitted installed EMRYS package")
     if not result.execution_ready:
         raise DoctorRepairError(
-            "repair preserves execution profiles; restore runtime/profiles/default.yaml"
+            "Doctor preserves execution profiles; restore or select a valid profile with --profile"
         )
+    if result.execution_profile is not None:
+        result.execution_profile.validate_reservation()
     project = result.project
     fasta = Path(str(result.analysis.workflow_inputs["reference"]["fasta"]["path"]))
     try:
@@ -710,15 +858,16 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
         )
     except storage_qualification.StorageQualificationError as exc:
         raise DoctorRepairError(str(exc)) from exc
+    plan = _RepairPlan(
+        project=project,
+        analysis_name=result.analysis.name,
+        installed_package=result.installed_package,
+        storage=storage,
+        runtime=None,
+        execution=result.execution_profile,
+    )
     if result.runtime_ready:
-        return _RepairPlan(
-            project=project,
-            analysis_name=result.analysis.name,
-            installed_package=result.installed_package,
-            storage=storage,
-            runtime=None,
-            execution=result.execution_profile,
-        )
+        return plan
     if result.inspection is not None and any(
         item.check.check_id in PYTHON_CHECK_IDS and item.status != "pass"
         for item in result.inspection.observations
@@ -761,6 +910,11 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
     except (OSError, onboarding.OnboardingError) as exc:
         raise DoctorRepairError(str(exc)) from exc
     managed = runtime / "managed"
+    if os.path.lexists(runtime / "maintenance.lock"):
+        raise DoctorRepairError(
+            f"Runtime maintenance claim already exists: {runtime / 'maintenance.lock'}; "
+            "preserved for explicit reconciliation"
+        )
     profile = runtime / "runtime.tsv"
     profile_bytes: bytes | None = None
     profile_checks: tuple[RuntimeCheck, ...] = ()
@@ -777,6 +931,47 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
             raise DoctorRepairError(
                 f"could not re-admit the managed runtime inventory: {exc}"
             ) from exc
+    source_seal: Path | None = None
+    source_seal_bytes: bytes | None = None
+    replacement_seal: Path | None = None
+    try:
+        selection = (
+            None if profile_bytes is None else shared_runtime_selection(profile_bytes)
+        )
+        if selection is not None:
+            source_seal = selection.seal_path
+        elif os.path.lexists(runtime / "shared.json"):
+            source_seal = runtime / "shared.json"
+        if source_seal is not None:
+            owner = runtime_root_for_seal(source_seal)
+            if owner != runtime:
+                donor = owner.parent / "project.yaml"
+                raise DoctorRepairError(
+                    "This Project uses tools shared by another Project. Doctor will "
+                    "not change that installation. After its owner prepares a replacement, "
+                    "run `emrys runtime discover --from-project "
+                    f"{donor} --replace --execute`."
+                )
+            source_seal_bytes, _seal_state = read_bytes_with_identity(
+                source_seal, "Shared runtime seal"
+            )
+            if (
+                selection is not None
+                and hashlib.sha256(source_seal_bytes).hexdigest()
+                != selection.seal_sha256
+            ):
+                raise DoctorRepairError(
+                    "shared runtime seal differs from the selected SHA-256"
+                )
+            admitted_seal = admit_runtime_seal_bytes(source_seal, source_seal_bytes)
+            replacement_seal = (
+                runtime / "generations" / uuid.uuid4().hex / "shared.json"
+            )
+            managed = replacement_seal.parent / "managed"
+    except (RuntimeInspectionError, ValidationError) as exc:
+        raise DoctorRepairError(
+            f"could not re-admit the shared runtime seal: {exc}"
+        ) from exc
     pixi = _manager("pixi")
     managed_plan = _ManagedRuntimePlan(
         managed_root=managed,
@@ -787,21 +982,22 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
         manifest_bytes=manifest_bytes,
         lock_bytes=lock_bytes,
         r_settings_bytes=r_settings_bytes,
+        source_seal=source_seal,
+        source_seal_bytes=source_seal_bytes,
+        replacement_seal=replacement_seal,
     )
     if result.inspection is not None:
-        if not _profile_is_managed(profile_checks, managed_plan):
+        admitted_plan = (
+            replace(managed_plan, managed_root=admitted_seal.managed_root)
+            if source_seal is not None
+            else managed_plan
+        )
+        if not _profile_is_managed(profile_checks, admitted_plan):
             raise DoctorRepairError(
                 "the admitted runtime inventory is site- or user-owned and was "
                 "preserved; repair that environment or explicitly admit a replacement"
             )
-    return _RepairPlan(
-        project=project,
-        analysis_name=result.analysis.name,
-        installed_package=result.installed_package,
-        storage=storage,
-        runtime=managed_plan,
-        execution=result.execution_profile,
-    )
+    return replace(plan, runtime=managed_plan)
 
 
 def _readmit_repair_plan(
@@ -809,6 +1005,9 @@ def _readmit_repair_plan(
     *,
     before_storage: bool,
 ) -> None:
+    runtime = plan.runtime
+    if runtime is not None:
+        _readmit_runtime_seal_plan(runtime)
     try:
         installed_package = admit_installed_package(root=plan.installed_package.root)
         project = onboarding.validate_project(
@@ -833,20 +1032,24 @@ def _readmit_repair_plan(
         storage_qualification.StorageQualificationError,
         ExecutionProfileError,
     ) as exc:
-        raise DoctorRepairError(f"repair plan changed before execution: {exc}") from exc
+        raise DoctorRepairError(f"Doctor plan changed before execution: {exc}") from exc
     if (
         installed_package != plan.installed_package
         or project != plan.project
         or (plan.storage is not None and observed_storage != plan.storage)
-        or (
-            plan.runtime is not None
-            and runtime_root != plan.runtime.managed_root.parent
-        )
+        or (plan.runtime is not None and runtime_root != plan.runtime.profile.parent)
     ):
-        raise DoctorRepairError("repair plan changed before execution")
-    runtime = plan.runtime
+        raise DoctorRepairError("Doctor plan changed before execution")
     if runtime is None:
         return
+    if (
+        before_storage
+        and runtime.replacement_seal is not None
+        and os.path.lexists(runtime.replacement_seal.parent)
+    ):
+        raise DoctorRepairError(
+            "replacement runtime generation appeared before execution"
+        )
     if _file_sha256(runtime.pixi) != runtime.pixi_sha256:
         raise DoctorRepairError("admitted package manager changed before execution")
     if not before_storage:
@@ -880,9 +1083,57 @@ def _readmit_repair_plan(
         raise DoctorRepairError("runtime inventory changed before execution")
 
 
+def _readmit_runtime_seal_plan(runtime: _ManagedRuntimePlan) -> None:
+    """Require the exact shared-generation state admitted by the repair plan."""
+
+    if runtime.source_seal is None:
+        if os.path.lexists(runtime.profile.parent / "shared.json"):
+            raise DoctorRepairError("shared runtime seal appeared before execution")
+        return
+    assert runtime.source_seal_bytes is not None
+    try:
+        source_data, _source_state = read_bytes_with_identity(
+            runtime.source_seal, "Shared runtime seal"
+        )
+        if source_data != runtime.source_seal_bytes:
+            raise DoctorRepairError("shared runtime seal changed before replacement")
+        admitted = admit_runtime_seal_bytes(runtime.source_seal, source_data)
+        if runtime_root_for_seal(admitted.path) != runtime.profile.parent:
+            raise DoctorRepairError("shared runtime owner changed before replacement")
+    except (RuntimeInspectionError, ValidationError) as exc:
+        raise DoctorRepairError(
+            f"shared runtime seal changed before replacement: {exc}"
+        ) from exc
+
+
 def _admit_managed_root(plan: _ManagedRuntimePlan) -> None:
     root = plan.managed_root
     try:
+        if plan.replacement_seal is not None:
+            generation = plan.replacement_seal.parent
+            generations = generation.parent
+            runtime = plan.profile.parent
+            if (
+                root != generation / "managed"
+                or generations != runtime / "generations"
+                or os.path.lexists(generation)
+            ):
+                raise DoctorRepairError(
+                    "replacement runtime generation changed before creation"
+                )
+            if not os.path.lexists(generations):
+                generations.mkdir(mode=0o700)
+            state = generations.lstat()
+            if (
+                not stat.S_ISDIR(state.st_mode)
+                or stat.S_ISLNK(state.st_mode)
+                or generations.resolve(strict=True) != generations
+                or state.st_uid != os.getuid()
+            ):
+                raise DoctorRepairError(
+                    f"runtime generations directory is not owned: {generations}"
+                )
+            generation.mkdir(mode=0o700)
         if not os.path.lexists(root):
             root.mkdir(mode=0o700)
         state = root.lstat()
@@ -946,7 +1197,7 @@ def _admit_managed_root(plan: _ManagedRuntimePlan) -> None:
 
 def _repair_actions(
     plan: _RepairPlan,
-) -> tuple[tuple[tuple[str, ...], dict[str, str]], ...]:
+) -> tuple[tuple[str, tuple[str, ...], dict[str, str]], ...]:
     runtime = plan.runtime
     if runtime is None:
         return ()
@@ -993,6 +1244,7 @@ def _repair_actions(
     )
     return (
         (
+            "Checking/updating native tools and R",
             (
                 str(runtime.pixi),
                 "install",
@@ -1004,6 +1256,7 @@ def _repair_actions(
             pixi,
         ),
         (
+            "Checking/restoring R packages",
             (
                 str(runtime.pixi),
                 "run",
@@ -1071,21 +1324,80 @@ def _stderr(message: str, *, style: str | None = None) -> None:
     console_print(message, style=style)
 
 
-def _print_result(result: DoctorResult, detail: LogLevel) -> None:
+def _runtime_observation_fields(
+    inspection: RuntimeInspection, item: RuntimeObservation
+) -> dict[str, object]:
+    return {
+        "check_id": item.check.check_id,
+        "target": item.check.target,
+        "status": item.status,
+        "expected": item.check.expected,
+        "observed": item.observed,
+        "detail": item.detail,
+        "host": platform.node(),
+        "inventory": str(inspection.profile_path),
+        "inventory_sha256": inspection.profile_sha256,
+    }
+
+
+def _record_runtime_failures(
+    inspection: RuntimeInspection | None,
+    *,
+    phase: str,
+    attempt: AttemptLog | None = None,
+) -> None:
+    """Retain failed observations in the existing maintenance or scheduler stream."""
+    if inspection is None:
+        return
+    for item in inspection.observations:
+        if item.status == "pass":
+            continue
+        values = _runtime_observation_fields(inspection, item)
+        if attempt is None:
+            _stderr(
+                f"Runtime check failed ({phase}): {json.dumps(values, ensure_ascii=True)}"
+            )
+        else:
+            attempt.best_effort(
+                lambda: attempt.logger(component="maintenance", phase=phase).warning(
+                    "Runtime check failed.",
+                    extra=event(
+                        "runtime_check_failed",
+                        detail="durable_only",
+                        fields={key: field(value) for key, value in values.items()},
+                    ),
+                ),
+                warning="WARNING: runtime diagnostics could not be retained in the maintenance log.",
+            )
+            _stderr(
+                f"Runtime check {item.check.check_id!r} failed ({phase}); diagnostics: {attempt.path}"
+            )
+
+
+def _print_result(result: DoctorResult, verbose: bool) -> None:
     _stderr("EMRYS Doctor", style="bold blue")
-    _stderr(f"  Project    PASS  {result.project.source_path.parent}", style="green")
-    _stderr(f"  Analysis   PASS  {result.analysis.name}", style="green")
-    _stderr("  Inputs     PASS", style="green")
-    for label, ready in (
-        ("Storage", result.storage_ready),
-        ("Runtime", result.runtime_ready),
-        ("Execution", result.execution_ready),
+    for label, value in (
+        ("Project", result.project.source_path.parent),
+        ("Analysis", result.analysis.name),
     ):
-        _stderr(
-            f"  {label:<10} {'PASS' if ready else 'FAIL'}",
-            style="green" if ready else "red",
+        console_field(label, f"PASS  {value}", value_style="bold green", indent="  ")
+    console_status("Inputs", "PASS", indent="  ")
+    for label, ready, requirement in (
+        ("Storage", result.storage_ready, "NOT QUALIFIED"),
+        (
+            "Runtime",
+            result.runtime_ready,
+            "NOT PREPARED" if result.inspection is None else "CHECKS FAILED",
+        ),
+        ("Execution", result.execution_ready, "NOT ADMITTED"),
+    ):
+        console_field(
+            label,
+            "PASS" if ready else requirement,
+            value_style="bold green" if ready else "bold red",
+            indent="  ",
         )
-    if detail in {LogLevel.VERBOSE, LogLevel.DEBUG}:
+    if verbose:
         package = result.installed_package
         if package is not None:
             _stderr(f"Installed EMRYS: {package.root}")
@@ -1095,36 +1407,42 @@ def _print_result(result: DoctorResult, detail: LogLevel) -> None:
             _stderr(f"Runtime inventory: {result.inspection.profile_path}")
             _stderr(f"Runtime inventory SHA-256: {result.inspection.profile_sha256}")
             for observation in result.inspection.observations:
-                _stderr(
-                    f"  {observation.check.check_id}: {observation.status} ({observation.observed})"
-                )
-    if detail is LogLevel.DEBUG:
+                if observation.status == "pass":
+                    _stderr(
+                        f"  {observation.check.check_id!r}: pass; "
+                        + json.dumps(
+                            {
+                                "observed": observation.observed,
+                                "detail": observation.detail,
+                            },
+                            ensure_ascii=True,
+                        )
+                    )
+            _record_runtime_failures(result.inspection, phase="diagnosis")
         for binding in result.bindings:
             _stderr(
                 f"Binding {binding.check_id}: {binding.path} -> {binding.resolved_path} sha256:{binding.sha256}"
             )
-    _stderr(
-        "EMRYS is ready." if result.ready else "EMRYS is not ready.",
-        style="green" if result.ready else "yellow",
-    )
+    console_status("Doctor", "ready" if result.ready else "not ready")
     for blocker in result.blockers:
-        _stderr(f"BLOCKER: {blocker}", style="red")
+        console_field("Execution requirement", blocker, value_style="bold red")
     for remediation in result.remediations:
-        _stderr(f"REMEDIATION: {remediation}", style="yellow")
+        console_field("Remediation", remediation, value_style="bold yellow")
 
 
-def _print_repair_plan(plan: _RepairPlan) -> None:
-    _stderr("EMRYS Doctor repair plan", style="bold blue")
-    _stderr(f"  Project: {plan.project.source_path}")
-    actions = []
-    if plan.execution is not None and isinstance(
-        plan.execution.placement, SlurmPlacement
+def _print_repair_plan(plan: _RepairPlan, verbose: bool) -> None:
+    _stderr(f"EMRYS Doctor {plan.operation} plan", style="bold blue")
+    _stderr("First Doctor setup can take 5–25 minutes.", style="yellow")
+    if plan.execution is not None and (
+        verbose or isinstance(plan.execution.placement, SlurmPlacement)
     ):
-        actions.append(
-            "compute runtime/storage checks (head finalization follows)"
-            if plan.compute
-            else "Slurm runtime/storage checks, then head finalization"
-        )
+        for line in plan.execution.submission_summary(verbose=verbose):
+            _stderr(f"  {line}")
+    if not verbose:
+        return
+    console_field("Project", plan.project.source_path, indent="  ")
+    console_field("Runtime work", plan.runtime_work, indent="  ")
+    actions = []
     if plan.storage is not None:
         _stderr(f"  Direct storage receipt: {plan.storage.receipt_path}")
         for role, root in zip(
@@ -1137,22 +1455,32 @@ def _print_repair_plan(plan: _RepairPlan) -> None:
     if plan.runtime is not None:
         runtime = plan.runtime
         _stderr(f"  Managed runtime: {runtime.managed_root}")
-        _stderr(f"  Pixi: {runtime.pixi}")
-        actions.extend(
-            (
-                "Pixi native/R install",
-                "renv restore",
-                "runtime qualification",
-            )
+        _stderr(f"  Maintenance claim: {runtime.profile.parent / 'maintenance.lock'}")
+        if runtime.replacement_seal is not None:
+            _stderr(f"  Replacement seal: {runtime.replacement_seal}")
+        _stderr(
+            "  A retained claim blocks further repair; release errors require reconciliation."
         )
+        _stderr(f"  Pixi: {runtime.pixi}")
+        actions.extend(label for label, *_ in _repair_actions(plan))
+    if plan.execution is not None and isinstance(
+        plan.execution.placement, SlurmPlacement
+    ):
+        actions.append(
+            "compute runtime/storage checks (head finalization follows)"
+            if plan.compute
+            else "Slurm runtime/storage checks, then head finalization"
+        )
+    actions.append("rechecking Project, package, runtime, and storage readiness")
     _stderr("  Actions: " + "; ".join(actions), style="blue")
+    _stderr("Checks repeat because inputs, packages, and node visibility can change.")
     _stderr("Declared input files and site/user environments will not be modified.")
 
 
-def _confirm_repair() -> bool:
+def _confirm_repair(plan: _RepairPlan) -> bool:
     if not sys.stdin.isatty() or not sys.stderr.isatty():
         return False
-    print("Apply this repair? [y/N] ", end="", file=sys.stderr, flush=True)
+    console_print(f"Apply this {plan.operation} plan? [y/N] ", end="")
     return sys.stdin.readline().strip().casefold() in {"y", "yes"}
 
 
@@ -1181,12 +1509,39 @@ def _qualification_binding(result: DoctorResult) -> str:
     )
 
 
+def _diagnose_phase(
+    plan: _RepairPlan,
+    phase: str,
+    timing: _DoctorTiming | None,
+    attempt: AttemptLog | None,
+    record_failures: bool = True,
+) -> DoctorResult:
+    """Run one fresh Doctor phase through the shared timing/diagnostic boundary."""
+    label = {
+        "head_final_readiness": "Verifying final Project readiness",
+        "project_readiness": "Checking Project readiness",
+    }[phase]
+    with phase_progress(label, on_complete=timing.observe if timing else None):
+        result = diagnose_project(
+            plan.project.source_path,
+            analysis_name=plan.analysis_name,
+            execution_profile=plan.execution.source_path if plan.execution else None,
+        )
+    if timing is not None:
+        timing.observe_runtime(result.inspection, phase=phase)
+    if record_failures:
+        _record_runtime_failures(result.inspection, phase=phase, attempt=attempt)
+    return result
+
+
 def _qualify_slurm(
     plan: _RepairPlan,
     result: DoctorResult,
     attempt: AttemptLog | None,
     controls: LogControls,
+    timing: _DoctorTiming | None = None,
 ) -> DoctorResult:
+    progress = partial(phase_progress, on_complete=timing.observe if timing else None)
     execution = plan.execution
     assert execution is not None
     binding = _qualification_binding(result)
@@ -1201,8 +1556,12 @@ def _qualify_slurm(
             raise DoctorRepairError(
                 "Project, package, or runtime changed before compute qualification"
             )
-        resolve_resource_policy(execution.resource_policy, observe_allocation())
-        with phase_progress("Checking storage from the compute node"):
+        resolve_resource_policy(
+            execution.resource_policy,
+            observe_allocation(),
+            workload=resource_workload(result.analysis.revision),
+        )
+        with progress("Checking storage from the compute node"):
             receipt = storage_qualification.qualify_compute(workspace, fasta)
         _stderr(
             f"Compute checks passed; storage evidence: {receipt}. Head finalization is required."
@@ -1223,56 +1582,82 @@ def _qualify_slurm(
             str(plan.project.source_path),
             "--analysis",
             plan.analysis_name,
+            "--profile",
+            str(execution.source_path),
             "--repair",
             "--execute",
             "--compute",
             "--qualification-binding",
             binding,
-            "--log-level",
-            controls.level.value,
+            *(("--verbose",) if controls.verbose else ()),
             "--log-root",
             str(controls.root),
         ),
         log_dir=attempt.path.parent,
     )
-    with phase_progress("Waiting for Slurm runtime and storage checks"):
-        slurm_submission.submit(
-            submission,
-            wait_record=attempt.path.parent / "slurm-submit.stdout",
-            on_submitted=lambda job_id: attempt.best_effort(
-                lambda: attempt.logger(component="maintenance", phase="repair").info(
-                    "Compute qualification submitted.",
-                    extra=event(
-                        "repair_compute_submitted",
-                        fields={
-                            "scheduler_job_id": field(job_id),
-                            "binding": field(binding),
-                            "stdout": field(submission.stdout_pattern),
-                            "stderr": field(submission.stderr_pattern),
-                        },
-                    ),
+    submitted: tuple[str, str | None] | None = None
+
+    def announce(job_id: str, cluster: str | None) -> None:
+        nonlocal submitted
+        submitted = job_id, cluster
+        attempt.best_effort(
+            lambda: attempt.logger(component="maintenance", phase="repair").info(
+                "Compute qualification submitted.",
+                extra=event(
+                    "repair_compute_submitted",
+                    fields={
+                        "scheduler_job_id": field(job_id),
+                        "scheduler_cluster": field(cluster),
+                        "binding": field(binding),
+                        "stdout": field(submission.stdout_pattern),
+                        "stderr": field(submission.stderr_pattern),
+                    },
                 ),
-                warning="WARNING: scheduler logging degraded; submission records are retained.",
             ),
+            warning="WARNING: scheduler logging degraded; submission records are retained.",
         )
-    with phase_progress("Verifying the checked runtime and Project"):
-        _readmit_repair_plan(replace(plan, runtime=None), before_storage=False)
-        observed = diagnose_project(
-            plan.project.source_path, analysis_name=plan.analysis_name
-        )
-    if _qualification_binding(observed) != binding:
+
+    try:
+        with progress("Slurm submission-to-return wait"):
+            job_id = slurm_submission.submit(
+                submission,
+                record_path=attempt.path.parent / "slurm-submit.stdout",
+                wait=True,
+                on_submitted=announce,
+                show_details=controls.verbose,
+            )
+    except slurm_submission.SlurmSubmissionError:
+        with suppress(Exception):
+            if timing is not None:
+                timing.observe_scheduler(submission, submitted)
+        raise
+    with suppress(Exception):
+        if timing is not None:
+            timing.observe_scheduler(submission, submitted)
+    _readmit_repair_plan(replace(plan, runtime=None), before_storage=False)
+    with progress("Checking shared storage from the head node"):
+        try:
+            storage_qualification.qualify_head(workspace, fasta)
+        except (storage_qualification.StorageQualificationError, OSError) as exc:
+            raise DoctorRepairError(
+                f"Head storage finalization failed after Slurm job {job_id}: {str(exc)!a}"
+            ) from exc
+    final = _diagnose_phase(plan, "head_final_readiness", timing, attempt)
+    if final.execution_profile != execution:
         raise DoctorRepairError(
-            "Project, package, or runtime changed during compute qualification"
+            f"Execution profile changed during head finalization after Slurm job {job_id}"
         )
-    with phase_progress("Checking shared storage from the head node"):
-        storage_qualification.qualify_head(workspace, fasta)
-    with phase_progress("Verifying final Project readiness"):
-        return diagnose_project(
-            plan.project.source_path, analysis_name=plan.analysis_name
+    if final.ready and _qualification_binding(final) != binding:
+        raise DoctorRepairError(
+            f"Project, package, or runtime changed during head finalization after Slurm job {job_id}"
         )
+    return final
 
 
-def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult:
+def _execute_repair(
+    plan: _RepairPlan, *, controls: LogControls, timing: _DoctorTiming | None = None
+) -> DoctorResult:
+    progress = partial(phase_progress, on_complete=timing.observe if timing else None)
     try:
         attempt = open_attempt_log(
             controls=controls,
@@ -1287,29 +1672,35 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         )
     except (ApplicationLogError, ValueError) as exc:
         raise DoctorRepairError(
-            f"could not open repair log before mutation: {exc}"
+            f"could not open Doctor log before mutation: {exc}"
         ) from exc
-    logger = attempt.logger(component="maintenance", phase="repair")
     record = partial(
         attempt.best_effort,
-        warning="WARNING: repair logging degraded; requalification remains controlling.",
+        warning="WARNING: Doctor logging degraded; requalification remains controlling.",
     )
 
-    def emit(name: str, message: str, **values: object) -> None:
-        record(
-            lambda: logger.info(
+    def emit(
+        name: str, message: str, *, phase: str = "repair", **values: object
+    ) -> bool:
+        return record(
+            lambda: attempt.logger(component="maintenance", phase=phase).info(
                 message,
                 extra=event(
                     name,
                     fields={key: field(value) for key, value in values.items()},
-                    detail="durable_only"
-                    if name.startswith("package_manager_")
-                    else "normal",
+                    detail="durable_only",
                 ),
             )
         )
 
-    started: dict[str, object] = {"project": plan.project.source_path}
+    def flush_timing() -> None:
+        if timing is not None:
+            timing.flush(emit)
+
+    started: dict[str, object] = {
+        "project": plan.project.source_path,
+        "runtime_work": plan.runtime_work,
+    }
     if plan.storage is not None:
         started["storage_receipt"] = plan.storage.receipt_path
     if plan.runtime is not None:
@@ -1317,6 +1708,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         started.update(
             {
                 "managed_root": runtime.managed_root,
+                "package_output": attempt.path.parent / "package-output.log",
                 "pixi": runtime.pixi,
                 "pixi_sha256": runtime.pixi_sha256,
                 "pixi_manifest_sha256": hashlib.sha256(
@@ -1325,9 +1717,23 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                 "pixi_lock_sha256": hashlib.sha256(runtime.lock_bytes).hexdigest(),
             }
         )
-    emit("repair_started", "Project repair started.", **started)
+    emit("repair_started", f"Project {plan.operation} started.", **started)
+    claim: tuple[Path, os.stat_result, bytes] | None = None
     try:
-        with phase_progress("Verifying the approved repair inputs"):
+        if plan.runtime is not None:
+            runtime_root = onboarding.project_runtime_directory(plan.project)
+            if runtime_root != plan.runtime.profile.parent:
+                raise DoctorRepairError(
+                    "Doctor runtime parent changed before maintenance"
+                )
+            _readmit_runtime_seal_plan(plan.runtime)
+            claim_path = runtime_root / "maintenance.lock"
+            payload = f"emrys-doctor:{uuid.uuid4().hex}\n".encode("ascii")
+            ownership = acquire_lock(
+                claim_path, payload, DoctorRepairError, retain_on_failure=True
+            )
+            claim = claim_path, ownership, payload
+        with progress("Verifying the approved plan inputs"):
             _readmit_repair_plan(plan, before_storage=True)
         if plan.storage is not None:
             emit(
@@ -1335,7 +1741,10 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                 "Single-host storage qualification started.",
                 receipt=plan.storage.receipt_path,
             )
-            qualified = storage_qualification.execute_direct_qualification(plan.storage)
+            with progress("Qualifying single-host storage"):
+                qualified = storage_qualification.execute_direct_qualification(
+                    plan.storage
+                )
             emit(
                 "storage_qualification_admitted",
                 "Single-host storage qualification admitted.",
@@ -1345,17 +1754,13 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         runtime = plan.runtime
         if runtime is not None:
             _admit_managed_root(runtime)
-            if runtime.profile_bytes is None:
-                _stderr(
-                    "Allow roughly 5–15 minutes for first setup; it may take longer."
-                )
             with (
                 attempt.package_output() as output,
                 tempfile.TemporaryDirectory(
                     prefix="repair-", dir=runtime.managed_root / "cache"
                 ) as temporary,
             ):
-                for argv, environment in _repair_actions(plan):
+                for label, argv, environment in _repair_actions(plan):
                     manager = Path(argv[0]).name
                     if manager == "pixi" and os.path.lexists(
                         runtime.managed_root / ".pixi/config.toml"
@@ -1369,11 +1774,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                         manager=manager,
                         argv=argv,
                     )
-                    with phase_progress(
-                        "Restoring R packages"
-                        if "run" in argv
-                        else "Installing native tools and R"
-                    ):
+                    with progress(label):
                         completed = subprocess.run(
                             argv,
                             cwd=plan.installed_package.root,
@@ -1394,7 +1795,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                             )
             with (
                 tempfile.TemporaryDirectory(prefix="emrys-doctor-") as temporary,
-                phase_progress("Discovering and verifying the installed runtime"),
+                progress("Discovering and verifying the installed runtime"),
             ):
                 _readmit_repair_plan(plan, before_storage=False)
                 candidate = onboarding.discover_runtime_profile(
@@ -1406,6 +1807,11 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                     root=plan.installed_package.root,
                     python_executable=Path(sys.executable),
                 )
+            if timing is not None:
+                timing.observe_runtime(candidate, phase="runtime_discovery")
+            _record_runtime_failures(
+                candidate, phase="runtime_discovery", attempt=attempt
+            )
             if not _profile_is_managed(
                 tuple(item.check for item in candidate.observations),
                 runtime,
@@ -1415,7 +1821,60 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                 )
             if not candidate.required_ready:
                 raise DoctorRepairError("repaired runtime did not pass qualification")
-            if runtime.profile_bytes is None:
+            if runtime.replacement_seal is not None:
+                seal_data = runtime_seal_bytes(candidate, runtime.replacement_seal)
+                publish_exclusive(
+                    runtime.replacement_seal,
+                    seal_data,
+                    DoctorRepairError,
+                )
+                reference = shared_runtime_profile_bytes(
+                    runtime.replacement_seal,
+                    seal_data,
+                    Path(sys.executable),
+                )
+                replacement_checks = runtime_profile_checks(
+                    reference, plan.installed_package.root
+                )
+                replacement_library = next(
+                    Path(check.target)
+                    for check in replacement_checks
+                    if check.check_id == "renv_library"
+                )
+                with tempfile.TemporaryDirectory(prefix="emrys-doctor-") as temporary:
+                    candidate = inspect_runtime_profile_bytes(
+                        reference,
+                        runtime.profile,
+                        checks=replacement_checks,
+                        environment={
+                            **guarded_r_environment(
+                                plan.installed_package.root,
+                                replacement_library,
+                            ),
+                            "TMPDIR": temporary,
+                        },
+                    )
+                runtime_file_bindings(candidate)
+                if not candidate.required_ready:
+                    raise DoctorRepairError(
+                        "replacement runtime did not pass qualification"
+                    )
+                if runtime.profile_bytes is None:
+                    onboarding.publish_runtime_profile(candidate)
+                else:
+                    publish_exclusive(
+                        runtime.profile,
+                        candidate.profile_bytes,
+                        DoctorRepairError,
+                        replace_expected=runtime.profile_bytes,
+                    )
+                emit(
+                    "runtime_profile_admitted",
+                    "Replacement runtime generation admitted.",
+                    profile=runtime.profile,
+                    sha256=candidate.profile_sha256,
+                )
+            elif runtime.profile_bytes is None:
                 onboarding.publish_runtime_profile(candidate)
                 emit(
                     "runtime_profile_admitted",
@@ -1440,41 +1899,45 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                     raise DoctorRepairError(
                         "existing managed profile differs and was preserved"
                     )
-        with phase_progress("Checking Project readiness"):
-            final = diagnose_project(
-                plan.project.source_path, analysis_name=plan.analysis_name
-            )
+        final = _diagnose_phase(plan, "project_readiness", timing, attempt)
+        compute_checked = False
         if plan.execution is not None and isinstance(
             plan.execution.placement, SlurmPlacement
         ):
-            final = _qualify_slurm(plan, final, attempt, controls)
-            if plan.compute:
-                record(
-                    lambda: attempt.terminal(
-                        event_name="repair_compute_checked",
-                        message="Compute runtime and storage checks passed; head finalization follows.",
-                    )
+            final = _qualify_slurm(plan, final, attempt, controls, timing)
+            compute_checked = plan.compute
+        if not compute_checked and not final.ready:
+            raise DoctorRepairError("Project remained not ready after verification")
+        if claim is not None:
+            release_lock(*claim, DoctorRepairError)
+            claim = None
+        flush_timing()
+        if compute_checked:
+            record(
+                lambda: attempt.terminal(
+                    event_name="repair_compute_checked",
+                    message="Compute runtime and storage checks passed; head finalization follows.",
                 )
-                return final
-        if not final.ready:
-            raise DoctorRepairError(
-                "Project remained not ready after repair requalification"
             )
-        record(
-            lambda: attempt.terminal(
-                event_name="repair_requalified",
-                message="Project repair completed and was requalified.",
-                fields={
-                    "ready": field(final.ready, console=True),
-                    "storage_ready": field(final.storage_ready),
-                    "runtime_ready": field(final.runtime_ready),
-                },
+        else:
+            record(
+                lambda: attempt.terminal(
+                    event_name="repair_requalified",
+                    message=f"Project {plan.operation} completed.",
+                    fields={
+                        "ready": field(final.ready, console=True),
+                        "storage_ready": field(final.storage_ready),
+                        "runtime_ready": field(final.runtime_ready),
+                    },
+                )
             )
-        )
         return final
     except KeyboardInterrupt:
+        flush_timing()
         record(
-            lambda: attempt.interrupt_best_effort(message="Project repair interrupted.")
+            lambda: attempt.interrupt_best_effort(
+                message=f"Project {plan.operation} interrupted."
+            )
         )
         raise
     except (
@@ -1491,21 +1954,32 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         ApplicationLogError,
     ) as exc:
         error = str(exc)
+        flush_timing()
         record(
             lambda: attempt.fail(
                 phase="repair",
-                message="Project repair failed.",
+                message=f"Project {plan.operation} failed.",
                 fields={"error": field(error)},
             )
         )
-        raise DoctorRepairError(str(exc)) from exc
+        raise DoctorRepairError(f"{exc}; diagnostics: {attempt.path}") from exc
     finally:
+        with suppress(Exception):
+            if claim is not None and os.path.lexists(claim[0]):
+                _stderr(
+                    f"Runtime maintenance claim remains for explicit reconciliation: {claim[0]}"
+                )
         with suppress(Exception):
             attempt.close()
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
     onboarding.add_project_argument(parser)
+    parser.add_argument(
+        "--profile",
+        metavar="NAME_OR_ABSOLUTE_PATH",
+        help="Project profile name or absolute path; defaults to runtime/profiles/default.yaml.",
+    )
     parser.add_argument(
         "--analysis",
         help="Named Analysis; required only when the Project defines more than one.",
@@ -1514,7 +1988,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--repair",
         action="store_true",
-        help="Preview supported EMRYS-owned readiness repair and confirm on a terminal.",
+        help="Preview verification and any required EMRYS-owned runtime repair.",
     )
     parser.add_argument(
         "--execute",
@@ -1531,11 +2005,31 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
 
 
 def doctor_from_args(arguments: argparse.Namespace) -> int:
+    timing = _DoctorTiming()
+    started = elapsed = status = None
+    with suppress(Exception):
+        started = time.monotonic()
+    try:
+        status = _doctor_from_args(arguments, timing)
+        return status
+    finally:
+        with suppress(Exception):
+            if started is not None:
+                elapsed = time.monotonic() - started
+        with suppress(Exception):
+            timing.finish(elapsed, status)
+
+
+def _doctor_from_args(arguments: argparse.Namespace, timing: _DoctorTiming) -> int:
+    progress = partial(phase_progress, on_complete=timing.observe)
+    timing.detail = arguments.verbose
+    timing.summary = arguments.repair
     if arguments.execute and not arguments.repair:
         print("emrys: error: --execute requires --repair", file=sys.stderr)
         return 2
     try:
         compute = getattr(arguments, "compute", False)
+        timing.context = "compute" if compute else "head/local"
         expected = getattr(arguments, "qualification_binding", None)
         job_id = os.environ.get("SLURM_JOB_ID", "").strip()
         if compute and not is_canonical_slurm_job_id(job_id):
@@ -1544,13 +2038,18 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
             raise DoctorInputError(
                 "Run Doctor on the head node, or select the advanced --compute option"
             )
-        with phase_progress("Inspecting the Project and runtime"):
+        with progress("Inspecting the Project and runtime"):
             result = diagnose_project(
                 onboarding.project_definition_path(arguments.project),
                 analysis_name=arguments.analysis,
+                execution_profile=getattr(arguments, "profile", None),
             )
+        timing.observe_runtime(
+            result.inspection, phase="compute_runtime" if compute else "diagnosis"
+        )
         delegated = slurm_submission.delegate_binding() is not None
         if delegated:
+            _record_runtime_failures(result.inspection, phase="compute_runtime")
             if not compute or not expected or result.execution_profile is None:
                 raise DoctorInputError(
                     "Private Doctor delegation requires compute input bindings"
@@ -1560,15 +2059,16 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
                 raise DoctorInputError(
                     "Project, package, or runtime changed before compute qualification"
                 )
+            timing.context = "delegated compute"
         elif expected is not None:
             raise DoctorInputError(
                 "Compute input bindings require private Slurm delegation"
             )
         if result.installed_package is None:
-            _print_result(result, LogLevel.NORMAL)
+            _print_result(result, False)
             return 1
         controls = resolve_log_controls(
-            cli_level=arguments.log_level,
+            verbose=arguments.verbose,
             cli_root=arguments.log_root,
             default_root=result.project.source_path.parent / "logs/application",
         )
@@ -1581,7 +2081,7 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
     ) as exc:
         print(f"emrys: error: {exc}", file=sys.stderr)
         return 2
-    detail = controls.level
+    detail = controls.verbose
     _print_result(result, detail)
     slurm = result.execution_profile is not None and isinstance(
         result.execution_profile.placement, SlurmPlacement
@@ -1594,8 +2094,9 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
         if delegated:
             if not arguments.execute:
                 raise DoctorRepairError("Private Doctor delegation requires --execute")
-            _readmit_repair_plan(plan, before_storage=True)
-            _qualify_slurm(plan, result, None, controls)
+            with progress("Verifying the approved plan inputs"):
+                _readmit_repair_plan(plan, before_storage=True)
+            _qualify_slurm(plan, result, None, controls, timing)
             return 0
     except (
         DoctorRepairError,
@@ -1603,27 +2104,29 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
         ExecutionProfileError,
         storage_qualification.StorageQualificationError,
     ) as exc:
-        print(f"REPAIR BLOCKED: {exc}", file=sys.stderr)
+        print(f"DOCTOR BLOCKED: {exc}", file=sys.stderr)
         return 1
-    _print_repair_plan(plan)
+    _print_repair_plan(plan, detail)
     if not arguments.execute:
         try:
-            confirmed = _confirm_repair()
+            confirmed = _confirm_repair(plan)
         except KeyboardInterrupt:
             confirmed = False
         if not confirmed:
-            print("Repair preview complete; no files were written.", file=sys.stderr)
+            _stderr(
+                f"{plan.operation.capitalize()} preview complete; no files were written."
+            )
             return 1
     try:
-        final = _execute_repair(plan, controls=controls)
+        final = _execute_repair(plan, controls=controls, timing=timing)
     except KeyboardInterrupt:
         print(
-            "Repair interrupted; partial state and submission records were preserved. A submitted Slurm job may still be running.",
+            f"{plan.operation.capitalize()} interrupted; partial state and submission records were preserved. A submitted Slurm job may still be running.",
             file=sys.stderr,
         )
         return 130
     except DoctorRepairError as exc:
-        print(f"REPAIR FAILED: {exc}", file=sys.stderr)
+        print(f"{plan.operation.upper()} FAILED: {exc}", file=sys.stderr)
         return 1
     if compute and slurm:
         return 0
@@ -1636,11 +2139,9 @@ __all__ = (
     "DoctorInputError",
     "DoctorRepairError",
     "DoctorResult",
-    "RuntimeBinding",
     "configure_parser",
     "diagnose_project",
     "doctor_from_args",
     "required_tool_identities",
-    "runtime_file_bindings",
     "storage_runtime_binding",
 )

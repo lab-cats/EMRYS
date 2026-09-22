@@ -35,14 +35,9 @@ def _argv(root: Path, *, execute: bool = False) -> list[str]:
     return [*values, "--execute"] if execute else values
 
 
-def _plan(workspace: Path) -> str:
-    return "\n".join(
-        (
-            f"Run root: {workspace}/runs/run-{'a' * 64}",
-            "Reporting: automatic after scientific work",
-            "Dry-run complete; no workspace state was written.",
-        )
-    )
+def _submission(logs: Path, job_id: str = "42") -> str:
+    stem = logs / f"emrys-{'a' * 32}-{job_id}"
+    return f"JOB_ID={job_id}\nOUT={stem}.out\nERR={stem}.err\n"
 
 
 def test_cli_defaults_to_a_no_write_plan(
@@ -129,7 +124,7 @@ def test_step09_oracle_rejects_unknown_significant_status(tmp_path: Path) -> Non
         )
 
 
-def test_adapters_and_default_resource_projection(tmp_path: Path) -> None:
+def test_adapters_and_explicit_fixture_resource_projection(tmp_path: Path) -> None:
     python = Path("/runtime/bin/python")
     java = Path("/runtime/bin/java")
     assert b"importlib.metadata" in driver.rseqc_adapter_bytes(
@@ -180,7 +175,7 @@ def test_adapters_and_default_resource_projection(tmp_path: Path) -> None:
         module_init=module_init,
     )
     profile_document = json.loads(rendered)
-    assert "resources" not in profile_document
+    assert profile_document["resources"] == driver.symbolic_resource_document()
     assert profile_document["placement"]["modules"] == {
         "mode": "exact",
         "init": str(module_init),
@@ -188,10 +183,33 @@ def test_adapters_and_default_resource_projection(tmp_path: Path) -> None:
     }
     profile = tmp_path / "slurm.json"
     profile.write_bytes(rendered)
-    assert (
-        load_execution_profile(config_path=profile).resource_policy.document()
-        == load_execution_profile().resource_policy.document()
+    admitted = load_execution_profile(config_path=profile)
+    admitted.validate_reservation()
+    assert admitted.resource_policy.document() == driver.symbolic_resource_document()
+
+
+def test_native_gate_adapter_passes_version_probe_without_claiming_gate(
+    tmp_path: Path,
+) -> None:
+    gate = tmp_path / "native-stop-gate"
+    armed = gate.with_suffix(".armed")
+    armed.write_text("armed\n")
+    delegate = tmp_path / "delegate"
+    delegate.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
+    delegate.chmod(0o700)
+    adapter = tmp_path / "samtools"
+    adapter.write_bytes(driver.samtools_gate_adapter_bytes(delegate, gate))
+    adapter.chmod(0o700)
+    observed = subprocess.run(
+        [str(adapter), "--version"],
+        env={"EMRYS_TASK_WORK_DIR": str(tmp_path)},
+        text=True,
+        capture_output=True,
+        check=True,
     )
+    assert observed.stdout == "--version\n"
+    assert armed.is_file()
+    assert not gate.with_suffix(".claimed").exists()
 
 
 def test_runtime_environment_seals_science_adapters_and_managed_utilities(
@@ -220,7 +238,8 @@ def test_runtime_environment_seals_science_adapters_and_managed_utilities(
     )
 
     environment = driver.runtime_environment(
-        SimpleNamespace(adapters=adapters), runtime
+        SimpleNamespace(adapters=adapters, native_gate=tmp_path / "native-stop-gate"),
+        runtime,
     )
 
     assert environment["PATH"] == str(adapters)
@@ -228,6 +247,8 @@ def test_runtime_environment_seals_science_adapters_and_managed_utilities(
         name: (adapters / name).readlink() for name in driver.DISCOVERY_UTILITIES
     } == {name: native_bin / name for name in driver.DISCOVERY_UTILITIES}
     assert all((adapters / name).is_file() for name in adapted)
+    assert (adapters / "samtools").is_file()
+    assert not (adapters / "samtools").is_symlink()
 
 
 def test_run_submission_and_wait_failure_cancel_once(
@@ -235,13 +256,8 @@ def test_run_submission_and_wait_failure_cancel_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     workspace = tmp_path / "workspace"
-    run_root = driver.parse_run_plan(_plan(workspace), workspace, no_write=True)
     logs = workspace / "logs"
-    submission = driver.parse_submission(
-        f"JOB_ID=42\nOUT={logs}/emrys-local-pilot-42.out\n"
-        f"ERR={logs}/emrys-local-pilot-42.err\n",
-        logs,
-    )
+    submission = _submission(logs)
     calls: list[tuple[str, ...]] = []
 
     def scheduler(
@@ -260,16 +276,17 @@ def test_run_submission_and_wait_failure_cancel_once(
     with pytest.raises(driver.DriverError, match="cancellation: CANCELLED"):
         driver.wait_for_job(
             submission,
+            log_dir=logs,
             scontrol=Path("scontrol"),
             scancel=Path("scancel"),
             cwd=tmp_path,
             timeout_seconds=1,
             poll_seconds=0.01,
         )
-    assert run_root.parent == workspace / "runs"
     assert sum(argv[0] == "scancel" for argv in calls) == 1
 
-    stdout, stderr = tmp_path / "job.out", tmp_path / "job.err"
+    submitted = driver.parse_submission(_submission(tmp_path, "43"), tmp_path)
+    stdout, stderr = submitted.stdout, submitted.stderr
     stdout.write_text("")
     stderr.write_text("controlled failure\n")
     monkeypatch.setattr(
@@ -280,7 +297,8 @@ def test_run_submission_and_wait_failure_cancel_once(
         ),
     )
     job = driver.wait_for_job(
-        driver.Job("43", stdout, stderr),
+        _submission(tmp_path, "43"),
+        log_dir=tmp_path,
         scontrol=Path("scontrol"),
         scancel=Path("scancel"),
         cwd=tmp_path,
@@ -289,6 +307,150 @@ def test_run_submission_and_wait_failure_cancel_once(
         expected=("FAILED", "1:0"),
     )
     assert (job.state, job.exit_code) == ("FAILED", "1:0")
+
+
+def test_intentional_stop_observation_never_reissues_cancellation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        driver,
+        "_scheduler",
+        lambda argv, _cwd: subprocess.CompletedProcess(argv, 124, "", "timeout"),
+    )
+    monkeypatch.setattr(
+        driver,
+        "cancel_job",
+        lambda *_args, **_kwargs: pytest.fail("stop observation retried cancellation"),
+    )
+    with pytest.raises(driver.DriverError, match="scontrol failed"):
+        driver.wait_for_job(
+            _submission(tmp_path),
+            log_dir=tmp_path,
+            scontrol=Path("scontrol"),
+            scancel=Path("scancel"),
+            cwd=tmp_path,
+            timeout_seconds=1,
+            poll_seconds=0.01,
+            expected=None,
+            cleanup_on_failure=False,
+        )
+
+
+def test_transcripts_record_a_real_bounded_timeout(tmp_path: Path) -> None:
+    transcripts = driver.Transcripts(tmp_path)
+    with pytest.raises(driver.DriverError, match="partial streams retained"):
+        transcripts.run(
+            "bounded-command",
+            [sys.executable, "-c", "import time; time.sleep(5)"],
+            cwd=tmp_path,
+            timeout_seconds=0.1,
+        )
+    assert (tmp_path / "01-bounded-command.stdout.log").is_file()
+    assert transcripts.records[0]["timed_out"] is True
+
+
+def test_transcripts_retain_partial_timeout_streams(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def expire(argv: tuple[str, ...], **kwargs: object) -> None:
+        raise subprocess.TimeoutExpired(
+            argv, kwargs["timeout"], output=b"started\n", stderr=b"diagnostic\n"
+        )
+
+    monkeypatch.setattr(driver.subprocess, "run", expire)
+    transcripts = driver.Transcripts(tmp_path)
+    with pytest.raises(driver.DriverError, match="partial streams retained"):
+        transcripts.run(
+            "bounded-command",
+            [sys.executable, "-c", "import time; time.sleep(5)"],
+            cwd=tmp_path,
+            timeout_seconds=0.1,
+        )
+    assert (tmp_path / "01-bounded-command.stdout.log").read_bytes() == b"started\n"
+    assert (tmp_path / "01-bounded-command.stderr.log").read_bytes() == b"diagnostic\n"
+    assert transcripts.records[0]["timed_out"] is True
+
+
+@pytest.mark.parametrize("job_id", ("42", "700123"))
+def test_submission_requires_matching_request_token_and_job_id(
+    tmp_path: Path, job_id: str
+) -> None:
+    logs = tmp_path / "logs with spaces"
+    job = driver.parse_submission(_submission(logs, job_id), logs)
+    assert job.job_id == job_id
+    assert job.stdout == logs / f"emrys-{'a' * 32}-{job_id}.out"
+    assert job.stderr == job.stdout.with_suffix(".err")
+
+
+def test_submission_request_rejects_ambiguous_or_foreign_paths(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    request = workspace / "logs" / f"submission-{'a' * 32}"
+    for text in (
+        f"Submission request: {request}\nSubmission request: {request}\n",
+        f"Submission request: {tmp_path / 'other' / 'logs' / request.name}\n",
+        f"Submission request: {workspace / 'logs' / 'submission-short'}\n",
+    ):
+        with pytest.raises(driver.DriverError):
+            driver.parse_submission_request(
+                subprocess.CompletedProcess((), 0, "", text), workspace
+            )
+    with pytest.raises(driver.DriverError, match="observed 0"):
+        driver.parse_submission_request(
+            subprocess.CompletedProcess((), 0, f"Submission request: {request}\n", ""),
+            workspace,
+        )
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement", "cancelled"),
+    (
+        ("a" * 32 + "-", "", True),
+        ("a" * 32, "A" * 32, True),
+        ("a" * 32, "a" * 31, True),
+        ("-42.err", "-43.err", True),
+        ("a" * 32 + "-42.err", "b" * 32 + "-42.err", True),
+        ("ERR=", "MISSING_ERR=", True),
+        ("OUT=", "OUT=/elsewhere", True),
+        ("JOB_ID=42", "JOB_ID=42\nJOB_ID=43", False),
+        ("JOB_ID=42", "JOB_ID=42\nJOB_ID=42", False),
+        ("JOB_ID=42", "JOB_ID=0", False),
+        ("JOB_ID=42", "JOB_ID=042", False),
+        ("JOB_ID=42", "MISSING_JOB_ID=42", False),
+    ),
+)
+def test_invalid_submission_cancels_only_one_unambiguous_reported_job(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    original: str,
+    replacement: str,
+    cancelled: bool,
+) -> None:
+    calls = []
+
+    def scheduler(argv, _cwd):
+        calls.append(argv)
+        return subprocess.CompletedProcess(
+            argv, 0, "JobState=CANCELLED ExitCode=0:15", ""
+        )
+
+    monkeypatch.setattr(driver, "_scheduler", scheduler)
+    with pytest.raises(driver.DriverError):
+        driver.wait_for_job(
+            _submission(tmp_path).replace(original, replacement),
+            log_dir=tmp_path,
+            scontrol=Path("scontrol"),
+            scancel=Path("scancel"),
+            cwd=tmp_path,
+            timeout_seconds=1,
+            poll_seconds=0.01,
+        )
+    assert calls == (
+        [("scancel", "--signal=TERM", "42"), ("scontrol", "show", "job", "-o", "42")]
+        if cancelled
+        else []
+    )
 
 
 def _table(path: Path, rows: tuple[tuple[str, str], ...]) -> None:

@@ -14,6 +14,7 @@ import sys
 import tempfile
 import zlib
 from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 from pathlib import Path
 
 from emrys.libraries.source_authority import PACKAGE_ROOT, admit_installed_package
@@ -44,6 +45,33 @@ _MAX_INLINE_PAYLOAD_CHARS = 64 * 1024
 ADAPTER_REGISTRY = build_adapter_registry(
     analysis_module_v1(), source_root=PACKAGE_ROOT
 )
+
+
+def child_command(helper, root: Path, *arguments: str, **options) -> list[str]:
+    # Pytest may import these sibling test modules under their short names.
+    module = (
+        f"tests.orchestration.run_coordinator.{helper.__module__.rsplit('.', 1)[-1]}"
+    )
+    return [
+        sys.executable,
+        "-c",
+        "import sys; from pathlib import Path; "
+        f"from {module} import {helper.__name__}; "
+        f"{helper.__name__}(Path(sys.argv[1]), *sys.argv[2:], **{options!r})",
+        str(root),
+        *arguments,
+    ]
+
+
+def run_child(helper, root: Path, *arguments: str, timeout=30, **options):
+    return subprocess.run(
+        child_command(helper, root, *arguments, **options),
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False,
+    )
 
 
 def _resource_policy() -> dict[str, Any]:
@@ -231,26 +259,21 @@ def _terminalize_active_attempt(
     expected = inspection.expected_tasks(
         inspection.admit_successor_run(built.run_root), built.profile
     )
-    starts = []
-    for item in sorted(
-        expected,
-        key=lambda value: (value.machine_key, value.scope_type, value.scope_id),
-    ):
-        path = (
-            built.run_root
-            / "state"
-            / "task-starts"
-            / item.machine_key
-            / f"{item.scope_id}.json"
-        )
-        if path.is_file() and not path.is_symlink():
-            starts.append(
-                {
-                    "machine_key": item.machine_key,
-                    "scope": item.scope,
-                    "record": _reference(path, built.run_root),
-                }
-            )
+    scopes = {(item.machine_key, item.scope_id): item.scope for item in expected}
+
+    def task_records(name: str) -> list[dict[str, Any]]:
+        return [
+            {
+                "workflow_attempt_id": path.parents[3].name,
+                "machine_key": path.parents[1].name,
+                "scope": scopes[path.parents[1].name, path.parent.name],
+                "record": _reference(path, built.run_root),
+            }
+            for path in sorted(built.run_root.glob(f"attempts/*/tasks/*/*/{name}"))
+        ]
+
+    starts = task_records("task-start.json")
+    terminals = task_records("task-attempt.json")
     verified = []
     for item in expected:
         path = (
@@ -269,7 +292,7 @@ def _terminalize_active_attempt(
                 }
             )
     receipt = {
-        "schema_version": "emrys.attempt-receipt.v2",
+        "schema_version": "emrys.attempt-receipt.v3",
         "run_id": attempt["run_id"],
         "execution_contract_sha256": attempt["execution_contract_sha256"],
         "profile_sha256": attempt["profile_sha256"],
@@ -280,7 +303,7 @@ def _terminalize_active_attempt(
         "finished_at": finished_at,
         "snakemake_exit_code": 1,
         "termination_signal": None,
-        "preentry_task_attempt_records": [],
+        "task_attempt_records": terminals,
         "task_start_records": starts,
         "verified_tasks": verified,
         "blockers": [],
@@ -414,7 +437,7 @@ def _generic_artifact_bytes(row: dict[str, str]) -> bytes:
         if path.name in {"Genome", "SA", "SAindex"}:
             return b"\x00synthetic STAR index\n"
         if path.name == "genomeParameters.txt":
-            return b"sjdbOverhang 74\n"
+            return b"sjdbOverhang 74\ngenomeSAindexNbases 3\ngenomeChrBinNbits 18\n"
         return b"synthetic STAR index\n"
     if spec.kind == "bed12":
         return b"chrSynthetic\t0\t12\ttx1\t0\t+\t0\t12\t0\t1\t12,\t0,\n"
@@ -854,10 +877,8 @@ def _task_definition(
         if row is not validation_row and row["adapter"] != "step00c_reference_fasta_v1"
     )
     validation_report = resolved(validation_row)
-    task_start = run_root / "state" / "task-starts" / machine_key / f"{scope_id}.json"
     verified = run_root / "state" / "verified" / machine_key / f"{scope_id}.json"
     for parent in {
-        task_start.parent,
         verified.parent,
         validation_report.parent,
         *(
@@ -925,6 +946,7 @@ def _task_definition(
         "task_attempt_id": _task_attempt_id(index),
         "owner_run_token": f"test-owner-{index:03d}",
         "scope_type": str(task["scope_type"]),
+        "retry_task_attempt_record": None,
         "producer_argv": producer,
         "validator_argv": validator,
         "inputs": input_declarations,
@@ -945,6 +967,59 @@ def _task_definition(
             else None,
         },
         "validation_report_path": str(validation_report),
+    }
+
+
+def attempt_record(
+    run_root: Path, identifier: str, request_path: Path, *, runtime=None, **changes
+):
+    """Author a fixture Attempt independently of the production record builders."""
+    workspace = run_root.parent.parent
+    normalizer, required_tools = runtime or _attempt_runtime_identities(workspace)
+    request_data = request_path.read_bytes()
+    created = datetime.strptime(identifier.split("-")[1], "%Y%m%dT%H%M%SZ")
+    return {
+        "schema_version": "emrys.workflow-attempt.v4",
+        "run_id": run_root.name,
+        "execution_contract_sha256": hashlib.sha256(
+            (run_root / "contract/run.json").read_bytes()
+        ).hexdigest(),
+        "profile_sha256": hashlib.sha256(
+            (run_root / "contract/profile.json").read_bytes()
+        ).hexdigest(),
+        "workflow_attempt_id": identifier,
+        "supersedes_workflow_attempt_id": None,
+        "operation": "execute",
+        "created_at": created.replace(tzinfo=UTC)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z"),
+        "request": {
+            "path": str(run_root / "attempts" / identifier / "request.yaml"),
+            "size_bytes": len(request_data),
+            "sha256": hashlib.sha256(request_data).hexdigest(),
+        },
+        "request_label": "bounded no-science workflow fixture",
+        "authored_paths": {
+            "request": str(request_path),
+            "sample_manifest": "samples.tsv",
+            "partition_manifest": "partitions.tsv",
+            "reference_fasta": "reference/genome.fa",
+            "reference_gtf": "reference/genome.gtf",
+            "analysis_policy": None,
+        },
+        "normalizer": normalizer,
+        "workspace": str(workspace.resolve()),
+        "scratch": None,
+        "installed_package": admit_installed_package().record,
+        "executor": "local",
+        "execution_mode": "local-science-tools",
+        "snakemake_argv": [],
+        "host": "workflow-fixture",
+        "process_id": os.getpid(),
+        "owner_token": "workflow-fixture-owner",
+        "cores": 1,
+        "required_tools": required_tools,
+        **changes,
     }
 
 
@@ -979,12 +1054,9 @@ def build(
         },
     )
     execution = {**run.analysis.workflow_inputs, "run_id": run.run_id}
-    execution_bytes = run.run_binding.canonical_bytes
     profile = run.analysis.profile
     run_root = root / "runs" / run.run_id
     execution_path = publish_run(run, run_root)
-    contract_root = run_root / "contract"
-    profile_snapshot = contract_root / "profile.json"
     reporting = build_reporting_bundle(execution, profile, run.analysis.revision)
     workflow_attempt_id = "workflow-20260812T120000Z-" + "a" * 32
     files, reporting_config, _directories = (
@@ -1017,45 +1089,14 @@ def build(
     request_path = request_path.resolve(strict=True)
     request_bytes = request_path.read_bytes()
     attempt_request_path = workflow_attempt_path.parent / "request.yaml"
-    git_commit = admit_installed_package().git_commit or "unavailable"
     storage_receipt = root / "storage.qualified.json"
     storage_receipt.write_bytes(b"bounded no-science storage qualification\n")
-    attempt = {
-        "schema_version": "emrys.workflow-attempt.v3",
-        "run_id": execution["run_id"],
-        "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
-        "profile_sha256": hashlib.sha256(profile_snapshot.read_bytes()).hexdigest(),
-        "workflow_attempt_id": workflow_attempt_id,
-        "supersedes_workflow_attempt_id": None,
-        "operation": "execute",
-        "created_at": "2026-08-12T12:00:00Z",
-        "request": {
-            "path": str(attempt_request_path),
-            "size_bytes": len(request_bytes),
-            "sha256": hashlib.sha256(request_bytes).hexdigest(),
-        },
-        "request_label": "bounded no-science workflow fixture",
-        "authored_paths": {
-            "request": str(request_path),
-            "sample_manifest": "samples.tsv",
-            "partition_manifest": "partitions.tsv",
-            "reference_fasta": "reference/genome.fa",
-            "reference_gtf": "reference/genome.gtf",
-            "analysis_policy": None,
-        },
-        "normalizer": normalizer,
-        "workspace": str(root.resolve(strict=True)),
-        "scratch": None,
-        "installed_package": admit_installed_package().record,
-        "executor": "local",
-        "execution_mode": "local-science-tools",
-        "snakemake_argv": [],
-        "host": "workflow-fixture",
-        "process_id": os.getpid(),
-        "owner_token": "workflow-fixture-owner",
-        "cores": 1,
-        "required_tools": required_tools,
-    }
+    attempt = attempt_record(
+        run_root,
+        workflow_attempt_id,
+        request_path,
+        runtime=(normalizer, required_tools),
+    )
     tasks: dict[str, dict[str, Any]] = {}
     owners = {str(task["machine_key"]): task for task in profile["owner_tasks"]}
     for index, expected in enumerate(

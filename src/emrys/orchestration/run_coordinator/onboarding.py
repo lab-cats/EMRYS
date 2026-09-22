@@ -4,27 +4,59 @@ from __future__ import annotations
 
 import argparse
 import gzip
+import math
 import os
 import re
+import shlex
 import stat
 import sys
-from collections.abc import Callable, Iterator, Mapping, Sequence
-from dataclasses import dataclass
+import hashlib
+import uuid
+from collections import Counter
+from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
+from dataclasses import dataclass, replace
+from functools import partial
 from pathlib import Path
 
 import yaml
 
 from emrys import __version__
+from emrys.analyses import (
+    BUILTIN_PAIRED_CMH_MODULE_ID,
+    AnalysisInputContextV1,
+    AnalysisModuleLoadError,
+    admit_configuration,
+    load_analysis_module,
+)
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.scientific_evidence import step08
+from emrys.contracts.scientific_evidence import step08, step09
 from emrys.evidence.runtime_availability.inspector import (
     RuntimeInspection,
     RuntimeInspectionError,
     inspect_runtime_profile_bytes,
     runtime_profile_checks,
     runtime_profile_bytes,
+    shared_runtime_selection,
+    load_runtime_profile_contract,
+    load_runtime_seal,
+    runtime_root_for_seal,
+    runtime_profile_choices,
+    runtime_file_bindings,
+    runtime_seal_bytes,
+    shared_runtime_profile_bytes,
 )
-from emrys.libraries.exclusive_publication import publish_exclusive
+from emrys.libraries.application_logging import (
+    add_verbose_argument,
+    console_field,
+    console_print,
+    console_status,
+    phase_progress,
+)
+from emrys.libraries.exclusive_publication import (
+    acquire_lock,
+    publish_exclusive,
+    release_lock,
+)
 from emrys.libraries.process_environment import guarded_r_environment
 from emrys.libraries.references.contigs import (
     ReferenceContigError,
@@ -36,20 +68,33 @@ from emrys.libraries.validation.mpileup import (
     validate_region_selector,
 )
 from emrys.libraries.validation.inputs import (
+    Snapshot,
     read_bytes_with_identity,
+    regular_snapshot,
     sha256_with_identity,
 )
 from emrys.libraries.validation.tsv import tsv_bytes
 from emrys.orchestration.run_coordinator.normalization import (
     ProjectAdmission,
     _admit_project_data,
+    _admit_sample_inputs,
     admit_project,
     validate_authored_path,
 )
 from emrys.orchestration.run_coordinator.execution_profile import (
+    ExecutionProfileError,
     PROJECT_PROFILE_DIRECTORY,
     add_site_argument,
+    admit_execution_profile_bytes,
+    load_execution_profile,
     project_default_profile_bytes,
+    project_execution_profile_path,
+)
+from emrys.orchestration.run_coordinator.resource_policy import (
+    ResourceConfigError,
+    add_resource_override_arguments,
+    overrides_from_args,
+    resume_resource_policy,
 )
 from emrys.stages.gtf_to_bed12 import converter as gtf_converter
 
@@ -58,6 +103,9 @@ DESCRIPTION = (
     "runtime. This command reads declared inputs, checks reference compatibility, "
     "and writes nothing."
 )
+SETUP_DESCRIPTION = "Save Projects home, site, and optional log defaults in .env."
+_ENV_VERSION_KEY, _ENV_VERSION = "EMRYS_ENV_VERSION", "1"
+_ENV_KEYS = (_ENV_VERSION_KEY, "EMRYS_PROJECTS_ROOT", "EMRYS_SITE", "EMRYS_LOG_ROOT")
 PROFILE_RELATIVE_PATH = Path("workflow/contracts/local_cmh_v2.json")
 PROJECT_DIRECTORIES = ("logs", "runs")
 RUNTIME_PROFILE_RELATIVE_PATH = Path("runtime/runtime.tsv")
@@ -72,8 +120,8 @@ PATH_TOOL_COMMANDS = {
     "gunzip": "gunzip",
 }
 FASTQ_PAIR_NAME = re.compile(
-    r"^(?P<sample>[A-Za-z0-9][A-Za-z0-9._-]*)_R(?P<mate>[12])"
-    r"(?P<suffix>\.(?:fastq|fq)(?:\.gz)?)$"
+    r"^(?P<sample>[A-Za-z0-9][A-Za-z0-9._-]*)_R?(?P<mate>[12])"
+    r"\.(?:fastq|fq)(?:\.gz)?$"
 )
 
 
@@ -100,6 +148,116 @@ def source_root() -> Path:
     """Return the executing installed package root."""
 
     return Path(__file__).resolve().parents[2]
+
+
+def load_saved_cli_environment(
+    start: Path, environment: MutableMapping[str, str] | None = None
+) -> Path | None:
+    environ = os.environ if environment is None else environment
+    origin = Path(os.path.abspath(start))
+    for root in (origin, *origin.parents):
+        path = root / ".env"
+        if not os.path.lexists(path):
+            continue
+        try:
+            if not stat.S_ISREG(path.lstat().st_mode):
+                raise OnboardingError(f"unsafe saved CLI settings: {path}")
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeError) as exc:
+            raise OnboardingError(f"cannot read {path}: {exc}") from exc
+        if not any(line.startswith(f"{_ENV_VERSION_KEY}=") for line in lines):
+            continue
+        values: dict[str, str] = {}
+        for number, line in enumerate(lines, 1):
+            key, separator, value = line.partition("=")
+            valid = separator and key in _ENV_KEYS and key not in values
+            if not valid or not value.isprintable():
+                raise OnboardingError(f"invalid saved CLI setting at {path}:{number}")
+            values[key] = value
+        if values.get(_ENV_VERSION_KEY) != _ENV_VERSION:
+            raise OnboardingError(f"unsupported saved CLI settings version: {path}")
+        if not {"EMRYS_PROJECTS_ROOT", "EMRYS_SITE"} <= values.keys():
+            raise OnboardingError(f"saved CLI settings are incomplete: {path}")
+        if values["EMRYS_SITE"] != "viking":
+            raise OnboardingError(f"unsupported saved site: {values['EMRYS_SITE']!r}")
+        for key in ("EMRYS_PROJECTS_ROOT", "EMRYS_LOG_ROOT"):
+            if key in values and not Path(values[key]).is_absolute():
+                raise OnboardingError(f"{key} must be an absolute path in {path}")
+        for key, value in values.items():
+            if key != _ENV_VERSION_KEY:
+                environ.setdefault(key, value)
+        return path
+    return None
+
+
+def _repository_root(start: Path) -> Path:
+    origin = Path(os.path.abspath(start))
+    for root in (origin, *origin.parents):
+        if (
+            os.path.lexists(root / ".git")
+            and (root / "pyproject.toml").is_file()
+            and (root / "src/emrys").is_dir()
+            and root.resolve(strict=True) == root
+        ):
+            return root
+    raise OnboardingError("run emrys setup inside an EMRYS repository checkout")
+
+
+def configure_setup_parser(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--projects-root", type=Path, help="Saved Projects home.")
+    add_site_argument(parser)
+    parser.add_argument("--log-root", type=Path, help="Optional saved log root.")
+    parser.add_argument("--execute", action="store_true", help="Create .env.")
+    parser.set_defaults(_command_parser=parser)
+
+
+def setup_from_args(arguments: argparse.Namespace) -> int:
+    try:
+        root = _repository_root(Path.cwd())
+        destination = root / ".env"
+        if os.path.lexists(destination):
+            raise OnboardingError(f"existing settings were preserved: {destination}")
+        interactive = _interactive_terminal()
+        projects_default = os.environ.get("EMRYS_PROJECTS_ROOT") or f"{root}/Projects"
+        projects_value = arguments.projects_root or Path(projects_default)
+        if arguments.projects_root is None and interactive:
+            projects_value = Path(_prompt("Projects home", projects_default))
+        projects = _admit_existing_path(
+            projects_value,
+            "Projects home",
+            directory=True,
+            writable=True,
+            canonical=True,
+        )
+        site = arguments.site or (
+            _prompt("site", "viking") if interactive else "viking"
+        )
+        if site != "viking":
+            raise OnboardingError(f"unsupported site: {site!r}")
+        log_value = arguments.log_root or os.environ.get("EMRYS_LOG_ROOT")
+        if log_value is None and interactive:
+            log_value = _prompt("log root (optional)") or None
+        log_root = None if log_value is None else _absolute(log_value)
+        values = {
+            _ENV_VERSION_KEY: _ENV_VERSION,
+            "EMRYS_PROJECTS_ROOT": str(projects),
+            "EMRYS_SITE": site,
+            **({"EMRYS_LOG_ROOT": str(log_root)} if log_root is not None else {}),
+        }
+        data = "".join(f"{key}={value}\n" for key, value in values.items()).encode()
+        print("Saved CLI defaults:")
+        print(f"  File: {destination}\n  Projects home: {projects}\n  Site: {site}")
+        print(f"  Log root: {log_root or 'Project-local default'}")
+        print("  Precedence: command line, process environment, .env, built-in default")
+        if not arguments.execute:
+            print("Dry-run complete; rerun with --execute to create .env.")
+            return 0
+        publish_exclusive(destination, data, OnboardingError)
+        print(f"CLI defaults ready: {destination}")
+        return 0
+    except (OSError, OnboardingError) as exc:
+        console_print(f"ERROR: {exc}", style="red", file=sys.stderr)
+        return 2
 
 
 def _absolute(value: str | Path) -> Path:
@@ -135,6 +293,172 @@ def add_project_argument(parser: argparse.ArgumentParser) -> None:
         "--project",
         help="Named Project directory or exact project.yaml path; default: current Project.",
     )
+
+
+_PLACEMENT_FIELDS = (
+    "account",
+    "partition",
+    "qos",
+    "cpus_per_task",
+    "memory_mb",
+    "time",
+    "exclusive",
+    "nodelist",
+    "scratch_parent",
+)
+
+
+def configure_profile_create_parser(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("name", help="Absent Project profile name, without .yaml.")
+    add_project_argument(parser)
+    require_placement = not bool(os.environ.get("EMRYS_SITE"))
+    placement = parser.add_mutually_exclusive_group(required=require_placement)
+    add_site_argument(placement)
+    placement.add_argument("--placement", choices=("direct", "slurm"))
+    for field in _PLACEMENT_FIELDS:
+        if field == "exclusive":
+            parser.add_argument("--exclusive", action=argparse.BooleanOptionalAction)
+        else:
+            parser.add_argument(
+                "--" + field.replace("_", "-"),
+                type=(lambda value: "node" if value == "node" else int(value))
+                if field == "cpus_per_task"
+                else int
+                if field == "memory_mb"
+                else str,
+                help="Explicit Slurm placement value; omission retains the selected site setting.",
+            )
+    parser.add_argument(
+        "--module-init", help="Absolute initialization file for exact modules."
+    )
+    parser.add_argument(
+        "--module",
+        action="append",
+        default=[],
+        help="Exact module to load, in order; repeatable.",
+    )
+    add_resource_override_arguments(parser)
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Create the absent profile after displaying its settings.",
+    )
+    parser.set_defaults(_command_parser=parser)
+
+
+def profile_create_from_args(arguments: argparse.Namespace) -> int:
+    """Preview or create execution settings without reading scientific inputs."""
+
+    try:
+        project = project_definition_path(arguments.project)
+        project_data, _ = read_bytes_with_identity(project, "Project definition")
+        orchestration_contracts.validate_record(
+            "project", orchestration_contracts.load_yaml_object_bytes(project_data)
+        )
+        if Path(arguments.name).is_absolute():
+            raise OnboardingError(
+                "Profile creation requires a Project profile name, not a path"
+            )
+        destination = project_execution_profile_path(project, arguments.name)
+        if (
+            destination.parent.resolve(strict=True) != destination.parent
+            or not destination.parent.is_dir()
+        ):
+            raise OnboardingError(
+                "Profile parent must be an existing canonical directory"
+            )
+        if os.path.lexists(destination):
+            raise OnboardingError(f"Existing profile was preserved: {destination}")
+        site = arguments.site if arguments.placement is None else None
+        document = orchestration_contracts.load_yaml_object_bytes(
+            project_default_profile_bytes(site)
+        )
+        if arguments.placement == "slurm":
+            document["placement"] = {
+                "kind": "slurm",
+                **dict.fromkeys(_PLACEMENT_FIELDS),
+                "exclusive": False,
+                "modules": {"mode": "none", "init": "", "load": []},
+            }
+        placement = document["placement"]
+        supplied = {
+            field: getattr(arguments, field)
+            for field in _PLACEMENT_FIELDS
+            if getattr(arguments, field) is not None
+        }
+        if placement["kind"] == "direct" and (
+            supplied or arguments.module_init is not None or arguments.module
+        ):
+            raise OnboardingError(
+                "Slurm placement options require --site or --placement slurm"
+            )
+        placement.update(supplied)
+        if placement["kind"] == "slurm":
+            missing = [
+                field
+                for field in ("cpus_per_task", "time", "scratch_parent")
+                if placement[field] is None
+            ]
+            if missing:
+                raise OnboardingError(
+                    "Custom Slurm placement requires: "
+                    + ", ".join("--" + field.replace("_", "-") for field in missing)
+                )
+        if arguments.module_init is not None or arguments.module:
+            if not arguments.module_init or not arguments.module:
+                raise OnboardingError(
+                    "Exact modules require both --module-init and --module"
+                )
+            placement["modules"] = {
+                "mode": "exact",
+                "init": arguments.module_init,
+                "load": arguments.module,
+            }
+        defaults = load_execution_profile()
+        overrides = overrides_from_args(arguments)
+        if overrides.labels():
+            document["resources"] = resume_resource_policy(
+                defaults.resource_policy, overrides=overrides
+            ).document()
+        data = yaml.safe_dump(document, sort_keys=False).encode("utf-8")
+        profile = admit_execution_profile_bytes(
+            orchestration_contracts.canonical_json_bytes(defaults.document()),
+            destination,
+            data,
+        )
+        profile.validate_reservation()
+        print(f"Execution profile: {str(destination)!r}")
+        for line in profile.submission_summary(verbose=True):
+            print(line)
+        print(
+            "Computational settings: complete reviewed policy will be saved in this profile."
+            if profile.computational_resources_explicit
+            else "Computational settings: packaged defaults; a resumed Run retains its existing policy."
+        )
+        print(
+            "This preview does not verify runtime readiness or observed allocation capacity."
+        )
+        if not arguments.execute:
+            print(
+                "Dry-run complete; no files were written. Repeat with --execute to create this profile."
+            )
+            return 0
+        publish_exclusive(destination, data, OnboardingError)
+        load_execution_profile(
+            destination, expected_binding_sha256=profile.binding_sha256
+        )
+        print(f"Profile created. Select it with --profile {arguments.name}.")
+        return 0
+    except (
+        OSError,
+        OnboardingError,
+        ExecutionProfileError,
+        ResourceConfigError,
+        ValidationError,
+        orchestration_contracts.ContractValidationError,
+    ) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
 
 
 def _require_external_absent_output(value: str | Path, root: Path) -> Path:
@@ -327,25 +651,25 @@ def publish_create_absent_tree(
         ) from exc
 
 
-_PROJECT_FIELDS = """sample_manifest partition_manifest
-reference_fasta reference_gtf sjdb_overhang genome_sa_index_nbases
+_PROJECT_FIELDS = """reference_fasta reference_gtf sjdb_overhang genome_sa_index_nbases genome_chr_bin_nbits
 control_condition treatment_condition target_change min_sample_dp
 mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold
 background_max_fraction""".split()
+_STAR_INDEX_FIELDS = {
+    "sjdb_overhang": ("STAR sjdb overhang", "maximum admitted read length - 1"),
+    "genome_sa_index_nbases": ("STAR genome SA index nbases", "reference length"),
+    "genome_chr_bin_nbits": (
+        "STAR genome chromosome-bin nbits",
+        "reference and maximum read length",
+    ),
+}
 _PROJECT_TYPES = {
-    field: converter
-    for fields, converter in (
-        (
-            "sample_manifest partition_manifest reference_fasta reference_gtf".split(),
-            Path,
-        ),
-        ("sjdb_overhang genome_sa_index_nbases min_sample_dp".split(), int),
-        (
-            "mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold background_max_fraction".split(),
-            float,
-        ),
-    )
-    for field in fields
+    **dict.fromkeys(("reference_fasta", "reference_gtf"), Path),
+    **dict.fromkeys((*_STAR_INDEX_FIELDS, "min_sample_dp"), int),
+    **dict.fromkeys(
+        "mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold background_max_fraction".split(),
+        float,
+    ),
 }
 _PROJECT_SUGGESTIONS = dict(
     zip(
@@ -354,21 +678,66 @@ _PROJECT_SUGGESTIONS = dict(
         strict=True,
     )
 )
+_PAIRED_CMH_DEFAULTS = tuple(_PROJECT_SUGGESTIONS)[:-1]
+_STRANDEDNESS_CHOICES = ("forward", "reverse", "unstranded", "unknown")
 
 
 def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
     add_site_argument(parser)
+    add_verbose_argument(parser)
     parser.add_argument(
         "project_name",
         metavar="PROJECT_NAME",
         type=_project_name,
         help="Safe name for the new child directory and Project root.",
     )
+    manifests = parser.add_argument_group("Project input lists")
+    manifests.add_argument(
+        "--sample-manifest",
+        type=Path,
+        help="Existing advanced sample manifest to copy into the new Project.",
+    )
+    manifests.add_argument(
+        "--partition-manifest",
+        type=Path,
+        help="Existing partition manifest to copy; may accompany guided samples.",
+    )
+    manifests.add_argument(
+        "--fastq",
+        action="extend",
+        nargs="+",
+        type=Path,
+        default=[],
+        help="FASTQs for guided manifest creation; prompted when omitted.",
+    )
+    manifests.add_argument(
+        "--sample",
+        action="append",
+        nargs=4,
+        default=[],
+        metavar=("SAMPLE_ID", "CONDITION", "PAIRING_GROUP", "STRANDEDNESS"),
+        help="Biology for one detected pair; prompted when omitted.",
+    )
+    for name, value in (("regions-file", "PATH"), ("region", "SELECTOR")):
+        manifests.add_argument(
+            f"--{name}",
+            action="append",
+            nargs=2,
+            default=[],
+            metavar=("PARTITION_ID", value),
+            help=f"Partition {name.replace('-', ' ')}; prompted when omitted.",
+        )
     for destination in _PROJECT_FIELDS:
+        help_text = f"{destination.replace('_', ' ')}; prompted when omitted."
+        if destination in _STAR_INDEX_FIELDS:
+            help_text = (
+                "Advanced override; default is derived from "
+                f"{_STAR_INDEX_FIELDS[destination][1]}."
+            )
         parser.add_argument(
             f"--{destination.replace('_', '-')}",
             type=_PROJECT_TYPES.get(destination, str),
-            help=f"{destination.replace('_', ' ')}; prompted when omitted.",
+            help=help_text,
         )
     parser.add_argument(
         "--background-condition",
@@ -379,8 +748,14 @@ def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
         default="primary",
         help="Human name for the initial Analysis; default: primary.",
     )
-    parser.add_argument(
-        "--execute", action="store_true", help="Create; omission is a no-write plan."
+    publication = parser.add_mutually_exclusive_group()
+    publication.add_argument(
+        "--execute",
+        action="store_true",
+        help="Create without confirmation for automation.",
+    )
+    publication.add_argument(
+        "--preview", action="store_true", help="Preview without offering creation."
     )
     parser.set_defaults(_command_parser=parser)
 
@@ -395,13 +770,58 @@ def _project_name(value: str) -> str:
     return value
 
 
-def _collect_project_answers(arguments: argparse.Namespace) -> dict[str, object]:
+def _reference_summary(
+    reference_fasta: Path,
+) -> tuple[tuple[tuple[str, int], ...], Snapshot]:
+    try:
+        before = regular_snapshot(reference_fasta, "Reference FASTA")
+        contigs = _reference_contigs(reference_fasta)
+        after = regular_snapshot(reference_fasta, "Reference FASTA")
+    except ValidationError as exc:
+        raise OnboardingError(str(exc)) from exc
+    if before != after:
+        raise OnboardingError(
+            f"Reference FASTA changed while inspected: {reference_fasta}"
+        )
+    return contigs, after
+
+
+def _reference_contigs(reference_fasta: Path) -> tuple[tuple[str, int], ...]:
+    try:
+        with reference_fasta.open("r", encoding="utf-8") as source:
+            return tuple(parse_fasta_lines(source))
+    except (OSError, UnicodeError, ReferenceContigError) as exc:
+        raise OnboardingError(
+            f"could not inspect reference sequences in {reference_fasta}: {exc}"
+        ) from exc
+
+
+def _genome_chr_bin_nbits(
+    reference_contigs: Sequence[tuple[str, int]], read_length: int
+) -> int:
+    count = len(reference_contigs)
+    if count <= 5_000:
+        return 18
+    mean_length = sum(length for _name, length in reference_contigs) / count
+    return max(
+        1,
+        math.floor(min(18, math.log2(max(mean_length, read_length)))),
+    )
+
+
+def _collect_project_answers(
+    arguments: argparse.Namespace,
+    *,
+    fields: Sequence[str] = _PROJECT_FIELDS,
+    reference_contigs: Sequence[tuple[str, int]] | None = None,
+) -> dict[str, object]:
     missing = [
         f"--{destination.replace('_', '-')}"
-        for destination in _PROJECT_FIELDS
-        if getattr(arguments, destination) is None
+        for destination in fields
+        if getattr(arguments, destination, None) is None
+        and destination not in _STAR_INDEX_FIELDS
     ]
-    interactive = sys.stdin.isatty() and sys.stderr.isatty()
+    interactive = _interactive_terminal()
     if missing and not interactive:
         raise OnboardingError(
             "missing Project setup answers: "
@@ -409,26 +829,67 @@ def _collect_project_answers(arguments: argparse.Namespace) -> dict[str, object]
             + "; supply them explicitly or run this command in a terminal"
         )
     answers: dict[str, object] = {}
-    for destination in _PROJECT_FIELDS:
-        value = getattr(arguments, destination)
+    disclosed_defaults = _PAIRED_CMH_DEFAULTS
+    if (
+        getattr(arguments, "background_condition", None) is not None
+        and getattr(arguments, "background_max_fraction", None) is None
+    ):
+        disclosed_defaults += ("background_max_fraction",)
+    offer_defaults = interactive and all(
+        getattr(arguments, destination, None) is None
+        for destination in disclosed_defaults
+    )
+    use_defaults = False
+    for destination in fields:
+        value = getattr(arguments, destination, None)
+        suggestion = _PROJECT_SUGGESTIONS.get(destination)
+        if value is None and destination in {
+            "sjdb_overhang",
+            "genome_chr_bin_nbits",
+        }:
+            answers[destination] = None
+            continue
+        if value is None and destination == "genome_sa_index_nbases":
+            if reference_contigs is None:
+                reference_contigs = _reference_contigs(Path(answers["reference_fasta"]))
+            genome_length = sum(length for _name, length in reference_contigs)
+            value = max(1, math.floor(min(14, math.log2(genome_length) / 2 - 1)))
+        if value is None and destination == _PAIRED_CMH_DEFAULTS[0] and offer_defaults:
+            print("Built-in paired-CMH settings:", file=sys.stderr)
+            for name in disclosed_defaults:
+                console_field(
+                    name.replace("_", " "), _PROJECT_SUGGESTIONS[name], file=sys.stderr
+                )
+            use_defaults = (
+                _prompt_choice("Use these paired-CMH defaults?", ("yes", "no"), "yes")
+                == "yes"
+            )
+        if value is None and use_defaults and destination in disclosed_defaults:
+            value = suggestion
+        if (
+            value is None
+            and destination == "background_max_fraction"
+            and not getattr(arguments, "background_condition", None)
+        ):
+            value = suggestion
         if value is None:
             label = destination.replace("_", " ")
-            suggestion = _PROJECT_SUGGESTIONS.get(destination)
-            suffix = f" [{suggestion}]" if suggestion is not None else ""
-            print(f"{label}{suffix}: ", end="", file=sys.stderr, flush=True)
-            raw = sys.stdin.readline()
-            if raw == "":
-                raise OnboardingError(
-                    f"Project setup ended before {label} was supplied"
-                )
-            raw = raw.strip() or ("" if suggestion is None else str(suggestion))
+            raw = (
+                str(suggestion)
+                if not interactive
+                else _prompt(label, None if suggestion is None else str(suggestion))
+            )
             if not raw:
                 raise OnboardingError(f"{label} is required")
             try:
                 value = _PROJECT_TYPES.get(destination, str)(raw)
             except (TypeError, ValueError) as exc:
                 raise OnboardingError(f"invalid {label}: {raw!r}") from exc
-        answers[destination] = value
+        answers[destination] = (
+            _admit_supplied_file(value, destination.replace("_", " "))
+            if destination in {"reference_fasta", "reference_gtf"}
+            else value
+        )
     return answers
 
 
@@ -440,7 +901,7 @@ def _project_yaml(answers: Mapping[str, object]) -> bytes:
             "target RNA change must name two different bases, like A>G"
         )
     analysis = {
-        "partitions": str(answers["partition_manifest"]),
+        "partitions": "partitions.tsv",
         **{
             key: answers[key]
             for key in (
@@ -457,72 +918,492 @@ def _project_yaml(answers: Mapping[str, object]) -> bytes:
         },
         "target_change": target,
     }
+    star_index = {
+        field: answers[field]
+        for field in _STAR_INDEX_FIELDS
+        if answers.get(field) is not None
+    }
     document = {
         "schema_version": "emrys.project.v1",
-        "dataset": {"samples": str(answers["sample_manifest"])},
+        "dataset": {"samples": "samples.tsv"},
         "reference": {
             "fasta": str(answers["reference_fasta"]),
             "gtf": str(answers["reference_gtf"]),
-            "star_index": {
-                "sjdb_overhang": answers["sjdb_overhang"],
-                "genome_sa_index_nbases": answers["genome_sa_index_nbases"],
-            },
+            "star_index": star_index,
         },
         "analyses": {str(answers["analysis_name"]): analysis},
     }
     return yaml.safe_dump(document, sort_keys=False).encode("utf-8")
 
 
+def _prompt(label: str, suggestion: str | None = None) -> str:
+    console_print(label, style="bold cyan", file=sys.stderr, end="")
+    if suggestion is not None:
+        message = f" (Press ENTER for {suggestion})"
+        console_print(message, style="dim", file=sys.stderr, end="")
+    print(": ", end="", file=sys.stderr, flush=True)
+    raw = sys.stdin.readline()
+    if raw == "":
+        raise OnboardingError(f"Project setup ended before {label} was supplied")
+    return raw.strip() or (suggestion or "")
+
+
+def _prompt_choice(
+    label: str, choices: Sequence[str], suggestion: str | None = None
+) -> str:
+    value = _prompt(f"{label} [{' / '.join(choices)}]", suggestion)
+    if value not in choices:
+        raise OnboardingError(f"{label} must be one of: {', '.join(choices)}")
+    return value
+
+
+def _interactive_terminal() -> bool:
+    return sys.stdin.isatty() and sys.stderr.isatty()
+
+
+def _discover_fastqs(directory: Path) -> list[Path]:
+    root = _admit_existing_path(
+        directory, "FASTQ directory", directory=True, canonical=True
+    )
+    paths = [
+        path
+        for path in sorted(root.iterdir())
+        if path.is_file() and FASTQ_PAIR_NAME.fullmatch(path.name) is not None
+    ]
+    if not paths:
+        raise OnboardingError(
+            "FASTQ directory contains no recognized paired files ending in "
+            "_R1/_R2 or _1/_2 followed by .fastq/.fq and optional .gz"
+        )
+    return paths
+
+
+def _guided_manifest_members(
+    arguments: argparse.Namespace,
+    *,
+    reference_contigs: Sequence[tuple[str, int]] | None = None,
+) -> dict[str, tuple[bytes, int]]:
+    interactive = _interactive_terminal()
+    fastqs = list(getattr(arguments, "fastq", ()))
+    if not fastqs:
+        if not interactive:
+            raise OnboardingError("guided input lists require --fastq or a terminal")
+        fastqs = _discover_fastqs(Path(_prompt("FASTQ directory")))
+        arguments.fastq = fastqs
+
+    samples = list(getattr(arguments, "sample", ()))
+    assigned = {row[0] for row in samples}
+    sample_ids: set[str] = set()
+    for path in fastqs:
+        match = FASTQ_PAIR_NAME.fullmatch(path.name)
+        if match is None:
+            raise OnboardingError(f"unrecognized FASTQ pair name: {path}")
+        sample_ids.add(str(match["sample"]))
+    missing = sorted(sample_ids - assigned)
+    if missing and interactive:
+        print("Detected FASTQ pairs:", file=sys.stderr)
+        for sample_id in sorted(sample_ids):
+            print(f"  {sample_id}", file=sys.stderr)
+        study_strand = _prompt_choice(
+            "study strandedness", (*_STRANDEDNESS_CHOICES, "mixed"), "unknown"
+        )
+        for sample_id in missing:
+            samples.append(
+                [
+                    sample_id,
+                    _prompt(f"condition for {sample_id}"),
+                    _prompt(f"pairing group for {sample_id}"),
+                    _prompt_choice(
+                        f"strandedness for {sample_id}",
+                        _STRANDEDNESS_CHOICES,
+                        "unknown",
+                    )
+                    if study_strand == "mixed"
+                    else study_strand,
+                ]
+            )
+        arguments.sample = samples
+
+    regions_files = list(getattr(arguments, "regions_file", ()))
+    regions = list(getattr(arguments, "region", ()))
+    if (
+        not regions_files
+        and not regions
+        and getattr(arguments, "partition_manifest", None) is None
+    ):
+        if not interactive:
+            raise OnboardingError(
+                "input-list creation needs --regions-file/--region or an interactive terminal"
+            )
+        print(
+            "Choose a regions file, or press Enter to type FASTA names/regions.",
+            file=sys.stderr,
+        )
+        regions_file = _prompt("optional regions file")
+        if regions_file:
+            regions_files = [["regions", regions_file]]
+            arguments.regions_file = regions_files
+        else:
+            if reference_contigs is None:
+                reference_contigs = _reference_contigs(Path(arguments.reference_fasta))
+            names = [name for name, _length in reference_contigs]
+            shown = names[:24]
+            suffix = f"; plus {len(names) - len(shown)} more" if len(names) > 24 else ""
+            console_field(
+                f"Accepted FASTA names ({len(names)})",
+                " ".join(shown) + suffix,
+                value_style="bold green",
+                file=sys.stderr,
+            )
+            label = f"FASTA names/regions from {Path(arguments.reference_fasta).name}"
+            selectors = shlex.split(_prompt(label))
+            if not selectors:
+                raise OnboardingError("at least one chromosome or region is required")
+            lengths = dict(reference_contigs)
+            try:
+                for selector in selectors:
+                    validate_region_selector(selector, lengths)
+            except ValidationError as exc:
+                raise OnboardingError(str(exc)) from exc
+            regions = [
+                [f"part{index:03d}", selector]
+                for index, selector in enumerate(selectors, start=1)
+            ]
+            arguments.region = regions
+    members = _draft_manifest_members(fastqs, samples, regions_files, regions)
+    if (
+        missing
+        and interactive
+        and arguments.control_condition is None
+        and arguments.treatment_condition is None
+    ):
+        _, _, rows = step08.validate_sample_manifest_bytes(
+            members["samples.tsv"][0], "samples.tsv"
+        )
+        conditions = sorted({row["condition"] for row in rows})
+        if len(conditions) == 2:
+            try:
+                step09.paired_samples(rows, *conditions)
+            except step09.ContractError:
+                pass
+            else:
+                directions = (conditions, list(reversed(conditions)))
+                print("Choose the paired comparison direction:", file=sys.stderr)
+                for index, (control, treatment) in enumerate(directions, 1):
+                    print(f"  {index}. {control} -> {treatment}", file=sys.stderr)
+                selected = directions[int(_prompt_choice("comparison", ("1", "2"))) - 1]
+                arguments.control_condition, arguments.treatment_condition = selected
+    return members
+
+
+def _project_manifest_members(
+    arguments: argparse.Namespace,
+    *,
+    reference_contigs: Sequence[tuple[str, int]] | None = None,
+) -> dict[str, tuple[bytes, int]]:
+    sample_value = getattr(arguments, "sample_manifest", None)
+    partition_value = getattr(arguments, "partition_manifest", None)
+    if sample_value is not None and partition_value is None:
+        raise OnboardingError("--sample-manifest requires --partition-manifest")
+    if partition_value is not None and (
+        getattr(arguments, "regions_file", ()) or getattr(arguments, "region", ())
+    ):
+        raise OnboardingError(
+            "--partition-manifest cannot be combined with --regions-file or --region"
+        )
+    if sample_value is None:
+        members = _guided_manifest_members(
+            arguments, reference_contigs=reference_contigs
+        )
+        if partition_value is None:
+            return members
+    else:
+        if getattr(arguments, "fastq", ()) or getattr(arguments, "sample", ()):
+            raise OnboardingError(
+                "--sample-manifest cannot be combined with --fastq or --sample"
+            )
+        sample_path = _admit_supplied_file(sample_value, "sample manifest")
+        sample_data, _ = read_bytes_with_identity(sample_path, "sample manifest")
+        sample_table, _, sample_rows = step08.validate_sample_manifest_bytes(
+            sample_data, sample_path
+        )
+        for row in sample_rows:
+            for mate in ("r1_fastq", "r2_fastq"):
+                value = Path(row[mate])
+                row[mate] = str(
+                    _admit_supplied_file(
+                        value if value.is_absolute() else sample_path.parent / value,
+                        f"sample {row['sample_id']} {mate}",
+                    )
+                )
+        members = {"samples.tsv": (tsv_bytes(sample_table.header, sample_rows), 0o644)}
+
+    partition_path = _admit_supplied_file(partition_value, "partition manifest")
+    partition_data, _ = read_bytes_with_identity(partition_path, "partition manifest")
+    partition_table = step08.validate_partition_manifest_bytes(
+        partition_data, partition_path
+    )
+    partition_rows = [dict(row) for row in partition_table.rows]
+    for row in partition_rows:
+        if row["selector_type"] == "regions_file":
+            value = Path(row["selector_value"])
+            row["selector_value"] = str(
+                _admit_supplied_file(
+                    value if value.is_absolute() else partition_path.parent / value,
+                    f"partition {row['partition_id']} regions file",
+                )
+            )
+    members["partitions.tsv"] = (
+        tsv_bytes(step08.PARTITION_MANIFEST_HEADER, partition_rows),
+        0o644,
+    )
+    return members
+
+
+def _print_project_preview(
+    output: Path,
+    project_bytes: bytes,
+    members: Mapping[str, tuple[bytes, int]],
+    answers: Mapping[str, object],
+    arguments: argparse.Namespace,
+    *,
+    verbose: bool,
+) -> None:
+    """Review structure and scientific intent without hashing FASTQ contents."""
+
+    definition = orchestration_contracts.load_yaml_object_bytes(project_bytes)
+    orchestration_contracts.validate_record("project", definition)
+    _sample_table, _, samples = step08.validate_sample_manifest_bytes(
+        members["samples.tsv"][0], output / "samples.tsv"
+    )
+    partitions = step08.validate_partition_manifest_bytes(
+        members["partitions.tsv"][0], output / "partitions.tsv"
+    )
+    analysis = definition["analyses"][str(answers["analysis_name"])]
+    try:
+        module = load_analysis_module(BUILTIN_PAIRED_CMH_MODULE_ID)
+        policy = admit_configuration(
+            module.descriptor,
+            {key: value for key, value in analysis.items() if key != "partitions"},
+            AnalysisInputContextV1(
+                samples=tuple(
+                    {
+                        key: row[key]
+                        for key in (
+                            "sample_id",
+                            "condition",
+                            "replicate",
+                            "strandedness",
+                        )
+                    }
+                    for row in samples
+                ),
+                partitions=tuple(dict(row) for row in partitions.rows),
+                reference={"fasta_sha256": "preview", "gtf_sha256": "preview"},
+            ),
+        )
+    except (AnalysisModuleLoadError, TypeError, ValueError) as exc:
+        raise OnboardingError(f"scientific setup is invalid: {exc}") from exc
+
+    present = partial(console_print, file=sys.stdout)
+    present_field = partial(console_field, file=sys.stdout, indent="  ")
+    site = getattr(arguments, "site", None) or "direct"
+    libraries = ", ".join(str(row["sample_id"]) for row in samples)
+    present("Project preparation", style="bold blue")
+    present_field("Output directory", output)
+    present_field(f"Libraries ({len(samples)})", libraries)
+    present_field("Analysis", f"{answers['analysis_name']}; site: {site}")
+    present_field("Reference", answers["reference_fasta"])
+    present_field("Partitions", len(partitions.rows))
+    present_field(
+        "Comparison",
+        f"{answers['control_condition']} -> {answers['treatment_condition']}; "
+        f"target {policy['rna_ref']}>{policy['rna_alt']}",
+    )
+    strands = Counter(row["strandedness"] for row in samples)
+    present_field(
+        "Strandedness",
+        ", ".join(f"{value}: {count}" for value, count in sorted(strands.items())),
+    )
+    for field in _PAIRED_CMH_DEFAULTS:
+        present_field(field.replace("_", " "), answers[field])
+    background = answers["background_condition"]
+    present_field("Background condition", background or "none")
+    present_field(
+        "Background max fraction",
+        f"{answers['background_max_fraction']} ({'active' if background else 'inactive'})",
+    )
+    for field, (label, source) in _STAR_INDEX_FIELDS.items():
+        value = answers[field]
+        if value is None:
+            value = f"automatic at creation; {source}"
+        elif getattr(arguments, field, None) is None:
+            value = f"{value} (automatic from {source})"
+        present_field(label, value)
+    if verbose:
+        present("Detailed study review", style="bold blue")
+        print("  Manifests: samples.tsv, partitions.tsv (inside this Project)")
+        print(f"  Reference GTF: {answers['reference_gtf']}")
+        for sample in samples:
+            print(
+                f"  {sample['sample_id']}: condition={sample['condition']}; "
+                f"pairing group={sample['replicate']}; strandedness={sample['strandedness']}"
+            )
+            print(f"    R1: {sample['r1_fastq']}")
+            print(f"    R2: {sample['r2_fastq']}")
+        for partition in partitions.rows:
+            print(
+                f"  Partition {partition['partition_id']}: {partition['selector_type']} "
+                f"{partition['selector_value']!r}"
+            )
+
+
 def init_project_from_args(arguments: argparse.Namespace) -> int:
     """Plan or create one validated Project root around existing inputs."""
 
     try:
-        answers = _collect_project_answers(arguments)
+        output = _require_external_absent_output(
+            Path(os.environ.get("EMRYS_PROJECTS_ROOT") or Path.cwd())
+            / arguments.project_name,
+            source_root(),
+        )
+        reference_answers = _collect_project_answers(
+            arguments, fields=("reference_fasta", "reference_gtf")
+        )
+        for field, value in reference_answers.items():
+            setattr(arguments, field, value)
+        automatic_star = {
+            field
+            for field in _STAR_INDEX_FIELDS
+            if getattr(arguments, field, None) is None
+        }
+        needs_reference_summary = (
+            getattr(arguments, "sample_manifest", None) is None
+            and not getattr(arguments, "regions_file", ())
+            and not getattr(arguments, "region", ())
+        ) or bool(automatic_star - {"sjdb_overhang"})
+        reference_contigs, reference_snapshot = (
+            _reference_summary(Path(arguments.reference_fasta))
+            if needs_reference_summary
+            else (None, None)
+        )
+        manifest_members = _project_manifest_members(
+            arguments, reference_contigs=reference_contigs
+        )
+        answers = _collect_project_answers(
+            arguments,
+            reference_contigs=reference_contigs,
+        )
         execution_profile_bytes = project_default_profile_bytes(
             getattr(arguments, "site", None)
         )
-        output = _require_external_absent_output(
-            Path.cwd() / arguments.project_name, source_root()
-        )
-        for field in _PROJECT_FIELDS[:4]:
-            answers[field] = _absolute(Path(answers[field])).resolve(strict=True)
         answers["analysis_name"] = arguments.analysis_name
         answers["background_condition"] = arguments.background_condition
-        project_bytes = _project_yaml(answers)
-        preview = _admit_project_data(
-            output / "project.yaml",
-            project_bytes,
-            source_root() / PROFILE_RELATIVE_PATH,
+        preview_bytes = _project_yaml(
+            answers | {"sjdb_overhang": answers["sjdb_overhang"] or 0}
         )
-        validate_project_admission(preview)
-        print(f"Project root: {output}")
-        print("Owned directories: logs, runs, runtime")
-        print("Referenced inputs remain in place; setup copies no input files.")
-        if not arguments.execute:
-            print("Dry-run complete; no files were written.")
+        _print_project_preview(
+            output,
+            preview_bytes,
+            manifest_members,
+            answers,
+            arguments,
+            verbose=getattr(arguments, "verbose", False),
+        )
+        if not arguments.execute and (
+            getattr(arguments, "preview", False)
+            or not _confirm_admission("Create this Project?")
+        ):
+            console_print(
+                "Preview complete; Project not created.",
+                style="yellow",
+                file=sys.stdout,
+            )
             return 0
+        print(
+            "Project creation reads and hashes each declared FASTQ once, then "
+            "checks reference and partition compatibility. Large inputs may take "
+            "several minutes.",
+            file=sys.stderr,
+        )
+        prepared_files = {
+            output / name: data for name, (data, _mode) in manifest_members.items()
+        }
+        with phase_progress("Reading and hashing Project inputs"):
+            sample_inputs = _admit_sample_inputs(
+                output / "samples.tsv",
+                manifest_members["samples.tsv"][0],
+                output,
+                inspect_fastqs=True,
+            )
+            if "sjdb_overhang" in automatic_star:
+                answers["sjdb_overhang"] = sample_inputs.max_read_length - 1
+            if "genome_chr_bin_nbits" in automatic_star:
+                assert reference_contigs is not None
+                answers["genome_chr_bin_nbits"] = _genome_chr_bin_nbits(
+                    reference_contigs, sample_inputs.max_read_length
+                )
+            project_bytes = _project_yaml(answers)
+            admission = _admit_project_data(
+                output / "project.yaml",
+                project_bytes,
+                source_root() / PROFILE_RELATIVE_PATH,
+                prepared_files=prepared_files,
+                sample_inputs=sample_inputs,
+            )
+            if (
+                reference_snapshot is not None
+                and regular_snapshot(Path(arguments.reference_fasta), "Reference FASTA")
+                != reference_snapshot
+            ):
+                raise OnboardingError(
+                    "Reference FASTA changed after its STAR settings were derived: "
+                    f"{arguments.reference_fasta}"
+                )
+        for field, (label, source) in _STAR_INDEX_FIELDS.items():
+            detail = (
+                f"automatic from {source}" if field in automatic_star else "explicit"
+            )
+            if field == "sjdb_overhang":
+                detail = (
+                    "automatic"
+                    if field in automatic_star
+                    else f"explicit; automatic value would be {sample_inputs.max_read_length - 1}"
+                ) + f"; maximum admitted read length {sample_inputs.max_read_length}"
+            print(f"{label} {answers[field]} ({detail}).", file=sys.stderr)
+        with phase_progress("Checking reference and partition compatibility"):
+            validate_project_admission(admission)
+        members = {
+            **manifest_members,
+            (PROJECT_PROFILE_DIRECTORY / "default.yaml").as_posix(): (
+                execution_profile_bytes,
+                0o644,
+            ),
+        }
         publish_create_absent_tree(
             output,
-            {
-                (PROJECT_PROFILE_DIRECTORY / "default.yaml").as_posix(): (
-                    execution_profile_bytes,
-                    0o644,
-                )
-            },
+            members,
             completion_name="project.yaml",
             completion_bytes=project_bytes,
             directories=PROJECT_DIRECTORIES,
+            before_completion=lambda _published: admission.require_inputs_unchanged(),
         )
-        validate_project(output / "project.yaml")
-        print(f"Project ready: {output / 'project.yaml'}")
+        admission.require_inputs_unchanged()
+        console_field(
+            "Project ready",
+            output / "project.yaml",
+            value_style="bold green",
+            file=sys.stdout,
+        )
         return 0
     except (
         OSError,
         OnboardingError,
+        ValidationError,
         orchestration_contracts.ContractValidationError,
         step08.ContractError,
     ) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        console_print(f"ERROR: {exc}", style="red", file=sys.stderr)
         return 2
 
 
@@ -553,17 +1434,18 @@ def _draft_manifest_members(
     fastqs: Sequence[Path],
     samples: Sequence[Sequence[str]],
     regions_files: Sequence[Sequence[str]],
+    regions: Sequence[Sequence[str]],
 ) -> dict[str, tuple[bytes, int]]:
     """Render validated manifest drafts from explicit paths and biology."""
 
-    pairs: dict[str, dict[str, tuple[Path, bool]]] = {}
+    sample_rows: dict[str, dict[str, str]] = {}
     file_roles: dict[tuple[int, int], str] = {}
     for value in fastqs:
         admitted_path = _admit_supplied_file(value, "supplied FASTQ")
         match = FASTQ_PAIR_NAME.fullmatch(admitted_path.name)
         if match is None:
             raise OnboardingError(
-                "FASTQ names must end in <sample>_R1 or _R2 followed by "
+                "FASTQ names must end in <sample>_R1/_R2 or <sample>_1/_2 followed by "
                 f".fastq/.fq and optional .gz: {admitted_path}"
             )
         sample_id, mate = match["sample"], match["mate"]
@@ -573,66 +1455,66 @@ def _draft_manifest_members(
         if previous := file_roles.get(identity):
             raise OnboardingError(f"one FASTQ file is reused as {previous} and {role}")
         file_roles[identity] = role
-        pair = pairs.setdefault(sample_id, {})
-        if mate in pair:
+        row = sample_rows.setdefault(sample_id, {"sample_id": sample_id})
+        column = f"r{mate}_fastq"
+        if column in row:
             raise OnboardingError(f"duplicate R{mate} FASTQ for sample {sample_id}")
-        pair[mate] = (admitted_path, match["suffix"].endswith(".gz"))
+        row[column] = str(admitted_path)
 
-    admitted: dict[str, tuple[Path, Path]] = {}
-    for sample_id, pair in pairs.items():
-        if set(pair) != {"1", "2"}:
+    for sample_id, row in sample_rows.items():
+        if not {"r1_fastq", "r2_fastq"} <= row.keys():
             raise OnboardingError(f"unpaired FASTQ sample: {sample_id}")
-        (r1, r1_gzip), (r2, r2_gzip) = pair["1"], pair["2"]
-        if r1_gzip != r2_gzip:
+        if row["r1_fastq"].endswith(".gz") != row["r2_fastq"].endswith(".gz"):
             raise OnboardingError(
                 f"R1 and R2 FASTQs use different compression for sample {sample_id}"
             )
-        admitted[sample_id] = (r1, r2)
 
     assignments = _indexed_values(samples, "--sample assignment")
-    unexpected = sorted(assignments.keys() - admitted.keys())
+    unexpected = sorted(assignments.keys() - sample_rows.keys())
     if unexpected:
         raise OnboardingError(
             "--sample assignments have no supplied FASTQ pair: " + ", ".join(unexpected)
         )
-    missing = sorted(admitted.keys() - assignments.keys())
+    missing = sorted(sample_rows.keys() - assignments.keys())
     if missing:
         flags = "\n".join(
             f"  --sample {key} CONDITION REPLICATE STRANDEDNESS" for key in missing
         )
         raise OnboardingError(f"biological assignments are required:\n{flags}")
-    for sample_id, assignment in assignments.items():
-        step08.validate_safe_id(f"sample {sample_id} condition", assignment[0])
-
-    sample_rows = [
-        {
-            "sample_id": sample_id,
-            "r1_fastq": str(admitted[sample_id][0]),
-            "r2_fastq": str(admitted[sample_id][1]),
-            "condition": assignments[sample_id][0],
-            "replicate": assignments[sample_id][1],
-            "strandedness": assignments[sample_id][2],
-        }
-        for sample_id in sorted(admitted)
-    ]
-    sample_bytes = tsv_bytes(step08.SAMPLE_MANIFEST_REQUIRED, sample_rows)
+    for sample_id, (condition, replicate, strandedness) in assignments.items():
+        step08.validate_safe_id(f"sample {sample_id} condition", condition)
+        sample_rows[sample_id].update(
+            condition=condition, replicate=replicate, strandedness=strandedness
+        )
+    sample_bytes = tsv_bytes(
+        step08.SAMPLE_MANIFEST_REQUIRED,
+        (sample_rows[key] for key in sorted(sample_rows)),
+    )
     step08.validate_sample_manifest_bytes(sample_bytes, "samples.tsv")
     members = {"samples.tsv": (sample_bytes, 0o644)}
-    if regions_files:
-        partitions = _indexed_values(regions_files, "--regions-file")
-        rows = [
-            {
-                "partition_id": partition_id,
-                "selector_type": "regions_file",
-                "selector_value": str(
+    rows = []
+    for selector_type, selections in (
+        ("regions_file", regions_files),
+        ("region", regions),
+    ):
+        for partition_id, (value,) in sorted(
+            _indexed_values(selections, f"--{selector_type.replace('_', '-')}").items()
+        ):
+            if selector_type == "regions_file":
+                value = str(
                     _admit_supplied_file(
-                        partitions[partition_id][0],
-                        f"partition {partition_id} regions file",
+                        value, f"partition {partition_id} regions file"
                     )
-                ),
-            }
-            for partition_id in sorted(partitions)
-        ]
+                )
+            rows.append(
+                dict(
+                    partition_id=partition_id,
+                    selector_type=selector_type,
+                    selector_value=value,
+                )
+            )
+    if rows:
+        rows.sort(key=lambda row: row["partition_id"])
         partition_bytes = tsv_bytes(step08.PARTITION_MANIFEST_HEADER, rows)
         step08.validate_partition_manifest_bytes(partition_bytes, "partitions.tsv")
         members["partitions.tsv"] = (partition_bytes, 0o644)
@@ -640,6 +1522,7 @@ def _draft_manifest_members(
 
 
 def configure_manifest_init_parser(parser: argparse.ArgumentParser) -> None:
+    add_verbose_argument(parser)
     parser.add_argument(
         "--output-dir",
         required=True,
@@ -652,7 +1535,7 @@ def configure_manifest_init_parser(parser: argparse.ArgumentParser) -> None:
         action="extend",
         nargs="+",
         type=Path,
-        help="Existing FASTQs using the closed <sample>_R1/_R2 naming convention.",
+        help="Existing FASTQs named <sample>_R1/_R2 or <sample>_1/_2 (.fastq/.fq, optional .gz).",
     )
     parser.add_argument(
         "--sample",
@@ -662,14 +1545,15 @@ def configure_manifest_init_parser(parser: argparse.ArgumentParser) -> None:
         metavar=("SAMPLE_ID", "CONDITION", "REPLICATE", "STRANDEDNESS"),
         help="Explicit biology for one inferred pair; repeat for every sample.",
     )
-    parser.add_argument(
-        "--regions-file",
-        action="append",
-        nargs=2,
-        default=[],
-        metavar=("PARTITION_ID", "PATH"),
-        help="Optional existing region file; repeat for additional partitions.",
-    )
+    for name, value in (("regions-file", "PATH"), ("region", "REGION")):
+        parser.add_argument(
+            f"--{name}",
+            action="append",
+            nargs=2,
+            default=[],
+            metavar=("PARTITION_ID", value),
+            help=f"Optional {name.replace('-', ' ')}; repeat for additional partitions.",
+        )
     parser.add_argument(
         "--execute", action="store_true", help="Publish; omission is a no-write plan."
     )
@@ -685,12 +1569,20 @@ def init_manifests_from_args(arguments: argparse.Namespace) -> int:
             arguments.fastq,
             arguments.sample,
             arguments.regions_file,
+            arguments.region,
         )
-        print(f"Output directory: {output}")
-        print("Draft manifests: " + ", ".join(sorted(members)))
-        print("Publication policy: create-absent; no file will be replaced or adopted.")
+        console_field("Output directory", output, file=sys.stdout)
+        console_field("Draft manifests", len(members), file=sys.stdout)
+        if getattr(arguments, "verbose", False):
+            console_field("Manifest files", ", ".join(sorted(members)), file=sys.stdout)
+            console_field(
+                "Publication policy",
+                "create-absent; no file will be replaced or adopted",
+                file=sys.stdout,
+            )
         if not arguments.execute:
-            print("Dry-run complete; no files were written.")
+            console_status("Publication", "planned", file=sys.stdout)
+            console_print("Dry-run complete; no files were written.", file=sys.stdout)
             return 0
         sample_bytes, _ = members["samples.tsv"]
         publish_create_absent_tree(
@@ -699,7 +1591,7 @@ def init_manifests_from_args(arguments: argparse.Namespace) -> int:
             completion_name="samples.tsv",
             completion_bytes=sample_bytes,
         )
-        print(f"Published validated manifest drafts: {output}")
+        console_status("Manifest drafts", "ready", file=sys.stdout)
         return 0
     except (
         OSError,
@@ -707,7 +1599,7 @@ def init_manifests_from_args(arguments: argparse.Namespace) -> int:
         orchestration_contracts.ContractValidationError,
         step08.ContractError,
     ) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        console_print(f"ERROR: {exc}", style="red", file=sys.stderr)
         return 2
 
 
@@ -874,6 +1766,7 @@ def validate_project_admission(
 
 def configure_validation_parser(parser: argparse.ArgumentParser) -> None:
     add_project_argument(parser)
+    add_verbose_argument(parser)
     parser.set_defaults(_command_parser=parser)
 
 
@@ -885,11 +1778,19 @@ def validate_from_args(arguments: argparse.Namespace) -> int:
         OnboardingError,
         orchestration_contracts.ContractValidationError,
     ) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        console_field(
+            "Project validation",
+            f"FAIL — {exc}",
+            value_style="bold red",
+            file=sys.stderr,
+        )
         return 1
+    verbose = getattr(arguments, "verbose", False)
+    console_status("Project validation", "PASS", file=sys.stdout)
+    if not verbose:
+        return 0
     project = result.project
     reference = project.analyses[0].workflow_inputs["reference"]
-    print("Project validation: PASS")
     print(f"  Project: {project.source_path}")
     print(f"  Project SHA-256: {project.source_sha256}")
     print(f"  Samples: {result.sample_count}")
@@ -1096,14 +1997,33 @@ def project_runtime_directory(
         ) from exc
 
 
-def discover_runtime_profile(
+@dataclass(frozen=True, slots=True)
+class _RuntimeDiscoveryPlan:
+    inspection: RuntimeInspection
+    admit: Callable[[], RuntimeInspection]
+
+
+def _require_project_source_unchanged(project: ProjectAdmission) -> None:
+    try:
+        current, _state = read_bytes_with_identity(
+            project.source_path, "Project definition"
+        )
+    except ValidationError as exc:
+        raise OnboardingError(str(exc)) from exc
+    if current != project.source_bytes:
+        raise OnboardingError(
+            f"Project definition changed after runtime preview: {project.source_path}"
+        )
+
+
+def _discover_runtime_candidate(
     *,
     project: Path,
     environment: Mapping[str, str] | None = None,
     root: Path | None = None,
     python_executable: Path | None = None,
-) -> RuntimeInspection:
-    """Discover and probe one candidate profile without publishing it."""
+) -> tuple[RuntimeInspection, ProjectAdmission]:
+    """Discover one candidate and retain its admitted Project boundary."""
 
     package_root = _absolute(source_root() if root is None else root)
     admitted = validate_project(project, root=package_root).project
@@ -1118,12 +2038,33 @@ def discover_runtime_profile(
         renv_library,
         base_environment=selected_environment,
     )
-    return inspect_runtime_profile_bytes(
-        profile_bytes,
-        destination,
-        checks=runtime_profile_checks(profile_bytes, package_root),
-        environment=inspection_environment,
+    return (
+        inspect_runtime_profile_bytes(
+            profile_bytes,
+            destination,
+            checks=runtime_profile_checks(profile_bytes, package_root),
+            environment=inspection_environment,
+        ),
+        admitted,
     )
+
+
+def discover_runtime_profile(
+    *,
+    project: Path,
+    environment: Mapping[str, str] | None = None,
+    root: Path | None = None,
+    python_executable: Path | None = None,
+) -> RuntimeInspection:
+    """Discover and probe one candidate profile without publishing it."""
+
+    inspection, _project = _discover_runtime_candidate(
+        project=project,
+        environment=environment,
+        root=root,
+        python_executable=python_executable,
+    )
+    return inspection
 
 
 def publish_runtime_profile(inspection: RuntimeInspection) -> None:
@@ -1136,43 +2077,282 @@ def publish_runtime_profile(inspection: RuntimeInspection) -> None:
     )
 
 
+def _plan_runtime_discovery(*, project: Path) -> _RuntimeDiscoveryPlan:
+    inspection, admitted = _discover_runtime_candidate(project=project)
+    expected_bindings = (
+        runtime_file_bindings(inspection) if inspection.required_ready else ()
+    )
+
+    def admit() -> RuntimeInspection:
+        _require_project_source_unchanged(admitted)
+        if runtime_file_bindings(inspection) != expected_bindings:
+            raise OnboardingError(
+                "Runtime content changed after preview; preview again"
+            )
+        destination = project_runtime_directory(admitted) / "runtime.tsv"
+        if destination != inspection.profile_path:
+            raise OnboardingError("Project runtime destination changed after preview")
+        publish_runtime_profile(inspection)
+        return inspection
+
+    return _RuntimeDiscoveryPlan(inspection, admit)
+
+
+def _plan_runtime_reuse(
+    *, project: Path, donor: Path, replace_existing: bool = False
+) -> _RuntimeDiscoveryPlan:
+    """Plan one source-generation selection and retain exact freshness inputs."""
+    package_root = _absolute(source_root())
+    borrower = validate_project(project, root=package_root).project
+    source = validate_project(donor, root=package_root).project
+    destination = project_runtime_directory(borrower, writable=False) / "runtime.tsv"
+    runtime = project_runtime_directory(source, writable=False)
+    seal_path = runtime / "shared.json"
+    if borrower.source_path == source.source_path:
+        raise OnboardingError("Runtime reuse requires a distinct borrower Project")
+    try:
+        existing = (
+            read_bytes_with_identity(destination, "Runtime inventory")[0]
+            if os.path.lexists(destination)
+            else None
+        )
+    except ValidationError as exc:
+        raise OnboardingError(str(exc)) from exc
+    if existing is not None and not replace_existing:
+        raise OnboardingError(
+            f"runtime inventory already exists and was preserved: {destination}; "
+            "use --replace only to replace a shared selection from the same Project"
+        )
+    if existing is None and replace_existing:
+        raise OnboardingError(
+            f"runtime inventory is absent; omit --replace: {destination}"
+        )
+
+    def inspect(data: bytes) -> RuntimeInspection:
+        checks = runtime_profile_checks(data, package_root)
+        library = next(
+            Path(check.target) for check in checks if check.check_id == "renv_library"
+        )
+        result = inspect_runtime_profile_bytes(
+            data,
+            destination,
+            checks=checks,
+            environment=guarded_r_environment(package_root, library),
+        )
+        if not result.required_ready:
+            raise RuntimeDiscoveryError(
+                "Required runtime checks did not pass for reuse"
+            )
+        return result
+
+    claim_path = runtime / "maintenance.lock"
+    if os.path.lexists(claim_path):
+        raise OnboardingError(f"Runtime maintenance claim is unresolved: {claim_path}")
+    source_data, _source_checks = load_runtime_profile_contract(
+        runtime / "runtime.tsv", package_root
+    )
+    source_selection = shared_runtime_selection(source_data)
+    seal_needed = False
+    if source_selection is not None:
+        seal_path = source_selection.seal_path
+        if runtime_root_for_seal(seal_path) != runtime:
+            raise OnboardingError(
+                "The selected source runtime is not owned by the source Project"
+            )
+        seal_data = load_runtime_seal(seal_path).data
+    elif os.path.lexists(seal_path):
+        seal_data = load_runtime_seal(seal_path).data
+    else:
+        seal_needed = True
+        choices = runtime_profile_choices(source_data)
+        choices["python"] = Path(sys.executable)
+        candidate = inspect(runtime_profile_bytes(choices))
+        seal_data = runtime_seal_bytes(candidate, seal_path)
+        reference = shared_runtime_profile_bytes(
+            seal_path, seal_data, Path(sys.executable)
+        )
+        preview = replace(
+            candidate,
+            profile_bytes=reference,
+            profile_sha256=hashlib.sha256(reference).hexdigest(),
+        )
+    if not seal_needed:
+        reference = shared_runtime_profile_bytes(
+            seal_path, seal_data, Path(sys.executable)
+        )
+        preview = inspect(reference)
+        runtime_file_bindings(preview)
+
+    def admit() -> RuntimeInspection:
+        _require_project_source_unchanged(borrower)
+        _require_project_source_unchanged(source)
+        if os.path.lexists(claim_path):
+            raise OnboardingError(
+                f"Runtime maintenance claim appeared during selection: {claim_path}"
+            )
+        if seal_needed:
+            project_runtime_directory(source)
+            payload = f"emrys-runtime-seal:{uuid.uuid4().hex}\n".encode("ascii")
+            ownership = acquire_lock(
+                claim_path, payload, OnboardingError, retain_on_failure=True
+            )
+            current_data, _current_checks = load_runtime_profile_contract(
+                runtime / "runtime.tsv", package_root
+            )
+            if current_data != source_data:
+                raise OnboardingError("Source runtime inventory changed before sealing")
+            if runtime_seal_bytes(candidate, seal_path) != seal_data:
+                raise OnboardingError(
+                    "Source runtime content changed after preview; preview again"
+                )
+            # Failed or interrupted publication deliberately retains the claim.
+            publish_exclusive(seal_path, seal_data, OnboardingError)
+            release_lock(claim_path, ownership, payload, OnboardingError)
+            inspection = inspect(reference)
+            runtime_file_bindings(inspection)
+        else:
+            inspection = preview
+            runtime_file_bindings(inspection)
+        if os.path.lexists(claim_path):
+            raise OnboardingError(
+                f"Runtime maintenance claim appeared during selection: {claim_path}"
+            )
+        current_source, _current_checks = load_runtime_profile_contract(
+            runtime / "runtime.tsv", package_root
+        )
+        if current_source != source_data:
+            raise OnboardingError(
+                "Source runtime inventory changed during selection; preview again"
+            )
+        borrower_runtime = project_runtime_directory(borrower)
+        if existing is None:
+            publish_runtime_profile(inspection)
+        else:
+            current_selection = shared_runtime_selection(existing)
+            if current_selection is None:
+                raise OnboardingError(
+                    "--replace requires an existing shared runtime selection"
+                )
+            if runtime_root_for_seal(current_selection.seal_path) != runtime:
+                raise OnboardingError(
+                    "--replace requires the same source Project as the existing shared runtime"
+                )
+            selection_claim = borrower_runtime / "maintenance.lock"
+            payload = f"emrys-runtime-selection:{uuid.uuid4().hex}\n".encode("ascii")
+            ownership = acquire_lock(
+                selection_claim, payload, OnboardingError, retain_on_failure=True
+            )
+            publish_exclusive(
+                destination,
+                reference,
+                OnboardingError,
+                replace_expected=existing,
+            )
+            release_lock(selection_claim, ownership, payload, OnboardingError)
+        return inspection
+
+    return _RuntimeDiscoveryPlan(preview, admit)
+
+
+def reuse_runtime_profile(
+    *, project: Path, donor: Path, execute: bool, replace_existing: bool = False
+) -> RuntimeInspection:
+    """Freshly qualify one source generation for a dependent Project."""
+
+    plan = _plan_runtime_reuse(
+        project=project, donor=donor, replace_existing=replace_existing
+    )
+    return plan.admit() if execute else plan.inspection
+
+
 def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
     add_project_argument(parser)
+    add_verbose_argument(parser)
+    parser.add_argument(
+        "--from-project",
+        metavar="SOURCE",
+        help="Reuse a source Project's managed tools; --execute seals the selected generation before selection.",
+    )
     parser.add_argument(
         "--execute",
         action="store_true",
-        help="Publish the admitted inventory; omission is a no-write discovery.",
+        help=(
+            "Publish without prompting; omission previews and offers confirmation "
+            "in a terminal."
+        ),
+    )
+    parser.add_argument(
+        "--replace",
+        action="store_true",
+        help="Replace an existing shared selection from the same source Project; preview remains no-write without --execute.",
     )
     parser.set_defaults(_command_parser=parser)
 
 
-def _print_runtime_inventory(inspection: RuntimeInspection) -> None:
-    print("EMRYS runtime inventory")
-    print(f"  emrys: PASS ({__version__})")
-    for observation in inspection.observations:
-        print(
-            f"  {observation.check.check_id}: {observation.status.upper()} "
-            f"({observation.observed})"
-        )
+def _confirm_admission(question: str) -> bool:
+    if not _interactive_terminal():
+        return False
+    console_print(
+        f"{question} [y/N] ",
+        style="bold",
+        file=sys.stderr,
+        end="",
+    )
+    return sys.stdin.readline().strip().casefold() in {"y", "yes"}
 
 
 def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
     """Discover, probe, and optionally admit the active Project runtime."""
 
     try:
-        inspection = discover_runtime_profile(
-            project=project_definition_path(arguments.project)
-        )
-        _print_runtime_inventory(inspection)
-        print(f"Inventory: {inspection.profile_path}")
+        verbose = getattr(arguments, "verbose", False)
+        donor = getattr(arguments, "from_project", None)
+        replace_existing = getattr(arguments, "replace", False)
+        if replace_existing and donor is None:
+            raise OnboardingError("--replace requires --from-project")
+        if donor is None:
+            plan = _plan_runtime_discovery(
+                project=project_definition_path(arguments.project)
+            )
+        else:
+            plan = _plan_runtime_reuse(
+                project=project_definition_path(arguments.project),
+                donor=project_definition_path(donor),
+                replace_existing=replace_existing,
+            )
+        inspection = plan.inspection
+        if donor is not None:
+            selected = shared_runtime_selection(inspection.profile_bytes)
+            assert selected is not None
+            if verbose:
+                print(f"Source seal: {selected.seal_path}")
+        status = "READY" if inspection.required_ready else "NOT READY"
+        console_status("Runtime discovery", status, file=sys.stdout)
+        if verbose:
+            print("Runtime checks:")
+            print(f"  emrys: PASS ({__version__})")
+            for observation in inspection.observations:
+                print(
+                    f"  {observation.check.check_id}: {observation.status.upper()} "
+                    f"({observation.observed})"
+                )
         if not inspection.required_ready:
-            print("NOT READY: required runtime checks did not pass.")
             return 1
-        if not arguments.execute:
-            print("Dry-run complete; no files were written.")
+        if not arguments.execute and not _confirm_admission(
+            "Admit this runtime inventory?"
+        ):
+            print(
+                "Dry-run complete; no files were written. Run again and answer y, "
+                "or use --execute for automation."
+            )
             return 0
-        publish_runtime_profile(inspection)
-        print("Runtime inventory admitted.")
+        inspection = plan.admit()
+        console_field(
+            "Runtime inventory admitted",
+            inspection.profile_path,
+            value_style="bold green",
+            file=sys.stdout,
+        )
         return 0
     except RuntimeDiscoveryError as exc:
         print(f"NOT READY: {exc}", file=sys.stderr)
@@ -1193,19 +2373,25 @@ __all__ = (
     "ProjectValidation",
     "RuntimeDiscoveryError",
     "add_project_argument",
+    "configure_profile_create_parser",
+    "configure_setup_parser",
     "configure_runtime_discovery_parser",
     "configure_manifest_init_parser",
     "configure_project_init_parser",
     "configure_validation_parser",
     "discover_runtime_from_args",
     "discover_runtime_profile",
+    "reuse_runtime_profile",
     "init_manifests_from_args",
     "init_project_from_args",
+    "load_saved_cli_environment",
     "project_runtime_directory",
+    "profile_create_from_args",
     "project_definition_path",
     "publish_create_absent_tree",
     "publish_runtime_profile",
     "runtime_profile_path",
+    "setup_from_args",
     "validate_from_args",
     "validate_project",
     "validate_project_admission",

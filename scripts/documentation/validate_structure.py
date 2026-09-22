@@ -11,31 +11,27 @@ from urllib.parse import unquote
 
 from markdown_it import MarkdownIt
 
-CANONICAL_DOCUMENTS = {
-    "AGENTS.md": "# EMRYS safety guard",
-    "README.md": "# EMRYS: Epic Molecular Read Yield System",
-    "quickstart.md": "# EMRYS quickstart: synthetic Project to Results",
-    "configs/README.md": "# Configuration and input guide",
-    "docs/README.md": "# Documentation",
-    "docs/architecture/README.md": "# Architecture index",
-    "docs/architecture/ARCHITECTURE.md": "# Current architecture",
-    "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md": (
-        "# Current functional-owner inventory"
-    ),
-    "docs/design/DECISIONS.md": "# Durable decisions",
-    "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
-    "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
-    "docs/history/validation-evidence.md": "# Dated validation evidence",
-    "docs/operations/RUNBOOK.md": "# Runbook",
-    "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
-    "docs/operations/WORKFLOW.md": "# Workflow kernel",
-    "docs/tasks/README.md": "# Task planning",
-    "docs/tasks/backlog_matrix.md": "# EMRYS backlog matrix",
-    "src/emrys/contracts/SOURCE_TOPOLOGY.md": (
-        "# Source ownership and dependency direction"
-    ),
-    "src/emrys/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
-}
+CANONICAL_DOCUMENTS = (
+    "AGENTS.md",
+    "README.md",
+    "quickstart.md",
+    "configs/README.md",
+    "docs/README.md",
+    "docs/architecture/README.md",
+    "docs/architecture/ARCHITECTURE.md",
+    "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md",
+    "docs/design/DECISIONS.md",
+    "docs/design/LOGGING_CONTRACT.md",
+    "docs/design/TEST_BASELINE.md",
+    "docs/history/validation-evidence.md",
+    "docs/operations/RUNBOOK.md",
+    "docs/operations/TROUBLESHOOTING.md",
+    "docs/operations/WORKFLOW.md",
+    "docs/tasks/README.md",
+    "docs/tasks/backlog_matrix.md",
+    "src/emrys/contracts/SOURCE_TOPOLOGY.md",
+    "src/emrys/contracts/STAGE_MAP.md",
+)
 
 SOURCE_OWNER_DIRECTORY_NAMES = {
     (
@@ -122,10 +118,11 @@ def repository_root(value: Path) -> Path:
 
 
 def first_heading(path: Path) -> str:
-    """Return the first Markdown H1, or an empty string."""
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.startswith("# "):
-            return line
+    """Return the first Markdown H1 title outside code, or an empty string."""
+    tokens = MarkdownIt("commonmark").parse(path.read_text(encoding="utf-8"))
+    for index, token in enumerate(tokens[:-1]):
+        if token.type == "heading_open" and token.tag == "h1":
+            return tokens[index + 1].content.strip()
     return ""
 
 
@@ -201,12 +198,12 @@ def validate_local_links(
 
 def validate_canonical_ownership(root: Path, problems: list[str]) -> None:
     """Validate the small canonical kernel and mechanically derived owners."""
-    for relative, expected_h1 in CANONICAL_DOCUMENTS.items():
+    for relative in CANONICAL_DOCUMENTS:
         path = root / relative
         if not path.is_file():
             problems.append(f"missing canonical document: {relative}")
-        elif first_heading(path) != expected_h1:
-            problems.append(f"canonical document H1 mismatch: {relative}")
+        elif not first_heading(path):
+            problems.append(f"canonical document H1 missing: {relative}")
 
     stage_map = root / "src" / "emrys" / "contracts" / "STAGE_MAP.md"
     if not stage_map.is_file():

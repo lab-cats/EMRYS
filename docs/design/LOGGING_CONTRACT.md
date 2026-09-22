@@ -9,8 +9,9 @@ defines which owners may import it.
 
 ## Ownership and adoption
 
-One executing `run` or `resume`, independently generated report, or confirmed
-`doctor --repair` operation owns one application attempt. Automatic reporting
+One executing `run` or `resume`, independently generated report, confirmed
+`doctor --repair`, or admitted `stop --execute` operation owns one application
+attempt. Automatic reporting
 continues in its Run attempt rather than opening another log. The Slurm
 submission transport and delegated tasks own none; the compute-side Run owns
 the attempt. Automatic Doctor compute checks write scheduler streams under the
@@ -31,35 +32,41 @@ open or append to the operation log.
   binary payloads, FASTQ/BAM/VCF content, large tables, and report bytes are not
   copied into it; their roles, paths, hashes, and available sizes/counts may be
   recorded.
-- Adopted commands accept `--log-level normal|verbose|debug` and
-  `--log-root PATH`; `EMRYS_LOG_LEVEL` and `EMRYS_LOG_ROOT` are the environment
-  forms. Precedence is command line, environment, then default, resolved once
-  by the outer operation. `normal` is the default; there is no `quiet` level.
+- Adopted commands accept `--verbose` and `--log-root PATH`. `--verbose` is the
+  sole public detail switch; omission selects normal output. `EMRYS_LOG_ROOT`
+  remains the environment form of the path selector. Command-line path,
+  environment path, then the Project default are resolved once by the outer
+  operation.
 - Invalid, empty, or conflicting controls fail before log, lock, scratch,
   output, or compute side effects while preserving established parse exits.
 - The default root is `<project-root>/logs/application`. Until an adopter has
   a Project root, it is `<repository-root>/logs/application`, derived from
   source/package identity rather than caller CWD. An explicit root is
   absolute.
-- A valid dry-run creates no log. Levels change console output only, never probes,
+  Stop defaults to the exact submitted request's retained application-log root;
+  explicit command-line and environment controls retain their precedence.
+- A valid dry-run creates no log. The switch changes console output only, never probes,
   child flags, computation, artifacts, validation, locking, publication,
   rollback, cleanup, or exits.
 
 | Level | Console projection | Durable log |
 | --- | --- | --- |
-| `normal` | Run identity, work/reporting summary, meaningful phases, verified Results, warnings, errors, log path, and bounded failure summary | complete observed event set |
-| `verbose` | `normal` plus Run root, resources/allocation, profile, scheduler streams, and resolved operational paths | same event semantics |
-| `debug` | `verbose` plus exact safe engine, scheduler, and task commands, allowed environment context, timing, and recovery identities | same event semantics |
+| `normal` | command outcome, essential destination/profile/count, Run identity, work/reporting summary, meaningful phases, verified Results, warnings, errors, failure log path, and bounded failure summary | complete observed event set |
+| `verbose` | `normal` plus Run root, resources/allocation, profile, scheduler streams, resolved operational paths, exact safe commands, timing, and recovery identities | same event semantics |
 
-Rich styles human terminal output only. Status remains understandable from its
-text labels. Redirected output, `NO_COLOR`, and dumb terminals have no color or
-animation. Doctor progress names the active phase and elapsed time; it does not
-invent a completion percentage or a guaranteed remaining duration.
+Rich styles human terminal output only. Cyan keys/labels remain visually
+distinct from neutral or semantically colored values. Green is reserved for
+verified success/readiness, yellow for pending/warning/unverified state, red for
+failure/blocking state, and dim text for secondary metadata. Status remains
+understandable from its text labels. Redirected output, `NO_COLOR`, and dumb
+terminals have no color or animation. Doctor progress names the active phase
+and elapsed time; it does not invent a completion percentage or a guaranteed
+remaining duration.
 
 A repair that invokes package managers creates one exclusive, mode-0600
 `package-output.log` beside its maintenance JSONL. It retains both child streams
-as bytes. Normal terminal output shows stages and the log path; the printed file remains available
-for detailed diagnostics at every output level. Package output is not copied into
+as bytes. Normal terminal output shows stages; `--verbose` names the path, and
+the file remains available for detailed diagnostics. Package output is not copied into
 structured events. A failed or interrupted repair preserves this log.
 
 The runner preserves task stdout and stderr as exact bytes in separate task
@@ -74,6 +81,13 @@ opens it only after confirmation and before lifecycle admission. Doctor opens
 one `maintenance` attempt after repair confirmation and before its first
 filesystem or package-manager mutation. A Slurm submitter opens none; the
 compute delegate opens the Run attempt inside the allocation.
+Finalization-only `resume` is local execution, even with a Slurm profile: it
+opens one application attempt before completing prepared evidence and submits
+no job. If profile selection fails, `resume` may inspect the Run read-only to
+identify that profile-independent action; ordinary profile refusal owns no log.
+Stop opens one `maintenance` attempt scoped to the exact submission request
+after target/client admission and explicit execution intent. Already-terminal
+targets need no cancellation or new application log.
 
 The owner assigns `scope_kind` (`run`, `sample`, `cohort`, `reference`,
 `review`, `validation`, or `maintenance`), `scope_id`,
@@ -132,6 +146,10 @@ log, emits one fixed degradation warning, and disables further writes. Logging
 failure never changes workflow execution, receipt bytes or status, rollback,
 recovery, locks, or exit. Catchable signals receive a best-effort event, flush,
 and established child cleanup; uncatchable loss may leave only a partial log.
+Stop has a required pre-mutation intent boundary: a write or synchronization
+failure there refuses the external scheduler command. A logging failure after
+the command leaves its result unconfirmed; it cannot change Run evidence or
+authorize a repeated cancellation.
 
 After an attempted operation fails, stderr ends with a bounded summary naming:
 
@@ -151,11 +169,67 @@ after argument classification. Logs are protected operational data and are not
 automatically rotated, truncated, compressed, uploaded, or deleted. A log
 cannot promote runtime, scheduler, scientific, or biological evidence.
 
+## Doctor phase measurements
+
+Doctor's existing maintenance log may include durable-only `doctor_phase_timing`
+events with `execution_context`, `phase_name`, `elapsed_seconds` (or null when
+unavailable) and `outcome`. Initial no-write inspection and later phases are
+buffered until controlling work and the claim-release decision finish. A single
+flush before the existing terminal event follows the log's degradation boundary;
+it stops after a failed sink and creates no second log.
+With `--verbose`, complete invocation time is printed after return/exception,
+including operator confirmation time, and is not appended to an already closed
+terminal log.
+These measurements cannot substitute for readiness or change receipt authority.
+The same flush may emit durable-only `runtime_check_passed` packets collected
+at actual Doctor inspection/discovery returns. They use the existing runtime
+diagnostic fields plus execution context and the actual phase. Event timestamps
+describe emission after work; they do not date the earlier probe. Failure
+diagnostics keep their existing immediate path, and returned observations are
+not recaptured as fresh checks.
+
 ## Scheduler distinction
 
-Slurm compatibility streams live under `<project-root>/logs` as
-`emrys-local-pilot-%j.out` and `emrys-local-pilot-%j.err`; they are not
-application logs. Submission dry-run creates neither those paths nor an
-application log. The compute delegate receives the resolved controls, opens
-the operation's one application attempt, records scheduler identity only as
+An approved exact-request stop uses one maintenance application log and raw
+`scancel.stdout`/`scancel.stderr` siblings. Before cancellation, the logger's
+nonterminal intent boundary writes and synchronizes the exact target, admitted
+client and arguments while leaving the log open. A failed intent write or sync
+prevents the command. The shared transport owns exclusive raw stream creation,
+directory pinning and synchronization; partial output is retained on failure.
+The terminal diagnostic records transport and scheduler observations without
+claiming native quiescence or recovery eligibility. Preview opens no log.
+
+Slurm compatibility streams live under `<project-root>/logs`. Current v4
+Run/resume/report requests use `emrys-<request-uuid>-%j.out` and `.err` with the
+exact scheduler name `emrys-<request-uuid>`; Doctor qualification uses
+`emrys-doctor-%j.out` and `.err` with scheduler name `emrys-doctor`. The request
+token is frozen before confirmation and bound to its retained request record.
+Selected observation checks the retained name and paths against live metadata.
+Historical v1-v3 readers retain the exact `emrys-local-pilot` names and paths
+their records require; new writers never generate them. Scheduler streams are
+not application logs. Submission dry-run creates neither those paths nor an
+application log. The compute delegate receives the resolved controls, opens the
+operation's one application attempt, records scheduler identity only as
 correlation metadata, and projects human output to scheduler stderr.
+
+Ordinary token-bound delegates also emit `submission_context` immediately after
+opening that same application log and before workflow preparation or reporting
+startup. Its durable-only fields are the frozen `request_token`,
+`profile_binding_sha256` and `project_root`. The existing opening event supplies
+the entrypoint and scheduler correlation; later `analysis_prepared` or
+`reporting_started` events supply candidate Run/Attempt identities. The token
+uses the existing private delegate export, is checked against the frozen batch
+script before site initialization, and stays read-only through module setup.
+It does not replace random application-attempt identity. Direct, legacy and
+Doctor paths do not invent a request token. These diagnostic events prepare
+exact log association; they neither establish a Run nor prove its completion.
+
+Selected-request inspection admits a bounded, complete snapshot of exactly one
+matching application log from its retained root and command scope. It displays
+the path and snapshot digest separately from recorded candidate identities.
+Independent Run/Attempt contract admission is required before associating those
+identities; the log alone cannot prove workflow entry or scientific completion.
+Missing, changing, malformed or ambiguous logs remain unknown. The ordinary
+request roster does not scan application logs, and inspection never creates or
+repairs a log. Limits and candidate admission belong to the
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md).

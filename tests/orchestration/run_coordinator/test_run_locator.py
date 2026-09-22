@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -168,7 +169,7 @@ def test_noninteractive_multiple_runs_prints_readable_human_names(
         (tmp_path / "runs" / run_id).mkdir(parents=True, exist_ok=True)
 
     result = control.inspect_from_args(
-        argparse.Namespace(project=project, run=None, detail="normal")
+        argparse.Namespace(project=project, run=None, verbose=False)
     )
 
     assert result == 2
@@ -180,3 +181,261 @@ def test_noninteractive_multiple_runs_prints_readable_human_names(
         )
     ]
     assert not (tmp_path / "logs").exists()
+
+
+def test_watch_discovers_one_run_from_declared_projects_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "Projects"
+    project = home / "study" / "project.yaml"
+    run = project.parent / "runs" / ZERO_RUN_ID
+    run.mkdir(parents=True)
+    project.write_text("project\n", encoding="utf-8")
+    monkeypatch.setenv("EMRYS_PROJECTS_ROOT", str(home))
+
+    targets = control._projects_home_watch_targets()
+    assert targets == (control._WatchTarget(project, run_root=run),)
+    assert control._select_watch_target(
+        targets, "international-jackrabbit", interactive=False
+    ) == control._WatchTarget(project, run_root=run)
+
+
+def test_watch_discovers_pre_run_submission_from_projects_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "Projects"
+    project = home / "study" / "project.yaml"
+    project.parent.mkdir(parents=True)
+    project.write_text("project\n", encoding="utf-8")
+    request = SimpleNamespace(
+        request_root=project.parent / "logs" / "submission-exact",
+        recorded_job_id="41",
+    )
+    monkeypatch.setenv("EMRYS_PROJECTS_ROOT", str(home))
+    monkeypatch.setattr(
+        control.slurm_submission, "submission_requests", lambda _project: (request,)
+    )
+    monkeypatch.setattr(
+        control._submission_inspection,
+        "inspect_submission_application",
+        lambda _request: SimpleNamespace(run_root=None),
+    )
+
+    assert control._projects_home_watch_targets() == (
+        control._WatchTarget(project, request=request),
+    )
+
+
+def test_watch_uses_picker_for_runs_across_projects_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "Projects"
+    expected = []
+    for name, run_id in (("alpha", ZERO_RUN_ID), ("beta", ALPHA_RUN_ID)):
+        project = home / name / "project.yaml"
+        run = project.parent / "runs" / run_id
+        run.mkdir(parents=True)
+        project.write_text("project\n", encoding="utf-8")
+        expected.append(control._WatchTarget(project, run_root=run))
+    monkeypatch.setenv("EMRYS_PROJECTS_ROOT", str(home))
+
+    class Menu:
+        def __init__(self, choices, **_kwargs):
+            assert tuple(choices)[0].startswith("alpha:")
+
+        def show(self):
+            return 1
+
+    monkeypatch.setattr(control, "TerminalMenu", Menu)
+    targets = control._projects_home_watch_targets()
+    assert control._select_watch_target(targets, None, interactive=True) == expected[1]
+    with pytest.raises(control.ControlError, match="Multiple monitoring targets"):
+        control._select_watch_target(targets, None, interactive=False)
+
+
+def test_watch_routes_run_job_id_and_job_name_without_parallel_monitoring_owner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parser = argparse.ArgumentParser()
+    control.configure_watch_parser(parser)
+    captured = []
+
+    def inspect(arguments):
+        captured.append(arguments)
+        return 0
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("EMRYS_PROJECTS_ROOT", raising=False)
+    monkeypatch.setattr(control, "inspect_from_args", inspect)
+
+    assert control.watch_from_args(parser.parse_args(["12345"])) == 0
+    assert captured.pop().job_id == "12345"
+    assert control.watch_from_args(parser.parse_args(["emrys-request-name"])) == 0
+    assert captured.pop().job_name == "emrys-request-name"
+
+    project = tmp_path / "project.yaml"
+    project.write_text("project\n", encoding="utf-8")
+    request = SimpleNamespace(request_root=tmp_path / "logs" / "submission-exact")
+    monkeypatch.setattr(control.inspection, "project_run_roots", lambda _root: ())
+    monkeypatch.setattr(
+        control.slurm_submission, "submission_requests", lambda _project: (request,)
+    )
+    monkeypatch.setattr(
+        control._submission_inspection,
+        "inspect_submission_application",
+        lambda _request: SimpleNamespace(run_root=None),
+    )
+    assert control.watch_from_args(parser.parse_args([])) == 0
+    selected = captured.pop()
+    assert selected.project == project
+    assert selected.submission == "submission-exact"
+
+    run = tmp_path / "runs" / ZERO_RUN_ID
+    run.mkdir(parents=True)
+    monkeypatch.setattr(
+        control._submission_inspection,
+        "inspect_submission_application",
+        lambda _request: SimpleNamespace(run_root=run),
+    )
+    assert control.watch_from_args(parser.parse_args([])) == 0
+    selected = captured.pop()
+    assert selected.submission == "submission-exact"
+    assert selected._watch_run_root == run
+
+
+def test_watch_does_not_discover_current_user_scheduler_jobs_without_a_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from emrys.orchestration.run_coordinator import dashboard
+
+    parser = argparse.ArgumentParser()
+    control.configure_watch_parser(parser)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("EMRYS_PROJECTS_ROOT", raising=False)
+    monkeypatch.delenv("EMRYS_DASHBOARD_JOB_ID", raising=False)
+    monkeypatch.setattr(
+        dashboard,
+        "scheduler_candidates",
+        lambda: pytest.fail("ordinary watch must not enumerate scheduler jobs"),
+    )
+    monkeypatch.setattr(
+        control,
+        "inspect_from_args",
+        lambda _arguments: pytest.fail("missing Project target must not open watch"),
+    )
+
+    assert control.watch_from_args(parser.parse_args([])) == 2
+    assert "No admitted Project monitoring target" in capsys.readouterr().err
+
+
+def test_watch_keeps_submission_identity_after_run_association(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = tmp_path / "project.yaml"
+    project.write_text("project\n", encoding="utf-8")
+    run = tmp_path / "runs" / ZERO_RUN_ID
+    run.mkdir(parents=True)
+    request = SimpleNamespace(
+        request_root=tmp_path / "logs" / "submission-exact",
+        recorded_job_id="41",
+    )
+    monkeypatch.setattr(
+        control.slurm_submission, "submission_requests", lambda _project: (request,)
+    )
+    monkeypatch.setattr(
+        control._submission_inspection,
+        "inspect_submission_application",
+        lambda _request: SimpleNamespace(run_root=run),
+    )
+
+    assert control._select_watch_target(
+        control._project_watch_targets(project), None, interactive=False
+    ) == control._WatchTarget(
+        project,
+        run_root=run,
+        request=request,
+    )
+
+
+def test_watch_keeps_multiple_requests_for_one_run_distinct(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = tmp_path / "project.yaml"
+    project.write_text("project\n", encoding="utf-8")
+    run = tmp_path / "runs" / ZERO_RUN_ID
+    run.mkdir(parents=True)
+    requests = tuple(
+        SimpleNamespace(
+            request_root=tmp_path / "logs" / f"submission-{name}",
+            recorded_job_id=str(job_id),
+        )
+        for name, job_id in (("first", 41), ("second", 42))
+    )
+    monkeypatch.setattr(
+        control.slurm_submission, "submission_requests", lambda _project: requests
+    )
+    monkeypatch.setattr(
+        control._submission_inspection,
+        "inspect_submission_application",
+        lambda _request: SimpleNamespace(run_root=run),
+    )
+
+    targets = control._project_watch_targets(project)
+    assert [target.request for target in targets] == list(requests)
+    with pytest.raises(control.ControlError, match="Multiple monitoring targets"):
+        control._select_watch_target(targets, run.name, interactive=False)
+
+
+def test_watch_refuses_excess_candidate_inventory(tmp_path: Path) -> None:
+    project = tmp_path / "project.yaml"
+    targets = tuple(control._WatchTarget(project, request=object()) for _ in range(257))
+    with pytest.raises(control.ControlError, match="More than 256"):
+        control._select_watch_target(targets, None, interactive=False)
+
+
+def test_watch_requires_choice_between_historical_run_and_new_submission(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = tmp_path / "project.yaml"
+    project.write_text("project\n", encoding="utf-8")
+    run = tmp_path / "runs" / ZERO_RUN_ID
+    run.mkdir(parents=True)
+    request = SimpleNamespace(
+        request_root=tmp_path / "logs" / "submission-new", recorded_job_id="42"
+    )
+    monkeypatch.setattr(
+        control.slurm_submission, "submission_requests", lambda _project: (request,)
+    )
+    monkeypatch.setattr(
+        control._submission_inspection,
+        "inspect_submission_application",
+        lambda _request: SimpleNamespace(run_root=None),
+    )
+
+    with pytest.raises(control.ControlError, match="Multiple monitoring targets"):
+        control._select_watch_target(
+            control._project_watch_targets(project), None, interactive=False
+        )
+
+    class Menu:
+        def __init__(self, choices, **_kwargs):
+            assert "request submission-new" in tuple(choices)[1]
+
+        def show(self):
+            return 1
+
+    monkeypatch.setattr(control, "TerminalMenu", Menu)
+    assert control._select_watch_target(
+        control._project_watch_targets(project), None, interactive=True
+    ) == control._WatchTarget(
+        project,
+        request=request,
+    )
+
+
+def test_public_watch_command_routes_to_the_inspection_owner() -> None:
+    from emrys import __main__ as cli
+
+    selected = cli.build_parser().parse_args(["watch", "12345"])
+    assert selected._command_handler is control.watch_from_args
+    assert selected.watch is True and selected.run == "12345"

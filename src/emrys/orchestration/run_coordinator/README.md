@@ -18,7 +18,13 @@ The [configuration guide](../../../../configs/README.md) explains manifests and
 Analysis fields. The [runtime procedure](../../../../docs/operations/RUNBOOK.md#institution-provided-runtime)
 explains discovery and managed/site setup. The [reuse procedure](../../../../docs/operations/RUNBOOK.md#reusable-processing)
 explains how a new downstream Run uses a compatible processing Run without
-changing it. Synthetic dataset choices belong in the [quickstart](../../../../quickstart.md).
+changing it. Synthetic dataset choices belong in the
+[quickstart](../../../../quickstart.md). `emrys setup` owns the closed
+repository-root `.env` for Projects home, site and optional application-log
+defaults; command-line and process values remain higher precedence.
+The ordinary named initializer guides FASTQ pairing, biological assignments and
+regions, then owns the resulting manifests inside the Project. The separate
+manifest drafting command remains an advanced structural helper.
 
 ## Internal boundary
 
@@ -30,6 +36,7 @@ changing it. Synthetic dataset choices belong in the [quickstart](../../../../qu
 | Build task commands, dependencies, and their recorded plan | `materialization.py`, `run_implementation.py` |
 | Run Snakemake and record Attempt success, interruption, or failure | `lifecycle.py`, `task.py` |
 | Read and validate Run state and identify supported recovery | `inspection.py`, `_inspection_evidence.py` |
+| Present dated inspection evidence and a read-only terminal watch | `_inspection_presentation.py` |
 | Start reporting after computation or on request | `reporting_operation.py`, `reporting_boundary.py` |
 | Submit the same execution backend to one Slurm allocation | `slurm_submission.py` |
 
@@ -38,31 +45,28 @@ report rendering, and package installation stay with their existing owners.
 Doctor binds the executing installed package and rechecks its full identity
 before and after repair. Managed repair uses Pixi and renv for Project-owned
 native tools and R libraries; Python installation stays with the environment's
-package manager. Existing site runtimes and operator execution profiles remain
-outside managed repair. On a Slurm Project, normal repair stays on the head node
-and submits the required runtime/storage checks. `--compute` is the explicit
-advanced allocation route. Both Project-creation commands accept `--site viking`
-and use the same built-in placement; Run, resume and standalone report execution
-follow the selected Project profile.
+package manager. A shared generation is never repaired in place: Doctor creates
+a verified replacement, and dependent Projects explicitly move their current
+selection while retained Attempts keep the old one. Existing site runtimes and
+operator execution profiles remain outside managed repair. On a Slurm Project,
+normal repair stays on the head node and submits the required runtime/storage
+checks. `--compute` is the explicit advanced allocation route. Both
+Project-creation commands accept `--site viking` and use the same built-in
+placement; saved `EMRYS_SITE` supplies that choice when the flag is omitted.
+Run, resume and standalone report execution follow the selected Project profile.
 [Workflow composition](../../workflow/README.md) explains the graph;
 [the profile contract](CONTRACT.md#profiles-and-immutable-planning) defines resource selection.
 
-## Frozen dashboard and replacement
+## Installed watch
 
-The old CSU-oriented `dashboard.py` preview remains until a replacement is
-implemented and validated under `DASHBOARD-RETIRE-01`. `emrys inspect` stays the
-authority for Run status and recovery; expert commands alone do not replace the
-dashboard. The replacement must preserve scheduler discovery and historical
-accounting fallback, exact job identity, stream ownership, regular-file and
-symlink checks, and sanitized display of raw streams.
+`_inspection_presentation.py` owns the installed terminal interaction,
+dated inspection/log projection, and fresh CLI action handoff. `dashboard.py`
+owns scheduler-diagnostic selection, the full-history stream cache, parsing,
+the overview/detail view model, and its renderer. `inspection.py` remains the
+Run status and recovery authority; diagnostic text never replaces it.
 
-The current stream cache resets after truncation but does not protect against
-inode rotation. `tail -F` does not remove terminal-control sequences from logs.
-Validate missing and replaced streams as well as the normal display before
-retiring the owner, tests, Make target, and documented callers together.
-
-Changing `emrys-local-pilot` names for new submissions is a separate caller-wide
-part of that outcome. Preserve historical names, stream paths and accounting
-records; never rename or delete them as a side effect. Include replacement code
-when accounting for savings. Institutional scheduler behavior still needs site
-qualification.
+The [Runbook watch procedure](../../../../docs/operations/RUNBOOK.md#watch-one-fixed-selection)
+owns selectors, keys, refresh, offline use, and action previews;
+[CONTRACT](CONTRACT.md#resume-inspection-results-and-reporting) owns selection,
+evidence, completion, and recovery semantics. Historical scheduler names and
+paths remain readable; the retired standalone dashboard is not a second owner.

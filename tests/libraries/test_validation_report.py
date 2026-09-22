@@ -127,8 +127,8 @@ def test_stable_text_rejects_a_snapshot_change(
     source.write_text("stable\n", encoding="utf-8")
     snapshots = iter(
         (
-            REPORT.Snapshot(1, 2, 7, 3),
-            REPORT.Snapshot(1, 2, 7, 4),
+            REPORT.Snapshot(1, 2, 7, 3, 5),
+            REPORT.Snapshot(1, 2, 7, 4, 6),
         )
     )
     monkeypatch.setattr(
@@ -272,7 +272,7 @@ def test_publish_rejects_an_existing_lock(tmp_path: Path) -> None:
     assert lock.read_text(encoding="utf-8") == "foreign lock\n"
 
 
-def test_snapshot_characterizes_same_size_restored_mtime_gap(
+def test_snapshot_detects_same_size_rewrite_with_restored_mtime(
     tmp_path: Path,
 ) -> None:
     source = tmp_path / "input.tsv"
@@ -290,8 +290,7 @@ def test_snapshot_characterizes_same_size_restored_mtime_gap(
     after_digest = hashlib.sha256(source.read_bytes()).hexdigest()
 
     assert before_digest != after_digest
-    # Known RA-002 gap: content changed, but the four-field snapshot is equal.
-    assert before == after
+    assert before != after
 
 
 def test_snapshot_detects_inode_replacement_and_rejects_symlink(

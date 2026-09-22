@@ -45,18 +45,19 @@ explicit primary objective and acceptable tradeoffs for each experiment.
 
 The order is an initial value-and-risk assessment, not a dependency graph.
 Reference streaming and Step 06 count consolidation are the recommended first
-implementation proposals; execution-profile tuning is the first measurement
-proposal. Step 08 retention and Step 07 hashing merit larger investigations.
+implementation proposals; optional execution-profile tuning is the first
+measurement proposal. Step 08 retention and Step 07 hashing merit larger
+investigations.
 
 | Discussion | Candidate | Primary opportunity | Initial behavior classification |
 |---|---|---|---|
 | 1 | Consolidate Step 06 scans and subgroup materialization | Wall time, logical I/O; temporary disk in a later slice | Preserve count and partition semantics; direct-output replacement remains undecided until parity is demonstrated. |
 | 2 | Stream reference observation and FASTA parsing | Memory | Preserve input acceptance, hashes, sizes, and mutation detection. |
-| 3 | Tune existing resource profiles | Wall time and allocation efficiency | Environment-deferred; measure on the selected allocation and storage. |
+| 3 | Tune existing resource profiles | Wall time and allocation efficiency | Optional future tuning; measure independently on the selected allocation and storage. |
 | 4 | Produce or reuse native BAM indexes | Wall time and I/O | Preserve indexed retrieval, validation, and publication. |
 | 5 | Bound Step 08 retained candidate tables | Memory; potentially wall time | Preserve candidate construction, order, counts, and serialized outputs. |
 | 6 | Reduce repeated whole-cohort hashing around Step 07 | Wall time and read I/O | Guarantee decision remains undecided across distinct mutation boundaries. |
-| 7 | Bind JVM heaps to admitted stage budgets | Memory and execution reliability | Environment-deferred; preserve successful processing and failure semantics. |
+| 7 | Bind JVM heaps to admitted stage budgets | Memory and execution reliability | Native limits implemented; workload measurements remain environment-deferred. |
 | 8 | Use qualified fast scratch for GATK spill | Shared-storage I/O and wall time | Environment-deferred; preserve capacity and recovery protections. |
 | 9 | Reduce Step 09 validation allocations | Memory | Preserve AF validation, pairing, global BH correction, and reconciliation. |
 | 10 | Evaluate compressed retained VCFs and tables | Persistent disk; potentially physical I/O | Undecided representation contract, requiring complete consumer migration. |
@@ -103,13 +104,20 @@ Any separately selected empty-header correction is a distinct behavior decision.
 
 ### 3. Tune existing resource profiles
 
-The [default profile][default-profile] reserves the entire workflow memory for
-every stage, preventing simultaneous tasks even when the DAG and CPU capacity
-permit them. The [Viking example][viking-profile] requests 256 CPUs but permits
-12 workflow cores. That is a configuration distinction, not measured CPU
-utilization; a large node may have been selected for memory.
+The [default profile][default-profile] and [Viking example][viking-profile] use
+the current allocation-aware policy selected through CV-U06/CV-U28. Workflow
+CPU and memory resolve from the process-accessible allocation; repeated stages
+fit automatic concurrency and CPU/memory shares to the admitted workload; and
+supported native tools receive the resolved task allowances. Recovered EV/PUM1
+per-task memory values remain configurable minimums only where the current
+profile declares them. Viking requests all CPUs and RAM on one exclusive node.
+The original fixed 12-core workflow/STAR policy is retained as provenance, not
+behavior to restore or a required comparison baseline. Ordinary institutional
+execution, not comparative performance evidence, remains CV-U28's verification
+boundary. Requested capacity remains distinct from measured utilization.
 
-Measure concurrent samples versus threads per task, realistic per-stage memory
+Future tuning is an independent optimization candidate. If selected, measure
+concurrent samples versus threads per task, realistic per-stage memory
 reservations, and Step 07 partition concurrency. Use existing profile controls
 and admission constraints rather than another scheduler or tuning service.
 Evaluate queue delay separately from execution time where site measurements
@@ -170,18 +178,23 @@ not eliminate these wrapper observations.
 
 ### 7. Bind JVM heaps to admitted stage budgets
 
-The [Picard invocation][step04-index] supplies no explicit heap bound;
-[GATK Java options][gatk-scratch] set temporary storage but not heap size.
-Snakemake memory reservations are scheduling admission, not per-process heap
-limits. No claim about the effective JVM maximum or observed RSS follows from
-the absence of an explicit command-line setting.
+The original finding was that the [Picard invocation][step04-index] supplied
+no explicit heap bound and [GATK Java options][gatk-scratch] set temporary
+storage but not heap size. The current allocation-aware policy derives both
+heaps, STAR index/sort limits, and samtools sort buffers from the admitted stage
+budgets through
+[existing command construction](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning).
+This leaves overhead headroom; Snakemake reservations and native limits do
+not enforce total process RSS. No claim about the former effective JVM maximum
+or observed RSS follows from the absence of an explicit command-line setting.
+The implemented wiring is authoritative behavior; the measurements below are
+independent future tuning, not CV-U28 acceptance.
 
-Evaluate native heap limits derived from admitted budgets with headroom for
-nonheap/native allocations. Measure representative concurrent jobs, spill
-volume, garbage collection, peak memory, and task wall time. Smaller heaps may
-increase disk traffic or fail otherwise successful processing. Keep resource
-authority with the existing profile and owner command construction; avoid a
-second independent resource policy.
+For a separately selected experiment, measure representative concurrent jobs,
+spill volume, garbage collection, peak memory, and task wall time. Smaller heaps
+may increase disk traffic or fail otherwise successful processing. Keep
+resource authority with the existing profile and owner command construction;
+avoid a second independent resource policy.
 
 ### 8. Use qualified fast scratch for GATK spill
 
@@ -285,6 +298,13 @@ One examination of that inventory therefore starts R ten times for namespace
 checks in addition to its R-version probe; module dependencies can add checks.
 This establishes process multiplicity, not how much of Doctor or execution
 startup it consumes.
+
+The selected [CV-26 source reduction](cluster_verification_backlog.md#cv-26-repeated-doctor-input-reads)
+removes one redundant full head runtime/Project diagnosis after compute
+qualification. Exact Project/execution-profile readmission still precedes the
+independent storage finalization, and one full final runtime/Project/package
+diagnosis remains before success. This structural reduction does not change the
+serial namespace-probe policy described here and makes no speedup claim.
 
 Measure the complete readiness path and separate interpreter startup,
 namespace loading, and package-identity I/O. Compare bounded concurrency of

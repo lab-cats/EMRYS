@@ -6,14 +6,20 @@ from pathlib import Path
 import pytest
 import yaml
 
-from emrys.orchestration.run_coordinator import execution_profile
+from emrys.orchestration.run_coordinator import execution_profile, slurm_submission
 from emrys.orchestration.run_coordinator.execution_profile import (
     DirectPlacement,
     ExecutionProfileError,
     SlurmPlacement,
     load_execution_profile,
 )
-from emrys.orchestration.run_coordinator.resource_policy import ResourceOverrides
+from emrys.orchestration.run_coordinator.resource_policy import (
+    AllocationCapacity,
+    ResourceConfigError,
+    ResourceOverrides,
+    resolve_resource_policy,
+)
+from tests.tools.real_synthetic_e2e import symbolic_resource_document
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 RESOURCE_SCHEMA_VERSION = "emrys.local-pilot-resources.v1"
@@ -61,7 +67,7 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
     default.write_bytes(execution_profile.PROJECT_DEFAULT_PROFILE_BYTES)
     profile = load_execution_profile(config_path=default)
     assert isinstance(profile.placement, DirectPlacement)
-    assert profile.resource_policy.declaration.workflow_cores == 4
+    assert profile.resource_policy.declaration.workflow_cores == "allocation"
     assert profile.source_path == default
     assert not profile.computational_resources_explicit
     assert profile.document()["placement"] == {"kind": "direct"}
@@ -73,16 +79,70 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
         "account": "viking-users",
         "partition": "long",
         "qos": "normal",
-        "cpus_per_task": 4,
-        "memory_mb": None,
-        "time": "08:00:00",
-        "exclusive": False,
+        "cpus_per_task": "node",
+        "memory_mb": 0,
+        "time": "12:00:00",
+        "exclusive": True,
         "nodelist": None,
         "scratch_parent": "/tmp",
         "modules": {"mode": "none", "init": "", "load": []},
     }
     assert viking.resource_policy == profile.resource_policy
     assert not viking.computational_resources_explicit
+    retained = load_execution_profile(
+        REPO_ROOT / "configs/execution_profile.csu_viking_ev_pum1.yaml"
+    )
+    retained_policy = retained.resource_policy.document()
+    assert viking.resource_policy.document() == retained_policy
+    for memory_mb in (262144, 524287, 524288, 1048576):
+        resolved = resolve_resource_policy(
+            viking.resource_policy,
+            AllocationCapacity(256, memory_mb, "fixture"),
+            workload={"samples": 6, "partitions": 100},
+        )
+        assert resolved.workflow_cores == resolved.threads_for("00a") == 256
+        assert resolved.workflow_memory_mb == memory_mb
+        assert dict(resolved.stage_memory_mb)["00a"] == memory_mb
+    small = resolve_resource_policy(
+        viking.resource_policy,
+        AllocationCapacity(11, 65536, "small node"),
+        workload={"samples": 6, "partitions": 100},
+    )
+    assert small.threads_for("01") == 11
+    assert dict(small.stage_concurrency)["01"] == 1
+    with pytest.raises(ResourceConfigError, match="minimum memory"):
+        resolve_resource_policy(
+            viking.resource_policy,
+            AllocationCapacity(8, 32768, "too small"),
+            workload={"samples": 6, "partitions": 1},
+        )
+    submission = slurm_submission.plan_submission(
+        viking, emrys_argv=("emrys", "run"), log_dir=tmp_path / "logs"
+    )
+    assert {
+        "--nodes=1",
+        "--ntasks=1",
+        "--mem=0",
+        "--exclusive",
+        "--time=12:00:00",
+    }.issubset(submission.argv)
+    assert not any(value.startswith("--cpus-per-task=") for value in submission.argv)
+    summary = "\n".join(viking.submission_summary(verbose=True))
+    assert (
+        "Workflow CPU ceiling: allocation capacity (unknown until execution)" in summary
+    )
+    assert (
+        "Workflow memory ceiling: allocation capacity (unknown until execution)"
+        in summary
+    )
+    assert (
+        "Stage thread caps: {'00a': 'workflow', '00c': 'workflow', '01': 'auto'"
+        in summary
+    )
+    assert "Repeated-stage concurrency caps: {'01': 'auto'" in summary
+    assert "'minimum_mb': 40960" in summary
+    assert "all node CPUs" in summary
+    assert "all node memory (unknown until execution)" in summary
 
 
 def test_default_project_profile_rejects_retired_adjacent_configuration(
@@ -101,6 +161,19 @@ def test_default_project_profile_rejects_retired_adjacent_configuration(
     )
 
 
+def test_whole_node_cpu_request_requires_exclusive_placement(tmp_path: Path) -> None:
+    selected = tmp_path / "profile.yaml"
+    selected.write_bytes(
+        execution_profile.project_default_profile_bytes("viking").replace(
+            b"exclusive: true", b"exclusive: false"
+        )
+    )
+    with pytest.raises(
+        ExecutionProfileError, match="Whole-node CPUs require exclusive"
+    ):
+        load_execution_profile(config_path=selected).validate_reservation()
+
+
 def test_selected_resource_fragment_then_explicit_overrides(tmp_path: Path) -> None:
     default_sha256 = load_execution_profile().resource_policy.default_sha256
     selected = _write_profile(
@@ -108,7 +181,7 @@ def test_selected_resource_fragment_then_explicit_overrides(tmp_path: Path) -> N
         {
             "schema_version": execution_profile.SCHEMA_VERSION,
             "resources": {
-                "schema_version": RESOURCE_SCHEMA_VERSION,
+                **symbolic_resource_document(),
                 "workflow_cores": 6,
                 "step_threads": {"00a": 6},
             },
@@ -162,6 +235,290 @@ def test_placement_only_profile_does_not_change_resource_policy(
     assert scheduled.resource_policy.config_path is None
     assert "placement" not in scheduled.resource_policy.document()
     assert scheduled.sha256 != direct.sha256
+
+
+@pytest.mark.parametrize("exclusive", (False, True))
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    (
+        (
+            ResourceOverrides(workflow_cores=9),
+            "Workflow cores exceed Slurm reservation: 9 > 8",
+        ),
+        (
+            ResourceOverrides(workflow_memory_mb=8192),
+            "Workflow memory exceeds Slurm reservation: 8192 > 4096 MiB",
+        ),
+        (
+            ResourceOverrides(stage_memory_mb=(("00a", 8192),)),
+            "workflow memory within Slurm reservation: 1 x 8192 > 4096 MiB",
+        ),
+    ),
+)
+def test_reservation_fit_rejects_only_declared_conflicts_without_mutation(
+    tmp_path: Path,
+    exclusive: bool,
+    overrides: ResourceOverrides,
+    message: str,
+) -> None:
+    placement = {
+        **_slurm_placement(tmp_path),
+        "exclusive": exclusive,
+        "memory_mb": 4096,
+    }
+    source = _write_profile(
+        tmp_path / "profile.yaml",
+        {
+            "schema_version": execution_profile.SCHEMA_VERSION,
+            "resources": symbolic_resource_document(),
+            "placement": placement,
+        },
+    )
+    profile = load_execution_profile(source, resource_overrides=overrides)
+    before = profile.document(), profile.binding_sha256, source.read_bytes()
+
+    with pytest.raises(ExecutionProfileError, match=message):
+        profile.validate_reservation()
+    with pytest.raises(ExecutionProfileError, match=message):
+        slurm_submission.plan_submission(
+            profile, emrys_argv=("emrys", "run"), log_dir=tmp_path / "logs"
+        )
+
+    assert (profile.document(), profile.binding_sha256, source.read_bytes()) == before
+    assert not (tmp_path / "logs").exists()
+
+
+@pytest.mark.parametrize("exclusive", (False, True))
+@pytest.mark.parametrize("memory_mb", (None, 8192))
+def test_reservation_fit_preserves_symbols_and_actual_allocation_admission(
+    tmp_path: Path, exclusive: bool, memory_mb: int | None
+) -> None:
+    source = _write_profile(
+        tmp_path / "profile.yaml",
+        {
+            "schema_version": execution_profile.SCHEMA_VERSION,
+            "resources": symbolic_resource_document(),
+            "placement": {
+                **_slurm_placement(tmp_path),
+                "exclusive": exclusive,
+                "memory_mb": memory_mb,
+            },
+        },
+    )
+    profile = load_execution_profile(
+        source, resource_overrides=ResourceOverrides(stage_memory_mb=(("00a", 8192),))
+    )
+    before = profile.document(), profile.binding_sha256
+    profile.validate_reservation()
+    assert profile.resource_policy.declaration.workflow_memory_mb == "allocation"
+    assert dict(profile.resource_policy.declaration.stage_memory_mb)["01"] == "workflow"
+    with pytest.raises(
+        ResourceConfigError, match="workflow memory: 1 x 8192 > 4096 MiB"
+    ):
+        resolve_resource_policy(
+            profile.resource_policy, AllocationCapacity(8, 4096, "actual fixture")
+        )
+    resolved = resolve_resource_policy(
+        profile.resource_policy, AllocationCapacity(8, 16384, "actual fixture")
+    )
+    assert resolved.workflow_memory_mb == 16384
+    assert (profile.document(), profile.binding_sha256) == before
+
+
+@pytest.mark.parametrize(
+    ("resources", "overrides"),
+    (
+        ({"workflow_cores": 2}, ResourceOverrides(workflow_cores=4)),
+        ({"step_threads": {"00a": 5}}, ResourceOverrides(step_threads=(("00a", 4),))),
+    ),
+)
+def test_profile_relationships_are_checked_after_explicit_correcting_overrides(
+    tmp_path: Path, resources: dict[str, object], overrides: ResourceOverrides
+) -> None:
+    source = _write_profile(
+        tmp_path / "profile.yaml",
+        {
+            "schema_version": execution_profile.SCHEMA_VERSION,
+            "resources": {**symbolic_resource_document(), **resources},
+        },
+    )
+    before = source.read_bytes()
+    with pytest.raises(ExecutionProfileError, match="concurrency x threads"):
+        load_execution_profile(source)
+
+    profile = load_execution_profile(source, resource_overrides=overrides)
+
+    assert profile.resource_policy.declaration.workflow_cores == 4
+    assert dict(profile.resource_policy.declaration.step_threads)["00a"] == 4
+    assert profile.resource_policy.override_labels == overrides.labels()
+    assert profile.source_raw_sha256 == hashlib.sha256(before).hexdigest()
+    assert source.read_bytes() == before
+
+
+@pytest.mark.parametrize("scheduled", (False, True))
+@pytest.mark.parametrize("explicit", (False, True))
+def test_submission_summary_keeps_requests_limits_and_unknown_capacity_distinct(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    scheduled: bool,
+    explicit: bool,
+) -> None:
+    from emrys.orchestration.run_coordinator import slurm_submission
+
+    placement = _slurm_placement(tmp_path)
+    placement.update(
+        account="site-account" if explicit else None,
+        partition="compute" if explicit else None,
+        qos="normal" if explicit else None,
+        memory_mb=65536 if explicit else None,
+        exclusive=explicit,
+        nodelist="node[01-02]" if explicit else None,
+    )
+    selected = _write_profile(
+        tmp_path / "profile.yaml",
+        {
+            "schema_version": execution_profile.SCHEMA_VERSION,
+            "resources": symbolic_resource_document(),
+            "placement": placement if scheduled else {"kind": "direct"},
+        },
+    )
+    profile = load_execution_profile(
+        config_path=selected,
+        resource_overrides=ResourceOverrides(
+            workflow_cores=6,
+            workflow_memory_mb=8192 if explicit else None,
+            step_threads=(("00a", 2),),
+            stage_concurrency=(("01", 1),),
+            stage_memory_mb=(("00a", 1024),) if explicit else (),
+        ),
+    )
+    before = profile.document(), profile.binding_sha256
+    monkeypatch.setattr(
+        execution_profile,
+        "read_bytes",
+        lambda *_args: pytest.fail("summary reread the selected profile"),
+    )
+    compact = "\n".join(profile.submission_summary())
+    summary = "\n".join(profile.submission_summary(verbose=True))
+    assert set(compact.splitlines()) <= set(summary.splitlines())
+    assert (profile.document(), profile.binding_sha256) == before
+    assert f"Execution placement: {'Slurm' if scheduled else 'Direct'}" in summary
+    assert "Workflow CPU ceiling: 6" in summary
+    assert (
+        "Workflow memory ceiling: "
+        + ("8192 MiB" if explicit else "allocation capacity (unknown until execution)")
+        in summary
+    )
+    assert "Stage thread caps: {'00a': 2" in summary
+    assert "'01': 4" in summary
+    assert "Repeated-stage concurrency caps: {'01': 1" in summary
+    assert "Stage memory (MiB or workflow ceiling):" in summary
+    assert ("'00a': 1024" if explicit else "'00a': 'workflow'") in summary
+    for detail in (
+        "Stage thread caps:",
+        "Repeated-stage concurrency caps:",
+        "Stage memory",
+        "Account:",
+    ):
+        assert detail not in compact
+    assert "Actual allocation capacity is unknown until execution" in summary
+    assert "do not guarantee utilization" in summary
+    if not scheduled:
+        assert "Allocation request:" not in summary
+        assert "Node request:" not in summary
+        assert compact == "Execution placement: Direct"
+        return
+    submission = slurm_submission.plan_submission(
+        profile,
+        emrys_argv=("emrys", "run"),
+        log_dir=tmp_path / "logs",
+        environment={},
+        submitter_uid=1000,
+    )
+    assert "--nodes=1" in submission.argv
+    assert "--cpus-per-task=8" in submission.argv
+    assert "--time=04:00:00" in submission.argv
+    assert "Workflow CPU ceiling: 6" in compact
+    assert ("Workflow memory ceiling:" in compact) is explicit
+    assert ("Node request:" in compact) is explicit
+    assert "Exclusive allocation:" in compact
+    assert (
+        "Allocation request: 8 CPUs, maximum runtime 04:00:00; memory: "
+        + ("65536 MiB" if explicit else "site default (unknown)")
+        in summary
+    )
+    assert (
+        "Node request: 1; requested host(s): "
+        + ("node[01-02]" if explicit else "scheduler-selected; exact host unknown")
+        in summary
+    )
+    assert (
+        "Exclusive allocation: "
+        + ("requested" if explicit else "not requested; site policy applies")
+        in summary
+    )
+    assert (
+        "Account: "
+        + (
+            "site-account; partition: compute; QoS: normal"
+            if explicit
+            else "site default; partition: site default; QoS: site default"
+        )
+        in summary
+    )
+    for argument in (
+        "--exclusive",
+        "--nodelist=node[01-02]",
+        "--mem=65536M",
+        "--account=site-account",
+        "--partition=compute",
+        "--qos=normal",
+    ):
+        assert (argument in submission.argv) is explicit
+    assert not (tmp_path / "logs").exists()
+
+
+@pytest.mark.parametrize(
+    ("cpus", "memory", "cpu_limit", "memory_limit"),
+    (
+        (6, 8192, False, False),
+        (8, 65536, True, True),
+        (8, 8192, True, False),
+        (6, 65536, False, True),
+        ("node", 0, True, True),
+        ("node", None, True, True),
+    ),
+)
+def test_compact_submission_shows_only_restrictive_or_unknown_workflow_limits(
+    tmp_path: Path,
+    cpus: int | str,
+    memory: int | None,
+    cpu_limit: bool,
+    memory_limit: bool,
+) -> None:
+    placement = _slurm_placement(tmp_path)
+    placement.update(cpus_per_task=cpus, memory_mb=memory, exclusive=True)
+    selected = _write_profile(
+        tmp_path / "profile.yaml",
+        {
+            "schema_version": execution_profile.SCHEMA_VERSION,
+            "resources": {
+                **symbolic_resource_document(),
+                "workflow_cores": 6,
+                "workflow_memory_mb": 8192,
+            },
+            "placement": placement,
+        },
+    )
+    profile = load_execution_profile(config_path=selected)
+    profile.validate_reservation()
+    summary = "\n".join(profile.submission_summary())
+    assert ("Workflow CPU ceiling: 6" in summary) is cpu_limit
+    assert ("Workflow memory ceiling: 8192 MiB" in summary) is memory_limit
+    if memory in (None, 0):
+        assert "unknown" in summary
+    if cpus == "node":
+        assert "all node CPUs (capacity unknown until execution)" in summary
 
 
 def test_attempt_placement_projects_direct_and_slurm_provenance(
@@ -277,6 +634,38 @@ def test_builtin_source_digest_can_be_bound(tmp_path: Path) -> None:
     assert profile.binding_sha256 == expected
 
 
+@pytest.mark.parametrize("selected", (False, True))
+def test_byte_admission_matches_file_admission_without_reading(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, selected: bool
+) -> None:
+    source = _write_profile(
+        tmp_path / "profile.yaml",
+        {
+            "schema_version": execution_profile.SCHEMA_VERSION,
+            "placement": _slurm_placement(tmp_path),
+        },
+    )
+    defaults = execution_profile.DEFAULT_PROFILE_PATH.read_bytes()
+    data = source.read_bytes()
+    expected = load_execution_profile(source if selected else None)
+    monkeypatch.setattr(
+        execution_profile,
+        "read_bytes",
+        lambda *_args: pytest.fail("byte admission read a file"),
+    )
+    observed = execution_profile.admit_execution_profile_bytes(
+        defaults, source if selected else None, data if selected else None
+    )
+    assert observed == expected
+    assert not observed.computational_resources_explicit
+    assert (
+        observed.source_raw_sha256
+        == hashlib.sha256(data if selected else defaults).hexdigest()
+    )
+    with pytest.raises(ExecutionProfileError, match="supplied together"):
+        execution_profile.admit_execution_profile_bytes(defaults, source)
+
+
 def test_selected_profile_must_be_one_stable_real_file(tmp_path: Path) -> None:
     selected = _write_profile(
         tmp_path / "profile.yaml",
@@ -343,14 +732,19 @@ def test_profile_yaml_is_closed_without_environment_references(
 @pytest.mark.parametrize(
     ("relative_path", "workflow_cores", "cpus_per_task", "exclusive"),
     (
-        ("configs/execution_profile.example.yaml", 4, 4, False),
-        ("configs/execution_profile.csu_viking_ev_pum1.yaml", 12, 256, True),
+        ("configs/execution_profile.example.yaml", "allocation", "node", True),
+        (
+            "configs/execution_profile.csu_viking_ev_pum1.yaml",
+            "allocation",
+            "node",
+            True,
+        ),
     ),
 )
 def test_tracked_execution_profile_examples_are_admissible(
     relative_path: str,
-    workflow_cores: int,
-    cpus_per_task: int,
+    workflow_cores: str,
+    cpus_per_task: str,
     exclusive: bool,
 ) -> None:
     profile = load_execution_profile(config_path=REPO_ROOT / relative_path)
@@ -359,7 +753,7 @@ def test_tracked_execution_profile_examples_are_admissible(
     assert profile.resource_policy.declaration.workflow_cores == workflow_cores
     assert profile.placement.cpus_per_task == cpus_per_task
     assert profile.placement.exclusive is exclusive
-    assert profile.placement.memory_mb is None
+    assert profile.placement.memory_mb == 0
 
 
 def test_exact_module_realization_is_typed(tmp_path: Path) -> None:

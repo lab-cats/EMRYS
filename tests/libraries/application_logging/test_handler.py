@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from emrys.libraries.application_logging.controls import LogControls, LogLevel
+from emrys.libraries.application_logging.controls import LogControls
 from emrys.libraries.application_logging.handler import (
     APPLICATION_LOG_SCHEMA_VERSION,
     ApplicationLogError,
@@ -51,16 +51,15 @@ def open_log(
     tmp_path: Path,
     *,
     suffix: str = "1",
-    level: LogLevel = LogLevel.NORMAL,
+    verbose: bool = False,
     stderr: object | None = None,
     root: Path | None = None,
     **kwargs: object,
 ):
     return open_attempt_log(
         controls=LogControls(
-            level,
+            verbose,
             root or tmp_path / f"logs-{suffix}",
-            "command_line",
             "command_line",
         ),
         identity=identity(suffix),
@@ -71,6 +70,60 @@ def open_log(
     )
 
 
+def test_intent_is_durable_before_external_action_and_keeps_log_open(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    attempt = open_log(tmp_path)
+    synchronized = []
+    synchronize = ApplicationLogFile.synchronize
+
+    def sync(file: ApplicationLogFile) -> None:
+        synchronize(file)
+        synchronized.append(read_records(file.path)[-1]["event"])
+
+    monkeypatch.setattr(ApplicationLogFile, "synchronize", sync)
+    attempt.intent(
+        event_name="slurm_stop_intent",
+        message="Controller request admitted.",
+        fields={
+            "argv": field(("/site/scancel", "--ctld", "--me", "700123")),
+            "client_file_binding": field(("a" * 64, 1, 2, 0o100755, 0, 12, 100, 100)),
+        },
+    )
+    assert synchronized == ["slurm_stop_intent"]
+    intent = read_records(attempt.path)[-1]
+    assert intent["phase"] == "intent" and intent["console_detail"] == "durable_only"
+    assert intent["fields"]["argv"] == ["/site/scancel", "--ctld", "--me", "700123"]
+    attempt.logger(component="scheduler", phase="observe").info(
+        "Post-check observation."
+    )
+    attempt.terminal(event_name="slurm_stop_observed", message="Observation retained.")
+    assert synchronized == ["slurm_stop_intent", "slurm_stop_observed"]
+
+
+@pytest.mark.parametrize("boundary", ("write_bytes", "synchronize"))
+def test_required_intent_failure_closes_log_and_preserves_partial_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, boundary: str
+) -> None:
+    attempt = open_log(tmp_path)
+
+    def fail(*_args: object) -> None:
+        raise ApplicationLogStorageError("intent storage unavailable")
+
+    monkeypatch.setattr(ApplicationLogFile, boundary, fail)
+    with pytest.raises(ApplicationLogError):
+        attempt.intent(event_name="slurm_stop_intent", message="Controller request.")
+    assert attempt.path.exists()
+    with pytest.raises(ApplicationLogError, match="closed"):
+        attempt.logger(component="scheduler", phase="stop")
+    assert [record["event"] for record in read_records(attempt.path)] == (
+        ["attempt_opened", "slurm_stop_intent"]
+        if boundary == "synchronize"
+        else ["attempt_opened"]
+    )
+    assert attempt.close()
+
+
 def test_attempt_writes_exact_schema_to_protected_path_before_stderr(
     tmp_path: Path,
 ) -> None:
@@ -79,6 +132,7 @@ def test_attempt_writes_exact_schema_to_protected_path_before_stderr(
     attempt = open_log(
         tmp_path,
         stderr=stderr,
+        verbose=True,
         root=tmp_path / "logs",
         _utc_now=fixed_clock,
         _monotonic=lambda: next(ticks),
@@ -117,7 +171,7 @@ def test_attempt_writes_exact_schema_to_protected_path_before_stderr(
     assert records[0]["fields"] == {
         "entrypoint": "emrys-run",
         "execution_attempt_id": "attempt-1",
-        "log_level": "normal",
+        "log_level": "verbose",
         "log_level_source": "command_line",
         "log_root_source": "command_line",
         "log_path": str(path),
@@ -131,7 +185,7 @@ def test_package_output_retains_both_child_streams_after_failure(
     tmp_path: Path,
 ) -> None:
     stderr = io.StringIO()
-    attempt = open_log(tmp_path, stderr=stderr)
+    attempt = open_log(tmp_path, stderr=stderr, verbose=True)
     path = attempt.path.parent / "package-output.log"
     with pytest.raises(RuntimeError, match="package failed"):
         with attempt.package_output() as output:
@@ -164,17 +218,16 @@ def test_console_levels_are_nested_while_durable_semantics_are_invariant(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     baseline: list[dict[str, object]] | None = None
-    for level, visible in (
-        (LogLevel.NORMAL, ("normal",)),
-        (LogLevel.VERBOSE, ("normal", "verbose")),
-        (LogLevel.DEBUG, ("normal", "verbose", "debug")),
+    for verbose, visible in (
+        (False, ("normal",)),
+        (True, ("normal", "verbose", "debug")),
     ):
         stderr = io.StringIO()
         ticks = iter((1.0, 2.0, 3.0, 4.0, 5.0))
         attempt = open_log(
             tmp_path,
-            suffix=level.value,
-            level=level,
+            suffix="verbose" if verbose else "normal",
+            verbose=verbose,
             stderr=stderr,
             _utc_now=fixed_clock,
             _monotonic=lambda: next(ticks),
@@ -188,13 +241,19 @@ def test_console_levels_are_nested_while_durable_semantics_are_invariant(
         records = read_records(path)
         for record in records:
             record.pop("execution_attempt_id")
-        for field_name in ("execution_attempt_id", "log_level", "log_path"):
+        for field_name in (
+            "execution_attempt_id",
+            "log_level",
+            "log_level_source",
+            "log_path",
+        ):
             records[0]["fields"].pop(field_name)
         if baseline is None:
             baseline = records
         else:
             assert records == baseline
         projection = stderr.getvalue()
+        assert ("Application logging attempt opened" in projection) is verbose
         for detail in visible:
             assert f"{detail} event" in projection
         for detail in {"normal", "verbose", "debug", "durable_only"} - set(visible):
@@ -452,9 +511,10 @@ def test_failure_and_interrupt_boundaries_are_terminal(tmp_path: Path) -> None:
     logger.debug("Debug detail.")
     logger.info("Hidden bytes.", extra=event("hidden", detail="durable_only"))
     assert attempt.durable_only_count == 1
-    assert attempt.recent_console_events
+    assert not attempt.recent_console_events
     path = attempt.path
     attempt.fail(phase="execute", message="Operation failed.")
+    assert attempt.recent_console_events == ("error: Operation failed.",)
     assert read_records(path)[-1]["event"] == "attempt_failed"
     with pytest.raises(ApplicationLogError, match="closed"):
         logger.info("Too late.")

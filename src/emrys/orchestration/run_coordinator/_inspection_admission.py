@@ -11,7 +11,7 @@ import hashlib
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
@@ -43,6 +43,17 @@ class ExpectedTask:
     @property
     def scope(self) -> dict[str, str]:
         return {"scope_type": self.scope_type, "scope_id": self.scope_id}
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedFinalizationCandidate:
+    """Exact prepared receipt and partially completed namespace transition."""
+
+    record: dict[str, Any]
+    prepared_inode: tuple[int, int]
+    lock_inode: tuple[int, int]
+    lock_shape: Literal["active", "active-released-alias", "released"]
+    receipt_shape: Literal["prepared", "prepared-final-alias"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,17 +94,23 @@ def _require_stable_file_path(path: Path, root: Path, label: str) -> None:
         raise InspectionError(f"Could not read {label}: {path}: {exc}") from exc
 
 
-def _read_bytes(path: Path, root: Path, label: str) -> bytes:
+def _read_bytes_with_identity(
+    path: Path, root: Path, label: str
+) -> tuple[bytes, tuple[int, int]]:
     _require_stable_file_path(path, root, label)
     try:
-        data, _identity = validation_inputs.read_bytes_with_identity(
+        data, identity = validation_inputs.read_bytes_with_identity(
             path,
             label,
             nonempty=False,
         )
     except ValidationError as exc:
         raise InspectionError(str(exc)) from exc
-    return data
+    return data, (identity.st_dev, identity.st_ino)
+
+
+def _read_bytes(path: Path, root: Path, label: str) -> bytes:
+    return _read_bytes_with_identity(path, root, label)[0]
 
 
 def _stable_directory_entries(path: Path, root: Path, label: str) -> tuple[str, ...]:
@@ -133,9 +150,14 @@ def admit_canonical_record(
     return record, data
 
 
-def admit_successor_run(root: Path) -> SuccessorRunAuthority:
+def admit_successor_run(
+    root: Path,
+    *,
+    read_bytes: Callable[[Path, Path, str], bytes] | None = None,
+) -> SuccessorRunAuthority:
     """Admit the current Analysis, Execution Plan, and Run binding."""
 
+    reader = _read_bytes if read_bytes is None else read_bytes
     paths = {
         "analysis": root / "contract" / "analysis.json",
         "execution_plan": root / "contract" / "execution-plan.json",
@@ -149,7 +171,7 @@ def admit_successor_run(root: Path) -> SuccessorRunAuthority:
         raise InspectionError(f"Incomplete Run authority; missing: {missing}")
     values: dict[str, Any] = {}
     for name, path in paths.items():
-        data = _read_bytes(path, root, f"{name} authority")
+        data = reader(path, root, f"{name} authority")
         try:
             values[name] = read_application_record(data)
         except orchestration_contracts.ContractValidationError as exc:
@@ -299,19 +321,6 @@ def _exact_scope_tree_blockers(
     return tuple(blockers)
 
 
-def task_start_tree_blockers(
-    root: Path, expected: Sequence[ExpectedTask]
-) -> tuple[str, ...]:
-    """Require the aggregate producer-entry ledger to have an exact roster."""
-
-    return _exact_scope_tree_blockers(
-        root / "state" / "task-starts",
-        expected,
-        file_name=lambda item: f"{item.scope_id}.json",
-        label="task-start",
-    )
-
-
 def _state_tree_blockers_by_domain(
     root: Path,
 ) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
@@ -322,7 +331,7 @@ def _state_tree_blockers_by_domain(
         entries = _stable_directory_entries(state_root, root, "aggregate state root")
     except InspectionError as exc:
         return (str(exc),), (), ()
-    allowed = frozenset({"task-starts", "verified", "reporting"})
+    allowed = frozenset({"verified", "reporting"})
     integrity_blockers: list[str] = []
     results_blockers: list[str] = []
     reporting_blockers: list[str] = []
@@ -333,7 +342,6 @@ def _state_tree_blockers_by_domain(
         elif path.is_symlink() or not path.is_dir():
             label = {
                 "reporting": "Reporting state root",
-                "task-starts": "Task-start state root",
                 "verified": "Verified state root",
             }[name]
             target = reporting_blockers if name == "reporting" else results_blockers
@@ -395,6 +403,41 @@ def lock_tree_blockers(
     return tuple(blockers)
 
 
+def _admit_bound_attempt_receipt(
+    root: Path,
+    attempt: Mapping[str, Any],
+    path: Path,
+    released_reference: Mapping[str, str],
+    label: str,
+) -> tuple[dict[str, Any], bytes, tuple[int, int]]:
+    data, identity = _read_bytes_with_identity(path, root, label)
+    receipt, _ = admit_canonical_record(
+        path, root, "attempt-receipt", read_bytes=lambda *_: data
+    )
+    for field in (
+        "run_id",
+        "execution_contract_sha256",
+        "profile_sha256",
+        "workflow_attempt_id",
+    ):
+        if receipt[field] != attempt[field]:
+            raise InspectionError(f"{label.capitalize()} disagrees on {field}")
+    attempt_path = (
+        root / "attempts" / str(attempt["workflow_attempt_id"]) / "attempt.json"
+    )
+    if receipt["attempt_record"] != _record_reference(
+        attempt_path, root, "workflow-attempt"
+    ):
+        raise InspectionError(
+            "Attempt receipt does not bind the run-lock origin attempt"
+        )
+    if receipt["released_run_lock"] != released_reference:
+        raise InspectionError(
+            "Attempt receipt does not bind exact released run-lock evidence"
+        )
+    return receipt, data, identity
+
+
 def admit_attempt_run_lock(
     root: Path,
     attempt: Mapping[str, Any],
@@ -409,7 +452,6 @@ def admit_attempt_run_lock(
 
     identifier = str(attempt["workflow_attempt_id"])
     attempt_root = root / "attempts" / identifier
-    attempt_path = attempt_root / "attempt.json"
     terminal_path = attempt_root / "attempt-receipt.json"
     released_path = attempt_root / "released-run-lock.json"
     terminal_exists = terminal_path.exists() or terminal_path.is_symlink()
@@ -426,32 +468,13 @@ def admit_attempt_run_lock(
 
     expected_lock = orchestration_contracts.run_lock_record(attempt)
     if terminal_exists and not require_active:
-        receipt, _ = admit_canonical_record(terminal_path, root, "attempt-receipt")
         released, released_data = admit_canonical_record(
             released_path, root, "run-lock"
         )
         released_reference = _reference_for_bytes(released_path, root, released_data)
-        expected_attempt_reference = _record_reference(
-            attempt_path, root, "workflow-attempt"
+        _admit_bound_attempt_receipt(
+            root, attempt, terminal_path, released_reference, "attempt receipt"
         )
-        for field in (
-            "run_id",
-            "execution_contract_sha256",
-            "profile_sha256",
-            "workflow_attempt_id",
-        ):
-            if receipt[field] != attempt[field]:
-                raise InspectionError(
-                    f"Attempt receipt disagrees with run-lock origin on {field}"
-                )
-        if receipt["attempt_record"] != expected_attempt_reference:
-            raise InspectionError(
-                "Attempt receipt does not bind the run-lock origin attempt"
-            )
-        if receipt["released_run_lock"] != released_reference:
-            raise InspectionError(
-                "Attempt receipt does not bind exact released run-lock evidence"
-            )
         lock_record = released
         reference = released_reference
     else:
@@ -475,6 +498,92 @@ def admit_attempt_run_lock(
                 f"Run-lock evidence disagrees with workflow attempt on {field}"
             )
     return reference
+
+
+def admit_prepared_finalization(
+    root: Path,
+    attempt: Mapping[str, Any],
+) -> PreparedFinalizationCandidate:
+    """Admit only supported exact-name interruption shapes for finalization."""
+
+    identifier = str(attempt["workflow_attempt_id"])
+    attempt_root = root / "attempts" / identifier
+    prepared_path = attempt_root / "prepared-attempt-receipt.json"
+    final_path = attempt_root / "attempt-receipt.json"
+    active_path = root / "locks" / "run.lock"
+    released_path = attempt_root / "released-run-lock.json"
+    expected_lock = orchestration_contracts.run_lock_record(attempt)
+    expected_lock_data = orchestration_contracts.canonical_json_bytes(expected_lock)
+    expected_released = {
+        "path": released_path.relative_to(root).as_posix(),
+        "sha256": hashlib.sha256(expected_lock_data).hexdigest(),
+    }
+    prepared, prepared_data, prepared_inode = _admit_bound_attempt_receipt(
+        root,
+        attempt,
+        prepared_path,
+        expected_released,
+        "prepared Attempt receipt",
+    )
+    if prepared.get("schema_version") != "emrys.attempt-receipt.v3":
+        raise InspectionError("Prepared Attempt receipt must use schema v3")
+
+    active = active_path.exists() or active_path.is_symlink()
+    released = released_path.exists() or released_path.is_symlink()
+    if not active and not released:
+        raise InspectionError(
+            "Prepared Attempt receipt has no retained run-lock evidence"
+        )
+    namespace_blockers = lock_tree_blockers(root, expected_run_lock=active)
+    if namespace_blockers:
+        raise InspectionError("; ".join(namespace_blockers))
+    identities: list[tuple[int, int]] = []
+    lock_paths = (((active_path, "active run-lock"),) if active else ()) + (
+        ((released_path, "released run-lock"),) if released else ()
+    )
+    for path, label in lock_paths:
+        data, identity = _read_bytes_with_identity(path, root, label)
+        record, _ = admit_canonical_record(
+            path, root, "run-lock", read_bytes=lambda *_: data
+        )
+        if data != expected_lock_data or record != expected_lock:
+            raise InspectionError(f"{label.capitalize()} differs from its Attempt")
+        identities.append(identity)
+    if active and released and len(set(identities)) != 1:
+        raise InspectionError(
+            "Active and released run-lock names do not retain one owned inode"
+        )
+
+    final = final_path.exists() or final_path.is_symlink()
+    if final:
+        _, final_data, final_inode = _admit_bound_attempt_receipt(
+            root,
+            attempt,
+            final_path,
+            expected_released,
+            "terminal Attempt receipt",
+        )
+        if not released or final_data != prepared_data or prepared_inode != final_inode:
+            raise InspectionError(
+                "Prepared and terminal Attempt receipt names are not one owned inode"
+            )
+    elif not active:
+        raise InspectionError(
+            "Released run-lock evidence lacks the staged terminal receipt alias"
+        )
+    return PreparedFinalizationCandidate(
+        prepared,
+        prepared_inode,
+        identities[0],
+        (
+            "active-released-alias"
+            if active and released
+            else "active"
+            if active
+            else "released"
+        ),
+        "prepared-final-alias" if final else "prepared",
+    )
 
 
 def _record_reference(path: Path, root: Path, label: str) -> dict[str, str]:
