@@ -9,15 +9,15 @@ Before closing the card, reduce this working investigation to the concise
 readiness checklist; move lasting policy to its owner and let Git retain the
 investigation history.
 
-**Source reviewed:** open [PR #307](https://github.com/lab-cats/EMRYS/pull/307),
-`f32260f0408fe1826af401fc1ddce0f2478ae6ce` (2026-09-22). This head
+**Source snapshot reviewed:** open [PR #307](https://github.com/lab-cats/EMRYS/pull/307)
+at `f32260f0408fe1826af401fc1ddce0f2478ae6ce` (2026-09-22). This revision
 contains PRs #300, #302, and #304. PRs #303, #305, and #306 form a separate
 CI stack and are not in the reviewed tree. PR #307 changes the cluster backlog
 and selected synthetic CI evidence; the release-specific package and guide
 sources reviewed here are unchanged from PR #304. Recheck the live PR head and
-the relevant diff before using
-these observations for a release candidate. No candidate artifact, installed
-full Run, institutional execution, or release publication was performed for
+the relevant diff before using these observations for a release candidate.
+No candidate artifact, installed full Run, institutional execution, or release
+publication was performed for
 this investigation.
 
 ## Intended decisions and evidence
@@ -56,7 +56,7 @@ local navigation labels, not new backlog items.
 
 | ID | Release question | Established at the reviewed head | Next check or decision | Existing owner |
 |---|---|---|---|---|
-| `R01` | Exact candidate and included work | PR #307 head is the reviewed source; PRs #303/#305/#306 are a separate CI stack. | Select and freeze the eventual candidate, then bind each check and artifact to that exact head. | `RELEASE-01`; live Git and CI |
+| `R01` | Exact candidate and included work | PR #307 at `f32260f0` is the reviewed snapshot; PRs #303/#305/#306 are a separate CI stack. | Select and freeze the eventual candidate, then bind each check and artifact to that exact head. | `RELEASE-01`; live Git and CI |
 | `R02` | Promised operations | Quickstart describes a Viking Project-to-Results path; the Runbook also describes direct-host operation. | Classify each public operation as prerelease/v1 promised, limited, or unsupported, including recovery and report regeneration. | `RELEASE-01`; coordinator and reporting owners |
 | `R03` | Platforms and site | README describes Linux/POSIX, direct one-host or one-node Slurm; managed repair is narrower. | State tested combinations and resource/storage requirements; qualify any named Viking promise at one revision. | `RELEASE-01`, `SITE-PARITY-01`, `CLUSTER-VERIFY-01` |
 | `R04` | Distributed artifact | Quickstart clones the moving default branch and uses `uv sync --locked`; Runbook documents an exact tag/commit checkout; the distribution test builds an sdist and wheel. | Choose a pinned checkout, wheel paired with that checkout, standalone or limited wheel, and which built artifact is distributed and tested. | `RELEASE-01`; package and onboarding owners |
@@ -80,6 +80,16 @@ PRs #303, #305, and #306 change CI independently and are not included in this
 head. PR #307 adds selected synthetic CI timing evidence over PR #304. A future
 candidate review must inspect its actual ancestry, tree, artifact, and check
 results rather than inherit this snapshot's conclusions.
+
+At a 2026-09-22 live PR refresh, #307 had advanced to `ba1fbdd3` by a
+formatting-only change to its selected E2E timing check. This investigation's
+branch still descends from the reviewed `f32260f0` snapshot. Separate open
+[PR #314](https://github.com/lab-cats/EMRYS/pull/314) audits schemas,
+[PR #316](https://github.com/lab-cats/EMRYS/pull/316) proposes packaged EV/PUM1
+selection, and [PR #320](https://github.com/lab-cats/EMRYS/pull/320) proposes
+a prepared-Project runtime donor picker. PR #320 branches from an earlier
+commit of #316, not its current head. None is included in the reviewed tree;
+their inclusion and integration order remain candidate decisions.
 
 ### R02 — Promised operations
 
@@ -115,6 +125,14 @@ does not mean the command cannot work; help alone does not prove its operation.
 | `report` | Independent report preview/publication/reuse | Internal report APIs with a fixture, not public `emrys report` |
 | `reconcile reference-provenance`, `debug storage-qualification` | Specialist evidence and storage checks | Not exercised |
 
+The source snapshot's specialist `validate` subjects are `all-pass`,
+`artifact-contracts`, `manifest`, `bed12`, `canonical-bam`,
+`canonical-bam-qc`, `cohort-candidate-preprocessing`, `duplicate-marking`,
+`fasta-sidecars`, `mechanical-orientation`, `paired-cmh-candidate-ranking`,
+`scientific-context-projection`, `partitioned-cohort-mpileup`,
+`rseqc-orientation`, `split-n-cigar`, `star-index`, and `star-alignment`.
+Each needs its own release disposition if the public parser remains exposed.
+
 ### R03 — Platforms and site
 
 The [README](../../README.md#supported-environment) describes Linux/POSIX,
@@ -124,7 +142,7 @@ Doctor. It narrows
 managed repair to x86-64 Linux with Pixi. The Quickstart selects Python 3.14
 and a specific Viking path; the Runbook's managed direct-host route specifies
 kernel 4.18+, glibc 2.28+, and at least 12 visible CPUs and 240 GiB for the
-retained stage allowances. These resource figures are admission conditions,
+retained stage allowances. These are the documented default-workflow minimum,
 not a full-study capacity estimate. Slurm operation also requires the checkout,
 Python environment, Project, runtime, and inputs at the same physical paths
 on head and compute nodes.
@@ -141,6 +159,26 @@ Debian userspaces, while explicitly declining to call the hosted runner a
 4.18-kernel proof. Check the actual result for a candidate commit before citing
 any lane. A passing selected userspace or minimum-Python smoke does not widen
 the release promise to every POSIX distribution or Python minor version.
+
+The operation inventory in R02 and these environment boundaries must be
+combined before selecting a promise. All prerelease and v1 cells below remain
+**OPEN / DEFERRED**; a documented command or candidate artifact is not a
+support decision.
+
+| Artifact and environment | Operations to classify | Current route or gap | Prerelease | v1 |
+|---|---|---|---|---|
+| Checkout, Viking head and one Slurm node | `setup`, named `init`, `validate`, `doctor`, `run`, `watch`, `inspect` | [Quickstart](../../quickstart.md) documents the EV/PUM1 journey; exact-revision novice/site proof remains with `SITE-PARITY-01`. | Open | Open |
+| Same Viking route | Eligible `resume`, independent `report`, exact-request `stop` | [Runbook](../operations/RUNBOOK.md) and [Troubleshooting](../operations/TROUBLESHOOTING.md) document admitted recovery; `stop` is Slurm-specific. | Open | Open |
+| Checkout, approved direct managed Linux host | Synthetic or own-study Init, validation, Doctor, synchronous Run/inspect, eligible recovery/report | [Direct-host procedure](../operations/RUNBOOK.md#standalone-compute-host-with-a-managed-runtime) defines host and resource requirements; selected hosted checkout exercise is not installed-artifact proof. | Open | Open |
+| Checkout, named institution runtime and placement | `runtime discover`, Doctor, Run/inspect, eligible recovery/report | [Site-runtime procedure](../operations/RUNBOOK.md#institution-provided-runtime) requires exact tool/R versions; name the site and direct or one-node Slurm placement. | Open | Open |
+| Wheel paired with a matching checkout, named placement | Every selected public command | No documented route yet proves wheel code executes while the checkout supplies only declared data/defaults (R04). | Open | Open |
+| Standalone wheel, named host and placement | Help/version, Init, validation; possibly setup through Results and recovery | Isolated smoke covers selected commands with fixtures; checkout-free setup, maintained PUM1 resource, full Run, and public reporting remain unresolved. | Open | Open |
+| Selected route's specialist commands | `profile create`, manifest/synthetic Init, validation subjects, discovery, reconciliation, storage qualification | The [public parser](../../src/emrys/__main__.py) exposes them; classify each before claiming support. | Open | Open |
+
+Each selected cell needs a promised, limited, or unsupported disposition with
+expected success and refusal behavior, artifact/dependency identity,
+resource/path bounds, exact evidence, and existing owner. The README's broad
+platform line and parser availability cannot fill those cells by themselves.
 
 ### R04 — Distributed artifact
 
@@ -183,17 +221,17 @@ then use that owner's existing manifest admission. Do not duplicate or infer
 the biological region selection from the site or reference.
 
 A separate open [PR #316](https://github.com/lab-cats/EMRYS/pull/316)
-proposes to package the maintained selection, keep the `configs/` path as a
-link, and offer it after explicit EV/PUM1 guided sample assignment. Its wheel
+(head `bd3f1399` at the 2026-09-22 refresh) proposes to package the maintained
+selection, keep the `configs/` path as a link, and offer it after explicit
+EV/PUM1 guided sample assignment. Its wheel
 check covers resource presence and byte equality, while source-level guided
 Init tests cover selection, explicit-manifest preservation, and
 missing-reference refusal. PR #316 is a sibling of the reviewed PR #307 head,
 so none of these changes are established at this document's source revision.
 If it enters a release candidate, recheck the exact built artifact and run
 public installed guided Init from outside the checkout using that packaged
-choice. Its present
-wheel smoke still supplies an explicit fixture partition manifest, and does
-not establish the new interactive path, a complete Run, public report
+choice. Its present wheel smoke still supplies an explicit fixture partition
+manifest and does not establish the new interactive path, a complete Run, public report
 regeneration, or novice Viking acceptance.
 
 ### R06 — Dependency policy
@@ -218,9 +256,12 @@ distinct.
 
 [`emrys.__version__`](../../src/emrys/__init__.py) is `0.1.0.dev0` and package
 metadata derives its version from it. The distribution test separately asserts
-that literal version, and `pyproject.toml` advertises Alpha. A version change
-must reconcile those touchpoints and public wording rather than create a
-second registry. [`setup.py`](../../setup.py) records a Git commit and dirty
+that literal version, an
+[installed-package record fixture](../../tests/contracts/orchestration/test_orchestration_contracts.py)
+also embeds it, and `pyproject.toml` advertises Alpha. A version change must
+review those literals and public wording, preserving any intentionally
+historical record fixture rather than creating a second registry.
+[`setup.py`](../../setup.py) records a Git commit and dirty
 state when built from a matching Git root, plus the Python lock hash; outside
 that root its origin may be null. [Installed-package admission](../../src/emrys/libraries/source_authority.py)
 hashes installed code with the declared build metadata but does not prove a
@@ -228,6 +269,9 @@ claimed commit matches Git source. The wheel smoke builds from a copied tree
 lacking Git and expects unavailable commit provenance. For a candidate, compare
 clean HEAD, embedded commit/dirty state, lock hash, selected artifact digest(s),
 package metadata/entry points, and installed byte identity independently.
+Decide how an eventual Git tag name, package version, artifact filenames and
+digests correspond, and whether a version may be reused for a rebuilt
+artifact. Recording that policy does not authorize tag publication.
 
 ### R08 — Installed public journey
 
@@ -263,10 +307,14 @@ admits an earlier content shape without an optional STAR setting; the
 also reads retained submission-request v1–v4 contexts for diagnostics.
 Those bounded readers do not promise general predecessor-Run support. Existing
 owner [Project refusal tests](../../tests/orchestration/run_coordinator/test_normalization.py)
-protect some read-only paths, but a public installed-command
-exercise of obsolete-Run `inspect`, `resume`, and `report` with whole-tree byte
-preservation has not been identified. Current-version Attempt recovery still
-requires full identity and evidence checks. The
+check a legacy Project definition without writes, and a
+[Task test](../../tests/orchestration/run_coordinator/test_task.py) rejects a
+historical Attempt before Task mutation. Neither is a public installed-command
+exercise of obsolete-Run `inspect`, `resume`, and `report`. Select an
+owner-identified historically emitted obsolete format, distinguish it from
+malformed current data, verify useful original-environment guidance, and
+compare every retained file before and after each command. Current-version
+Attempt recovery still requires full identity and evidence checks. The
 [schema rules](../../src/emrys/contracts/schemas/README.md#version-and-identity-rules)
 say present IDs are exact and their numbered directories span unrelated
 families. The [reporting owner](../../src/emrys/reporting/README.md) identifies
@@ -275,6 +323,10 @@ reporting package release-number changes do not themselves change scientific
 Run identity. Current record schemas also accept some v1 provider metadata
 without authorizing v1 execution. Product version 1.0 does not itself rename
 schema IDs or provider interfaces.
+The separate open [SCHEMA-01 audit PR #314](https://github.com/lab-cats/EMRYS/pull/314)
+records schema readers and unresolved retained/external consumers but changes
+no accepted schema policy in this reviewed tree. Decide explicitly whether v1
+retains current IDs or depends on a separately approved `SCHEMA-01` migration.
 
 ### R10 — Documentation and known limits
 
@@ -302,8 +354,8 @@ The lane is scheduled or explicitly dispatched rather than an ordinary PR lane.
 A scheduled run uses the default branch; an exact candidate needs a selected-ref
 dispatch and retained commit identity. PR #307 adds complete Doctor timing,
 runtime-probe, and Slurm-accounting checks to that selected lane, but its
-selected hosted execution is still required and even a pass would not prove
-before/after performance or Viking timing. The
+completed selected hosted evidence at the eventual candidate is still required,
+and even a pass would not prove before/after performance or Viking timing. The
 cluster campaign records a distinct institutional novice journey and unresolved
 actual-data completion. A readiness review should screen open runtime,
 recovery, report, and site findings for the chosen promise, then cite exact
@@ -327,7 +379,10 @@ environment for EMRYS inspection, resume, or report regeneration; retained
 files remain untouched and readable with ordinary tools. No tracked
 release-note or changelog file was found in the reviewed tree, so choose one
 durable home without adding a second status registry. Distinguish a narrower
-prerelease criterion from each additional v1 claim. The backlog row can close
+prerelease criterion from each additional v1 claim. Give each claim an exact
+evidence identity and ceiling and a proved, limited, excluded, or blocked
+disposition; link the authoritative current-format schema indices rather than
+copying a full inventory into notes. The backlog row can close
 its planning outcome only after its required installed-operation exercise and
 readiness checklist are evidenced. Publication, package-index registration,
 and added platform support require separate
