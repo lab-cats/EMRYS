@@ -1119,13 +1119,14 @@ jobs:
       E2E_DATASET_PROFILE: smoke-v1
       E2E_SCENARIO: ${{ matrix.scenario }}
       E2E_CACHE_WRITER: ${{ matrix.cache_writer }}
-      E2E_EVIDENCE_ROOT: >-
-        ${{ runner.temp }}/emrys-synthetic-e2e/130-${{ matrix.scenario }}
+      E2E_EVIDENCE_SUFFIX: 130-${{ matrix.scenario }}
     steps:
       - &synthetic_select_paths
         name: Select isolated runtime and evidence paths
         run: |
           set -euo pipefail
+          E2E_EVIDENCE_ROOT="${RUNNER_TEMP}/emrys-synthetic-e2e/${E2E_EVIDENCE_SUFFIX}"
+          printf 'E2E_EVIDENCE_ROOT=%s\n' "${E2E_EVIDENCE_ROOT}" >> "${GITHUB_ENV}"
           printf 'PIXI_WORKSPACE=%s/emrys-managed-runtime\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
           printf 'PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
           install -d -m 0700 \
@@ -1356,7 +1357,8 @@ jobs:
         with:
           name: >-
             emrys-real-synthetic-${{ env.E2E_PROFILE }}-${{ env.E2E_SCENARIO }}-${{ github.run_attempt }}
-          path: ${{ env.E2E_EVIDENCE_ROOT }}
+          path: >-
+            ${{ runner.temp }}/emrys-synthetic-e2e/${{ env.E2E_EVIDENCE_SUFFIX }}
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 14
@@ -1388,8 +1390,7 @@ jobs:
       E2E_CACHE_WRITER: >-
         ${{ github.event_name == 'workflow_dispatch' &&
         inputs.synthetic_100000 && !inputs.synthetic_130 }}
-      E2E_EVIDENCE_ROOT: >-
-        ${{ runner.temp }}/emrys-synthetic-e2e/100000-production-like
+      E2E_EVIDENCE_SUFFIX: 100000-production-like
     steps:
       - *synthetic_select_paths
       - *synthetic_checkout

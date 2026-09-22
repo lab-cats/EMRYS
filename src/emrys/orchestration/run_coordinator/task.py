@@ -838,9 +838,7 @@ class _TaskChildren:
         self.children = Path(f"/proc/self/task/{self.owner}/children")
         self.process: subprocess.Popen[bytes] | None = None
         self.empty = False
-        self.prepare()
-        # Clear inherited SA_NOCLDWAIT as well as checking Python's disposition.
-        signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+        self.prepare(reset_initial_sigchld=True)
         try:
             prctl = ctypes.CDLL(None, use_errno=True).prctl
             enabled = ctypes.c_int()
@@ -865,8 +863,17 @@ class _TaskChildren:
         ):
             raise TaskProcessGroupAmbiguity("Task child-reaping ownership changed")
 
-    def prepare(self) -> None:
+    def prepare(self, *, reset_initial_sigchld: bool = False) -> None:
         try:
+            if reset_initial_sigchld:
+                disposition = signal.getsignal(signal.SIGCHLD)
+                if disposition not in (signal.SIG_DFL, signal.SIG_IGN):
+                    raise TaskProcessGroupAmbiguity(
+                        "Task child-reaping ownership changed"
+                    )
+                # Re-establish SIG_DFL even when Python already reports it so an
+                # inherited SA_NOCLDWAIT flag cannot suppress waitable children.
+                signal.signal(signal.SIGCHLD, signal.SIG_DFL)
             self._check_owner()
             self.children.read_text(encoding="ascii")
             os.waitid(os.P_ALL, 0, os.WEXITED | os.WNOHANG | os.WNOWAIT | 0x40000000)
