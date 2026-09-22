@@ -354,21 +354,21 @@ def samtools_gate_adapter_bytes(delegate: Path, gate: Path) -> bytes:
     )
     return (
         "#!/bin/bash\nset -euo pipefail\n"
-        f"if [[ -n \"${{EMRYS_TASK_WORK_DIR:-}}\" && \"${{1:-}}\" == view ]] "
+        f'if [[ -n "${{EMRYS_TASK_WORK_DIR:-}}" && "${{1:-}}" == view ]] '
         f"&& [ -f {shlex.quote(armed)} ] "
         f"&& /bin/mkdir -- {shlex.quote(claimed)} 2>/dev/null; then\n"
         f"  /bin/rm -f -- {shlex.quote(armed)}\n"
         f"  /usr/bin/mkfifo -- {shlex.quote(fifo)}\n"
-        "  args=(\"$@\")\n"
+        '  args=("$@")\n'
         f"  args[${{#args[@]}}-1]={shlex.quote(fifo)}\n"
-        f"  {shlex.quote(target)} \"${{args[@]}}\" &\n"
+        f'  {shlex.quote(target)} "${{args[@]}}" &\n'
         "  native=$!\n"
-        f"  printf '%s\\0%s\\0' \"$native\" \"$EMRYS_TASK_WORK_DIR\" > {shlex.quote(ready)}.tmp\n"
+        f'  printf \'%s\\0%s\\0\' "$native" "$EMRYS_TASK_WORK_DIR" > {shlex.quote(ready)}.tmp\n'
         f"  /bin/mv -- {shlex.quote(ready)}.tmp {shlex.quote(ready)}\n"
-        "  wait \"$native\"\n"
+        '  wait "$native"\n'
         "  exit $?\n"
         "fi\n"
-        f"exec {shlex.quote(target)} \"$@\"\n"
+        f'exec {shlex.quote(target)} "$@"\n'
     ).encode()
 
 
@@ -637,7 +637,9 @@ def parse_submission(text: str, log_dir: Path) -> Job:
 def parse_submission_request(text: str, workspace: Path) -> Path:
     request = Path(_one(REQUEST_ROOT, text, "submission request", "submit-slurm"))
     if request.parent != workspace / "logs":
-        raise DriverError("submit-slurm", "submission request belongs to another Project")
+        raise DriverError(
+            "submit-slurm", "submission request belongs to another Project"
+        )
     return request
 
 
@@ -846,7 +848,9 @@ def await_native_gate(
             raise DriverError("native-stop", "scheduler lost the selected job")
         state, _ = parse_scontrol(status.stdout)
         if state in TERMINAL_STATES:
-            raise DriverError("native-stop", f"job became {state} before native readiness")
+            raise DriverError(
+                "native-stop", f"job became {state} before native readiness"
+            )
         time.sleep(min(poll_seconds, 0.2))
     raise DriverError("native-stop", "native Task readiness timed out")
 
@@ -1327,7 +1331,13 @@ def _admitted_interruption(
         observed.results_status,
         observed.reporting_status,
         observed.recovery_available,
-    ) != ("valid", "interrupted", "incomplete", "incomplete", True) or observed.blockers:
+    ) != (
+        "valid",
+        "interrupted",
+        "incomplete",
+        "incomplete",
+        True,
+    ) or observed.blockers:
         raise DriverError("native-stop", "stopped Run has no admitted resume boundary")
     attempt, receipt, authority = (
         observed.latest_attempt,
@@ -1380,7 +1390,9 @@ def _admitted_interruption(
     return {
         "attempt_id": attempt_id,
         "task": gate.task,
-        "receipt": _artifact(run_root / "attempts" / attempt_id / "attempt-receipt.json"),
+        "receipt": _artifact(
+            run_root / "attempts" / attempt_id / "attempt-receipt.json"
+        ),
         "terminal_task_status": terminal["status"],
         "predecessor_evidence": _predecessor_evidence(
             run_root, attempt_id, job, application["path"]
@@ -1951,9 +1963,17 @@ def run_driver(
             )
             if not all(
                 value in preview.stdout
-                for value in ("Preview only", "--ctld", "--clusters=", "--name=", "--me")
+                for value in (
+                    "Preview only",
+                    "--ctld",
+                    "--clusters=",
+                    "--name=",
+                    "--me",
+                )
             ):
-                raise DriverError("native-stop", "controller-filtered stop preview differs")
+                raise DriverError(
+                    "native-stop", "controller-filtered stop preview differs"
+                )
             stop_started = True
             stopped = transcripts.run(
                 "slurm-stop-execute",
@@ -1966,7 +1986,9 @@ def run_driver(
                 "scancel exit status: 0" not in stopped.stdout
                 or f"Stop request: {request_root}" not in stopped.stdout
             ):
-                raise DriverError("native-stop", "public stop did not confirm one request")
+                raise DriverError(
+                    "native-stop", "public stop did not confirm one request"
+                )
             await_native_exit(gate)
         except BaseException as exc:
             if not stop_started:
@@ -2129,8 +2151,7 @@ def run_driver(
         },
         "execution_profile": _artifact(paths.execution_profile),
         "runtime_adapters": {
-            name: _artifact(paths.adapters / name)
-            for name in (*adapters, "samtools")
+            name: _artifact(paths.adapters / name) for name in (*adapters, "samtools")
         },
         "controlled_failure": (
             {

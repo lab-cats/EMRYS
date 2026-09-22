@@ -53,11 +53,11 @@ real-Slurm lane nor an institutional walkthrough.
 
 | Remaining acceptance | Current owner and required work or evidence |
 | --- | --- |
-| Reopened implementation and acceptance gaps | Every card marked **Open** in the indexes below owns the dated source, journey, documentation or acceptance correction recorded in its detailed entry. Implement and verify that gap or explicitly revise the original acceptance before external evidence can advance the card; in particular, site execution alone cannot close CV-10's prepared-finalization path and unresolved recycled-inode ownership limit or CV-18's missing active-native-task stop outcome. |
+| Recently implemented outcomes awaiting verification | CV-10's prepared-finalization `resume` path and CV-18's active-native-task stop outcome are **Verification pending**. Their exact hosted checks and institutional cancellation journeys remain unverified; site execution alone cannot substitute for the hosted checks, and neither status claims a reproduced E09 cause. CV-10's equal-byte recycled-inode ownership limit is an accepted residual risk in a trusted operator-controlled workspace, not a proven defense. |
 | Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27 and CV-U28: exercise the maintained RUNBOOK on one exact installed revision; retain selected profile/runtime, resolved allocation-aware policy and report identities. Visual review is separate. |
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
 | Historical unexplained failures | CV-12/E01 and CV-21/E06 remain unexplained historical observations whose causal reconstruction is not an acceptance requirement. CV-21 now needs only ordinary institutional execution of current reporting/inspection behavior. CV-10/E09 retains its separate current reconciliation requirement; newer successful checks cannot identify that cause. |
-| Postentry Task retry and finalization | CV-10: current-version closed-abort retry has hosted acceptance evidence. The prepared-finalization path through `resume` remains Open until exact hosted CI passes and the recycled-inode ownership limit is resolved or explicitly accepted; only then can it become Verification pending for institutional cancellation. Existing blocked receipts and missing prepared evidence remain ineligible. |
+| Postentry Task retry and finalization | CV-10: current-version closed-abort retry has hosted acceptance evidence. The prepared-finalization path through `resume` is implemented and **Verification pending** for its exact hosted CI and institutional cancellation journey. The owner accepted the equal-byte recycled-inode residual limitation for a trusted operator-controlled workspace; existing blocked receipts and missing prepared evidence remain ineligible. |
 | Doctor operation | CV-26 is Completed for exact pre-storage readmission, storage finalization and one final full diagnosis after removing the redundant intervening head diagnosis. Exact implementation CI passed; no Viking timing or speedup claim is required. Future measured tuning remains independently owned by the optimization campaign. |
 | Optional interface and retirement | CV-23 keeps cleanup Deferred; CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns institutional replacement validation and coordinated standalone entry-point/caller/name retirement. |
 
@@ -79,7 +79,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-07](#cv-07-site-and-workload-profile-selection) | P0 | Verification pending | Replace manual Viking resource-profile construction. |
 | [CV-08](#cv-08-compatible-runtime-reuse) | P0 | Verification pending | Reuse an existing compatible managed runtime across Projects. |
 | [CV-09](#cv-09-qualification-scope-and-placement) | P0 | Verification pending | Explain and enforce the qualified execution environment. |
-| [CV-10](#cv-10-external-cancellation-and-recovery) | P0 | Open | Recover safely from externally cancelled jobs when possible. |
+| [CV-10](#cv-10-external-cancellation-and-recovery) | P0 | Verification pending | Recover safely from externally cancelled jobs when possible. |
 | [CV-11](#cv-11-resource-profile-compatibility) | P0 | Verification pending | Detect and explain resource profiles that cannot fit a node. |
 | [CV-12](#cv-12-unexplained-initial-runtime-qualification-failure) | P0 | Discard | Establish the original runtime-qualification failure's cause. |
 | [CV-13](#cv-13-expected-setup-versus-blockers) | P1 | Verification pending | Distinguish expected initial setup needs from failures. |
@@ -87,7 +87,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-15](#cv-15-cross-node-active-run-status) | P1 | Verification pending | Show remote active state without implying proven corruption. |
 | [CV-16](#cv-16-monitoring-dashboard) | P1 | Verification pending | Restore an integrated view of scheduler, progress, and logs. |
 | [CV-17](#cv-17-project-creation-progress) | P1 | Verification pending | Explain lengthy input validation during Project creation. |
-| [CV-18](#cv-18-safe-emrys-stop) | P1 | Open | Provide an operator stop action with safe recovery semantics. |
+| [CV-18](#cv-18-safe-emrys-stop) | P1 | Verification pending | Provide an operator stop action with safe recovery semantics. |
 | [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Verification pending | Name verification-only work accurately. |
 | [CV-20](#cv-20-submission-state-before-run-creation) | P1 | Verification pending | Show queued and preparing jobs before a Run exists. |
 | [CV-21](#cv-21-reporting-in-progress-and-visibility) | P1 | Verification pending | Distinguish unfinished report publication from failed reporting. |
@@ -2856,20 +2856,20 @@ prepared blocked/succeeded outcomes create no new scientific Attempt. Legacy
 missing-prepared states, lost workers and unclosed Tasks stay blocked; E09 is
 neither adopted nor repaired.
 
-CV-10 remains **Open** until exact hosted CI verifies this extension, including
-interrupted publication, refusal and public preview/confirmation behavior, and
-the ownership limitation below is separately resolved or explicitly accepted.
-Only then may it advance to **Verification pending** for institutional
-cancellation acceptance. No new local, hosted or institutional results are
-claimed here.
+CV-10 is **Verification pending** for exact hosted CI of this extension,
+including interrupted publication, refusal and public preview/confirmation
+behavior, and for institutional cancellation acceptance. No new local, hosted
+or institutional results are claimed here.
 
-**Unresolved ownership limit:** The cross-preview candidate binds exact bytes
-and device/inode identity. If the original file is removed and the filesystem
-reuses its inode number for an equal-byte replacement, those observations alone
-cannot prove ownership continuity. The path-replacement regression tests a
-distinct-inode atomic replacement, not this recycled-inode case. A stronger
-retained-owner design is outside this CI repair; green CI must not be reported
-as closing that gap.
+**Owner-accepted ownership limit (2026-09-22):** The cross-preview candidate
+binds exact bytes and device/inode identity. If the original file is removed
+and the filesystem reuses its inode number for an equal-byte replacement,
+those observations alone cannot prove ownership continuity. The
+path-replacement regression tests a distinct-inode atomic replacement, not
+this recycled-inode case. The owner accepts that residual limitation for a
+trusted, operator-controlled workspace while retaining the exact-byte,
+device and inode checks. This does not claim protection against adversarial
+same-UID replacement, and passing CI would not prove such protection.
 
 ### CV-11 Resource profile compatibility
 
@@ -3189,8 +3189,9 @@ action, not already-available recovery. Preserve transport exit-code meaning
 and all uncertain records. The public active-native-Task fixture must exercise
 real Snakemake, Task and native child cancellation through this path. Hosted
 software checks cannot prove the Viking controller or institutional native-task
-outcome. CV-18 remains **Open** until exact CI passes, then **Verification
-pending** for institutional queued and active-native-task cancellation.
+outcome. CV-18 is **Verification pending** for exact hosted CI of this outcome
+and institutional queued and active-native-task cancellation; neither check
+is claimed to have passed here.
 
 ### CV-19 Verification and repair vocabulary
 

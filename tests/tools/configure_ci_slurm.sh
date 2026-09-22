@@ -125,12 +125,12 @@ config_pending=""
 slurm_release=""
 for command in scancel slurmctld slurmdbd slurmd; do
     version="$($command -V)"
-    [[ "$version" =~ ^slurm[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+)$ ]] ||
+    [[ "$version" =~ ^slurm(-wlm)?[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+)$ ]] ||
         die "cannot determine $command Slurm release"
     if [[ -z "$slurm_release" ]]; then
-        slurm_release="${BASH_REMATCH[1]}"
+        slurm_release="${BASH_REMATCH[2]}"
     else
-        [[ "${BASH_REMATCH[1]}" == "$slurm_release" ]] ||
+        [[ "${BASH_REMATCH[2]}" == "$slurm_release" ]] ||
             die "Slurm daemon/client releases do not match"
     fi
 done

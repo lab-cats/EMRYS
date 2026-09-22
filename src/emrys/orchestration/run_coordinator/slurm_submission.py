@@ -347,7 +347,8 @@ def plan_stop(project: Path, selector: str) -> SlurmStopPlan:
             check=False,
         )
         version = re.fullmatch(
-            rb"slurm ([0-9]{2})\.([0-9]{2})\.(0|[1-9][0-9]{0,3})\n?", completed.stdout
+            rb"slurm(?:-wlm)? ([0-9]{2})\.([0-9]{2})\.(0|[1-9][0-9]{0,3})\n?",
+            completed.stdout,
         )
         if (
             completed.returncode != 0

@@ -204,8 +204,11 @@ def test_native_gate_adapter_passes_version_probe_without_claiming_gate(
     gate = tmp_path / "native-stop-gate"
     armed = gate.with_suffix(".armed")
     armed.write_text("armed\n")
+    delegate = tmp_path / "delegate"
+    delegate.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
+    delegate.chmod(0o700)
     adapter = tmp_path / "samtools"
-    adapter.write_bytes(driver.samtools_gate_adapter_bytes(Path("/bin/echo"), gate))
+    adapter.write_bytes(driver.samtools_gate_adapter_bytes(delegate, gate))
     adapter.chmod(0o700)
     observed = subprocess.run(
         [str(adapter), "--version"],
@@ -345,20 +348,38 @@ def test_intentional_stop_observation_never_reissues_cancellation(
         )
 
 
-def test_transcripts_retain_partial_output_on_bounded_timeout(tmp_path: Path) -> None:
+def test_transcripts_record_a_real_bounded_timeout(tmp_path: Path) -> None:
     transcripts = driver.Transcripts(tmp_path)
     with pytest.raises(driver.DriverError, match="partial streams retained"):
         transcripts.run(
             "bounded-command",
-            [
-                sys.executable,
-                "-c",
-                "import sys, time; print('started', flush=True); time.sleep(5)",
-            ],
+            [sys.executable, "-c", "import time; time.sleep(5)"],
+            cwd=tmp_path,
+            timeout_seconds=0.1,
+        )
+    assert (tmp_path / "01-bounded-command.stdout.log").is_file()
+    assert transcripts.records[0]["timed_out"] is True
+
+
+def test_transcripts_retain_partial_timeout_streams(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def expire(argv: tuple[str, ...], **kwargs: object) -> None:
+        raise subprocess.TimeoutExpired(
+            argv, kwargs["timeout"], output=b"started\n", stderr=b"diagnostic\n"
+        )
+
+    monkeypatch.setattr(driver.subprocess, "run", expire)
+    transcripts = driver.Transcripts(tmp_path)
+    with pytest.raises(driver.DriverError, match="partial streams retained"):
+        transcripts.run(
+            "bounded-command",
+            [sys.executable, "-c", "import time; time.sleep(5)"],
             cwd=tmp_path,
             timeout_seconds=0.1,
         )
     assert (tmp_path / "01-bounded-command.stdout.log").read_bytes() == b"started\n"
+    assert (tmp_path / "01-bounded-command.stderr.log").read_bytes() == b"diagnostic\n"
     assert transcripts.records[0]["timed_out"] is True
 
 
@@ -373,7 +394,9 @@ def test_submission_requires_matching_request_token_and_job_id(
     assert job.stderr == job.stdout.with_suffix(".err")
 
 
-def test_submission_request_requires_one_exact_project_local_path(tmp_path: Path) -> None:
+def test_submission_request_requires_one_exact_project_local_path(
+    tmp_path: Path,
+) -> None:
     workspace = tmp_path / "workspace"
     request = workspace / "logs" / f"submission-{'a' * 32}"
     assert (

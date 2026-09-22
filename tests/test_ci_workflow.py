@@ -793,8 +793,8 @@ def test_ci_slurm_setup_is_guarded_real_and_diagnostic() -> None:
     assert '"$evidence_dir/qualified-readiness.txt"' in script
     assert "cluster_scoped_squeue=exit_0" in script
     assert "for command in scancel slurmctld slurmdbd slurmd; do" in script
-    assert r"([0-9]+\.[0-9]+\.[0-9]+)$" in script
-    assert '[[ "${BASH_REMATCH[1]}" == "$slurm_release" ]]' in script
+    assert r"^slurm(-wlm)?[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+)$" in script
+    assert '[[ "${BASH_REMATCH[2]}" == "$slurm_release" ]]' in script
     assert 'dpkg --compare-versions "$slurm_release" ge 23.11.6' in script
     assert "sacctmgr" in script
     assert "add cluster emrys-ci" in script

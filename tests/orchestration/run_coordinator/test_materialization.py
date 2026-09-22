@@ -6790,9 +6790,10 @@ def test_public_real_snakemake_native_cancellation_and_stop_outcome(
                     "not at an admissible closed-task resume boundary"
                     in capsys.readouterr().err
                 )
-                assert tuple(
-                    sorted((project.parent / "logs").glob("submission-*"))
-                ) == requests_before
+                assert (
+                    tuple(sorted((project.parent / "logs").glob("submission-*")))
+                    == requests_before
+                )
                 assert tuple(sorted((run_root / "attempts").iterdir())) == (
                     attempts_before
                 )
@@ -6876,9 +6877,10 @@ def test_public_real_snakemake_native_cancellation_and_stop_outcome(
                 observed.reporting_status,
                 observed.recovery_available,
             ) == ("succeeded", "complete", "complete", False)
-            assert observed.latest_receipt["workflow_attempt_id"] == evidence[
-                "completed_attempt"
-            ]
+            assert (
+                observed.latest_receipt["workflow_attempt_id"]
+                == evidence["completed_attempt"]
+            )
             assert evidence["completed_attempt"] != evidence["interrupted_attempt"]
             assert len(tuple((observed.run_root / "attempts").iterdir())) == 2
             first_receipt = json.loads(
