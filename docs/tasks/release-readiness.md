@@ -66,7 +66,7 @@ local navigation labels, not new backlog items.
 | `R08` | Public installed journey | Isolated wheel smoke covers help, Init, and validation outside the checkout; report smoke calls internal APIs. | Exercise every selected operation through the public installed command, from an arbitrary directory; a full wheel promise requires a tiny complete Run and public report regeneration. | `RELEASE-01`; package, CLI, synthetic-journey owners |
 | `R09` | Record and schema support | Approved policy refuses obsolete Run contracts, while some current-format variants and retained diagnostic contexts remain readable; schema IDs are independent of product versions. | Verify public obsolete-Run refusal preserves retained bytes; decide any schema reset through `SCHEMA-01`, independently of product v1. | `RELEASE-01`, `SCHEMA-01`; contract owners |
 | `R10` | Guides and limitations | README, Quickstart, Runbook, and Troubleshooting divide reader/operator guidance; README already describes installed collaborator modules. | Reconcile install route, supported environment, Results journey, recovery, known limits, and collaborator promise without duplicate status prose. | `RELEASE-01`, `QUICKSTART-01`, `DOCS-01`, conditional `EXTENSION-01` |
-| `R11` | Exact-revision evidence | Ordinary CI contains a wheel lane; selected hosted real-tool Slurm and institutional exercise are separate evidence layers. PR #307 strengthens selected Doctor timing instrumentation, pending that lane's run. | Record software, installed-artifact, disposable-Slurm, named-site, visual, scientific-review, and biological claims separately. | `RELEASE-01`, `SITE-PARITY-01`, `CLUSTER-VERIFY-01`, `REPORT-01`–`03`, `SCI-AUDIT-01` |
+| `R11` | Exact-revision evidence | Ordinary CI contains a wheel lane; selected hosted direct/Slurm and institutional exercise are separate evidence layers. PR #307 strengthens selected Doctor timing instrumentation, pending that lane's run. | Record software, installed-artifact, disposable-Slurm, named-site, visual, scientific-review, and biological claims separately. | `RELEASE-01`, `SITE-PARITY-01`, `CLUSTER-VERIFY-01`, `REPORT-01`–`03`, `SCI-AUDIT-01` |
 | `R12` | Release notes and publication | The earlier alpha proposal requests versioning, notes, install guidance, and explicit evidence limits. | Define one release-note format and prerelease/v1 checklist; require separate authority for tag/release publication, package index, or new platform support. | `RELEASE-01`; publication authority remains separate |
 | `R13` | Saved defaults and Projects home | `emrys setup` requires an EMRYS Git checkout and writes `.env` there; its default Projects home is checkout-relative. | Preserve this route for a checkout release, or resolve the existing setup/onboarding owner before promising a wheel-only novice path. | `RELEASE-01`; onboarding owner |
 
@@ -156,7 +156,11 @@ wheel from a copied source tree. Choose whether the distributed unit is a
 pinned checkout, an sdist, a wheel paired with the exact checkout, or a
 standalone/limited wheel. Name which unit is installed and tested. A wheel
 need not promise the entire user journey unless that scope is deliberately
-selected. `emrys setup` adds a separate checkout dependency under R13.
+selected. The present smoke installs the built wheel, not the sdist. If the
+sdist is selected, build and install from the exact distributed sdist, retain
+its digest and the resulting wheel digest, and exercise its promised assets,
+provenance, and public commands. `emrys setup` adds a separate checkout
+dependency under R13.
 
 ### R05 — Study-selection resource
 
@@ -167,6 +171,20 @@ row explicitly leaves its installed-package supply unresolved. Decide whether
 the selected release route keeps a checkout or needs an installed resource,
 then use that owner's existing manifest admission. Do not duplicate or infer
 the biological region selection from the site or reference.
+
+A separate open [PR #316](https://github.com/lab-cats/EMRYS/pull/316)
+proposes to package the maintained selection, keep the `configs/` path as a
+link, and offer it after explicit EV/PUM1 guided sample assignment. Its wheel
+check covers resource presence and byte equality, while source-level guided
+Init tests cover selection, explicit-manifest preservation, and
+missing-reference refusal. PR #316 is a sibling of the reviewed PR #307 head,
+so none of these changes are established at this document's source revision.
+If it enters a release candidate, recheck the exact built artifact and run
+public installed guided Init from outside the checkout using that packaged
+choice. Its present
+wheel smoke still supplies an explicit fixture partition manifest, and does
+not establish the new interactive path, a complete Run, public report
+regeneration, or novice Viking acceptance.
 
 ### R06 — Dependency policy
 
@@ -243,7 +261,7 @@ say present IDs are exact and their numbered directories span unrelated
 families. The [reporting owner](../../src/emrys/reporting/README.md) identifies
 artifact entries v4, Run summaries v8, and report receipts v8 as current;
 reporting package release-number changes do not themselves change scientific
-Run identity. The current provider interface also allows some v1 metadata
+Run identity. Current record schemas also accept some v1 provider metadata
 without authorizing v1 execution. Product version 1.0 does not itself rename
 schema IDs or provider interfaces.
 
@@ -265,10 +283,12 @@ execution, storage/runtime admission, and whichever artifact route is selected.
 ### R11 — Evidence layers and blockers
 
 The ordinary PR wheel lane checks packaging and selected installed commands.
-The selected real-tool synthetic lane runs from the checkout in hosted
-disposable Slurm; it is not an installed release-artifact or Viking test and
-is scheduled or explicitly dispatched rather than an ordinary PR lane. A
-scheduled run uses the default branch; an exact candidate needs a selected-ref
+The selected real-tool synthetic lane runs from the checkout in a hosted
+environment. Its 130-pair profile exercises both a direct Project and a
+disposable-Slurm Project and checks parity; its 100,000-pair profile exercises
+Slurm only. Neither profile is an installed release-artifact or Viking test.
+The lane is scheduled or explicitly dispatched rather than an ordinary PR lane.
+A scheduled run uses the default branch; an exact candidate needs a selected-ref
 dispatch and retained commit identity. PR #307 adds complete Doctor timing,
 runtime-probe, and Slurm-accounting checks to that selected lane, but its
 selected hosted execution is still required and even a pass would not prove
@@ -291,12 +311,15 @@ completion state or a substitute for owner acceptance.
 Draft release notes should identify version, source revision, artifact and
 dependency identities, supported workflow/platform/installation route, current
 record formats, changes, limitations, known issues, and the exact level of
-verification. No tracked release-note or changelog file was found in the
-reviewed tree, so choose one durable home without adding a second status
-registry. Distinguish a narrower prerelease criterion from each additional
-v1 claim. The backlog row can close its planning outcome only after its required
-installed-operation exercise and readiness checklist are evidenced. Publication,
-package-index registration, and added platform support require separate
+verification. State that obsolete Runs require their original software and
+environment for EMRYS inspection, resume, or report regeneration; retained
+files remain untouched and readable with ordinary tools. No tracked
+release-note or changelog file was found in the reviewed tree, so choose one
+durable home without adding a second status registry. Distinguish a narrower
+prerelease criterion from each additional v1 claim. The backlog row can close
+its planning outcome only after its required installed-operation exercise and
+readiness checklist are evidenced. Publication, package-index registration,
+and added platform support require separate
 authority. Citation guidance and SBOM/attestation remain separate proposed
 work, not automatic `RELEASE-01` completion criteria.
 
