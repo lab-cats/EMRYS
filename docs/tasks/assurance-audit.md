@@ -31,6 +31,14 @@ All `path:line` references below refer to the pinned commit. **Source reviewed**
 | A01-17 | Make and static-check surfaces | Some recipe snapshots and shell checks may overlap; command contracts differ | Source | Determine operator use and the distinct failure each check catches |
 | A01-18 | Dependency assertions | Source dependency literals and built-wheel metadata overlap partly | Source | Compare failures caught at each representation boundary |
 | A01-19 | Step 05 operator check | Site-specific script is retained for manual checks, with bounded evidence | Source; documentation | Establish actual operator use before considering retirement |
+| A01-20 | Step 07 VCF validation | Malformed REF/ALT/FORMAT content can pass the report | Source; test characterized | Decide whether the report needs a semantic check or clearer claim |
+| A01-21 | Step 08 candidate validation | Arbitrary IDs and row reversal can pass its structural report | Source; test characterized | Preserve the separate real-R ordering oracle |
+| A01-22 | Step 09 statistical validation | Fabricated CMH values can pass internally consistent report checks | Source; test characterized | Preserve independent numerical and guarded-R oracles |
+| A01-23 | Step 00b GTF agreement | Validator reuses producer normalization | Source; contract | Keep literal converter oracle; assess report wording |
+| A01-24 | Step 02b quickcheck | Producer and validator disagree on zero-exit native output | Source; test characterized | Decide admissible output, then migrate producer, validator, adapter, and tests |
+| A01-25 | Canonical BAM admission | Producer and validator accept different BAM/RG cases | Source; contract | Resolve acceptance before considering Stage 02 consolidation |
+| A01-26 | Reference provenance recovery | Fault test retains known publication/restoration gap | Source; test characterized | Keep recovery work with its owner; retain the fault test |
+| A01-27 | Step 06 orientation validation | Report checks count arithmetic without recounting BAM flags | Source; test characterized | Preserve worker and validator cases with their distinct ceilings |
 
 ## Discovery notes
 
@@ -110,6 +118,38 @@ The schema registry selects active files and IDs at `src/emrys/contracts/orchest
 ### A01-19 — Manual Step 05 operator check
 
 `tests/data_checks/validate_step05_outputs.sh` performs site-specific checks of existing BAM/BAI outputs, can query Slurm, writes a selected status TSV, and probes output-directory writability. `tests/data_checks/README.md:1-7` explicitly retains it and limits its evidence claim. No in-repository caller was found; that is insufficient to call an operator script obsolete. Establish whether operators still use it, which faults it alone catches, and how its outputs are retained. Do not run it as part of a local source audit.
+
+### A01-20 — Step 07 VCF semantics are outside the report ceiling
+
+`tests/stages/partitioned_cohort_mpileup/test_validate_step_07_mpileup_outputs.py:448-462` writes malformed REF, symbolic ALT, and broken FORMAT/sample data, then expects every validation row to pass. `src/emrys/stages/partitioned_cohort_mpileup/CONTRACT.md:90-96,115-119` limits the validator to shape and counts. This is another retained characterization of a passing report's meaning, separate from A01-01's selector bounds. Trace report consumers and decide whether a semantic admission check or clearer wording is required; do not delete the test as redundant.
+
+### A01-21 — Step 08 candidate identity and order need a separate oracle
+
+A test replaces candidate IDs with arbitrary unique strings and reverses rows while expecting all-pass (`tests/stages/cohort_candidate_preprocessing/test_validate_step_08_preprocessing_outputs.py:376-390`). The owner contract (`src/emrys/stages/cohort_candidate_preprocessing/CONTRACT.md:121-129,143-146`) says the Python report checks internal structure, not reconstructed IDs or deterministic order. Guarded real-R tests assert literal candidate order and worker-count byte determinism (`tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.R:619-635,873-885`). Retain both evidence layers; a passing Python report alone does not prove the producer's scientific reconstruction.
+
+### A01-22 — Step 09 validation does not recompute CMH statistics
+
+`tests/analyses/paired_cmh_candidate_ranking/test_validate_step_09_cmh_outputs.py:282-335` fabricates CMH statistics, p-values, adjusted values, and odds ratios while the report passes. `src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md:105-113` states this ceiling. A production-independent Python oracle and guarded R corpus cover numerical behavior (`tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_oracle.py:108-178`; `tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.R:222-313`). Preserve the characterization and independent oracles, and avoid promoting report status to scientific proof.
+
+### A01-23 — Step 00b agreement shares producer normalization
+
+`src/emrys/stages/gtf_to_bed12/validator.py:48-59` calls the converter's `normalize_gtf` before comparing expected and observed BED12 lines. Its contract (`src/emrys/stages/gtf_to_bed12/CONTRACT.md:75-79`) explicitly says this is same-owner normalization, not an independent implementation. Literal converter tests (`tests/stages/gtf_to_bed12/test_gtf_to_bed12.py:65-389`) protect coordinates, names, and order independently. Keep both protections. Check report wording and actual GTF semantics before proposing another production parser.
+
+### A01-24 — Step 02b quickcheck producer and validator disagree
+
+On zero exit, the producer retains nonempty native `samtools quickcheck -v` output (`src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh:52-62`), while the validator accepts only the synthetic empty-success PASS line (`src/emrys/evidence/canonical_bam_qc/validator.py:47-53`). Owner tests characterize each side (`tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh:88-93`; `tests/evidence/canonical_bam_qc/test_validate_step_02b_bam_qc.py:109-125`), and the contract (`src/emrys/evidence/canonical_bam_qc/CONTRACT.md:102-111,133-140`) records the mismatch. Decide which zero-exit output is admissible before a caller-complete producer, validator, adapter, and test change. Retain the tests until then.
+
+### A01-25 — Canonical BAM acceptance differs across producer and validator
+
+`src/emrys/stages/canonical_bam/CONTRACT.md:137-147,182-186` records that the validator permits a zero-record BAM and omits producer-required `LB` and `PL:ILLUMINA` fields. Neither surface proves that the BAI/CSI belongs to the BAM. These are distinct boundaries, not duplicate checks; source inspection alone does not reproduce a false pass. The contract also leaves open whether Stage 02 remains separate now that STAR normally emits canonical bytes. Resolve accepted BAM/RG semantics first; a stage-retirement proposal must trace sort, index, hard-link reuse, fan-out, artifact identities, receipts, and recovery.
+
+### A01-26 — Reference provenance recovery fault test must remain
+
+`tests/evidence/reference_provenance/test_reference_provenance.py:466-518` injects publication and restoration failures and characterizes surviving backups without a lock or recovery marker. The owner README (`src/emrys/evidence/reference_provenance/README.md:27-39`) and existing polish campaign (`docs/tasks/polish-campaign.md:265-274`) already route that recovery work. Preserve the fault test and its evidence limit. Do not create a duplicate ASSURANCE implementation task or retire the test because it currently documents a defect.
+
+### A01-27 — Step 06 count checks do not recount BAMs
+
+The producer test permits an internally inconsistent flag subcount to be emitted (`tests/stages/mechanical_orientation/test_mechanical_orientation_producer.py:248-255`); the validator test catches count arithmetic (`tests/stages/mechanical_orientation/test_validate_step_06_orientation_outputs.py:113-127`). The contract (`src/emrys/stages/mechanical_orientation/CONTRACT.md:75-80,95-99`) says validation does not recount BAMs, inspect flags, quickcheck, or establish BAM/BAI correspondence. Retain both checks for their distinct failures. A passing orientation report proves its stated container and count-table checks, not independent BAM partition semantics.
 
 ## Protections to preserve during the next pass
 
