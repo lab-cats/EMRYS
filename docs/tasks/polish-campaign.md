@@ -622,6 +622,8 @@ finding or authorization to scan unrelated private data.
 Current accepted outcome and acceptance are owned by `EXTENSION-01` in the
 [main backlog](backlog_matrix.md#maintainability-and-release). The proposal
 below is supporting context, not a second task authority.
+The [discovery draft](extension-01-discovery.md) records the source review and
+open choices for a bounded implementation plan.
 
 **Finding:** [Analysis extension interfaces](../../src/emrys/analyses/README.md)
 exist, but a practical end-to-end provider/reporter walkthrough is missing.
