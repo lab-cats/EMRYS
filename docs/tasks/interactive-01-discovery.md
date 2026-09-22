@@ -523,6 +523,24 @@ supplied or explicitly reviewed by the operator.
 | Launch | Review the exact Analysis and direct frozen plan or Slurm submission/resource request; ask once. | Control owns duplicate-risk review and submission. Slurm approval returns an exact request and job, not a created or completed Run. |
 | Watch and return | Offer request-bound Project watch, show how to recheck, then show the exact Project/request for the operator to retain for later inspection. | Inspection owns later association, completion, and supported recovery. Leaving watch never stops a job or authorizes another submission. |
 
+### Transcript evidence boundary
+
+The current owner prompts support only part of a continuous guided transcript.
+The table quotes labels rather than inventing the guide's connective questions;
+unknown absolute input paths, Doctor plan operation, and request/job IDs remain
+operator- or runtime-supplied.
+
+| Segment | Current prompt or output at pinned #304 | Still proposed or conditional |
+| --- | --- | --- |
+| Setup | `Projects home`, `site`, `log root (optional)`, `Saved CLI defaults`, `CLI defaults ready` (`onboarding.py` lines 214-257). | The guide must add one reviewed save decision without calling Setup twice, then carry values within the invocation. |
+| Project choice | Named Init requires `PROJECT_NAME`; Project-aware commands accept an exact selector (`onboarding.py` lines 270-295 and 729-759). | New/existing choice and `pum1-study` name entry are guide connective text, not current bare-CLI behavior. |
+| Reference and samples | `reference fasta`, `reference gtf`, `FASTQ directory`, detected pairs, `study strandedness`, then each missing `condition for SAMPLE` and `pairing group for SAMPLE` (`onboarding.py` lines 812-893, 939-961, and 981-1025). | The Quickstart supplies six EV/PUM1 assignments and study-wide `reverse`; actual input paths are not supplied by EMRYS. Sample questions follow sorted IDs, which differs from the Quickstart table order. |
+| Scope | The pinned path accepts the explicit checkout manifest or asks for generic regions (`onboarding.py` lines 1027-1073 and 1100-1156). | PR #316's maintained 25-name offer is not in this branch; a continuous guide must use the explicit manifest route until it is integrated and rechecked. |
+| Comparison and thresholds | Two compatible conditions offer numbered `EV -> PUM1`/`PUM1 -> EV`, then `comparison [1 / 2]`, `target change`, and `Use these paired-CMH defaults?` (`onboarding.py` lines 838-893 and 1074-1095). | The Quickstart supplies `A>G` and the disclosed `1`, `50`, `0.05`, `1.2`, `0.005`; no background cohort is selected. The guide must display, not infer, that scientific intent. |
+| Publication and validation | Complete preview, `Create this Project? [y/N]`, hashing warning, `Project ready`, then a separate validation PASS (`onboarding.py` lines 1163-1258 and 1313-1398). | Guide continuation requires the exact created outcome; neither exit 0 nor path presence suffices. |
+| Runtime and Doctor | A chosen donor can show `Runtime discovery: READY` and `Admit this runtime inventory? [y/N]`; Doctor asks `Apply this {operation} plan? [y/N]` when repair is available (`onboarding.py` lines 2304-2356; `doctor.py` lines 1480-1484). | Donor use is optional; PR #320's picker is not in this branch. The plan operation and readiness depend on fresh diagnosis. |
+| Launch and return | Control asks `Execute this plan? [y/N]`, then prints the exact submission request and job; completion is unverified (`control.py` lines 1046-1050 and 1165-1225). | A `Watch now?` question is guide-only proposed text. Request-bound inspection exists, but later Run association and completion must be independently admitted. |
+
 ## Proposed design and delivery order
 
 The entry choice above is accepted. The remaining steps are review proposals;
@@ -547,15 +565,33 @@ implementation must satisfy the owner and measured-footprint gates below.
    Verify with focused local checks, applicable hosted CI, and separately
    authorized institutional novice acceptance.
 
-The first candidate owner slice is an exact Init publication outcome: return
-the canonical created `project.yaml` path or a no-write preview/decline result
-to a private caller while preserving the public handler's exits, printed text,
-questions, one-pass FASTQ hashing, and create-absent transaction. Its bounded
-owners would be `onboarding.py`, focused onboarding tests, and the coordinator
-contract. The audit found no caller-complete product deletion to offset even
-this smaller seam. Quantify its actual product-line and file delta before
-implementation; a net-growth exception needs separate explicit approval.
-Neither test nor retained-evidence deletion offsets that growth.
+The first candidate owner slice is an exact Init publication outcome. A
+provisional private operation in `onboarding.py` would return `Path | None`:
+
+| Existing Init branch | Proposed private result | Preserved public result |
+| --- | --- | --- |
+| `--preview`, or final no/blank/EOF/nonterminal confirmation | `None` after the existing no-write message | Exit 0; no Project created. |
+| Confirmed `y`/`yes` or `--execute` | Canonical `project.yaml` path only after create-absent publication and final input recheck | Exit 0 and the same `Project ready` output. |
+| `OSError`, `OnboardingError`, `ValidationError`, `orchestration_contracts.ContractValidationError`, or `step08.ContractError` | Propagate to a thin public adapter | Same error message and exit 2. |
+| `KeyboardInterrupt` | Propagate without a new catch | Same interruption and retained partial-state behavior. |
+
+The public `init_project_from_args` would remain the integer adapter. Preserve
+its questions and streams, `--preview`/`--execute` exclusivity, one-pass FASTQ
+hashing, scientific admission, and create-absent transaction. The bounded code
+owner is `onboarding.py` lines 1261-1407 and its export list; focused existing
+onboarding tests and the coordinator contract would change with it. The CLI
+dispatcher, Doctor, Control, schemas, scripts, fixtures, and retained evidence
+have no established change for this slice. Tests must distinguish preview,
+final refusal/EOF, required-answer EOF, nonterminal mode, confirmed creation,
+input drift, hashing, partial publication, and public exit/output parity.
+
+A source-only structural estimate is about seven added product lines and zero
+new product files; moving the current body into a private operation would make
+the textual diff much larger than that net estimate. No caller-complete product
+deletion has been identified to offset it. This is not a measured patch or an
+approved growth exception. Quantify the actual delta before implementation;
+any net-growth exception needs separate explicit approval. Neither tests nor
+retained-evidence deletion offsets product growth.
 
 Stop and return for a decision if the design changes bare-command behavior
 beyond the approved terminal entry, needs a new public command/flag, an
