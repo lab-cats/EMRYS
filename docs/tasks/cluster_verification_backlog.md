@@ -75,7 +75,7 @@ real-Slurm lane nor an institutional walkthrough.
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
 | Historical unexplained failures | CV-12/E01 and CV-21/E06 remain unexplained historical observations whose causal reconstruction is not an acceptance requirement. CV-21 now needs only ordinary institutional execution of current reporting/inspection behavior. CV-10 retains verification of the implemented prepared-finalization recovery path. E09 remains unexplained, and missing prepared evidence still cannot authorize recovery. |
 | Postentry Task retry and finalization | CV-10: current-version closed-abort retry has hosted acceptance evidence. The prepared-finalization path through `resume` is implemented and **Verification pending** for its exact hosted CI and institutional cancellation journey. The owner accepted the equal-byte recycled-inode residual limitation for a trusted operator-controlled workspace; existing blocked receipts and missing prepared evidence remain ineligible. |
-| Doctor operation | CV-26 is Completed for exact pre-storage readmission, storage finalization and one final full diagnosis after removing the redundant intervening head diagnosis. Exact implementation CI passed; no Viking timing or speedup claim is required. Future measured tuning remains independently owned by the optimization campaign. |
+| Doctor operation | CV-26's structural reduction removed one redundant full head diagnosis and passed exact implementation CI. CV-26 remains Open against its original complete-operation attribution, comparable before/after measurements and institutional E11 timing. No speedup is claimed. |
 | Optional interface and retirement | CV-23 and CV-U19 transfer their Deferred acceptance to `CLEANUP-01` and `INTERACTIVE-01` in the [main backlog](backlog_matrix.md#deferred-operational-work); CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns institutional replacement validation and coordinated standalone entry-point/caller/name retirement. |
 
 The [enduring verification checklist](backlog_matrix.md#cluster-verification-closure-checklist)
@@ -117,7 +117,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-23](#cv-23-safe-project-or-artifact-cleanup) | P2 | Deferred | Decide and scope safe cleanup of unused owned state. |
 | [CV-24](#cv-24-run-center-actions) | P2 | Completed | Explore a dashboard that invokes supported CLI operations. |
 | [CV-25](#cv-25-log-discovery-and-readable-output) | P2 | Completed | Find the correct logs without memorizing scheduler IDs. |
-| [CV-26](#cv-26-repeated-doctor-input-reads) | P2 | Completed | Remove one redundant full head diagnosis without weakening final readiness. |
+| [CV-26](#cv-26-repeated-doctor-input-reads) | P2 | Open | Attribute complete Doctor latency and compare the structural reduction without weakening final readiness. |
 | [CV-27](#cv-27-terminal-only-report-access) | P3 | Verification pending | Retrieve portable reports from a terminal-based workflow. |
 
 ## Operator findings matrix — 2026-09-15
@@ -160,7 +160,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Deferred |
 | [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
 | [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Verification pending |
-| [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse smoke-project tools in the normal journey | Verification pending |
+| [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse a known smoke donor and resolve broader compatible-donor discovery | Open |
 | [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Verification pending |
 | [CV-U24](#cv-u24-persistent-cli-defaults) | Save site and other repeated CLI values | Verification pending |
 | [CV-U25](#cv-u25-repeated-fastq-hashing-during-init) | One full FASTQ hashing pass across preview and creation | Verification pending |
@@ -1502,7 +1502,14 @@ was mistakenly described as test-only and retired while its implementation was
 copied into the tests. The boundary and export are restored, and the runtime
 reuse cases again exercise that production API directly. Focused local checks
 pass; a fresh institutional smoke-to-study journey remains required, so CV-U22
-is **Verification pending**.
+was **Verification pending** for the known-smoke route at that checkpoint.
+
+That route does not discover another compatible Project when the optional smoke
+test was skipped. The expanded discover/validate/reuse-before-install requirement
+above remains unimplemented, with no general donor-selection mechanism approved.
+CV-U22 is **Open** against that original requirement; the known-smoke route also
+still needs institutional acceptance. Doctor must not choose another Project's
+tools silently.
 
 ### CV-U23 Repair restriction when sharing tools
 
@@ -3771,8 +3778,9 @@ no-write diagnosis, existing-log buffering and delegated context. Public fixture
 execution passed the current integrated hosted CI. Read/hash bytes, probe
 attribution, process memory, actual scheduler timing and comparable before/after
 measurements were left open by this slice; they are independently selectable
-future research, not the revised CV-26 acceptance gate. This slice establishes
-timing observations, not a measured speedup.
+future research, not the revised slice's acceptance gate. They remain in
+CV-26's original acceptance. This slice establishes timing observations, not a
+measured speedup.
 
 **Retained hosted observation:** The managed golden path at
 `2e03177747e67e8d970083e3994f3c8970d77caf`
@@ -3832,7 +3840,8 @@ remain unchanged. Focused runtime tests and the integrated hosted standard CI
 pass the public Doctor phase, identity, failure and observation-degradation
 fixtures. Full byte/I/O/memory attribution and institutional before/after
 evidence remained open at this checkpoint; the September 21 disposition makes
-them optional future measurement rather than CV-26 acceptance.
+them optional for its revised structural slice, not for CV-26's original
+acceptance retained below.
 
 **Retained probe attribution:** The managed golden-path job at
 `1f4171d198cada8833f59ccd5a1bfeffab3ebaff`
@@ -4041,8 +4050,10 @@ target is introduced, and no speedup is claimed. Exact implementation head
 `593f6e728321f535817bcde732d263c2f86079a8` passed all 14 standard jobs, with
 four configured skips and no failures, in
 [CI 35577392877](https://github.com/lab-cats/EMRYS/actions/runs/35577392877).
-CV-26 is **Completed** for this revised structural outcome without Viking timing
-data; future measured Doctor tuning remains independently selectable.
+The revised structural outcome is complete, but it does not satisfy CV-26's
+original complete-operation attribution and comparable before/after acceptance.
+CV-26 remains **Open** for those measurements and institutional E11 timing; no
+Viking speedup is claimed. Further tuning remains independently selectable.
 
 ## P3 outcome
 

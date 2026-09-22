@@ -146,6 +146,8 @@ historical observations; neither requires causal reconstruction. New failures
 found during verification belong with their existing source or operational
 owner. Doctor validation, runtime inspection, CLI planning, application logging,
 lifecycle recovery and reporting publication retain their existing authorities.
+`INIT-02` and CV-U22 still need original-intent selection and compatible-donor
+discovery decisions before their source work can be called complete.
 
 ## Completion and handoff
 
@@ -197,13 +199,12 @@ Campaign closure requires:
   2026-09-17. `DASHBOARD-RETIRE-01` has implemented new scheduler-stream naming
   with legacy read compatibility; institutional verification and the separate
   evidence-deletion boundary remain.
-- The [optimization campaign](optimization_campaign.md) owns resource-tuning
-  measurements and existing hashing/probe investigations. CV-26 selects the
-  source-level Doctor-operation consolidation: after compute qualification,
-  exact Project/execution readmission precedes storage finalization, and one
-  full final head diagnosis replaces the former two. This records one fewer
-  full head diagnosis per successful Slurm verification; no timing measurement
-  or speedup claim follows.
+- The [optimization campaign](optimization_campaign.md) owns future tuning
+  candidates. CV-26's source reduction removed one full head diagnosis while
+  retaining exact readmission, storage finalization and final readiness.
+  CV-26 remains Open for its original complete-operation attribution,
+  comparable before/after measurements and institutional E11 timing. The
+  structural change alone establishes no speedup.
 - The [polish campaign](polish-campaign.md) retains earlier audit observations.
   Its overlap is reconciled through the existing main-matrix owners, not a
   parallel implementation queue.
