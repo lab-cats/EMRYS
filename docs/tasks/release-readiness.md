@@ -405,6 +405,23 @@ saved-defaults setup, not all installed Init. The wheel smoke does not call
 or approve a bounded onboarding change with public-command, no-write, and
 resource tests before claiming standalone setup.
 
+## Conditional owner routing
+
+These are dependencies of a **selected claim**, not a second backlog or a
+decision that every route must ship. Status and acceptance remain with the
+linked [findings matrix](backlog_matrix.md).
+
+| If the release promises... | Route the remaining proof or change through... | Decision boundary |
+|---|---|---|
+| A pinned-checkout prerelease | `RELEASE-01` for the exact revision, locked install, public operation check, source/version identity, and consistent guides (R04/R06–R08/R10). | Current checkout `setup` and explicit study manifest may be documented limits; automatic selection makes `INIT-02` relevant. |
+| A wheel paired with a checkout | Package/onboarding owners for a real wheel installer path and proof of which unit supplies executable code, resources, defaults, and the Python lock (R04–R08/R13). | A checkout `uv sync` that installs editable source does not prove the selected wheel. |
+| A standalone wheel with the novice EV/PUM1 journey | `INIT-02` for packaged study selection, onboarding for checkout-free saved defaults, and package/runtime owners for dependency delivery and public full-Run/report evidence (R05/R06/R08/R13). | The separate PR #316 proposal and present wheel smoke do not close this combined path. |
+| Viking or another named site | `SITE-PARITY-01` for exact-revision institutional qualification; add the Viking-specific `CLUSTER-VERIFY-01` campaign when applicable. Screen `RUNTIME-CLOSURE-01` for any claimed installed R dependency closure. | Hosted direct/disposable-Slurm checks cannot substitute for institutional qualification. |
+| Independently installed collaborator analyses | `EXTENSION-01` for provider/reporter discovery through a real installed execution and report. | Parser and entry-point presence alone do not prove the README's collaborator claim. |
+| A selected prerelease schema reset | `SCHEMA-01` and the contract owners for the separately approved identifier/version and field decision with complete caller/evidence review; R09 still requires current public obsolete-Run refusal. | Product v1 numbering does not itself reset schema IDs. |
+| Support for obsolete Runs | A separate explicit change to the ratified version policy would be needed before planning such support. | Current policy requires refusal without changing retained scientific files or evidence; `SCHEMA-01` does not authorize historical readers. |
+| Reviewed report appearance or scientific conclusions | `REPORT-01`–`03` for rendered review, `SCI-AUDIT-01` for independent scientific review, and external adjudication for biological meaning. | Each claim needs its own evidence; a software release need not imply any higher layer. |
+
 ## Proposed readiness sequence
 
 These steps are a decision and evidence plan. They do not authorize code
