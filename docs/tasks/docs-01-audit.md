@@ -139,6 +139,11 @@ permission to change or delete the source.
   F71. Historical scale-probe numbers and a cited merge-tree equality matched
   their named Git records; original VM/Viking runtime artifacts were not in
   the checked trees and were not independently qualified here.
+- The twenty-first read-only pass at `b3af5d9e` compared reporting and profile
+  scope with source, traced selected reference and Step 07–10 input/output
+  claims, and checked historical report golden digests against their parent
+  revisions. It added F72–F73 and refined F20. The selected stage claims had
+  no further high-confidence mismatch; no producer, report, or runtime ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -243,6 +248,8 @@ and the boundary for each row.
 | [F69](docs-01-discoveries-third.md#f69-python-shard-inventory-scope) | Test-scope overclaim | Test baseline says CI shards the complete Python inventory; two test files are excluded from the shard plan and receipts. | Ordinary CI runs them separately; scheduled Python 3.11 shards do not establish all-test coverage. |
 | [F70](docs-01-discoveries-third.md#f70-omitted-site-does-not-always-mean-direct) | Conditional reader-route error | Runbook says omitting `--site` creates a direct profile; `EMRYS_SITE=viking` from process or saved settings makes both Init parsers select Slurm. | This does not affect the no-default case; no command was run. |
 | [F71](docs-01-discoveries-third.md#f71-quickstart-projects-home-default-and-later-path) | Conditional reader-route error | Quickstart says later commands use the Projects home accepted during setup, but validation and reconnect hard-code the repository Projects path. | An inherited alternate home changes the saved destination; no command was run. |
+| [F72](docs-01-discoveries-third.md#f72-automatic-reporting-scope-for-processing-only-runs) | Run-scope wording | Reporting owner README says Run/resume report automatically unless disabled; successful processing-only Runs have reporting not applicable. | The owner contract and direct fixture distinguish full from partial Runs. |
+| [F73](docs-01-discoveries-third.md#f73-profile-create-explicit-placement-requirement) | Conditional CLI wording | Coordinator contract says profile creation requires explicit site or placement; the parser accepts inherited `EMRYS_SITE` as the selection. | Explicit selection remains required with no site default. |
 
 ## Discovery notes
 

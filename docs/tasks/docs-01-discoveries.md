@@ -410,6 +410,12 @@ dated prose blocks: `2fc9e68e` (lines 12–17), `ef321aa1` (19–27),
 `4c67b371` (51–57). An introduction commit is not itself the predecessor
 oracle or proof of a byte comparison; recover the old and new literal values
 and retained check result before a history transfer.
+At audit head `b3af5d9e`, a read-only Git comparison of the literal
+`report_html.sha256` file with each introduction commit's parent found the
+scientific digest unchanged across `2fc9e68e`, `8499b75e`, `f4435527`, and
+`4c67b371`, and changed at `ef321aa1` and `8a75f588` where the prose describes
+rendering or link changes. This supports the stated fixture lineage, not an
+independent renderer replay or proof of the original HTML comparison.
 
 ### F21 — Coordinator contract's no-write section
 

@@ -3,7 +3,7 @@
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
 holds F62 onward. F62–F64 use PR head `b67e0eeb`; F65–F66 began at
 `cf94af08`, with F66 extended at `9c4fafdc`; F67–F70 use `c0a6027a`;
-F71 uses `9c4fafdc`, all read on 2026-09-22.
+F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`, all read on 2026-09-22.
 These are documentation observations, not runtime results or accepted changes.
 
 ## Discovery notes
@@ -160,3 +160,36 @@ The same Quickstart lines say to leave the optional log root empty, while an
 inherited `EMRYS_LOG_ROOT` is saved without prompting at onboarding lines
 237–250. These are conditional reader-route mismatches, not failures in a
 fresh environment with no such process defaults. No command was run.
+
+### F72 — Automatic reporting scope for processing-only Runs
+
+The [reporting owner](../../src/emrys/reporting/README.md) lines 3–5 says
+`emrys run` and `resume` report automatically unless `--no-report` is set and
+describes `emrys report [RUN]` without a Run-scope qualification. A supported
+[processing-only route](../operations/RUNBOOK.md) lines 510–521 creates a
+successful Steps 00–06 Run with no report. In
+[control](../../src/emrys/orchestration/run_coordinator/control.py) lines
+1489–1516 and 1569–1570, reporting is not applicable to a partial scientific
+Run and returns before invoking the report operation. The
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 1200–1205 states this distinction, and a
+[direct fixture](../../tests/orchestration/run_coordinator/test_reporting_operation.py)
+lines 187–214 checks that explicit reporting refuses processing-only Runs
+without writes. The owner README's automatic-reporting description lacks
+the full-Run condition. This is a static source/test comparison; no Run or
+report was executed.
+
+### F73 — Profile create explicit placement requirement
+
+The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 828–830 says `emrys profile create NAME` requires an explicit built-in
+site or direct/Slurm placement. Its [parser](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+lines 311–317 makes the choice optional when `EMRYS_SITE` is set, and the
+[shared site argument](../../src/emrys/orchestration/run_coordinator/execution_profile.py)
+lines 57–62 defaults from that environment. Profile creation at onboarding
+lines 349–375 uses the resulting site when `--placement` is absent. The
+[source test](../../tests/orchestration/run_coordinator/test_onboarding.py)
+lines 285–298 confirms `profile create cluster` selects `viking` without a
+placement flag when `EMRYS_SITE=viking`. The requirement is conditional:
+explicit selection is still required with no site default. This is a parser
+and source-test comparison; no profile was created.
