@@ -25,9 +25,9 @@ when the bounded outcome is accepted; move lasting behavior to its owner documen
 | ID | Finding and current discovery | Level | Next discovery or proof |
 | --- | --- | --- | --- |
 | `EX-01` | The accepted row requires one independently installable Analysis and reporter through real discovery, configuration, planning, execution, independent validation, and reporting. The prior collaborator test substitutes loaders. | Observed | Trace one public path without loader substitution and preserve the mocked test's distinct checks. |
-| `EX-02` | The descriptor permits exactly Step `09`, optionally followed by `10`. Step `08` sites expose gene IDs; the proposed TSV plus validation report fits current artifact kinds. No collaborator method is selected by the card. | Observed / Open | Select the intended method and freeze its input, output, zero-row, multi-gene, ordering, and configuration semantics before coding. |
-| `EX-03` | Installed provider and reporter entry points already exist, with package-level discovery and content identity. No separately packaged example is present. | Observed | Build a separate wheel in a disposable environment and prove both entry points resolve from it. |
-| `EX-04` | The planner distinguishes working outputs from final outputs. An external Step `09` task follows native publication **before** independent validation; the built-in prepublication exception does not apply. | Observed | Exercise success and failed-validation preservation through the public runner; do not promise built-in rollback behavior. |
+| `EX-02` | Step `08` sites permit a descriptive candidate-to-annotated-gene tally from transcript-span assignments, with `NA` and multi-gene rows. Only the sites adapter is needed for that calculation; method and edge-case policy remain open. | Observed / Proposed / Open | Select the method; freeze a literal oracle, input adapters, threshold, `NA`, ordering, and header-only semantics before coding. |
+| `EX-03` | Discovery requires one package-level entry point per name and distribution-owned package callbacks; identity excludes distribution metadata files. No separately packaged example is present. | Observed | Build a separate non-editable wheel; prove both entries and callbacks resolve from its owned files, including missing/duplicate refusal. |
+| `EX-04` | The planner checks all **declared** inputs, while an external Step `09` publishes native outputs before independent validation. Core all-pass does not enforce a fixed check roster. | Observed | Check exact consumed inputs and validator roster; exercise success and failed-validation preservation through the public runner. |
 | `EX-05` | The reporter uses a fixed public carrier and core report transaction. Its HTML must satisfy the core safety, identity, and accessibility checks. | Observed | Render and re-admit a real example report through public commands, with literal expected content. |
 | `EX-06` | Run readmission binds module metadata and implementation bytes, but ignores a distribution-release-number-only change when content and module semantics remain identical. | Observed | Test refusal for changed module version or bytes; state distribution version behavior accurately. |
 | `EX-07` | Doctor checks declared dependencies and never installs them. The installed-wheel test already creates a disposable `uv` environment although engineering prose says tests never install. | Observed / Open | Decide and explicitly authorize the isolated two-wheel test setup; clarify the policy wording without adding product-time installation. |
@@ -56,13 +56,28 @@ built-in provider demonstrates a Step `09` dependency on Step `08` sites, input 
 in [`paired_cmh_candidate_ranking/__init__.py`](../../src/emrys/analyses/paired_cmh_candidate_ranking/__init__.py), lines 358–376. Step `08` gives each candidate `gene_ids` as `NA` or a
 semicolon-delimited, duplicate-free list ([`step08.py`](../../src/emrys/contracts/scientific_evidence/step08.py), lines 64–87 and 267–299).
 
+The [Step `08` annotation owner](../../src/emrys/stages/cohort_candidate_preprocessing/_step_08_annotation.R) assigns those IDs from strand-compatible **transcript-span** overlaps, including introns, then sorts and deduplicates them. The [sites contract](../../src/emrys/contracts/scientific_evidence/step08.py) admits a header-only table and requires unique candidate IDs. Step `08` can retain intergenic candidates, and its orientation-to-strand mapping remains provisional under the [stage contract](../../src/emrys/stages/cohort_candidate_preprocessing/CONTRACT.md). Thus a row is one mechanically labeled candidate, not necessarily one genomic locus or an exonic event. Two orientation candidates at one locus remain two candidates if present.
+
 **Proposed example, pending method selection:** count candidate-to-gene assignments from Step `08`
 in Step `09`. A candidate with two gene IDs contributes once to each, so the sum can exceed the
-number of candidate rows. Define an `NA` bucket, deterministic sort, a strict normalized
-configuration such as `minimum_count`, header-only behavior, and exact TSV bytes before
-implementation. This is a descriptive computational demonstration, not an editing-site or biological
-claim. If a real collaborator method needs an earlier stage, another task slot, or an unsupported
-artifact, document that concrete gap and stop before changing the public interface.
+number of candidate rows. The descriptor can name only the `step08_sites_v1` input adapter for this
+calculation; include the input receipt or summary only if the method actually consumes it for a
+stated check. The Step `08` predecessor edge still supplies the task completion barrier. One
+possible literal oracle, **if** lexicographic gene ordering and threshold `1` are selected, is
+assignments `A;B`, `A`, `NA` producing UTF-8 bytes
+`gene_id\tcandidate_count\nA\t2\nB\t1\nNA\t1\n`. Threshold `2` would retain only `A\t2`.
+Decide whether the threshold applies to `NA`, how `NA` sorts, and whether empty input or filtering
+produces a header-only TSV. A same-strand overlapping-gene fixture is needed to demonstrate a real
+multi-gene Step `08` row; the existing [stage test](../../tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.R) does not establish that case. This is a descriptive computational demonstration, not an editing-site or biological claim.
+
+The [configuration admission boundary](../../src/emrys/analyses/__init__.py) validates authored JSON,
+passes a canonical copy and path-neutral Project facts to the normalizer, validates the normalized
+result again, then canonicalizes it. Planning later supplies an immutable projection. A proposed
+`minimum_count` default must come from that admission context, not from opening a Step `08` output
+during Project admission. Test that equivalent authored forms yield the same normalized policy and
+Analysis ID, and that unknown keys fail. If a real collaborator method needs an earlier stage,
+another task slot, or an unsupported artifact, document that concrete gap and stop before changing
+the public interface.
 
 ### EX-03 — separate package and real discovery
 
@@ -70,24 +85,36 @@ The core wheel declares built-in `emrys.analysis_modules` and `emrys.analysis_re
 [`pyproject.toml`](../../pyproject.toml), lines 42–46. [`admit_installed_provider`](../../src/emrys/libraries/installed_package_identity.py), lines 345–438, selects exactly one package-level entry
 point and binds installed distribution-owned files. The repository has no separate example
 distribution. A proposed example belongs outside `src/emrys`, with both matching entry-point names
-in its own package metadata. A non-editable wheel in the selected environment is the credible
-discovery case; no new registry, installer, workflow graph, or core entry point is indicated.
+in its own package metadata. Entry values must be package-level `package:callable`, resolve without
+ambiguity, and load package-owned descriptor callbacks; provider, reporter, producer, and validator
+should live in that distribution rather than leak imports from the checkout. Its content digest
+excludes `.dist-info` and `.egg-info`, so it must not be described as a hash of all wheel metadata.
+A non-editable wheel in the selected environment is the credible discovery case. Include missing
+and duplicate entry-point refusal cases; no new registry, installer, workflow graph, or core entry
+point is indicated.
 
 ### EX-04 — planning, validation, and recovery
 
 [`TaskPlanningContextV2`](../../src/emrys/analyses/__init__.py), lines 94–113, supplies admitted inputs, working and final output paths, resource
 threads, and a controlled Python command builder. [`materialization.py`](../../src/emrys/orchestration/run_coordinator/materialization.py), lines 1066–1207, checks that the
-returned plan includes every declared input. Its `validator_command` helper targets core
+returned plan includes every declared input, unique paths, and unique provenance roles. It cannot
+discover an extra file that the worker actually reads but never declares, so the example test must
+compare planned roles and paths with worker consumption. Its `validator_command` helper targets core
 `emrys validate` routes (lines 285–295); a collaborator's own validator should use `python_command` with
 its installed module. The validator must independently recompute the proposed counts and publish the
 exact seven-column report header defined by [`emrys.libraries.validation`](../../src/emrys/libraries/validation/report.py), lines 13–21. The core [`all_pass.py`](../../src/emrys/orchestration/run_coordinator/all_pass.py),
-lines 33–105, requires a nonempty, all-pass report; a zero process exit alone is insufficient.
+lines 33–105, requires a nonempty, all-pass report with matching Step/scope and unique check IDs;
+it does **not** require a fixed roster or order. Give the example a literal expected check-ID list
+and order, and consider `AnalysisArtifactV1.exact_data_rows` for a fixed validation roster. The
+independent validator must compute from admitted sites, rather than call the producer's count helper;
+generic TSV admission checks shape and rows, not tally semantics.
 
 [`task.py`](../../src/emrys/orchestration/run_coordinator/task.py), lines 1742–1758 and 2732–2782, gives prepublication validation only to named built-in
 owners. External Step `09` publishes native outputs, runs its validator, then requires all-pass.
 Failed validation therefore leaves evidence and output state under the [runner's preservation contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle). The example
-must not write outside supplied working and scratch paths or delegate work to preexisting or remote
-processes.
+validator must read final `outputs` and write its own validation report at the supplied
+`validation_report_path`; that report is excluded from producer outputs. The example must not write
+outside supplied working and scratch paths or delegate work to preexisting or remote processes.
 
 ### EX-05 — scientific reporter boundary
 
