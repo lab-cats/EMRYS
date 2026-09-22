@@ -40,7 +40,7 @@ creation or completion.
 
 | No. | Boundary | Source-grounded discovery | Unsettled choice or next evidence |
 | --- | --- | --- | --- |
-| [1](#1-public-entry-and-manual-route) | Public entry | Bare `emrys` currently requires a command. Explicit owner commands already provide manual control. | Select the guided entry, default transition, manual route, and nonterminal behavior. |
+| [1](#1-public-entry-and-manual-route) | Public entry | Bare `emrys` currently exits with usage error; marked saved settings load even before help/version parsing. Explicit owner commands already provide manual control. | Select the guided entry, default transition, advanced route, and nonterminal behavior. |
 | [2](#2-bootstrap-and-saved-settings) | Setup | Setup is checkout-bound, defaults to a dry-run, and creates one `.env` only with `--execute`; the CLI loads saved settings once before dispatch. | Decide same-invocation approval and exact propagation of newly saved values. |
 | [3](#3-project-context) | Project | Named Init uses the selected Projects home or current directory; Project-aware commands use an exact Project path and never search parents for one. | Define new versus existing selection without newest-Project or partial-root inference. |
 | [4](#4-scientific-input-questions) | Scientific intent | Init already asks for reference, FASTQs, assignments, comparison, regions, target, and disclosed defaults. | Reuse its questions; review a complete prompt transcript and refusal paths. |
@@ -49,19 +49,21 @@ creation or completion.
 | [7](#7-read-only-project-validation) | Validation | Existing validation re-admits Project inputs and scientific compatibility without writing, including FASTQ content rehashing. | Budget repeated reads and stop on failure without promoting it to runtime proof. |
 | [8](#8-runtime-source-and-admission) | Runtime | This branch uses an exact donor or current environment; sibling PR #320 proposes a bounded donor picker. Reuse can write in two Projects. | Keep source choice explicit, report both mutation paths, and preserve partial evidence. |
 | [9](#9-doctor-readiness-and-repair) | Doctor | Diagnosis is read-only; confirmed maintenance and Slurm qualification remain Doctor-owned. | Distinguish ready, declined, blocked, and repaired outcomes; carry one exact profile. |
-| [10](#10-direct-and-slurm-run-approval) | Run | Direct execution confirms a frozen Run plan. Slurm confirms a submission/resource request; its Run plan is built later on compute. | Specify truthful review language and retain duplicate-request refusal. |
+| [10](#10-direct-and-slurm-run-approval) | Run | Interactive direct execution confirms a frozen Run plan. Slurm confirms a submission/resource request; its Run plan is built later on compute. | Bind exact Analysis and reviewed request; retain duplicate-request refusal. |
 | [11](#11-submission-and-watch-handoff) | Monitoring | Submission retains a request before `sbatch`. Numeric `watch JOB_ID` is scheduler-only diagnostic selection. | Hand off the exact Project request, then re-admit any later Run association. |
 | [12](#12-return-recovery-and-completion) | Return | Inspection owns completion and recovery from admitted evidence, including ambiguous requests. | Define re-entry without persistent wizard state or automatic resubmission. |
 | [13](#13-owner-results-and-maintenance-footprint) | Composition | Several public handlers return zero for both no-write preview and success; owners already implement admission, repair, and scheduling. | Audit private outcomes and caller-complete consolidation; quantify any product-growth exception. |
 | [14](#14-presentation-documentation-and-proof) | Acceptance | The Quickstart still chains separate commands; terminal and evidence levels have distinct contracts. | Draft novice wording, terminal cases, hosted checks, and separate Viking acceptance. |
 
-## First-pass discoveries
+## Findings and source discoveries
 
 ### 1. Public entry and manual route
 
 **Observed.** [`__main__.py`](../../src/emrys/__main__.py) lines 224-241 and
-349-384 registers owner commands and errors if `COMMAND` is absent. `--help`,
-`--version`, and explicit commands already have public behavior. The installed
+349-384 registers owner commands and exits with usage error 2 if `COMMAND` is
+absent. It loads a marked current/ancestor `.env` *before* parsing any command,
+so malformed saved settings can also block `--help` and `--version` with exit 2.
+Those options and explicit commands already have public behavior. The installed
 CLI is the interaction owner and carries no scientific semantics
 ([architecture](../architecture/ARCHITECTURE.md#responsibility-boundaries)).
 The `emrys` console script enters the controlled Python launcher declared in
@@ -70,10 +72,15 @@ imports (`source_authority.py` lines 146-153). That launch isolation is an
 adjacent contract to preserve, not a second guide entry to introduce.
 
 **To settle.** A candidate is bare `emrys` on a TTY for guidance, retaining
-explicit subcommands as the manual route. An explicit guide command or an
-`--advanced` flag would change the public surface differently. Check TTY and
-non-TTY invocation, help/version, unknown flags, exits, and installed-command
-parity before selecting a transition. No spelling is approved here.
+explicit subcommands as the manual route. Whether that route satisfies the
+operator's requested opt-in advanced mode is an open decision; neither the
+`--advanced` spelling nor a default-mode transition is approved. Changing bare
+`emrys`'s existing exit-2 behavior itself needs public-contract approval, even
+without a new flag. Check TTY and non-TTY invocation, clean and malformed
+saved settings, help/version, unknown flags, exits, and both the installed
+console launcher and isolated `-m emrys` path. Existing public tests cover
+isolated help/version and named commands, but no bare-command TTY journey was
+found (`test_public_cli_contracts.py` lines 482-532 and 713-800).
 
 ### 2. Bootstrap and saved settings
 
@@ -268,13 +275,22 @@ readiness. A saved Viking site does not admit an implicit direct profile. The
 confirmed `--repair` path alone may use established package managers and, for
 Slurm placement, qualifies compute runtime/storage then finalizes on the head
 node (lines 1537-1785 and 2023-2134). Head readiness alone does not skip that
-site qualification. Declined or blocked repair can both return one.
+site qualification. Declined or blocked repair can both return one. Doctor
+cannot repair every blocker: an unadmitted installed package, invalid execution
+profile, failed Python checks, custom analysis dependencies, and site/user-owned
+inventory have their own refusal or remediation (`doctor.py` lines 518-524,
+640-670, and 835-925).
 
 **To settle.** Carry the same explicitly selected profile into Doctor and Run.
 Keep diagnosis, repair approval, package installation, and qualification with
 Doctor; distinguish `already ready`, `declined`, `blocked`, and `qualified` in an
 owner result. Preserve one maintenance log and retained partial evidence. Check
 read-only diagnosis and refusal (`test_doctor.py` lines 432, 972, 1077, 2575).
+The guide should stop on an owner-supplied external remediation instead of
+repeating `--repair`; Doctor normally runs on the head node. An already ready
+direct profile can return without repair, while explicitly requested Slurm
+repair may still plan qualification. Run loads the profile afresh, so any
+Doctor-to-Run drift must be re-admitted rather than carried as durable readiness.
 PR #307 adds a selected synthetic E2E assertion for Doctor timing records; a
 retained timing measurement is still separate from a passing hosted run and
 from Viking readiness or utilization proof.
@@ -285,10 +301,11 @@ from Viking readiness or utilization proof.
 frozen plan before its execution confirmation (`control.py` lines 1766-1789).
 The automation option skips that pre-execution display and builds inside the
 execution path; it cannot stand in for a guide's reviewed-plan approval. For
-Slurm, `_finish_control` calls
-`_schedule` *before* building the Run plan (lines 1755-1765); the head node
-shows the Analysis label and admitted allocation request, while the immutable
-Run plan is built on the compute delegate. The retained duplicate-request
+Slurm, `_finish_control` calls `_schedule` *before* building the Run plan (lines
+1755-1765); the head node shows the submitted Analysis name only if
+`--analysis` was supplied. Otherwise it says selection will occur from the
+Project on the compute node. It also shows the admitted allocation request,
+while the immutable Run plan is built on the compute delegate. The retained duplicate-request
 check refuses a matching active or unconfirmed request before `sbatch` unless
 the operator explicitly supplies the advanced override (lines 1104-1165).
 
@@ -301,6 +318,15 @@ see `test_materialization.py` lines 3048, 3158, 4692, 4783, and 5027-5218.
 Direct Run's zero exit can include a completed computation with only partial
 scientific output or intentionally disabled reporting; the guide must use the
 existing admitted result and inspection language for any stronger claim.
+Select and review the exact Analysis before approval or explicitly retain the
+compute-side selection limit. `_schedule` generates its request token before
+the preview; rerunning it after a separate guide preview would make a different
+request. Reuse the same admitted owner plan through confirmation, just as the
+interactive direct path reuses its frozen plan. The duplicate-risk scan occurs
+before the interactive wait; source review found no second scan after that
+wait in `_schedule`. Review the commit boundary and adjacent protections before
+claiming atomic duplicate prevention. Test one approved action and exact
+preview-to-commit identity without a hidden `--execute` bypass.
 
 ### 11. Submission and watch handoff
 
@@ -367,6 +393,10 @@ The public outcomes that composition must distinguish are:
 | Doctor | Read-only diagnosis returns 0 when ready and 1 when not ready. With `--repair`, blocked or declined preview returns 1; interrupted repair returns 130. | Confirmed repair or `--execute` can return 0 after final readiness; an already ready direct profile can return 0 without any repair prompt, while Slurm qualification still has its site path. |
 | Direct Run | No/blank/EOF or nonterminal omission of `--execute` previews a frozen plan and returns 0 without executing. | Confirmation executes that plan; `--execute` bypasses its pre-execution display, and a zero result has the existing limited Run/report meaning. |
 | Slurm Run | No/blank/EOF or nonterminal omission of `--execute` previews a submission request and returns 0 without submission; the duplicate guard can stop with 2. | Confirmation or `--execute` retains a request before `sbatch`; zero means accepted submission, not Run creation or completion. |
+
+If sibling PR #320 is integrated, its donor picker adds another zero-result
+no-write path when no candidate is selected. It must remain distinct from an
+admitted runtime outcome.
 
 **To settle.** Evaluate private structured outcomes at each real owner boundary
 while keeping the public integer adapter and output contract. Compare exact
@@ -439,8 +469,12 @@ novice Viking journey.
 **To settle.** Once a selected guide works, make Quickstart one linear head-node
 journey and retain manual procedures with their owners. Use tiny local fixtures
 for TTY/PTY, refusal and EOF at every approval boundary, source-bound and
-installed CLI entry, `NO_COLOR`, nonterminal behavior, changed inputs, exact
-runtime/profile selection, duplicate submission, and request-based watch.
+installed CLI entry, `NO_COLOR`, `TERM=dumb`, redirected input/output,
+nonterminal behavior, changed inputs, exact runtime/profile selection, duplicate
+submission, and request-based watch.
+Cover the controlled console launcher and isolated `-m emrys` entry, clean and
+malformed `.env`, bare and named commands, exact owner exits, and no writes on
+refusal in their existing test owners rather than adding a second harness.
 Run applicable hosted checks on the exact implementation commit. A fresh
 novice Viking walkthrough and site observations remain separate; no biological
 interpretation follows from software or scheduler success.
@@ -476,18 +510,18 @@ edit product code.
    Verify with focused local checks, applicable hosted CI, and separately
    authorized institutional novice acceptance.
 
-Stop and return for a decision if the design needs a new public command/flag,
-unapproved scientific default, new persistent state/schema/dependency,
+Stop and return for a decision if the design changes bare-command behavior,
+needs a new public command/flag, an unapproved scientific default, new persistent
+state/schema/dependency,
 cross-owner policy, changed mutation or recovery authority, evidence deletion,
 or a quantified product-code/file-growth exception. Implementation uses one
 authorized worktree and branch based on a rechecked target head.
 
-## Next discovery pass
+## Remaining evidence and decisions
 
-The matrix now includes source behavior, sibling PR deltas, and a measured
-candidate footprint. The next iteration should pin the then-current target,
-resolve the INIT-02 sibling's disposition, and record exact public
-prompt/exit behavior in an installed environment when one is available. Then
-draft the full novice transcript and a bounded implementation slice with
-quantified product-code change. Keep INTERACTIVE-01 status and acceptance in
-the main backlog.
+The source findings need a target refresh when sibling PRs are integrated.
+Resolve the INIT-02 and CV-U22 sibling dispositions and record exact public
+prompt/exit behavior in an installed environment when one is available. Draft
+the full novice transcript and a bounded implementation slice with quantified
+product-code change. Keep INTERACTIVE-01 status and acceptance in the main
+backlog.
