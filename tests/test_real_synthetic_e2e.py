@@ -397,12 +397,9 @@ def test_stop_rejects_ambiguous_compute_materialized_runs(
 
     workspace = tmp_path / "workspace"
     run_roots = tuple(
-        workspace / "runs" / ("run-" + character * 64)
-        for character in ("a", "b")
+        workspace / "runs" / ("run-" + character * 64) for character in ("a", "b")
     )
-    monkeypatch.setattr(
-        inspection, "project_run_roots", lambda _workspace: run_roots
-    )
+    monkeypatch.setattr(inspection, "project_run_roots", lambda _workspace: run_roots)
 
     with pytest.raises(driver.DriverError, match="materialized multiple Runs"):
         driver.await_run_root(

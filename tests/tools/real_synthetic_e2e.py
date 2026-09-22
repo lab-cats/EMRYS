@@ -656,9 +656,7 @@ def await_run_root(
         if len(run_roots) == 1:
             return run_roots[0]
         if len(run_roots) > 1:
-            raise DriverError(
-                "native-stop", "submitted job materialized multiple Runs"
-            )
+            raise DriverError("native-stop", "submitted job materialized multiple Runs")
         status = _scheduler((str(scontrol), "show", "job", "-o", job.job_id), cwd)
         if status.returncode:
             raise DriverError("native-stop", "scheduler lost the selected job")
