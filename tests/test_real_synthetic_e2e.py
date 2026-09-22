@@ -198,6 +198,27 @@ def test_adapters_and_explicit_fixture_resource_projection(tmp_path: Path) -> No
     assert admitted.resource_policy.document() == driver.symbolic_resource_document()
 
 
+def test_native_gate_adapter_passes_version_probe_without_claiming_gate(
+    tmp_path: Path,
+) -> None:
+    gate = tmp_path / "native-stop-gate"
+    armed = gate.with_suffix(".armed")
+    armed.write_text("armed\n")
+    adapter = tmp_path / "samtools"
+    adapter.write_bytes(driver.samtools_gate_adapter_bytes(Path("/bin/echo"), gate))
+    adapter.chmod(0o700)
+    observed = subprocess.run(
+        [str(adapter), "--version"],
+        env={"EMRYS_TASK_WORK_DIR": str(tmp_path)},
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    assert observed.stdout == "--version\n"
+    assert armed.is_file()
+    assert not gate.with_suffix(".claimed").exists()
+
+
 def test_runtime_environment_seals_science_adapters_and_managed_utilities(
     tmp_path: Path,
 ) -> None:
@@ -224,7 +245,8 @@ def test_runtime_environment_seals_science_adapters_and_managed_utilities(
     )
 
     environment = driver.runtime_environment(
-        SimpleNamespace(adapters=adapters), runtime
+        SimpleNamespace(adapters=adapters, native_gate=tmp_path / "native-stop-gate"),
+        runtime,
     )
 
     assert environment["PATH"] == str(adapters)
@@ -232,6 +254,8 @@ def test_runtime_environment_seals_science_adapters_and_managed_utilities(
         name: (adapters / name).readlink() for name in driver.DISCOVERY_UTILITIES
     } == {name: native_bin / name for name in driver.DISCOVERY_UTILITIES}
     assert all((adapters / name).is_file() for name in adapted)
+    assert (adapters / "samtools").is_file()
+    assert not (adapters / "samtools").is_symlink()
 
 
 def test_run_submission_and_wait_failure_cancel_once(
@@ -294,6 +318,50 @@ def test_run_submission_and_wait_failure_cancel_once(
     assert (job.state, job.exit_code) == ("FAILED", "1:0")
 
 
+def test_intentional_stop_observation_never_reissues_cancellation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        driver,
+        "_scheduler",
+        lambda argv, _cwd: subprocess.CompletedProcess(argv, 124, "", "timeout"),
+    )
+    monkeypatch.setattr(
+        driver,
+        "cancel_job",
+        lambda *_args, **_kwargs: pytest.fail("stop observation retried cancellation"),
+    )
+    with pytest.raises(driver.DriverError, match="scontrol failed"):
+        driver.wait_for_job(
+            _submission(tmp_path),
+            log_dir=tmp_path,
+            scontrol=Path("scontrol"),
+            scancel=Path("scancel"),
+            cwd=tmp_path,
+            timeout_seconds=1,
+            poll_seconds=0.01,
+            expected=None,
+            cleanup_on_failure=False,
+        )
+
+
+def test_transcripts_retain_partial_output_on_bounded_timeout(tmp_path: Path) -> None:
+    transcripts = driver.Transcripts(tmp_path)
+    with pytest.raises(driver.DriverError, match="partial streams retained"):
+        transcripts.run(
+            "bounded-command",
+            [
+                sys.executable,
+                "-c",
+                "import sys, time; print('started', flush=True); time.sleep(5)",
+            ],
+            cwd=tmp_path,
+            timeout_seconds=0.1,
+        )
+    assert (tmp_path / "01-bounded-command.stdout.log").read_bytes() == b"started\n"
+    assert transcripts.records[0]["timed_out"] is True
+
+
 @pytest.mark.parametrize("job_id", ("42", "700123"))
 def test_submission_requires_matching_request_token_and_job_id(
     tmp_path: Path, job_id: str
@@ -303,6 +371,22 @@ def test_submission_requires_matching_request_token_and_job_id(
     assert job.job_id == job_id
     assert job.stdout == logs / f"emrys-{'a' * 32}-{job_id}.out"
     assert job.stderr == job.stdout.with_suffix(".err")
+
+
+def test_submission_request_requires_one_exact_project_local_path(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    request = workspace / "logs" / f"submission-{'a' * 32}"
+    assert (
+        driver.parse_submission_request(f"Submission request: {request}\n", workspace)
+        == request
+    )
+    for text in (
+        f"Submission request: {request}\nSubmission request: {request}\n",
+        f"Submission request: {tmp_path / 'other' / 'logs' / request.name}\n",
+        f"Submission request: {workspace / 'logs' / 'submission-short'}\n",
+    ):
+        with pytest.raises(driver.DriverError):
+            driver.parse_submission_request(text, workspace)
 
 
 @pytest.mark.parametrize(

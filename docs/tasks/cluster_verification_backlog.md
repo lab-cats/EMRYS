@@ -2116,8 +2116,9 @@ native cancellation through Snakemake and combined restricted export/UID lookup
 now have the bounded fixtures below. Actual Slurm/site cancellation,
 absent/rejected site memory policy and cross-node inspection still require
 the corresponding institutional journeys. The integrated standard CI recorded
-above passed the active managed golden path and all other active jobs. CV-01 is
-**Verification pending** for the corresponding institutional journeys.
+above passed the active managed golden path and all other active jobs. At that
+earlier checkpoint, CV-01 was **Verification pending** for the corresponding
+institutional journeys.
 
 **Real-backend cancellation boundary:** The existing public materialization
 harness now includes real Snakemake, Task-wrapper and separate native process
@@ -2164,12 +2165,36 @@ gaps distinct from the later institutional rerun. CV-01 returns to **Open**;
 existing hosted results remain valid for the narrower cases they exercised.
 
 **Disposable Slurm prerequisite:** The separately selected real-Slurm CI lane
-must provide a supported, version-matched client, controller, worker, and
-accounting service and prove exact cluster-scoped observation before its
-synthetic journey. This makes controller-filtered cancellation testable on a
-disposable host; it does not itself exercise active-native-Task cancellation.
-That missing journey and the institutional memory-policy and cross-node cases
-remain CV-01 acceptance work. CV-01 stays **Open**.
+now configures a supported, version-matched client, controller, worker, and
+accounting service and requires exact cluster-scoped observation before its
+synthetic journey. That infrastructure alone does not exercise active-native-
+Task cancellation or establish a Viking result.
+
+**Selected source/journey slice (hosted CI pending):** The 130-pair real-Slurm
+journey now inspects each qualified Project before a Run exists. It retains the
+existing direct/Slurm pre-Task failure, public resume, final scientific oracle,
+and report parity. In the Slurm Run, an additional resume enters a Task with a
+test-gated, pinned real `samtools view` child: the adapter preserves that Task
+invocation's options but substitutes a blocking FIFO for its input. The driver
+admits the native process identity, Task start, exact recorded submission and
+active Run; it exercises public submission/Run inspection, a watch snapshot,
+a no-write stop preview and one public controller-filtered `stop --execute`.
+It then requires the native child to exit, a terminal scheduler record, a
+positively closed interrupted Attempt and Task, a no-write resume preview, and
+a distinct public resume to real-tool scientific and reporting completion. The three Slurm
+Attempts and their retained predecessors are checked explicitly; the direct
+journey remains a separate two-Attempt parity comparator. A scheduler
+`CANCELLED` state by itself never authorizes recovery. No hosted result for
+this new journey is claimed until the selected exact-commit CI run passes.
+
+Focused public-flow tests also cover an explicit-memory `sbatch` rejection
+with one invocation, retained stderr and no new Run, and a real local
+Snakemake/Task/native stop followed by public resume. The rejection response
+and local stop's scheduler are controlled fixtures, not site memory-policy or
+controller evidence. The selected hosted lane can establish only disposable,
+single-node Slurm behavior. Absent/rejected Viking memory-policy combinations,
+cross-node inspection, and institutional active-native cancellation remain
+separate acceptance work. CV-01 stays **Open**.
 
 ### CV-02 Individual qualification diagnostics
 

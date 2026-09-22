@@ -3495,7 +3495,9 @@ def test_execute_failure_summary_names_only_proven_owned_lock_and_recovery(
     assert f"Owned recovery: {recovery_path}" in captured.err
 
 
-def _slurm_profile(tmp_path: Path, *, cpus_per_task: int = 12) -> Path:
+def _slurm_profile(
+    tmp_path: Path, *, cpus_per_task: int = 12, memory_mb: int | None = None
+) -> Path:
     profile = tmp_path / "slurm.yaml"
     profile.write_text(
         yaml.safe_dump(
@@ -3507,7 +3509,7 @@ def _slurm_profile(tmp_path: Path, *, cpus_per_task: int = 12) -> Path:
                     "partition": None,
                     "qos": None,
                     "cpus_per_task": cpus_per_task,
-                    "memory_mb": None,
+                    "memory_mb": memory_mb,
                     "time": "01:00:00",
                     "exclusive": False,
                     "nodelist": None,
@@ -5289,8 +5291,15 @@ def test_submission_request_failure_preserves_partial_evidence_before_sbatch(
     assert not (arguments.project.parent / "logs/application").exists()
 
 
-@pytest.mark.parametrize("command", ("run", "resume", "report"))
-@pytest.mark.parametrize("failure", ("binding", "allocation", "planning", "submission"))
+@pytest.mark.parametrize(
+    ("command", "failure"),
+    [
+        (command, failure)
+        for command in ("run", "resume", "report")
+        for failure in ("binding", "allocation", "planning", "submission")
+    ]
+    + [("run", "memory_rejection")],
+)
 def test_public_slurm_errors_keep_control_exit_and_never_retry(
     tmp_path: Path,
     capsys,
@@ -5309,10 +5318,17 @@ def test_public_slurm_errors_keep_control_exit_and_never_retry(
         run_id = "run-" + "a" * 64
         if command == "report":
             (project.parent / "runs" / run_id).mkdir(parents=True)
+    profile_path = _slurm_profile(
+        root,
+        cpus_per_task=12,
+        memory_mb=524_288 if failure == "memory_rejection" else None,
+    )
+    profile_bytes = profile_path.read_bytes()
+    run_roots = tuple(sorted((project.parent / "runs").glob("run-*")))
     arguments = _command_arguments(
         project,
         run=run_id,
-        profile=str(_slurm_profile(root, cpus_per_task=12)),
+        profile=str(profile_path),
         execute=True,
     )
     scheduler = control.slurm_submission
@@ -5338,19 +5354,28 @@ def test_public_slurm_errors_keep_control_exit_and_never_retry(
         monkeypatch.setenv("SLURM_JOB_ID", "0")
     submitted = root / "submitted"
     rejector = root / "sbatch"
+    rejection = (
+        b"sbatch: error: Memory specification can not be satisfied\n"
+        if failure == "memory_rejection"
+        else b"sbatch: invalid account\n\x1b[31m"
+    )
     rejector.write_text(
         f"#!{sys.executable}\n"
         "import os, pathlib\n"
         "os.close(0)\n"
         f"with pathlib.Path({str(submitted)!r}).open('ab') as stream: stream.write(b'once\\n')\n"
-        "os.write(2, b'sbatch: invalid account\\n\\x1b[31m')\n"
+        f"os.write(2, {rejection!r})\n"
         "raise SystemExit(23)\n"
     )
     rejector.chmod(0o700)
     original_plan = scheduler.plan_submission
+    planned_submissions = []
 
     def plan_rejected(*args, **kwargs):
         planned = original_plan(*args, **kwargs, sbatch=str(rejector))
+        planned_submissions.append(planned)
+        if failure == "memory_rejection":
+            assert "--mem=524288M" in planned.argv
         return replace(
             planned, batch_script=planned.batch_script + "# padding\n" * 100_000
         )
@@ -5376,15 +5401,28 @@ def test_public_slurm_errors_keep_control_exit_and_never_retry(
         "allocation": "canonical positive decimal",
         "planning": "scheduler log directory must not contain",
         "submission": "job ID unconfirmed",
+        "memory_rejection": "job ID unconfirmed",
     }
     assert expected[failure] in output.err
     assert "\x1b" not in output.err
-    if failure == "submission":
+    if failure in {"submission", "memory_rejection"}:
         assert submitted.read_bytes() == b"once\n"
+        assert len(planned_submissions) == 1
         assert "sbatch exited with 23" in output.err
-        assert "invalid account" in output.err
-        (request_path,) = (project.parent / "logs").glob("submission-*/sbatch.stderr")
-        assert request_path.read_bytes() == b"sbatch: invalid account\n\x1b[31m"
+        assert (
+            "Memory specification can not be satisfied"
+            if failure == "memory_rejection"
+            else "invalid account"
+        ) in output.err
+        (request_root,) = (project.parent / "logs").glob("submission-*")
+        assert (
+            json.loads((request_root / "request.json").read_bytes())["command"]
+            == command
+        )
+        assert (request_root / "sbatch.stdout").read_bytes() == b""
+        assert (request_root / "sbatch.stderr").read_bytes() == rejection
+        assert profile_path.read_bytes() == profile_bytes
+        assert tuple(sorted((project.parent / "runs").glob("run-*"))) == run_roots
     else:
         assert not submitted.exists()
     assert not (project.parent / "logs/application").exists()
@@ -6335,7 +6373,7 @@ def _public_native_cancellation_child(
         profile_document["placement"] = slurm_document["placement"]
         profile_path.write_text(yaml.safe_dump(profile_document, sort_keys=False))
         profile = load_execution_profile(config_path=profile_path)
-        request_project, request_root, _context = _request_record(
+        request_project, request_root, request_context = _request_record(
             workspace,
             stdout=b"700123;alpha\n",
             version="v3",
@@ -6468,30 +6506,38 @@ def _public_native_cancellation_child(
             for record in interrupted.reporting_completion_records.values()
         )
         if through_stop:
-            (root / "stop-completed.json").write_text(
-                json.dumps(
-                    {
-                        "run_id": run_id,
-                        "interrupted_attempt": first_id,
-                        "quiescence_checks": quiescence_checks,
-                    }
-                )
-            )
-            return
-
+            # Stop must finish its read-only settlement against this Attempt
+            # before the separate public resume can create another one.
+            release = root / "stop-observed"
+            deadline = time.monotonic() + 30
+            while not release.exists() and time.monotonic() < deadline:
+                time.sleep(0.01)
+            assert release.is_file(), "public stop did not finish before resume"
         receipt_path = first_attempt / "attempt-receipt.json"
         prepared_path = first_attempt / "prepared-attempt-receipt.json"
         active_lock = run_root / "locks/run.lock"
-        receipt_path.rename(prepared_path)
-        (first_attempt / "released-run-lock.json").rename(active_lock)
-        prepared_snapshot = (
-            prepared_path.read_bytes(),
-            prepared_path.stat().st_dev,
-            prepared_path.stat().st_ino,
+        if through_stop:
+            for name in (
+                control.slurm_submission.DELEGATE_MARKER_ENV,
+                control.slurm_submission.PROFILE_SHA256_ENV,
+                control.slurm_submission.SUBMIT_UID_ENV,
+                control.slurm_submission.REQUEST_TOKEN_ENV,
+                "SLURM_JOB_ID",
+            ):
+                patched.delenv(name)
+            receipt_source = receipt_path
+        else:
+            receipt_path.rename(prepared_path)
+            (first_attempt / "released-run-lock.json").rename(active_lock)
+            prepared_preview = inspection.inspect_prepared_finalization(run_root)
+            assert prepared_preview.candidate.record["status"] == "interrupted"
+            assert prepared_preview.prospective_state.recovery_available
+            receipt_source = prepared_path
+        predecessor_receipt = (
+            receipt_source.read_bytes(),
+            receipt_source.stat().st_dev,
+            receipt_source.stat().st_ino,
         )
-        prepared_preview = inspection.inspect_prepared_finalization(run_root)
-        assert prepared_preview.candidate.record["status"] == "interrupted"
-        assert prepared_preview.prospective_state.recovery_available
 
         verified_before = _verified_snapshot(run_root)
         assert verified_before
@@ -6510,6 +6556,59 @@ def _public_native_cancellation_child(
             for path in workspace.rglob("*")
             if path.is_file()
         } == preview_before
+        if through_stop:
+            # The shared request fixture touches project.yaml. A second request
+            # must leave the already admitted Project and predecessor unchanged.
+            resume_token = "b" * 32
+            resume_request = workspace / "logs" / f"submission-{resume_token}"
+            resume_request.mkdir()
+            resume_job_name = f"emrys-{resume_token}"
+            resume_context = {
+                **request_context,
+                "schema_version": "emrys.submission-request.v4",
+                "command": "resume",
+                "requested_run": run_id,
+                "scheduler_job_name": resume_job_name,
+                "scheduler_stdout_pattern": str(
+                    workspace / "logs" / f"{resume_job_name}-%j.out"
+                ),
+                "scheduler_stderr_pattern": str(
+                    workspace / "logs" / f"{resume_job_name}-%j.err"
+                ),
+                "emrys_argv": [
+                    sys.executable,
+                    "-m",
+                    "emrys",
+                    "resume",
+                    run_id,
+                    "--project",
+                    str(project),
+                ],
+            }
+            (resume_request / "request.json").write_bytes(
+                control.slurm_submission.orchestration_contracts.canonical_json_bytes(
+                    resume_context
+                )
+            )
+            control.slurm_submission.validate_request_context(
+                resume_context, project, resume_request
+            )
+            (resume_request / "sbatch.stdout").write_bytes(b"700124;alpha\n")
+            (resume_request / "sbatch.stderr").write_bytes(b"")
+            patched.setenv(
+                control.slurm_submission.DELEGATE_MARKER_ENV,
+                control.slurm_submission.DELEGATE_MARKER,
+            )
+            patched.setenv(
+                control.slurm_submission.PROFILE_SHA256_ENV,
+                profile.binding_sha256,
+            )
+            patched.setenv(control.slurm_submission.SUBMIT_UID_ENV, str(os.getuid()))
+            patched.setenv(
+                control.slurm_submission.REQUEST_TOKEN_ENV,
+                resume_token,
+            )
+            patched.setenv("SLURM_JOB_ID", "700124")
         arguments.execute = True
         assert control.resume_from_args(arguments) == 0
         completed = inspection.inspect_run(run_root)
@@ -6517,14 +6616,20 @@ def _public_native_cancellation_child(
             completed.integrity,
             completed.attempt_outcome,
             completed.results_status,
-        ) == ("valid", "succeeded", "complete")
+            completed.reporting_status,
+        ) == ("valid", "succeeded", "complete", "complete")
         assert not prepared_path.exists() and not active_lock.exists()
         assert (
             receipt_path.read_bytes(),
             receipt_path.stat().st_dev,
             receipt_path.stat().st_ino,
-        ) == prepared_snapshot
+        ) == predecessor_receipt
         assert not completed.recovery_available
+        assert completed.latest_attempt["workflow_attempt_id"] != first_id
+        assert completed.latest_receipt["status"] == "succeeded"
+        assert len(completed.verified_report_locations) == 2
+        if through_stop:
+            assert completed.latest_attempt["placement"]["scheduler_job_id"] == "700124"
         assert len(processes) == 2
         assert quiescence_checks == [
             "before_lock_release",
@@ -6584,10 +6689,12 @@ def _public_native_cancellation_child(
         (root / "cancellation-resume-completed.json").write_text(
             json.dumps(
                 {
+                    "run_id": run_id,
                     "interrupted_attempt": first_id,
                     "completed_attempt": completed.latest_attempt[
                         "workflow_attempt_id"
                     ],
+                    "reporting_status": completed.reporting_status,
                     "quiescence_checks": quiescence_checks,
                 }
             )
@@ -6660,6 +6767,7 @@ def test_public_real_snakemake_native_cancellation_and_stop_outcome(
             active = inspection.inspect_run(run_root)
             assert active.lock_observation == "local live owner"
             assert active.attempt_outcome == "running" and not active.recovery_available
+            assert active.latest_receipt is None
             assert any(
                 item.start_reference and item.record is None for item in active.tasks
             )
@@ -6668,6 +6776,26 @@ def test_public_real_snakemake_native_cancellation_and_stop_outcome(
                 request_root = Path((tmp_path / "stop-request.json").read_text())
                 context = json.loads((request_root / "request.json").read_text())
                 project = Path(context["project"])
+                requests_before = tuple(
+                    sorted((project.parent / "logs").glob("submission-*"))
+                )
+                attempts_before = tuple(sorted((run_root / "attempts").iterdir()))
+                assert (
+                    control.resume_from_args(
+                        _command_arguments(project, run=run_root.name, execute=False)
+                    )
+                    == 2
+                )
+                assert (
+                    "not at an admissible closed-task resume boundary"
+                    in capsys.readouterr().err
+                )
+                assert tuple(
+                    sorted((project.parent / "logs").glob("submission-*"))
+                ) == requests_before
+                assert tuple(sorted((run_root / "attempts").iterdir())) == (
+                    attempts_before
+                )
                 marker = tmp_path / "scancel-issued"
                 client = tmp_path / "scancel"
                 client.write_text(
@@ -6729,30 +6857,39 @@ def test_public_real_snakemake_native_cancellation_and_stop_outcome(
                     assert "Attempt receipt: interrupted" in output
                     assert "Recovery available: yes" in output
                 assert "native-task quiescence" in output
+                (tmp_path / "stop-observed").write_text("observed\n")
             else:
                 os.kill(process.pid, signal.SIGTERM)
-            # The direct-signal case also resumes and produces reports.
+            # Both cases resume and produce reports after the interrupted Attempt.
             assert process.wait(timeout=300) == 0, log_path.read_text()
-        assert (
-            tmp_path
-            / (
-                "stop-completed.json"
-                if through_stop
-                else "cancellation-resume-completed.json"
-            )
-        ).is_file()
+        evidence_path = tmp_path / "cancellation-resume-completed.json"
+        assert evidence_path.is_file()
         if through_stop:
-            evidence = json.loads((tmp_path / "stop-completed.json").read_text())
+            evidence = json.loads(evidence_path.read_text())
             observed = inspection.inspect_run(
                 tmp_path / "case/project/runs" / evidence["run_id"]
             )
             assert observed.integrity == "valid"
-            assert observed.attempt_outcome == "interrupted"
-            assert observed.recovery_available
             assert (
-                observed.latest_receipt["workflow_attempt_id"]
-                == evidence["interrupted_attempt"]
+                observed.attempt_outcome,
+                observed.results_status,
+                observed.reporting_status,
+                observed.recovery_available,
+            ) == ("succeeded", "complete", "complete", False)
+            assert observed.latest_receipt["workflow_attempt_id"] == evidence[
+                "completed_attempt"
+            ]
+            assert evidence["completed_attempt"] != evidence["interrupted_attempt"]
+            assert len(tuple((observed.run_root / "attempts").iterdir())) == 2
+            first_receipt = json.loads(
+                (
+                    observed.run_root
+                    / "attempts"
+                    / evidence["interrupted_attempt"]
+                    / "attempt-receipt.json"
+                ).read_text()
             )
+            assert first_receipt["status"] == "interrupted"
         completed = True
     finally:
         os.close(writer)
