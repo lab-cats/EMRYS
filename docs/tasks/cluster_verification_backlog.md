@@ -21,6 +21,14 @@ referenced below; CV-U33 and CV-22 keep their campaign status and institutional
 acceptance here. The [closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
 records required dispositions before this temporary document can retire.
 
+The approved [remaining delivery scope](cluster_verification_campaign.md#remaining-delivery-scope)
+includes `INIT-01` through `INIT-03` and the focused Quickstart corrections.
+CV-06, CV-U07, CV-U08 and CV-U18 are **Open** for those source/documentation
+prerequisites before their remaining novice acceptance can run. Their new
+implementation acceptance lives in the main backlog; prior selected replay and
+manual-selector behavior does not complete the newly approved requirements.
+CV-U06's accounting exception is approved independently of its pending site proof.
+
 ## Verified scope and remaining evidence
 
 The combined standard suite passed for product
@@ -83,7 +91,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-03](#cv-03-scheduler-and-execution-failure-messages) | P0 | Verification pending | Separate submission, queue, execution, and finalization failures. |
 | [CV-04](#cv-04-workflow-startup-readiness) | P0 | Verification pending | Readiness exercises minimal actual Snakemake startup. |
 | [CV-05](#cv-05-reuse-versus-repeated-repair-work) | P0 | Completed | Explain reused state, repeated checks, and new repair work. |
-| [CV-06](#cv-06-actual-data-onboarding) | P0 | Verification pending | Provide a novice actual-data setup path. |
+| [CV-06](#cv-06-actual-data-onboarding) | P0 | Open | Provide a novice actual-data setup path. |
 | [CV-07](#cv-07-site-and-workload-profile-selection) | P0 | Verification pending | Replace manual Viking resource-profile construction. |
 | [CV-08](#cv-08-compatible-runtime-reuse) | P0 | Verification pending | Reuse an existing compatible managed runtime across Projects. |
 | [CV-09](#cv-09-qualification-scope-and-placement) | P0 | Verification pending | Explain and enforce the qualified execution environment. |
@@ -131,8 +139,8 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Verification pending |
 | [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Verification pending |
 | [CV-U06](#cv-u06-available-resources) | Use all allocated workflow CPUs and memory | Verification pending |
-| [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Verification pending |
-| [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Verification pending |
+| [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Open |
+| [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Open |
 | [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Verification pending |
 | [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Completed |
 | [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Verification pending |
@@ -142,7 +150,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Verification pending |
 | [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Verification pending |
 | [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Verification pending |
-| [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Verification pending |
+| [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Open |
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Deferred |
 | [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
 | [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Verification pending |
@@ -170,7 +178,7 @@ verification work. The dated findings below preserve the earlier implementation
 history while returning incomplete cards to **Open**. **Verification pending** is
 retained only where implementation appears complete and the card's missing
 outcome is evidence at a separately identified layer. CV-U06 separately carries
-a one-line product-growth accounting exception: its explicit disposition blocks
+an approved one-line product-growth accounting exception: its disposition no longer blocks
 campaign acceptance but does not, without a separate status decision,
 recategorize the functional implementation result. No Viking execution, novice
 walkthrough, scientific review or biological validation was performed by this
@@ -489,10 +497,9 @@ tranche diff from `69223787` through merge `125cdc2b`, excluding tests and
 Markdown but retaining product source, schemas and configuration, is 495
 insertions and 244 deletions: **251 net added product lines**. The earlier
 statement that the complete tranche remained within a 250-line allowance is
-withdrawn; the one-line excess requires explicit disposition rather than
-excluding configuration from product accounting. That governance exception
-blocks campaign acceptance of the tranche until disposition; it is not Viking
-evidence and does not by itself change CV-U06's functional status. These are
+withdrawn. The user approved the one-line excess on 2026-09-22, retaining
+schemas and configuration in the count. The accounting disposition is settled;
+it is not Viking evidence and does not change CV-U06's functional status. These are
 implementation, local-fixture and hosted software results, not Viking
 utilization or speedup proof.
 

@@ -50,6 +50,38 @@ qualify a selected revision through an explicitly scheduled site exercise.
 The earlier walkthrough's product-growth allowance in the main matrix belongs
 to that earlier approved slice; it is not a blanket allowance for this campaign.
 
+## Remaining delivery scope
+
+The approved pre-closure tranche permits planning, implementation, push and
+sequential stacked PR creation through this order. Items 1–2 share the first
+PR; each later item has its own PR. Applicable CI starts on publication but
+does not gate the next item; review and address CI failures as a batch after
+item 9. Final acceptance still requires the applicable exact-source results.
+
+1. Record scope and the approved CV-U06 accounting exception.
+2. Reconcile Viking allocation and scratch guidance with current source.
+3. Fix or explicitly narrow cluster-scoped usage (`SCHED-USAGE-01`).
+4. Reconcile concise preapproval resource disclosure (`SUBMISSION-PREVIEW-01`).
+5. Honor the selected Projects home from repository-root Init (`INIT-01`).
+6. Read the maintained study selection during guided Init (`INIT-02`).
+7. Confirm reviewed Project creation interactively (`INIT-03`).
+8. Complete the focused novice guide, output orientation, optional smoke guide
+   and CV-12/CV-27 wording/navigation corrections.
+9. Reconcile current owners, card dispositions and the concise verification
+   handoff; retain required hosted and institutional evidence as pending.
+
+The [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up)
+owns the new source outcomes. The broader documentation, reduction, size,
+assurance, schema, collaborator and release work belongs to the
+[polish campaign](polish-campaign.md#current-follow-up-scope), not closure.
+CV-U06's one-line accounting exception is approved; that disposition proves
+neither functional behavior nor institutional resource policy. CV-10's accepted
+trusted-workspace limitation is already retained by its recovery owner.
+
+This tranche ends with source and documentation ready for required verification.
+It does not authorize institutional execution, evidence deletion, campaign
+retirement, merge or changes to the active scientific installation.
+
 ## Evidence register
 
 The initial record combines operator-supplied terminal output from the

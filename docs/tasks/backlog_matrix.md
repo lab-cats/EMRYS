@@ -55,6 +55,10 @@ These rows record accepted follow-up work. Audit questions are not established
 defects or permission to delete code, tests, protections, or evidence. Select
 each implementation separately under the workflow. Existing CV cards retain
 their delegated status and site acceptance until explicitly transferred.
+The [polish campaign](polish-campaign.md#current-follow-up-scope) coordinates
+these seven outcomes, including the repository-wide 600-line audit. They are
+not cluster-campaign closure requirements; this matrix retains their status
+and acceptance.
 
 | ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
 |---|---|---|---:|---:|---|---|
@@ -69,8 +73,10 @@ their delegated status and site acceptance until explicitly transferred.
 ### Novice setup and operational follow-up
 
 These outcomes use the existing onboarding, submission, runtime and
-documentation owners; they are not a new campaign or authority to expand the
-current implementation tranche.
+documentation owners. The [approved pre-closure tranche](cluster_verification_campaign.md#remaining-delivery-scope)
+includes all nine outcomes below, including `INIT-01` through `INIT-03`.
+Its stopping point is source/documentation completion with required hosted
+and institutional verification still explicit.
 
 | ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
 |---|---|---|---:|---:|---|---|
@@ -78,10 +84,10 @@ current implementation tranche.
 | `INIT-01` | Onboarding usability | Open | `3` | `2` | Initialize a Project from the repository root as well as other supported working directories. | Characterize the normal named/interactive journey from the repository root; do not satisfy this solely with an explicit-path workaround. Project creation must not require changing into `Projects/`; show the destination clearly and honor a selected saved Projects home. Preserve explicit output paths, absent-child/writable-parent and no-write-preview rules. Verify the installed public route from the repository root and an unrelated directory; reconcile CV-U07/U32 and the Quickstart. |
 | `INIT-02` | Study selection usability | Open | `4` | `3` | Read or generate the Viking study's reference selection without making users paste 25 sequence names. | Put this study's selection in an appropriate maintained input/configuration owner and read it automatically where possible. Derive and validate names against the admitted FASTA plus explicit study intent; preserve the selected `1`–`22`, `X`, `Y`, `MT` universe rather than silently including every contig or inferring biology from names. Explain when an optional regions file is unnecessary and retain deliberate alternatives for other analyses. Preserve inspectable generated inputs and provenance; coordinate CV-06/U20/U21. |
 | `INIT-03` | Confirmation usability | Open | `3` | `3` | Let the user confirm Project creation directly after the interactive preview. | Offer a clear yes/no confirmation through the existing creation owner instead of requiring copy/paste of the generated command. Decline, EOF and preview-only use remain nonmutating; automation retains explicit execution. Creation re-admits the chosen inputs and scientific settings without repeating the questionnaire or bypassing existing validation. Update production-path tests, preview wording and Quickstart together. |
-| `SCRATCH-01` | Site decision and verification | Open | `4` | `3` | Decide whether `/tmp` is the appropriate scratch default for this Viking journey. | Trace initializer/profile, Doctor repair, native-task scratch and environment overrides against the earlier unwritable `/local/tmp` failure. Verify permissions, capacity, lifetime and head/compute-node availability at the named site before accepting a default; do not assume `/tmp` and `/local/tmp` share the same failure. Reconcile Quickstart and Troubleshooting and retain explicit errors rather than an unqualified fallback. Source review alone is not institutional evidence. |
+| `SCRATCH-01` | Site decision and verification | Verification pending | `4` | `3` | Decide whether `/tmp` is the appropriate scratch default for this Viking journey. | The [temporary-file guide](../operations/RUNBOOK.md#temporary-files) traces initializer/profile, Doctor package repair/probes, native-task scratch and environment overrides; the earlier unwritable `/local/tmp` failure does not identify a current source defect. Verify permissions, capacity, lifetime and head/compute-node availability at the named site before accepting a default; do not assume `/tmp` and `/local/tmp` share the same failure. Reconcile Quickstart and Troubleshooting and retain explicit errors rather than an unqualified fallback. Source review alone is not institutional evidence. |
 | `SCHED-USAGE-01` | P2 production defect | Open | `4` | `3` | Preserve a recorded nonlocal cluster throughout resource-usage observation, or explicitly narrow support. | The initial request observer passes `recorded_cluster`, but [`scheduler_observation.py`](../../src/emrys/orchestration/run_coordinator/scheduler_observation.py) drops it on usage root rechecks and forces `--local` for terminal accounting. This can preserve RUNNING state while hiding available CPU/RSS/I/O usage. The supplied argument-sensitive in-memory reproduction contacted no scheduler; canned existing replies mask the wrong query. Follow-up source acceptance for CV-U33 lives here: cover active and terminal scope with argument-sensitive transport cases, retain exact request/root/batch identity and honest unavailable values, then obtain separately required site evidence. |
 | `SUBMISSION-PREVIEW-01` | P2 policy reconciliation | Open | `4` | `3` | Reconcile CV-22 resource disclosure with CV-U02/U04 concise output. | Normal submission currently hides node/exclusivity and workflow limits, while Doctor repair omits the resource preview. Record one consistent policy and align the cards, owner contract and presentation tests. Proposed default: requested CPUs/memory, exclusivity and maximum runtime before approval for every cluster submission, including Doctor; explicitly selected nodes and workflow ceilings when they materially constrain the reservation; honest unknown capacity. Keep detailed stage limits and diagnostics behind `--verbose`. The compact policy needs agreement with the existing acceptance, not an unsupported completion claim. |
-| `VIKING-POLICY-01` | P2 documentation defect | Open | `4` | `2` | Align Viking recovery guidance with the current allocation policy. | Troubleshooting prescribes `memory_mb: null` and discourages exclusivity while [`execution_profile.py`](../../src/emrys/orchestration/run_coordinator/execution_profile.py) generates `memory_mb: 0`, whole-node CPUs and `exclusive: true`. Label the former workaround as historical and reconcile CV-U06/U28 guidance without silently changing allocation policy. Earlier rejection of other explicit memory requests establishes neither acceptance nor rejection of `--mem=0`; institutional verification remains required. |
+| `VIKING-POLICY-01` | P2 documentation defect | Completed | `4` | `2` | Align Viking recovery guidance with the current allocation policy. | Troubleshooting now identifies [`execution_profile.py`](../../src/emrys/orchestration/run_coordinator/execution_profile.py) as the current `memory_mb: 0`, whole-node CPU and exclusive policy; the earlier null-memory workaround is explicitly historical. Source and guidance agree without changing allocation policy. Earlier rejection of other explicit memory requests establishes neither acceptance nor rejection of `--mem=0`; institutional verification remains required. |
 | `CV-DOCS-01` | Acceptance consistency | Open | `3` | `2` | Correct the remaining CV-12/CV-27 wording and navigation conflicts. | Align CV-12's body with its recorded Discard disposition; preserve the unknown original cause without reopening causal reconstruction. Link the Quickstart explicitly to the Runbook's terminal report-transfer procedure. A tiny directory copy proves command mechanics only; generated-bundle contents, relative links, rendering and institutional transfer retain separate acceptance under CV-27 and the reporting owners. |
 
 ### Cluster verification closure checklist
@@ -95,8 +101,9 @@ new proof or permission to execute a cluster campaign or merge.
    Preserve CV-10's accepted trusted-workspace ownership limit in the
    [recovery contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
    and operator guidance; it is not a new implementation requirement.
-2. Settle CV-U06's recorded one-line product-growth accounting exception
-   separately from functional correctness and institutional verification.
+2. Preserve the approved CV-U06 one-line product-growth exception separately
+   from functional correctness and institutional verification. It is settled
+   and supplies no resource-use or site evidence.
 3. Close the **P1 CV-01 evidence gap** with applicable final-source regressions
    and an explicitly selected, exact-revision 130-pair disposable-Slurm
    stop/resume journey. Ordinary PR CI does not select that journey. Retain the

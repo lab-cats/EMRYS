@@ -596,9 +596,8 @@ actual site. Existing profile selection remains available through
 shell expansion, and must remain unchanged while a job is queued or running.
 
 The batch wrapper starts with `PATH=/usr/bin:/bin`, loads only the declared
-module roster and uses the admitted runtime's absolute paths. It creates and
-removes its own temporary directory. Runtime repair is an explicit Doctor
-operation; scientific execution does not install packages.
+module roster and uses the admitted runtime's absolute paths. Runtime repair
+is an explicit Doctor operation; scientific execution does not install packages.
 
 Advanced operators may run `emrys doctor --repair --compute` inside an actual
 allocation. Return to the head node to complete preparation with
@@ -610,6 +609,24 @@ qualification evidence to retry.
 
 For detailed submission diagnostics, use `--verbose`; use `emrys inspect` for
 the Run result.
+
+### Temporary files
+
+Temporary storage depends on the operation; the Viking `/tmp` setting does not
+move every scientific intermediate there.
+
+| Operation | Temporary location |
+| --- | --- |
+| Slurm batch | A private directory beneath the profile's `scratch_parent` (`/tmp` for Viking), exported as `TMPDIR` and removed when the wrapper exits. |
+| Doctor package installation/restore | A private `repair-*` directory in the selected managed runtime's `cache`, passed as `TMPDIR`. |
+| Doctor runtime inspection | A private directory under Python's selected temporary parent; compute-side inspection inherits the batch `TMPDIR`. |
+| Native Task producers | Runner-owned `.scratch` beside output staging, passed as both `EMRYS_TASK_WORK_DIR` and `TMPDIR`. |
+
+The wrapper requires an existing, real, writable/searchable scratch parent;
+there is no silent fallback. A head-node `TMPDIR` override does not replace the
+batch or producer selections above. Verify permissions, capacity and lifetime
+on the actual head/compute hosts before site acceptance; source defaults do not
+establish that `/tmp` is suitable there. Preserve Task residue for recovery.
 
 ## Inspecting a Slurm Run
 

@@ -220,18 +220,21 @@ review. Repeating `--execute` is not recovery or cleanup.
 partition/account/QoS/node values and preview the submission with
 `--verbose </dev/null`. If CPU or memory is inadequate, revise the profile
 and create a new Run when its immutable resource envelope changes; do not lower
-owner requirements silently. `scratch_parent` must be an existing approved
-writable compute path with enough capacity; there is no silent `/tmp` fallback.
+owner requirements silently. Check the failing operation's
+[temporary location](RUNBOOK.md#temporary-files), permissions and free space on
+its execution host. Doctor package repair uses its managed cache, avoiding the
+earlier unwritable `/local/tmp` location. That failure does not establish that
+Viking's batch `/tmp` default fails or is suitable; site verification remains.
 
-**Viking memory request rejected or missing memory metadata.** Retained Viking
-submissions reject explicit memory requests with `Memory specification can not
-be satisfied`; use the site's `memory_mb: null` placement. EMRYS uses host RAM
-constrained by observed process memory limits when Slurm reports no memory
-limit, including for four-CPU jobs. It retains the CPU allocation and records
-that memory was process-visible, not reserved. A `complete node CPU visibility`
-refusal identifies the older capacity policy; update the installation to a
-revision containing the process-memory fallback rather than inventing Slurm
-variables, requesting an exclusive node, or imposing an arbitrary memory request.
+**Viking memory request rejected or missing memory metadata.** Current Viking
+placement requests one whole node with `cpus_per_task: node`, `exclusive: true`
+and `memory_mb: 0` (`--mem=0`). Omitting memory with `memory_mb: null` was an
+earlier workaround, not the current default. Earlier explicit-memory rejections
+establish neither acceptance nor rejection of `--mem=0`; retain the exact request
+and diagnostic for site review rather than silently changing allocation policy.
+When memory metadata is absent, EMRYS uses host RAM bounded by observed process
+limits, preserves CPU constraints, and records process-visible rather than
+reserved memory. Do not invent scheduler variables to bypass admission.
 
 **Missing scheduler stream.** Check the exact job with the Runbook's
 [`squeue`/`sacct` commands](RUNBOOK.md#inspecting-a-slurm-run). Slurm may not have

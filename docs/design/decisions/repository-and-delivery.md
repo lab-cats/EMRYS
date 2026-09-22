@@ -61,7 +61,9 @@ owns the commands.
 - Every non-test file over 600 physical lines requires an explicitly
   user-authorized exception recording its path, reason, and approval, plus a
   retirement condition if temporary. The [maintainability backlog](../../tasks/backlog_matrix.md#maintainability-and-release)
-  owns the inventory and acceptance; this rule adds no automated size gate.
+  owns acceptance; the [polish campaign](../../tasks/polish-campaign.md#current-follow-up-scope)
+  owns the repository-wide inventory and exception review, outside cluster
+  campaign closure. This rule adds no automated size gate.
 - Coverage is a regression signal, not a replacement for scenario, transaction,
   real-R, runtime, scheduler, numerical-oracle, or scientific review.
 - Automate a repository workflow only after repeated use stabilizes its inputs,

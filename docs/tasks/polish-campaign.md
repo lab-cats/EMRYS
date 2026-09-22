@@ -19,6 +19,19 @@ not duplicate tasks. Numbered headings are
 navigation references, not new backlog IDs. Proposed acceptance below becomes
 authoritative only when selected through the existing workflow.
 
+## Current follow-up scope
+
+The user assigned the broader follow-up work to this campaign:
+`DOCS-01`, `REDUCE-01`, `SIZE-01`, `ASSURANCE-01`, `SCHEMA-01`,
+`EXTENSION-01` and `RELEASE-01`. Their current status and full acceptance remain
+in the [main backlog](backlog_matrix.md#maintainability-and-release).
+This includes the repository-wide 600-line inventory and explicit exception
+dispositions, the 25% reduction target, broad code/test/protection/gate and
+documentation/contract audits, schema review, collaborator guidance and release
+planning. These outcomes remain accepted; none is a cluster-campaign closure
+gate. The focused novice-guide corrections and `INIT-01` through `INIT-03`
+remain in the cluster campaign's approved pre-closure tranche.
+
 ## Evidence and selection
 
 The source audit used GitHub master
