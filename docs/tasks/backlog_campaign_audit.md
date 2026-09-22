@@ -360,6 +360,15 @@ acceptance. The older resource coverage map at cluster backlog line
 4103 should identify CV-U06/CV-U28 as the current allocation-policy owners;
 CV-07/11/22 retain selection, fit, and disclosure responsibilities.
 
+**Additive evidence transfer:** Dated records now preserve
+[CV-10 containment/retry](../history/2026-09-15-cv10-containment-retry.md),
+the separate [job 621154 timeout](../history/2026-09-16-cv10-timeout.md),
+[CV-26 hosted measurements](../history/2026-09-15-cv26-doctor-measurements.md),
+and [CV-U28 fixed-policy provenance](../history/2026-09-15-cv-u28-resource-provenance.md).
+Their original cards remain intact. These records do not transfer the later
+prepared-finalization, structural Doctor, or allocation-aware decisions in
+full, and they authorize no source evidence deletion.
+
 **Checkpoint classification sample:** In the six reviewed cards (CV-10,
 CV-26, CV-U06, CV-U22, CV-U28, and CV-UX-01), each final disposition agrees
 with its index. Earlier implementation paragraphs, local pass-count sequences,

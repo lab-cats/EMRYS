@@ -19,6 +19,32 @@ The [source-bound compression closeout record](2026-09-14-compression-closeout.m
 preserves the accepted decision, both count baselines, exact hosted run
 identities, and their limits while the main matrix remains authoritative.
 
+## September 15–16 CV-10 cancellation and recovery
+
+The [September 15 containment and retry record](2026-09-15-cv10-containment-retry.md)
+preserves exact hosted software identities, artifact hashes, failed-suite
+distinctions and the closed-abort limit. The separate
+[September 16 timeout record](2026-09-16-cv10-timeout.md) preserves Viking job
+`621154`, its observed blocked state and the later bounded-warning response.
+Neither record makes the original E09 Run recoverable or closes institutional
+cancellation acceptance.
+
+## September 15 CV-U28 resource provenance
+
+The [source-bound policy reconstruction](2026-09-15-cv-u28-resource-provenance.md)
+preserves the operator report, 78-branch review, exact retired configuration
+identity and the distinct benchmark contexts. The old fixed policy is
+historical provenance; current allocation-aware acceptance remains with the
+CV-U28 card.
+
+## September 15 CV-26 Doctor measurements
+
+The [source-bound hosted timing and probe record](2026-09-15-cv26-doctor-measurements.md)
+preserves exact artifacts and hashes, phase and invocation counters, the four
+steady-ready trials, failed prototype checks, and the decision to retain
+serial R namespace checks and fresh content admission. It does not establish
+Viking or comparable whole-operation speedup; CV-26 remains Open.
+
 ## PORT-NC-01 integration replay
 
 Tests from `fix/no-clobber` informed but did not validate the differently

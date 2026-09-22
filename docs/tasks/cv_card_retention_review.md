@@ -113,17 +113,23 @@ from these checks. Hosted checks for this newer audit PR head must be assessed
 separately.
 
 The dated Viking [E01–E12 record](../history/2026-09-14-viking-walkthrough.md)
-preserves the charter observations. Searches of the current history directory
-found no transfer of card-specific job 621154, job 621172, CV-10 artifact
-hashes, CV-26 trial artifacts, or CV-U28 resource provenance. The detailed
-card records must therefore remain untouched pending exact transfer.
+preserves the charter observations. Additive dated records now preserve
+[CV-10 containment and retry](../history/2026-09-15-cv10-containment-retry.md),
+[job 621154's distinct timeout](../history/2026-09-16-cv10-timeout.md),
+[CV-26 hosted measurements](../history/2026-09-15-cv26-doctor-measurements.md),
+and [CV-U28 fixed-policy provenance](../history/2026-09-15-cv-u28-resource-provenance.md).
+Job 621172 and later CV-10/CV-26/CV-U28 decisions have not been fully
+transferred. The detailed card records remain untouched; no shortening is
+authorized by these partial transfers.
+
 Historically approved product-line caps and exceptions within cards are
 bounded decisions, not current grants under
 [AGENTS.md](../../AGENTS.md) and the [workflow](../operations/WORKFLOW.md).
 
-The source backlog is 4,111 lines at this snapshot; the parent audit document
-is already above 600 lines. This separate temporary ledger keeps per-card
-analysis out of that document. Under [SIZE-01](backlog_matrix.md#maintainability-and-release),
-the parent audit itself needs a responsibility/size disposition before more
-detail is added. Retire this ledger after durable evidence homes, card wording
+The source backlog was 4,111 lines at this ledger snapshot. This separate
+temporary ledger keeps per-card analysis out of the parent audit, which now
+uses a separate polish item ledger as well. Under
+[SIZE-01](backlog_matrix.md#maintainability-and-release), that responsibility
+split keeps the parent below 600 lines. Retire this ledger after durable
+evidence homes, card wording
 corrections, and any separately approved source reductions are reconciled.
