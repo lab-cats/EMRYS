@@ -48,7 +48,10 @@ review; use the [developer update procedure](../operations/ENGINEERING_CONVENTIO
 CI shards the complete Python inventory using the executable plan and duration
 data under `tests/tools/` and `tests/baselines/`. Merge requires complete,
 disjoint, current receipts matching that deterministic plan before combining
-coverage. Duration estimates affect scheduling only.
+coverage. Recorded durations and configured capacity affect deterministic shard
+membership only; pytest-xdist owns actual worker assignment and work stealing.
+Receipts bind the worker count and exact selected node IDs without predicting
+runtime. Retained JUnit XML records observed test timing.
 
 ## Independent expectations
 

@@ -258,7 +258,8 @@ new installed package.
 
 HTML publication and validation-roster policy retain their separate scope. Reporting-memory policy belongs to the
 [Run contract](../../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning).
-Dashboard replacement and retirement remain separate decisions.
+At this reporting transition, dashboard replacement and retirement remained
+separate decisions; the later completed retirement is recorded below.
 
 ## Console, logs, and status
 

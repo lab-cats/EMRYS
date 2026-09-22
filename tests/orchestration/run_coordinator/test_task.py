@@ -1937,15 +1937,11 @@ def test_task_subreaper_types_sigchld_establishment_failure(monkeypatch, fault):
 
 
 @pytest.mark.parametrize("disposition", (signal.SIG_DFL, signal.SIG_IGN))
-def test_task_subreaper_reestablishes_initial_default_sigchld(
-    monkeypatch, disposition
-):
+def test_task_subreaper_reestablishes_initial_default_sigchld(monkeypatch, disposition):
     descendants = task._TaskChildren.__new__(task._TaskChildren)
     descendants.owner = os.getpid()
     descendants.children = Mock()
-    descendants.children.parent.parent.iterdir.return_value = [
-        Path(str(os.getpid()))
-    ]
+    descendants.children.parent.parent.iterdir.return_value = [Path(str(os.getpid()))]
     descendants.children.read_text.return_value = ""
     descendants.process = object()
     get_signal = Mock(side_effect=(disposition, signal.SIG_DFL))

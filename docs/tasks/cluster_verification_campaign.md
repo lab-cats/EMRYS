@@ -50,7 +50,7 @@ qualify a selected revision through an explicitly scheduled site exercise.
 The earlier walkthrough's product-growth allowance in the main matrix belongs
 to that earlier approved slice; it is not a blanket allowance for this campaign.
 
-## Remaining delivery scope
+## Source closure and remaining verification
 
 The selected source and documentation corrections are implemented:
 
@@ -65,10 +65,19 @@ The selected source and documentation corrections are implemented:
   optional smoke guide. CV-12/CV-27 wording and report-transfer navigation are
   reconciled, and Deferred work has named enduring owners.
 
+On **2026-09-22**, the owner closed the approved implementation and stacked-PR
+sequence. No additional `CV`, `CV-U`, or `CV-UX` source tranche is selected. The campaign
+remains **Verification pending**: the closure head must retain its applicable
+hosted software evidence, then one coordinated Viking campaign is the final
+external acceptance layer. That institutional campaign includes the required
+operator, report visual/link, scientific-review, and evidence-handoff records;
+it does not include biological interpretation. A defect found there returns to
+its functional owner rather than reopening this development sequence wholesale.
+
 The [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up)
 owns these outcomes and their remaining acceptance. Its
 [closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
-is the single remaining verification and handoff sequence. Applicable hosted
+is the final verification and handoff record. Applicable hosted
 checks and institutional observations remain required on the selected revision;
 this source-completeness disposition claims no new execution evidence.
 
@@ -81,7 +90,7 @@ assurance, schema, collaborator and release work remains accepted under the
 and complete guided operation transfer to `CLEANUP-01` and `INTERACTIVE-01` in
 the [main backlog](backlog_matrix.md#deferred-operational-work).
 
-The development tranche authorizes neither institutional execution nor evidence
+This source-closure decision authorizes neither institutional execution nor evidence
 deletion, campaign retirement, merge or changes to the active scientific
 installation. Verification and any later retirement retain their own authority.
 
