@@ -23,6 +23,8 @@ The pinned commit contains 575 tracked files. The counts below inventory every t
 | `.github/` | 3 | Reviewed CI workflow jobs and their source tests | Verify branch/trigger behavior and exact hosted checks on the audit PR head |
 | Other tracked paths | 18 | Sampled packaging, lockfile, Makefile, root ignore/policy, and Project templates | Complete root/support review; legal and data templates have distinct owners |
 
+The `tests/` inventory includes 100 files named `test_*` (88 Python, 10 shell, 2 R). This record has explicit `path:line` citations to 61 distinct tracked paths under `tests/`, including 50 of those 100 test files. This is a conservative citation count obtained from the pinned file inventory and the references below, not a count of test cases reviewed, executed, or cleared. The pinned tree also defines 22 named Make targets (`Makefile:17-23`; `scripts/make_quality.mk:73-239`), three local pre-commit hooks (`.pre-commit-config.yaml:1-21`), and one CI workflow with 13 job definitions (`.github/workflows/ci.yml:1-78`). A protection denominator cannot yet be stated: one file may contain several independent fault checks, and product guards and retained evidence sit outside the test tree.
+
 ### Production-owner review queue
 
 The 315 tracked files under `src/emrys/` divide as follows at the pinned commit. A cited or sampled path is not a cleared owner; each row still needs a caller-complete fault and surviving-protection disposition before this audit can close.
@@ -42,6 +44,43 @@ The 315 tracked files under `src/emrys/` divide as follows at the pinned commit.
 | `renv/` | 4 | Activation and settings boundaries | Finish restoration authority and guarded-R fixture map |
 | Package-level files | 5 | CLI, R profile, lock, and package index | Reconcile installed entrypoint, R activation, and lock provenance |
 
+### Automated-gate crosswalk, source characterization
+
+At the pinned commit, ordinary pull requests, master pushes, and merge groups select nine CI job definitions; the userspace and Python 3.14 shard matrices expand those definitions to 14 runner jobs if every leg schedules. Four other definitions are manual or scheduled (`.github/workflows/ci.yml:3-53,78-110,288-308,901-911,1023-1034,1064-1070,1099-1104`). This describes workflow selection, not a hosted result. The tracked pre-commit configuration defines Ruff check, Ruff format check, and ShellCheck hooks for matching changed files; their presence does not show that any developer has installed or run them (`.pre-commit-config.yaml:1-21`). They are distinct from the assembled Make and CI lanes (`scripts/make_quality.mk:211-239`). The 22 Make targets still need a target-by-target caller and distinct-fault disposition.
+
+| CI job and pinned source | Selection | Defense and evidence ceiling | Related investigation |
+|---|---|---|---|
+| `manual-selection` (`.github/workflows/ci.yml:78-107`) | Manual dispatch | Rejects an empty lane selection; does not prove any selected lane passed | Check selector/required-check expectations |
+| `workflow-lint` (`.github/workflows/ci.yml:109-162`) | Ordinary; selected dispatch | Checksum-verified Actionlint checks workflow syntax and embedded shell; does not execute jobs | Preserve workflow-lint fault coverage |
+| `static-wheel` (`.github/workflows/ci.yml:164-186`) | Ordinary; selected dispatch | Runs static, documentation, and installed-wheel checks; not the full test suite | A01-03/06/07/08/17/35/38/68 |
+| `shell-contracts` (`.github/workflows/ci.yml:188-208`) | Ordinary; selected dispatch | Runs listed direct shell owner contracts; no native-site or Slurm proof | A01-12/17; map exact script faults |
+| `guarded-r` (`.github/workflows/ci.yml:210-286`) | Ordinary; selected dispatch | Restores locked R and runs guarded R/Step 08/09/projection fixtures on hosted Ubuntu; no Viking or biological proof | A01-21/22/34; retain real-R oracles |
+| `managed-runtime-userspace` (`.github/workflows/ci.yml:288-405`) | Ordinary; selected dispatch | Three distro/glibc legs install locked native/R tools and invoke versions; explicitly not Rocky's 4.18-kernel or Viking proof | Map each userspace/tool claim separately |
+| `managed-golden-path` (`.github/workflows/ci.yml:407-420,632-899`) | Ordinary; selected dispatch | Clean-clone synthetic Project, direct runtime/Doctor/Run/report path, borrower checks, and real-samtools containment; no Slurm or institution proof | A01-09/29/34; inspect retained artifacts |
+| `python314-coverage-shards` (`.github/workflows/ci.yml:901-947`) | Ordinary; selected dispatch | Four behavioral shards upload coverage fragments and selection receipts; one shard cannot prove full inventory | A01-39/61; check collection cost |
+| `python314-coverage` (`.github/workflows/ci.yml:948-991`) | Ordinary; selected dispatch | Requires complete, disjoint successful shard receipts, subprocess probes, and configured Python coverage policy; coverage is not an independent oracle | A01-39/61; retain receipt and floor checks |
+| `python311-smoke` (`.github/workflows/ci.yml:993-1021`) | Ordinary; selected dispatch | Compiles source, smoke-tests the wheel, and invokes manifest validation on minimum Python; not the full 3.11 suite | Map version-specific faults |
+| `python311-full-shards` (`.github/workflows/ci.yml:1023-1062`) | Schedule; selected dispatch | Four 3.11 behavioral shards upload selection receipts; each is partial alone | Check full-inventory and selection parity |
+| `python311-full` (`.github/workflows/ci.yml:1064-1097`) | Schedule; selected dispatch | Requires complete/disjoint 3.11 receipts and every shard to pass; does not enforce a 3.11 coverage floor | Preserve minimum-version suite claim |
+| `synthetic-e2e` (`.github/workflows/ci.yml:1099-1104,1272-1417`) | 130 each schedule, 100000 Sunday; either selected on dispatch | Real tools and disposable single-node Slurm exercise selected synthetic profiles and require their evidence uploads; no CSU Viking, scientific review, or biological proof | Map 130 versus 100000 faults and retained receipts |
+
+No job is cleared by this source crosswalk. Each selection and outcome still needs exact-hosted-commit verification, and each suggested reduction needs a surviving defense at the same trust and evidence boundary.
+
+### Representative surviving-protection map
+
+These are examples of distinct faults protected by committed tests, characterized from source without rerunning them. They are not a complete protection inventory or approval to retire another test.
+
+| Protection | Distinct fault or contract it checks | Audit relation and remaining limit |
+|---|---|---|
+| Independent Step 09 numerical and guarded-R oracles (`tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_oracle.py:108-123,149-219`; `tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.R:222-313,586-678`) | False but internally consistent CMH/BH values, R result or global-family drift | A01-22; retain independence and real-R comparison |
+| Step 08 guarded-R fixture (`tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.R:598-669,873-896`) | Header, ordering, multiallelic AD and a matching AF case, and worker-count byte drift | A01-21; A01-69/71 remain separate gaps; not biological adjudication |
+| Validation publication faults (`tests/libraries/test_validation_report.py:331-352,431-478,507-572`) | Invalid staged/predecessor reports and restoration after failed replacement; known foreign-final and rollback faults remain characterized | A01-15; do not treat the known failures as accepted behavior |
+| Run finalization identity (`tests/orchestration/run_coordinator/test_lifecycle.py:1874-1924,2192-2256`) | Equal-byte distinct-inode replacement and preview/execute continuity | A01-32; recycled-inode substitution remains unproved |
+| Literal validation rosters (`tests/contract_integration/validation_rosters/test_validation_check_rosters.py:98-114`) | Missing, extra, duplicate, or reordered check IDs | A01-04/05; central owner discovery is separately incomplete |
+| Public CLI contracts (`tests/test_public_cli_contracts.py:713-734,754-800`) | Public help/version, retired route refusal, and working-directory file changes | A01-13/73; empty-CWD diagnostic gap remains |
+| Independent contract goldens (`tests/contract_integration/independent_contract_goldens/test_independent_contract_goldens.py:95-115,178-215,232-277`) | Schema pointers, ordered headers, serialized receipt/TSV, and report HTML drift with mutation cases | A01-10; preserve before changing producer-derived reporting fixtures |
+| Installed distribution (`tests/test_package_distribution.py:192-246,341-420`) | Wheel metadata, packaged resources, source bytes, and installed commands outside checkout | A01-38/68; resource oracle does not cover every packaged file |
+
 ## Findings matrix
 
 | ID | Surface | Initial reading | Basis | Next investigation or decision |
@@ -55,7 +94,7 @@ The 315 tracked files under `src/emrys/` divide as follows at the pinned commit.
 | A01-07 | Markdown anchors | Tilde-fenced headings are accepted as real anchors | Source; isolated local reproduction | Preserve genuine link checking while correcting the parser boundary |
 | A01-08 | Mermaid gate | Declaration and fence check has a deliberately narrow ceiling | Source | Decide whether broader syntax checking solves a distinct failure |
 | A01-09 | Hosted resource fixture | Part of the expected policy is derived from production defaults | Source | Map independent literal resource oracles before changing the fixture |
-| A01-10 | Reporting adapter fixture | Inventory expectations partly come from the same template as the builder | Source | Identify literal contract expectations for adapter headers and rows |
+| A01-10 | Reporting adapter fixture | Inventory expectations partly come from the same template as the builder | Source; independent goldens characterized | Map exact golden coverage against adapter rows before any fixture reduction |
 | A01-11 | Generic reporting validation roster | Reordered or wrong unique check IDs can mark an artifact-index entry complete | Source; test characterized; caller trace | Route semantic decision through `REPORT-ROSTER-01`; retain characterization |
 | A01-12 | Shell executable-mode tests | Three internal workers are required to remain nonexecutable | Source; test characterized | Decide whether direct invocation is supported for each script |
 | A01-13 | Private reporting CLI test | A negative assertion protects absence of private parser functions | Source | Confirm public-route coverage and private invocation contract |
@@ -184,6 +223,8 @@ Local link targets and anchors are checked in `scripts/documentation/validate_st
 ### A01-10 — Reporting adapter fixture independence
 
 `tests/reporting/fixtures/artifact_adapters_v1/build_fixture.py` derives parts of expected headers and row counts from the production adapter registry. `tests/reporting/test_artifact_adapters.py:236-250` compares inventory rows with the template the builder also reads, while retaining a literal count of 74 and registry checks. The comparison can catch builder drift but cannot independently establish that the template itself is correct. Map literal headers, row identities, and independent contract goldens before changing this fixture.
+
+**Surviving independent checks.** The contract golden suite pins selected public schema pointers, ordered header constants, canonical JSON/TSV and report-receipt bytes, plus both report HTML view hashes; it mutates schemas, headers, serializers, and report input to show those oracles reject drift (`tests/contract_integration/independent_contract_goldens/test_independent_contract_goldens.py:95-175,178-277`). These checks are independent of the adapter fixture template, but they do not enumerate all 74 adapter inventory rows. Compare the exact overlapping headers and rows before proposing any fixture or test reduction; retain the goldens' distinct contract and rendering faults.
 
 ### A01-11 — Reporting roster identity defect
 
