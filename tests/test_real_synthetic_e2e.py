@@ -595,9 +595,7 @@ def _completion(attempt_id: str, memory_mb: int) -> dict[str, object]:
                 "effective": {
                     "workflow_cores": 4,
                     "workflow_memory_mb": memory_mb,
-                    "stage_concurrency": {
-                        step_id: 4 for step_id in sample_stage_ids
-                    },
+                    "stage_concurrency": {step_id: 4 for step_id in sample_stage_ids},
                 },
                 "allocation": {"cores": 4, "memory_mb": memory_mb},
             },

@@ -127,7 +127,7 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     assert '"$(VULTURE_BIN)"' in quality_makefile
     assert "--exit-zero" not in quality_makefile
     assert "skipping dead-code scan" not in quality_makefile
-    assert '$${EMRYS_TEST_WORKERS:-1}' in quality_makefile
+    assert "$${EMRYS_TEST_WORKERS:-1}" in quality_makefile
     assert 'xargs -0 -n 1 -P "$$workers" bash' in quality_makefile
     assert 'xargs -0 -n 1 -P "$${EMRYS_VALIDATED_TEST_WORKERS}"' in quality_makefile
     assert "compileall -q -j 0 scripts src/emrys tests" in quality_makefile

@@ -256,7 +256,9 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
     assert "github.event.schedule == '17 5 * * 0'" in _expression(weekly["if"])
 
 
-def test_safely_parallel_lanes_use_every_process_visible_cpu_without_nested_blas() -> None:
+def test_safely_parallel_lanes_use_every_process_visible_cpu_without_nested_blas() -> (
+    None
+):
     jobs = _workflow_jobs()
     for job_id, step_name in (
         ("static-wheel", "Run static, lint, documentation, and wheel checks"),

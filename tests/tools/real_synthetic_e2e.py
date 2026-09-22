@@ -1100,10 +1100,9 @@ def _assert_ci_allocation_resources(resources: dict[str, Any]) -> None:
             "assert-parity",
             "Hosted Run did not retain allocation-wide CPU and memory policy",
         )
-    if (
-        effective.get("workflow_cores") != allocation.get("cores")
-        or effective.get("workflow_memory_mb") != allocation.get("memory_mb")
-    ):
+    if effective.get("workflow_cores") != allocation.get("cores") or effective.get(
+        "workflow_memory_mb"
+    ) != allocation.get("memory_mb"):
         raise DriverError(
             "assert-parity",
             "Hosted Run did not resolve CPU and memory to its observed allocation",
