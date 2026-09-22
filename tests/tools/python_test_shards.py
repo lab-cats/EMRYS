@@ -15,7 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = "1.0.0"
+DURATION_SCHEMA_VERSION = "1.0.0"
+RECEIPT_SCHEMA_VERSION = "2.0.0"
 DEFAULT_DURATION_BASELINE = Path("tests/baselines/python_test_durations.json")
 DEFAULT_IGNORES = (
     "tests/test_package_distribution.py",
@@ -41,7 +42,7 @@ class ShardPlan:
     """One deterministic complete assignment of node IDs to shards."""
 
     nodeids: tuple[str, ...]
-    estimated_seconds: tuple[float, ...]
+    worker_count: int
 
 
 CommandRunner = Callable[..., subprocess.CompletedProcess[str]]
@@ -63,13 +64,23 @@ def require_shard_coordinates(index: int, count: int) -> None:
         )
 
 
+def require_worker_count(worker_count: int) -> None:
+    """Require a positive, non-boolean worker count."""
+    if (
+        not isinstance(worker_count, int)
+        or isinstance(worker_count, bool)
+        or worker_count < 1
+    ):
+        raise ShardError(f"worker count must be positive; observed {worker_count}")
+
+
 def load_duration_baseline(path: Path) -> DurationBaseline:
     """Load and validate the reviewed duration-estimate baseline."""
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ShardError(f"cannot read duration baseline {path}: {exc}") from exc
-    if payload.get("schema_version") != SCHEMA_VERSION:
+    if payload.get("schema_version") != DURATION_SCHEMA_VERSION:
         raise ShardError(
             f"unsupported duration baseline schema in {path}: "
             f"{payload.get('schema_version')!r}"
@@ -131,9 +142,11 @@ def plan_shards(
     nodeids: Sequence[str],
     shard_count: int,
     baseline: DurationBaseline,
+    worker_count: int,
 ) -> tuple[ShardPlan, ...]:
-    """Balance tests with deterministic longest-processing-time assignment."""
+    """Balance tests across deterministic virtual workers, grouped by shard."""
     require_shard_coordinates(0, shard_count)
+    require_worker_count(worker_count)
     if len(nodeids) != len(set(nodeids)):
         raise ShardError("cannot plan duplicate node IDs")
     unknown = set(baseline.durations_seconds) - set(nodeids)
@@ -144,8 +157,12 @@ def plan_shards(
         )
 
     assignments: list[list[str]] = [[] for _ in range(shard_count)]
-    estimated = [0.0] * shard_count
-    queue = [(0.0, 0, index) for index in range(shard_count)]
+    # Equal loads cycle across shards before using the next virtual worker.
+    queue = [
+        (0.0, 0, worker_index, shard_index)
+        for worker_index in range(worker_count)
+        for shard_index in range(shard_count)
+    ]
     heapq.heapify(queue)
     weighted = sorted(
         (
@@ -155,14 +172,19 @@ def plan_shards(
         key=lambda item: (-item[0], item[1]),
     )
     for seconds, nodeid in weighted:
-        load, item_count, shard_index = heapq.heappop(queue)
+        load, item_count, worker_index, shard_index = heapq.heappop(queue)
         assignments[shard_index].append(nodeid)
-        estimated[shard_index] = load + seconds
-        heapq.heappush(queue, (load + seconds, item_count + 1, shard_index))
+        heapq.heappush(
+            queue,
+            (load + seconds, item_count + 1, worker_index, shard_index),
+        )
 
     return tuple(
-        ShardPlan(tuple(sorted(selected)), estimated[index])
-        for index, selected in enumerate(assignments)
+        ShardPlan(
+            tuple(sorted(selected)),
+            worker_count,
+        )
+        for selected in assignments
     )
 
 
@@ -175,14 +197,14 @@ def receipt_payload(
 ) -> dict[str, Any]:
     """Build one auditable shard-selection receipt."""
     return {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": RECEIPT_SCHEMA_VERSION,
         "shard_index": shard_index,
         "shard_count": shard_count,
+        "worker_count": plan.worker_count,
         "collected_count": len(all_nodeids),
         "collected_sha256": nodeids_digest(all_nodeids),
         "selected_count": len(plan.nodeids),
         "selected_sha256": nodeids_digest(plan.nodeids),
-        "estimated_seconds": round(plan.estimated_seconds, 3),
         "nodeids": list(plan.nodeids),
     }
 
@@ -196,10 +218,11 @@ def write_receipt(path: Path, payload: dict[str, Any]) -> None:
     )
 
 
-def pytest_command(nodeids: Sequence[str], workers: int) -> tuple[str, ...]:
+def pytest_command(
+    nodeids: Sequence[str], workers: int, timing_report: Path
+) -> tuple[str, ...]:
     """Build the live-output pytest command for one exact selection."""
-    if workers < 1:
-        raise ShardError(f"worker count must be positive; observed {workers}")
+    require_worker_count(workers)
     command = [
         sys.executable,
         "-m",
@@ -207,6 +230,11 @@ def pytest_command(nodeids: Sequence[str], workers: int) -> tuple[str, ...]:
         "-q",
         "--tb=short",
         f"--durations={DEFAULT_REPORTED_DURATIONS}",
+        "-o",
+        "junit_duration_report=total",
+        "-o",
+        "junit_family=xunit1",
+        f"--junitxml={timing_report}",
     ]
     if workers > 1:
         command.extend(("-n", str(workers), "--dist=worksteal"))
@@ -253,7 +281,7 @@ def run_shard(
     collector = command_runner or subprocess.run
     all_nodeids = collect_nodeids(repo_root, command_runner=collector)
     baseline = load_duration_baseline(duration_baseline)
-    plans = plan_shards(all_nodeids, shard_count, baseline)
+    plans = plan_shards(all_nodeids, shard_count, baseline, workers)
     selected = plans[shard_index]
     write_receipt(
         receipt,
@@ -266,13 +294,15 @@ def run_shard(
     )
     print(
         f"SHARD {shard_index + 1}/{shard_count}: "
-        f"{len(selected.nodeids)}/{len(all_nodeids)} tests, "
-        f"estimated {selected.estimated_seconds:.1f}s",
+        f"{len(selected.nodeids)}/{len(all_nodeids)} tests across "
+        f"{selected.worker_count} workers",
         flush=True,
     )
     environment = os.environ.copy()
     environment["PYTEST_ADDOPTS"] = ""
-    command = pytest_command(selected.nodeids, workers)
+    timing_report = receipt.absolute().with_suffix(".xml")
+    timing_report.unlink(missing_ok=True)
+    command = pytest_command(selected.nodeids, workers, timing_report)
     if command_runner is not None:
         result = command_runner(
             command,
@@ -281,8 +311,14 @@ def run_shard(
             text=True,
             check=False,
         )
-        return result.returncode
-    return run_pytest_in_process(command, repo_root)
+        status = result.returncode
+    else:
+        status = run_pytest_in_process(command, repo_root)
+    if status == 0 and not timing_report.is_file():
+        raise ShardError(
+            f"successful behavioral shard did not write timing report {timing_report}"
+        )
+    return status
 
 
 def load_receipt(path: Path) -> dict[str, Any]:
@@ -291,7 +327,10 @@ def load_receipt(path: Path) -> dict[str, Any]:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ShardError(f"cannot read shard receipt {path}: {exc}") from exc
-    if not isinstance(payload, dict) or payload.get("schema_version") != SCHEMA_VERSION:
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schema_version") != RECEIPT_SCHEMA_VERSION
+    ):
         raise ShardError(f"unsupported shard receipt: {path}")
     return payload
 
@@ -315,8 +354,23 @@ def verify_receipts(
         raise ShardError(
             f"expected {shard_count} shard receipts; observed {len(receipts)}"
         )
+    worker_counts: set[int] = set()
+    for path, payload in receipts:
+        worker_count = payload.get("worker_count")
+        if (
+            not isinstance(worker_count, int)
+            or isinstance(worker_count, bool)
+            or worker_count < 1
+        ):
+            raise ShardError(
+                f"shard receipt worker_count must be a positive integer: {path}"
+            )
+        worker_counts.add(worker_count)
+    if len(worker_counts) != 1:
+        raise ShardError("shard receipts disagree on worker_count")
+    worker_count = next(iter(worker_counts))
     expected_digest = nodeids_digest(all_nodeids)
-    expected_plans = plan_shards(all_nodeids, shard_count, baseline)
+    expected_plans = plan_shards(all_nodeids, shard_count, baseline, worker_count)
     seen_indices: set[int] = set()
     seen_nodeids: set[str] = set()
     for path, payload in receipts:

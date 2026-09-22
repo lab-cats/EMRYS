@@ -4,8 +4,12 @@ These scripts run repository checks and produce test results; they are not
 public workflow commands.
 
 - `run_validation.py` runs static checks and non-overlapping test groups.
-- `python_test_shards.py` balances CI groups using recorded durations and checks
-  that their receipts cover the exact test inventory.
+- `python_test_shards.py` uses recorded durations and configured xdist capacity
+  to choose deterministic CI shard membership. Pytest-xdist owns actual worker
+  assignment and work stealing; receipts therefore bind worker count and exact
+  inventory without claiming a predicted runtime. Each shard retains pytest's
+  total-runtime JUnit timing XML as a candidate for a later reviewed baseline
+  update; the observation does not change the active baseline itself.
 - `source_dependencies.py` checks the import rules and exact exceptions in
   `src/emrys/contracts/SOURCE_TOPOLOGY.md`.
 - `real_synthetic_e2e.py` runs one explicit managed-synthetic scenario without

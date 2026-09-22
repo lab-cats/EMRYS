@@ -933,7 +933,7 @@ jobs:
           PYTHON_TEST_SHARD_COUNT=${{ env.PYTHON_TEST_SHARD_COUNT }}
           PYTHON_COVERAGE_WORKERS="$(nproc)"
 
-      - name: Upload coverage fragment and selection receipt
+      - name: Upload coverage fragment, selection receipt, and timings
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -941,6 +941,7 @@ jobs:
           path: |
             .coverage-work/.coverage.*
             .coverage-work/python-test-shard-*.json
+            .coverage-work/python-test-shard-*.xml
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 7
@@ -1052,12 +1053,14 @@ jobs:
           --receipt
           "${RUNNER_TEMP}/emrys-python311-test-shards/python-test-shard-${{ matrix.shard }}-of-${{ env.PYTHON_TEST_SHARD_COUNT }}.json"
 
-      - name: Upload selection receipt
+      - name: Upload selection receipt and timings
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python311-test-shard-${{ matrix.shard }}
-          path: ${{ runner.temp }}/emrys-python311-test-shards/python-test-shard-*.json
+          path: |
+            ${{ runner.temp }}/emrys-python311-test-shards/python-test-shard-*.json
+            ${{ runner.temp }}/emrys-python311-test-shards/python-test-shard-*.xml
           if-no-files-found: error
           retention-days: 7
 

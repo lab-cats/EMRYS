@@ -20,8 +20,8 @@ def test_plan_is_deterministic_complete_disjoint_and_duration_aware() -> None:
     slow = nodeids[7]
     durations = baseline(durations={slow: 20.0})
 
-    first = TOOL.plan_shards(nodeids, 3, durations)
-    second = TOOL.plan_shards(tuple(reversed(nodeids)), 3, durations)
+    first = TOOL.plan_shards(nodeids, 3, durations, 2)
+    second = TOOL.plan_shards(tuple(reversed(nodeids)), 3, durations, 2)
 
     assert first == second
     assert sorted(nodeid for plan in first for nodeid in plan.nodeids) == sorted(
@@ -29,10 +29,35 @@ def test_plan_is_deterministic_complete_disjoint_and_duration_aware() -> None:
     )
     assert sum(slow in plan.nodeids for plan in first) == 1
     assert len({nodeid for plan in first for nodeid in plan.nodeids}) == len(nodeids)
-    non_slow_loads = [
-        plan.estimated_seconds for plan in first if slow not in plan.nodeids
-    ]
-    assert max(non_slow_loads) - min(non_slow_loads) <= durations.default_seconds
+    assert {plan.worker_count for plan in first} == {2}
+
+
+def test_worker_aware_plan_uses_capacity_for_shard_membership() -> None:
+    six = "tests/test_example.py::test_six"
+    four_a = "tests/test_example.py::test_four_a"
+    four_b = "tests/test_example.py::test_four_b"
+    three_a = "tests/test_example.py::test_three_a"
+    three_b = "tests/test_example.py::test_three_b"
+    durations = {
+        six: 6.0,
+        four_a: 4.0,
+        four_b: 4.0,
+        three_a: 3.0,
+        three_b: 3.0,
+    }
+    nodeids = tuple(durations)
+
+    worker_aware = TOOL.plan_shards(nodeids, 2, baseline(durations=durations), 2)
+    serial = TOOL.plan_shards(nodeids, 2, baseline(durations=durations), 1)
+
+    assert tuple(plan.nodeids for plan in worker_aware) == (
+        (four_b, six),
+        (four_a, three_a, three_b),
+    )
+    assert tuple(plan.nodeids for plan in serial) == (
+        (six, three_a),
+        (four_a, four_b, three_b),
+    )
 
 
 def test_plan_rejects_stale_duration_nodeid() -> None:
@@ -41,17 +66,21 @@ def test_plan_rejects_stale_duration_nodeid() -> None:
             ("tests/test_example.py::test_live",),
             2,
             baseline(durations={"tests/test_example.py::test_retired": 3.0}),
+            2,
         )
 
 
-def test_run_writes_receipt_before_selected_pytest_execution(tmp_path: Path) -> None:
+@pytest.mark.parametrize("write_timing_report", (True, False))
+def test_run_writes_receipt_before_selected_pytest_execution(
+    tmp_path: Path, write_timing_report: bool
+) -> None:
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
     duration_path = repo_root / "durations.json"
     duration_path.write_text(
         json.dumps(
             {
-                "schema_version": TOOL.SCHEMA_VERSION,
+                "schema_version": TOOL.DURATION_SCHEMA_VERSION,
                 "default_seconds": 1.0,
                 "durations_seconds": {},
             }
@@ -65,6 +94,9 @@ def test_run_writes_receipt_before_selected_pytest_execution(tmp_path: Path) -> 
         "tests/test_example.py::test_c",
     )
     observed: list[tuple[str, ...]] = []
+    timing_report = receipt.with_suffix(".xml")
+    if not write_timing_report:
+        timing_report.write_text("<stale-testsuites />\n", encoding="utf-8")
 
     def command_runner(
         command: tuple[str, ...], **_kwargs: object
@@ -73,25 +105,57 @@ def test_run_writes_receipt_before_selected_pytest_execution(tmp_path: Path) -> 
         if "--collect-only" in command:
             return subprocess.CompletedProcess(command, 0, "\n".join(collected), "")
         assert receipt.is_file()
+        report_argument = next(
+            item for item in command if item.startswith("--junitxml=")
+        )
+        if write_timing_report:
+            Path(report_argument.removeprefix("--junitxml=")).write_text(
+                "<testsuites />\n", encoding="utf-8"
+            )
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    status = TOOL.run_shard(
-        repo_root=repo_root,
-        shard_index=1,
-        shard_count=2,
-        workers=2,
-        duration_baseline=duration_path,
-        receipt=receipt,
-        command_runner=command_runner,
-    )
+    arguments = {
+        "repo_root": repo_root,
+        "shard_index": 1,
+        "shard_count": 2,
+        "workers": 2,
+        "duration_baseline": duration_path,
+        "receipt": receipt,
+        "command_runner": command_runner,
+    }
+    if not write_timing_report:
+        with pytest.raises(TOOL.ShardError, match="did not write timing report"):
+            TOOL.run_shard(**arguments)
+        assert receipt.is_file()
+        assert not timing_report.exists()
+        return
+    status = TOOL.run_shard(**arguments)
 
     payload = json.loads(receipt.read_text(encoding="utf-8"))
-    expected = TOOL.plan_shards(collected, 2, baseline())[1].nodeids
+    expected = TOOL.plan_shards(collected, 2, baseline(), 2)[1].nodeids
     assert status == 0
     assert tuple(payload["nodeids"]) == expected
     assert payload["collected_count"] == 3
+    assert payload["worker_count"] == 2
+    assert payload["schema_version"] == TOOL.RECEIPT_SCHEMA_VERSION
+    assert "estimated_seconds" not in payload
     assert "--dist=worksteal" in observed[1]
-    assert set(expected).issubset(observed[1])
+    assert "junit_duration_report=total" in observed[1]
+    assert "junit_family=xunit1" in observed[1]
+    assert f"--junitxml={timing_report}" in observed[1]
+    assert timing_report.is_file()
+    assert observed[1][-len(expected) :] == expected
+
+
+def test_load_receipt_rejects_pre_worker_schema(tmp_path: Path) -> None:
+    receipt = tmp_path / "receipt.json"
+    receipt.write_text(
+        json.dumps({"schema_version": TOOL.DURATION_SCHEMA_VERSION}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(TOOL.ShardError, match="unsupported shard receipt"):
+        TOOL.load_receipt(receipt)
 
 
 def test_in_process_pytest_adds_and_restores_repository_import_path(
@@ -128,7 +192,7 @@ def test_receipt_verification_rejects_missing_duplicate_and_stale_plans(
 ) -> None:
     nodeids = tuple(f"tests/test_example.py::test_{index}" for index in range(8))
     durations = baseline()
-    plans = TOOL.plan_shards(nodeids, 2, durations)
+    plans = TOOL.plan_shards(nodeids, 2, durations, 2)
     receipts = []
     for index, plan in enumerate(plans):
         path = tmp_path / f"python-test-shard-{index}-of-2.json"
@@ -165,6 +229,57 @@ def test_receipt_verification_rejects_missing_duplicate_and_stale_plans(
             receipts=[receipts[0], (receipts[1][0], stale)],
             all_nodeids=nodeids,
             baseline=durations,
+        )
+
+
+def test_receipt_verification_rejects_worker_count_mismatch(tmp_path: Path) -> None:
+    nodeids = tuple(f"tests/test_example.py::test_{index}" for index in range(8))
+    durations = baseline()
+    plans = TOOL.plan_shards(nodeids, 2, durations, 2)
+    receipts = [
+        (
+            tmp_path / f"python-test-shard-{index}-of-2.json",
+            TOOL.receipt_payload(
+                all_nodeids=nodeids,
+                plan=plan,
+                shard_index=index,
+                shard_count=2,
+            ),
+        )
+        for index, plan in enumerate(plans)
+    ]
+    receipts[1][1]["worker_count"] = 3
+
+    with pytest.raises(TOOL.ShardError, match="disagree on worker_count"):
+        TOOL.verify_receipts(
+            receipts=receipts,
+            all_nodeids=nodeids,
+            baseline=durations,
+        )
+
+
+@pytest.mark.parametrize("worker_count", [None, 0, -1, True])
+def test_receipt_verification_rejects_invalid_worker_count(
+    tmp_path: Path, worker_count: object
+) -> None:
+    nodeids = ("tests/test_example.py::test_one",)
+    plan = TOOL.plan_shards(nodeids, 1, baseline(), 1)[0]
+    payload = TOOL.receipt_payload(
+        all_nodeids=nodeids,
+        plan=plan,
+        shard_index=0,
+        shard_count=1,
+    )
+    if worker_count is None:
+        payload.pop("worker_count")
+    else:
+        payload["worker_count"] = worker_count
+
+    with pytest.raises(TOOL.ShardError, match="positive integer"):
+        TOOL.verify_receipts(
+            receipts=[(tmp_path / "python-test-shard-0-of-1.json", payload)],
+            all_nodeids=nodeids,
+            baseline=baseline(),
         )
 
 

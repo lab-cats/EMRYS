@@ -913,8 +913,19 @@ def test_workflow_lint_only_exempts_the_supported_new_runner_label() -> None:
     assert "-ignore='^label \"ubuntu-26[.]04\" is unknown[.]'" in lint["run"]
 
 
-def test_python311_shard_receipts_round_trip_outside_source_checkout() -> None:
+def test_python_shard_receipts_and_timings_round_trip_outside_source_checkout() -> None:
     jobs = _workflow_jobs()
+    coverage_upload = _named_step(
+        jobs["python314-coverage-shards"],
+        "Upload coverage fragment, selection receipt, and timings",
+    )["with"]
+    assert set(coverage_upload["path"].splitlines()) == {
+        ".coverage-work/.coverage.*",
+        ".coverage-work/python-test-shard-*.json",
+        ".coverage-work/python-test-shard-*.xml",
+    }
+    assert coverage_upload["if-no-files-found"] == "error"
+
     shard_job = jobs["python311-full-shards"]
     aggregate_job = jobs["python311-full"]
 
@@ -926,9 +937,12 @@ def test_python311_shard_receipts_round_trip_outside_source_checkout() -> None:
     assert f'--receipt "{SHELL_RECEIPT_ROOT}/python-test-shard-' in run_command
     assert "${GITHUB_WORKSPACE}/.test-shards" not in run_command
 
-    upload_step = _named_step(shard_job, "Upload selection receipt")
+    upload_step = _named_step(shard_job, "Upload selection receipt and timings")
     upload_inputs = upload_step["with"]
-    assert upload_inputs["path"] == (f"{ACTION_RECEIPT_ROOT}/python-test-shard-*.json")
+    assert set(upload_inputs["path"].splitlines()) == {
+        f"{ACTION_RECEIPT_ROOT}/python-test-shard-*.json",
+        f"{ACTION_RECEIPT_ROOT}/python-test-shard-*.xml",
+    }
     assert upload_inputs["if-no-files-found"] == "error"
 
     download_step = _named_step(
