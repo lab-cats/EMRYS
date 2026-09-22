@@ -358,6 +358,63 @@ def test_run_submission_and_wait_failure_cancel_once(
     assert (job.state, job.exit_code) == ("FAILED", "1:0")
 
 
+def test_stop_waits_for_the_single_compute_materialized_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from emrys.orchestration.run_coordinator import inspection
+
+    workspace = tmp_path / "workspace"
+    run_root = workspace / "runs" / ("run-" + "a" * 64)
+    observations = iter(((), (run_root,)))
+    monkeypatch.setattr(
+        inspection, "project_run_roots", lambda _workspace: next(observations)
+    )
+    monkeypatch.setattr(
+        driver,
+        "_scheduler",
+        lambda argv, _cwd: subprocess.CompletedProcess(
+            argv, 0, "JobState=RUNNING ExitCode=0:0", ""
+        ),
+    )
+
+    assert (
+        driver.await_run_root(
+            workspace,
+            driver.Job("42", tmp_path / "job.out", tmp_path / "job.err"),
+            scontrol=Path("scontrol"),
+            cwd=tmp_path,
+            poll_seconds=0.001,
+            timeout_seconds=1,
+        )
+        == run_root
+    )
+
+
+def test_stop_rejects_ambiguous_compute_materialized_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from emrys.orchestration.run_coordinator import inspection
+
+    workspace = tmp_path / "workspace"
+    run_roots = tuple(
+        workspace / "runs" / ("run-" + character * 64)
+        for character in ("a", "b")
+    )
+    monkeypatch.setattr(
+        inspection, "project_run_roots", lambda _workspace: run_roots
+    )
+
+    with pytest.raises(driver.DriverError, match="materialized multiple Runs"):
+        driver.await_run_root(
+            workspace,
+            driver.Job("42", tmp_path / "job.out", tmp_path / "job.err"),
+            scontrol=Path("scontrol"),
+            cwd=tmp_path,
+            poll_seconds=0.001,
+            timeout_seconds=1,
+        )
+
+
 def test_intentional_stop_observation_never_reissues_cancellation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

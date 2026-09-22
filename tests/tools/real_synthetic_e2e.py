@@ -639,6 +639,38 @@ def parse_run_plan(text: str, workspace: Path, *, no_write: bool) -> Path:
     return run_root
 
 
+def await_run_root(
+    workspace: Path,
+    job: Job,
+    *,
+    scontrol: Path,
+    cwd: Path,
+    poll_seconds: float,
+    timeout_seconds: float = 300.0,
+) -> Path:
+    from emrys.orchestration.run_coordinator import inspection
+
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        run_roots = inspection.project_run_roots(workspace)
+        if len(run_roots) == 1:
+            return run_roots[0]
+        if len(run_roots) > 1:
+            raise DriverError(
+                "native-stop", "submitted job materialized multiple Runs"
+            )
+        status = _scheduler((str(scontrol), "show", "job", "-o", job.job_id), cwd)
+        if status.returncode:
+            raise DriverError("native-stop", "scheduler lost the selected job")
+        state, _ = parse_scontrol(status.stdout)
+        if state in TERMINAL_STATES:
+            raise DriverError(
+                "native-stop", f"job became {state} before Run materialization"
+            )
+        time.sleep(min(poll_seconds, 0.2))
+    raise DriverError("native-stop", "Run materialization timed out")
+
+
 def parse_submission(text: str, log_dir: Path) -> Job:
     job_id = _one(JOB_ID, text, "job ID", "submit-slurm")
     job = Job(
@@ -1699,11 +1731,10 @@ def _stop_active_run(
     paths: Paths,
     projects: dict[str, Path],
     runtime: Runtime,
-    slurm_run_root: Path,
     submission: subprocess.CompletedProcess[str],
     scontrol: Path,
     scancel: Path,
-) -> tuple[tuple[Job, Job], dict[str, Any], dict[str, Any]]:
+) -> tuple[Path, tuple[Job, Job], dict[str, Any], dict[str, Any]]:
     from emrys.orchestration.run_coordinator import slurm_submission
 
     try:
@@ -1729,11 +1760,18 @@ def _stop_active_run(
             or request.recorded_job_id != active_job.job_id
             or request.context is None
             or request.context["project"] != str(projects["slurm"])
-            or request.context["requested_run"] != slurm_run_root.name
+            or request.context["requested_run"] is not None
         ):
             raise DriverError(
-                "native-stop", "retained request does not bind this Run/job"
+                "native-stop", "retained request does not bind this new-Run job"
             )
+        slurm_run_root = await_run_root(
+            paths.slurm_workspace,
+            active_job,
+            scontrol=scontrol,
+            cwd=repo,
+            poll_seconds=arguments.poll_seconds,
+        )
         gate = await_native_gate(
             paths.native_gate,
             slurm_run_root,
@@ -1908,6 +1946,7 @@ def _stop_active_run(
     if final_job.job_id == stopped_job.job_id:
         raise DriverError("native-stop", "final resume reused the stopped job")
     return (
+        slurm_run_root,
         (stopped_job, final_job),
         interruption,
         {
@@ -2112,17 +2151,15 @@ def run_driver(
     scheduler_plan = transcripts.run("slurm-plan", scheduled, cwd=repo)
     if (
         scheduler_plan.stdout
+        or RUN_ROOT.search(scheduler_plan.stderr) is not None
+        or "Analysis: selected from the Project on the compute node"
+        not in scheduler_plan.stderr
         or "Dry-run complete; no scheduler or workspace state was written."
         not in scheduler_plan.stderr
         or before_plan != _execution_state(paths.slurm_workspace)
     ):
-        raise DriverError("slurm-plan", "scheduler dry-run wrote or submitted")
+        raise DriverError("slurm-plan", "scheduler dry-run contract differs")
 
-    planned_slurm_run_root = parse_run_plan(
-        scheduler_plan.stderr,
-        paths.slurm_workspace,
-        no_write=True,
-    )
     failure_environment = (
         {**os.environ, "SNAKEMAKE_PROFILE": str(failure_profile)}
         if recovery_journey
@@ -2164,9 +2201,8 @@ def run_driver(
     failures: dict[str, dict[str, Any] | None] = {label: None for label in workspaces}
     interruption: dict[str, Any] | None = None
     stop_evidence: dict[str, Any] | None = None
-    slurm_run_root = planned_slurm_run_root
     if stop_journey:
-        slurm_jobs, interruption, stop_evidence = _stop_active_run(
+        slurm_run_root, slurm_jobs, interruption, stop_evidence = _stop_active_run(
             arguments=arguments,
             transcripts=transcripts,
             python=python,
@@ -2174,7 +2210,6 @@ def run_driver(
             paths=paths,
             projects=projects,
             runtime=runtime,
-            slurm_run_root=slurm_run_root,
             submission=submission,
             scontrol=scontrol,
             scancel=scancel,
@@ -2202,10 +2237,6 @@ def run_driver(
             paths.slurm_workspace,
             no_write=False,
         )
-        if slurm_run_root != planned_slurm_run_root:
-            raise DriverError(
-                "slurm-submit", "Slurm execution selected a different Run"
-            )
         slurm_jobs = (initial_job,)
     if direct_run_root is not None and direct_run_root.name != slurm_run_root.name:
         raise DriverError("plan-parity", "Direct and Slurm selected different Runs")
