@@ -32,9 +32,9 @@ states, not another task-status registry.
 | ID | State | Discovery at the reviewed revision | Next evidence or decision |
 | --- | --- | --- | --- |
 | S01 — Resource scope | Observed | There are 20 packaged Draft 2020-12 resources: four artifact and 16 orchestration files. Public record selection covers three artifact and 15 orchestration selectors; two resources provide common definitions. The artifact loader also holds its common definitions as internal registry keys. See the resource ledger below. | Trace every selected record's writer, reader, and references before choosing a reset. |
-| S02 — Version identity | Observed | Packaged directory numbers, `$id` versions, and serialized record versions differ in current files. The [schema owner](../../src/emrys/contracts/schemas/README.md#version-and-identity-rules) says directory numbers span separate families and participate in resource paths and references. | Give each kind of version and path a separate disposition; do not rename directories for visual consistency. |
+| S02 — Version identity | Observed | Nine current resources already have v1 `$id`s; 11 do not (three artifact and eight orchestration). Packaged directory numbers, `$id` versions, and serialized record versions differ in current files. The [schema owner](../../src/emrys/contracts/schemas/README.md#version-and-identity-rules) says directory numbers span separate families and participate in resource paths and references. | Give each kind of version and path a separate disposition; do not rename directories for visual consistency. |
 | S03 — Registry and references | Observed | Artifact common definitions reference orchestration common's installed-package definition. All external `$ref` bases in the 20 files resolve within this set. [Orchestration](../../src/emrys/contracts/orchestration/api.py) requires exact registered `$id`s; the [artifact loader](../../src/emrys/contracts/artifacts/_artifact_contracts/schema.py) requires nonempty IDs and closes public selectors separately. | Check whether any registry consolidation preserves the different selector, error, and semantic-admission contracts while reducing total code. |
-| S04 — Production consumers | Partial | Artifact entries feed the Run summary and reporting. Project setup, normalization, materialization, Task execution, lifecycle, and reporting boundaries write orchestration records; inspection and reporting read admitted records. | Complete a per-record writer/reader table covering public CLI, installed wheel, direct, Slurm, resume, report, fixtures, and documented integrations. Record negative searches. |
+| S04 — Production consumers | Partial | The per-resource map below identifies producers and readers. Direct and delegated Slurm scientific execution share Run/Attempt/Task writers; resume re-admits the immutable Run. Automatic and standalone reporting share report producers. Head-node submission requests and reporting ledgers have distinct boundaries. | Recheck each selected change against direct, Slurm, resume, standalone report, public CLI, installed wheel, fixtures, and known integrations. Obtain exact-head route results before claiming parity. |
 | S05 — Package and Run identity | Observed | [Package-data globs](../../pyproject.toml) cover seven schema directories, and the [wheel resource roster](../../tests/test_package_distribution.py) names all 20 files. Twelve orchestration schema paths are explicitly included in [Run implementation identity](../../src/emrys/orchestration/run_coordinator/run_implementation.py). All 20 packaged resources also affect the installed-package tree digest recorded by new workflow Attempts. The other eight do not enter the explicit Run admission-root list; `execution_profile` is still an active validator and Attempt-placement input. | Determine whether that Run-root omission is intentional before claiming a defect. Inventory retained identities before selecting a migration. |
 | S06 — Prerelease distribution | Partial | The package declares Alpha and `0.1.0.dev0`. On 2026-09-22, the exact PyPI project lookup returned 404, and GitHub listed no releases or tags. The [Quickstart](../../quickstart.md) documents source installation. A wheel test and public CLI, artifact-validation, provider and reporter interfaces establish supported external surfaces, not observed third-party use. | Inventory known collaborators, source installs, private distributions, and downstream readers. The checked public channels do not prove absence of external consumers. |
 | S07 — Retained Runs | Partial | Tracked `Projects/` contains only placeholders and Project data is ignored by Git. The [campaign record](backlog_matrix.md#viking-walkthrough-findings) reports actual-data Runs, including an unresolved cancelled Run and replacement at the time of that report. Their present locations, versions, and recovery needs were not inspected. | Obtain owner-identified locations or a bounded inventory. Inspect version and identity metadata read-only without changing or copying scientific data. |
@@ -57,6 +57,7 @@ These profile fields also fall under deferred
 | `owner_tasks[].scope_selector` | Validation requires the current one-to-one mapping from `scope_type`; Snakemake's fixed processing check reads both. | Test whether derivation preserves the independent scope fence and exact profile binding. |
 | `artifact_templates[].scope_selector` | [Inventory expansion](../../src/emrys/contracts/orchestration/artifact_inventory.py) groups templates in first-seen selector order and rejects selector/scope mismatches. | Derivation from `scope_type` must preserve inventory rows, order, grouping, and rejection behavior. The field is used, not dead. |
 | Adjacent `workflow_inputs["profile"]` | Source review found a generated private backend projection of profile ID, version, and hash with no production reader found so far. It is not a JSON Schema field. | Check external/API exposure and route any justified removal to its proper reduction owner. Do not infer that the schema's profile ID or version fields are unused. |
+| Adjacent `validate_record(..., profile=...)` | The orchestration API includes this optional parameter and serializes it into the successful-validation cache key, but the called record validator does not read it. Inspection forwards it, while a separate successor-Run check actually validates Run/profile consistency. This is an API/cache candidate, not a schema field. | Inspect external Python callers and error precedence before removing the parameter or cache dimension. Preserve the separate successor-Run admission. |
 
 ### Field use, identity, and defense
 
@@ -72,6 +73,18 @@ also binds the packaged base profile, its schema, and backend bytes. A field
 or schema migration can therefore change new Run and Attempt identities even
 when the projected functional value is unchanged. Existing snapshots must not
 be rewritten to make a new contract appear compatible.
+
+The 12 explicit [Run admission roots](../../src/emrys/orchestration/run_coordinator/run_implementation.py)
+are `application_model`, orchestration `common`, `policy`, `reference`,
+`run_lock`, `task_attempt`, `task_start`, `verified_task`, `workflow_attempt`,
+`attempt_receipt`, `profile`, and `resource_config`. The eight omitted
+packaged resources are all four artifact schemas plus `project`,
+`reporting_start`, `verified_reporting`, and `execution_profile`. They remain
+active package resources: [installed-package identity](../../src/emrys/libraries/installed_package_identity.py)
+digests the package tree for new Attempts; the execution-profile schema
+validates selected YAML and is a workflow-attempt `$ref`, and its effective
+profile/source hashes bind placement. Omission from the Run-root list is not
+evidence that a resource is unused or safe to rename.
 
 The profile validator requires `semantic_owner_keys` and
 `required_owner_keys` to equal the full set of profile owners. The immutable
@@ -169,6 +182,16 @@ baseline, not a proposed deletion count. The artifact loader's
 and [orchestration registry](../../src/emrys/contracts/orchestration/api.py)
 both use standard-library strict JSON hooks and existing `jsonschema` and
 `referencing` machinery. Their error and selector policies are not identical.
+The artifact loader requires a nonempty `$id` and lets its direct validator
+look up registry keys; its public CLI restricts selection to the three record
+schemas. Orchestration checks each exact registered `$id`, rejects names
+outside its 15 public selectors, and caches validators and successful
+canonical-record validation. Artifact schema errors return sorted validation
+objects before CLI formatting; orchestration returns sorted rendered messages.
+Their `ContractValidationError` base classes and diagnostics differ, and each
+owner applies its own semantic admission after JSON Schema. A shared helper
+would have to preserve those policies, failure precedence, and direct callers
+while reducing total maintained code.
 The only structurally identical cross-family common definitions are `safe_id`
 and `sha256`, about eight lines total in artifact common, with 15 local
 references; moving them would not retire either common resource. Other
@@ -184,6 +207,15 @@ already delegates registration to its two owners, and the
 [topology guardrails](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) require
 equivalent behavior before policy sharing. A third registry or custom
 validator framework has no demonstrated capability gap.
+
+Another bounded candidate is the optional `profile` parameter on
+[orchestration record validation](../../src/emrys/contracts/orchestration/api.py).
+The current validator passes it through a cache key but does not consult it
+for a record decision. [Inspection](../../src/emrys/orchestration/run_coordinator/_inspection_admission.py)
+forwards the parameter, then separately performs the actual cross-record
+Run/profile admission. Removing the unused cache dimension could reduce code,
+but public Python callers and error precedence have not been audited. This
+candidate must not be confused with the independent successor-Run protection.
 
 ## Resource ledger at the reviewed revision
 
@@ -215,6 +247,18 @@ schema resources.
 | `orchestration/v2/profile` | `orchestration:profile:v2` | Workflow profile v2 |
 | `orchestration/v3/execution_profile` | `orchestration:execution-profile:v1` | Execution profile v1 |
 | `orchestration/v3/resource_config` | `orchestration:resource-config:v1` | Local-pilot resources v1 |
+
+### Reset decision worksheet
+
+This is a scope split, not a recommendation to change any resource. A v1
+`$id` says nothing by itself about every serialized label inside a schema.
+
+| Resource group | Source-bound impact of a selected reset | Current disposition |
+| --- | --- | --- |
+| Nine resources with v1 `$id`s | No `$id` reset to v1 is needed. `application_model` still contains three separately versioned current records; `execution_profile` sits in packaged `v3` while its ID is v1. Directory names remain resource paths. | Retain current IDs pending any independently justified format change. |
+| Three artifact resources with non-v1 `$id`s | Artifact entry is nested in Run summary; summary and receipt serialize `8.0.0`. A selected change would touch reporting writers/readers, public artifact validation, references, fixtures, independent goldens, wheel resources, and Attempt package provenance. They are not explicit Run admission roots. | Open until actual consumer and reporting impact is bounded. |
+| Seven non-v1 orchestration Run roots | `run_lock`, `task_attempt`, `task_start`, `verified_task`, `workflow_attempt`, `attempt_receipt`, and `profile` enter the explicit Run implementation closure. A selected path or byte change affects new Run identity and current-format recovery comparisons. | Open until retained state, all callers, and surviving defenses are bounded. |
+| Non-v1 `reporting_start` | Reporting ledger writer/reader and installed-package provenance depend on it, while the explicit Run-root list omits it. | Open as a reporting/recovery decision, not an inferred Run-ID change. |
 
 ### Packaged record paths
 
@@ -267,6 +311,34 @@ reference in `scripts/` or `.github/`; a CI profile-version literal is a
 separate check. The Slurm submission-request
 versions are a separate non-registry reader in
 [Slurm submission handling](../../src/emrys/orchestration/run_coordinator/slurm_submission.py).
+
+### Direct, Slurm, resume, and reporting routes
+
+The public [control owner](../../src/emrys/orchestration/run_coordinator/control.py)
+funnels `run` and `resume` through shared planning. Direct execution and a
+Slurm delegate call the same Run admission, Attempt publication, lifecycle,
+and Task owners. Slurm submission first admits the Project for duplicate
+intent screening, writes a separate `emrys.submission-request.v4`, and
+re-enters `emrys run|resume|report --execute` in the allocation. That request
+is outside the 20 packaged schemas; shared scientific writers do not settle
+its version or head-node diagnostics.
+
+| Route | Shared record authority | Distinct boundary or open evidence |
+| --- | --- | --- |
+| Initial direct Run | Materialization writes analysis, Execution Plan, Run binding, profile, and workflow Attempt; lifecycle and Task owners write receipts and Task records. | Source and focused tests identify the path; exact-head runtime result was not run here. |
+| Delegated Slurm Run | Re-enters the same scientific writers after scheduler placement and allocation checks. | Submission request and placement are route-specific; a scheduled CI driver is not proof it ran for this head. |
+| Resume | Re-admits the immutable Run and predecessor compatibility before a successor Attempt/Task chain; a prepared-receipt path may finalize without a new Attempt. | It cannot rewrite Run authority; retained real recovery status remains unknown. |
+| Automatic or standalone report | Both call [reporting operation](../../src/emrys/orchestration/run_coordinator/reporting_operation.py), which inspects admitted Run/Attempt state and writes Run summary, artifact records, receipt, and ordered reporting ledgers. | Standalone report creates no scientific Attempt; Slurm report delegates to the same owner. |
+
+[Focused route tests](../../tests/orchestration/run_coordinator/test_materialization.py)
+cover direct/Slurm planning, delegated report, and prepared resume.
+[Reporting tests](../../tests/orchestration/run_coordinator/test_reporting_operation.py)
+cover reuse, partial refusal, preview, and ledger order. The
+[real-tool driver](../../tests/tools/real_synthetic_e2e.py) contains
+direct/Slurm and interrupted/resumed comparisons, but its CI lane is
+conditional and a source search found no standalone `emrys report` command
+in that driver. These are inspected test designs, not exact-head pass results
+or institutional parity evidence.
 
 The `$ref` closure is also bounded: artifact common refers to orchestration
 common; artifact entry to artifact common; Run summary to artifact entry and
