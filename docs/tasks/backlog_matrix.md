@@ -90,45 +90,54 @@ and institutional verification still explicit.
 | `VIKING-POLICY-01` | P2 documentation defect | Completed | `4` | `2` | Align Viking recovery guidance with the current allocation policy. | Troubleshooting now identifies [`execution_profile.py`](../../src/emrys/orchestration/run_coordinator/execution_profile.py) as the current `memory_mb: 0`, whole-node CPU and exclusive policy; the earlier null-memory workaround is explicitly historical. Source and guidance agree without changing allocation policy. Earlier rejection of other explicit memory requests establishes neither acceptance nor rejection of `--mem=0`; institutional verification remains required. |
 | `CV-DOCS-01` | Acceptance consistency | Completed | `3` | `2` | Correct the remaining CV-12/CV-27 wording and navigation conflicts. | CV-12 now directly records its Discard disposition and unknown E01 cause, with no causal-reconstruction requirement. Quickstart directly links the Runbook terminal-transfer procedure. CV-27 still requires actual generated-bundle contents, relative links, rendering and institutional transfer; its tiny copy fixture proves command mechanics only. These wording/navigation corrections neither promote evidence nor close institutional or visual acceptance. |
 
+### Deferred operational work
+
+These accepted outcomes have enduring owners after the temporary CV records retire.
+They are outside the selected pre-closure implementation tranche.
+
+| ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
+|---|---|---|---:|---:|---|---|
+| `CLEANUP-01` | Ownership design | Deferred | `3` | `4` | Select a safe owner-backed cleanup scope before implementing deletion. | Retains CV-23. Current owners establish no retained candidate class with both exclusive ownership and absence of references. Select a specific class, then preview exact candidates, references and consequences. Protect active/ambiguous Runs, older Attempts and reused outputs, shared inputs/sidecars, runtime borrowers and linked caches, receipts, locks, partials and recovery evidence. Unknown is not unused; age, scheduler disappearance and missing success receipts prove no deletability. Keep transaction-owned temporary cleanup at its existing boundary; reuse existing inspection and ownership rather than adding a generic registry or cleanup engine. Any evidence deletion requires separate explicit authority. |
+| `INTERACTIVE-01` | Guided operation | Deferred | `3` | `4` | Extend guidance through the complete setup and analysis-launch journey. | Retains CV-U19's eventual default guided interaction with an optional manual route. Existing named Init, runtime admission, Doctor and Run confirmations are implemented partial behavior. No full prompt sequence, migration, default-mode transition or `--advanced` spelling is selected. Audit the existing CLI owners before selecting a bounded extension; preserve scientific choices, approval, no-write previews, provenance and recovery. |
+
 ### Cluster verification closure checklist
 
-`CLUSTER-VERIFY-01` owns campaign retirement; its delegated cards remain active
-until reconciled. This checklist records the remaining closure sequence, not
-new proof or permission to execute a cluster campaign or merge.
+`CLUSTER-VERIFY-01` is **Verification pending**. The selected source and guide
+corrections are implemented; CV-U06's one-line accounting exception is approved.
+CV-10's accepted trust boundary remains in the
+[recovery contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
+and [operator guidance](../operations/TROUBLESHOOTING.md#run-and-reporting-state).
+Broad audits, including the >600-line inventory, remain with polish; Deferred
+work has the named owners above. Required verification is:
 
-1. Resolve or explicitly narrow `SCHED-USAGE-01`; reconcile
-   `SUBMISSION-PREVIEW-01`, `VIKING-POLICY-01` and `CV-DOCS-01` with the CV cards.
-   Preserve CV-10's accepted trusted-workspace ownership limit in the
-   [recovery contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
-   and operator guidance; it is not a new implementation requirement.
-2. Preserve the approved CV-U06 one-line product-growth exception separately
-   from functional correctness and institutional verification. It is settled
-   and supplies no resource-use or site evidence.
-3. Close the **P1 CV-01 evidence gap** with applicable final-source regressions
-   and an explicitly selected, exact-revision 130-pair disposable-Slurm
-   stop/resume journey. Ordinary PR CI does not select that journey. Retain the
-   pinned real samtools child, exact stop target/current Task and Attempt,
-   public stop/native exit, positively closed interrupted Attempt, unchanged
-   predecessors, distinct subsequent resume and final scientific/reporting
-   oracle evidence. Local cancellation fixtures and direct golden paths do not
-   substitute; the supplied audit's missing-proof finding is not a new CI result.
-4. Perform one coordinated institutional acceptance campaign at an identified
-   revision: fresh novice head-node setup, optional synthetic check,
-   representative actual-data terminal outcome, runtime reuse, actual resource
-   resolution, pre-Run/active/reporting/reconnect inspection, queued and native
-   cancellation/recovery, and report transfer. Preserve every card's required
-   combination, including memory-policy and cross-node cases; an optional
-   smoke guide does not waive required synthetic acceptance evidence.
-5. Record report visual review, scientific review and biological interpretation
-   separately with the existing reporting/scientific owners. Scheduler success
-   and computational receipts satisfy none of these review layers. Biological
-   interpretation remains external work, not a pipeline completion gate.
-6. Give every CV/CV-U/CV-UX card a terminal disposition or transfer remaining
-   acceptance to a named current owner. Preserve Deferred cleanup (CV-23) and
-   interactive work (CV-U19). Reconcile the matrix and operational guides,
-   transfer lasting decisions/evidence, then retire the temporary backlog and
-   charter together. Retain a concise verification checklist in the enduring
-   owner; merge follows verified closure and explicit merge authority.
+- [ ] **Final-source software evidence:** applicable hosted regressions and the
+  explicitly selected, exact-revision **130-pair disposable-Slurm** journey.
+  Ordinary PR CI does not select it. Retain the pinned real samtools child,
+  stop target/current Task/Attempt, public stop and native exit, positive
+  interrupted closure, unchanged predecessors, distinct resume, and final
+  scientific/reporting oracles. Local stop fixtures and direct golden paths
+  cannot substitute.
+- [ ] **One institutional campaign:** fresh novice setup using the
+  [Quickstart](../../quickstart.md), required synthetic and representative
+  actual-data terminal outcomes, runtime reuse, resolved resources/memory and
+  scratch, pre-Run/active/reporting/reconnect inspection, queued/native
+  cancellation and recovery, cross-node combinations, and generated-report
+  transfer. Cover each card's required combinations, timing and operator
+  acceptance. Retain exact package/Run/Attempt/profile/input/runtime identities.
+  The optional novice smoke guide waives no card's required synthetic evidence;
+  disposable-node results establish no institutional memory or cross-node policy.
+- [ ] **Separate review records:** report visual/link review and required
+  scientific review with their reporting/scientific owners. Scheduler success
+  and computational receipts do not establish either. Biological interpretation
+  remains external work, never a pipeline completion gate.
+- [ ] **Verified closure and retirement:** give every delegated card a terminal
+  disposition or named transfer, reconcile live references, and preserve lasting
+  decisions/evidence before retiring the backlog and charter together. Transfer
+  E01–E12 and exact hosted/artifact records, including CV-10/CV-26 evidence, to
+  [validation history](../history/validation-evidence.md); retain optimization
+  decisions with their current owner. Preserve all limits and failed-suite
+  distinctions. Retirement, evidence deletion and merge retain their separate
+  authority; merge follows verified closure.
 
 ### Reliability and qualification
 
@@ -147,8 +156,8 @@ new proof or permission to execute a cluster campaign or merge.
 | ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
 |---|---|---|---:|---:|---|---|
 | `SITE-PARITY-01` | Site qualification | Open | `4` | `5` | Qualify the current whole-Run path on CSU Viking or another named institutional site. | A novice operator without repository-development context follows only the maintained quickstart from a fresh Viking clone through one head-node path: Project creation with built-in Viking placement, Doctor-managed setup and automatic Slurm qualification, validation, submitted execution, inspection, and completed Results and reports. Normal output is concise and Doctor exposes its phases and elapsed time; every undocumented prerequisite or confusing step becomes a finding. Retain and resolve the [Viking walkthrough findings](#viking-walkthrough-findings) at their stated evidence level. Exact site modules/tools, Project storage semantics, locking/rename/durability, failure/recovery, resource and scheduler provenance, one-log ownership, and direct/Slurm scientific parity are evidenced at one exact revision. Hosted single-node proof is not promoted to institutional, multi-node, production, scientific-review, or biological proof. |
-| `CLUSTER-VERIFY-01` | Cluster verification campaign | Open | `4` | `5` | Resolve the recorded cluster-walkthrough failures and operator gaps while preserving scientific and recovery authority. | The [campaign charter](cluster_verification_campaign.md) owns scope and evidence; this matrix explicitly delegates `CV-01` through `CV-27`, `CV-U01` through `CV-U33`, and `CV-UX-01` statuses and acceptance, plus assigned priorities, to the [cluster verification backlog](cluster_verification_backlog.md). Preserve operator P0–P3 priorities and unexplained observations, investigate causes only where the delegated card still requires it, extend the managed golden path and exact-revision site exercises, and reconcile each card with its production owner. Follow the [closure checklist](#cluster-verification-closure-checklist), retaining transferred source follow-ups and distinct institutional/review evidence. Close only under the charter's disposition and evidence criteria. |
-| `SCHED-01` | Scheduler preflight | Open | `3` | `2` | Reject an explicitly undersized Slurm memory request before submission. | When both placement memory and the applicable workflow or stage minimum are explicit, admission rejects insufficient capacity before `sbatch`; unknown capacity remains unknown, the existing CPU check remains authoritative, and no generalized resource solver or duplicate scheduler policy is introduced. |
+| `CLUSTER-VERIFY-01` | Cluster verification campaign | Verification pending | `4` | `5` | Resolve the recorded cluster-walkthrough failures and operator gaps while preserving scientific and recovery authority. | The [campaign charter](cluster_verification_campaign.md) owns scope and evidence; this matrix explicitly delegates `CV-01` through `CV-27`, `CV-U01` through `CV-U33`, and `CV-UX-01` statuses and acceptance, plus assigned priorities, to the [cluster verification backlog](cluster_verification_backlog.md). Selected source and guide corrections are implemented, including INIT-01–03. Preserve operator priorities, accepted trust limits and unexplained historical observations. Remaining acceptance is exact final-source hosted/disposable-Slurm evidence, coordinated institutional execution, separate review records and verified dispositions; Deferred work remains with `CLEANUP-01` and `INTERACTIVE-01`. Follow the [closure checklist](#cluster-verification-closure-checklist), retaining transferred source follow-ups and distinct institutional/review evidence. Close only under the charter's disposition and evidence criteria. |
+| `SCHED-01` | Scheduler preflight | Verification pending | `3` | `2` | Reject an explicitly undersized Slurm memory request before submission. | The effective-profile check is implemented before submission, Doctor repair planning and profile creation, using the shared resource predicates. Explicit insufficient CPU or memory is rejected; symbolic or omitted capacity stays unknown, and placement-only resume retains its policy before checking. Verify the public no-submit/no-write, Doctor, authoring and resume cases on the final source. CV-11 retains the broader institutional heterogeneous-node acceptance. |
 | `CONTAINER-01` | Managed platform | Open | `3` | `5` | Evaluate and, if justified, provide a supported broadly compatible Linux container without coupling it to project setup. | Compare against the existing Pixi-managed path; cover architecture/ABI support, Slurm and storage integration, security, reproducibility, licenses, tool and R identities, updates, provenance, site coexistence, and escape hatches. Any implementation has explicit local and site evidence and replaces rather than duplicates setup/runtime authority. |
 | `OPS-03` | Maintenance | Open | `3` | `4` | Settle the remaining responsibilities of retained diagnostics and execution helpers. | The [runner migration](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution) is delivered through PR #169: producers retain science; the runner owns execution and recovery. Remaining work concerns the [FASTQ byte and diagnostic contract](../../src/emrys/ingestion/sample_manifest_admission/README.md) and surviving scripts, inline programs, and R bootstraps. R argument parsing is already shared; wrappers differ in script location, package admission, diagnostics, and error precedence. Prove equivalent behavior and caller-complete savings before sharing more. These concerns require separate selection; no compression tranche remains active. Preserve independent scientific checks and retained evidence. `INLINE-OWNERS-01` remains absorbed here. |
 | `FUT-INDEX-01` | Data reuse | Open | `4` | `4` | Admit an externally supplied prebuilt STAR index as an explicit Project input. | Existing reuse of a successful processing Run and standalone index validation are delivered capabilities, not external-index admission. The current [reference contract](../../src/emrys/contracts/schemas/orchestration/v1/reference.schema.json) declares FASTA/GTF and construction parameters but no prebuilt-index input. Remaining work binds every required index member to exact hashes, FASTA/GTF identity, and STAR parameters/version, then plans reuse without generation, repair, merge, or mutation; directory existence alone never authorizes admission. |

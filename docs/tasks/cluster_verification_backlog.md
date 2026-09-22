@@ -69,14 +69,19 @@ real-Slurm lane nor an institutional walkthrough.
 
 | Remaining acceptance | Current owner and required work or evidence |
 | --- | --- |
-| Source and documentation follow-ups | CV-U33 has the selected cluster-scope correction and is **Verification pending** under `SCHED-USAGE-01`. CV-22 now has the reconciled compact summary and is **Verification pending** under `SUBMISSION-PREVIEW-01`; exact hosted regression and site acceptance remain. `VIKING-POLICY-01` and `CV-DOCS-01` own the remaining guidance/wording corrections. |
+| Implemented audit follow-ups | `SCHED-USAGE-01`, `SUBMISSION-PREVIEW-01`, `INIT-01`–`INIT-03` and `QUICKSTART-01` are source-complete and **Verification pending** for exact hosted and relevant novice/site evidence. `VIKING-POLICY-01` and `CV-DOCS-01` are completed source/documentation corrections; institutional policy and report acceptance remain separate. |
 | Recently implemented outcomes awaiting verification | CV-10's prepared-finalization `resume` path and CV-18's active-native-task stop outcome are **Verification pending**. Their exact hosted checks and institutional cancellation journeys remain unverified; site execution alone cannot substitute for the hosted checks, and neither status claims a reproduced E09 cause. CV-10's equal-byte recycled-inode ownership limit is an accepted residual risk in a trusted operator-controlled workspace, not a proven defense. |
-| Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27 and CV-U28: exercise the maintained RUNBOOK on one exact installed revision; retain selected profile/runtime, resolved allocation-aware policy and report identities. Visual review is separate. |
+| Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27 and CV-U28: exercise the maintained [Quickstart](../../quickstart.md) and its linked optional smoke guide on one exact installed revision; retain selected profile/runtime, resolved allocation-aware policy and report identities. Visual review is separate. |
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
-| Historical unexplained failures | CV-12/E01 and CV-21/E06 remain unexplained historical observations whose causal reconstruction is not an acceptance requirement. CV-21 now needs only ordinary institutional execution of current reporting/inspection behavior. CV-10/E09 retains its separate current reconciliation requirement; newer successful checks cannot identify that cause. |
+| Historical unexplained failures | CV-12/E01 and CV-21/E06 remain unexplained historical observations whose causal reconstruction is not an acceptance requirement. CV-21 now needs only ordinary institutional execution of current reporting/inspection behavior. CV-10 retains verification of the implemented prepared-finalization recovery path. E09 remains unexplained, and missing prepared evidence still cannot authorize recovery. |
 | Postentry Task retry and finalization | CV-10: current-version closed-abort retry has hosted acceptance evidence. The prepared-finalization path through `resume` is implemented and **Verification pending** for its exact hosted CI and institutional cancellation journey. The owner accepted the equal-byte recycled-inode residual limitation for a trusted operator-controlled workspace; existing blocked receipts and missing prepared evidence remain ineligible. |
 | Doctor operation | CV-26 is Completed for exact pre-storage readmission, storage finalization and one final full diagnosis after removing the redundant intervening head diagnosis. Exact implementation CI passed; no Viking timing or speedup claim is required. Future measured tuning remains independently owned by the optimization campaign. |
-| Optional interface and retirement | CV-23 keeps cleanup Deferred; CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns institutional replacement validation and coordinated standalone entry-point/caller/name retirement. |
+| Optional interface and retirement | CV-23 and CV-U19 transfer their Deferred acceptance to `CLEANUP-01` and `INTERACTIVE-01` in the [main backlog](backlog_matrix.md#deferred-operational-work); CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns institutional replacement validation and coordinated standalone entry-point/caller/name retirement. |
+
+The [enduring verification checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+owns the remaining sequence. Before this backlog retires, transfer its exact
+evidence-bearing records to validation history and lasting optimization
+decisions to their owner; retain revision, artifact, hash and evidence limits.
 
 All card acceptance below remains authoritative. No institutional execution,
 active-installation update, destructive cleanup, report visual review or
@@ -1198,12 +1203,13 @@ eventually be the default. Advanced users retain an opt-in manual route.
 framed this as an eventual direction; no detailed prompt sequence or migration
 plan was selected here.
 
-**Current partial state:** Named Project initialization now provides the guided
-input and scientific-question flow recorded under CV-U18, while the specialist
-manifest command remains available. Doctor, Run and the complete setup journey
-have not moved to the requested default interactive interface, and no advanced
-mode transition has been selected. The operator explicitly deferred this
-long-term interface direction until later; CV-U19 is **Deferred**.
+**Current partial state:** Named Init now collects inputs and scientific
+choices, reviews them and confirms creation in one invocation. Runtime
+admission, Doctor and Run also retain their existing confirmations. These do
+not constitute the eventual complete guided setup/launch interface, and no
+advanced-mode transition is selected. CV-U19 remains **Deferred**, with its
+accepted scope transferred to `INTERACTIVE-01` in the
+[main backlog](backlog_matrix.md#deferred-operational-work).
 
 ### CV-U20 Complete Viking values in Quickstart
 
@@ -2948,8 +2954,9 @@ stage/workflow limits. Shared execution must make its memory-policy implications
 clear. Changing a plan creates a new Run; no automatic budget reduction or
 unmeasured throughput promise. Reuse resource admission rather than adding a
 second scheduler authority.
-**Owners/dependencies:** Existing `SCHED-01` covers explicit undersized-memory
-preflight; this card owns the broader heterogeneous-capacity and UX acceptance.
+**Owners/dependencies:** `SCHED-01` owns the implemented explicit undersized-memory
+preflight and its final-source software verification; this card owns the broader
+institutional heterogeneous-capacity and UX acceptance.
 Coordinate execution profiles/capacity, CV-07/09/22, and optimization discussion 3.
 
 **Implemented declaration-fit slice:** The existing computational-resource
@@ -3554,9 +3561,12 @@ authority. This is not a revival of retired storage-capacity/retention planning.
 **Owners/dependencies:** Project/runtime/lifecycle owners; CV-08/10. Design
 selection and product implementation remain separate from this recorded idea.
 
-**Selected design disposition:** Defer a general cleanup preview or deletion
-command. Source review identified no retained candidate class for which current
-owners can establish both exclusive ownership and absence of references. Keep
+**Selected design disposition:** CV-23 remains **Deferred**; its accepted
+scope and ownership prerequisites transfer to `CLEANUP-01` in the
+[main backlog](backlog_matrix.md#deferred-operational-work). Defer a general
+cleanup preview or deletion command. Source review identified no retained
+candidate class for which current owners can establish both exclusive ownership
+and absence of references. Keep
 the existing cleanup of temporary state owned by the executing transaction;
 this decision identifies no actual storage candidate and claims no space saving.
 

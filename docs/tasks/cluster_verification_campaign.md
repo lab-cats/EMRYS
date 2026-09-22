@@ -37,12 +37,12 @@ qualification failure. The later `CV-U` and `CV-UX` observations remain
 unprioritized unless a priority is explicitly assigned; their statuses and
 acceptance live in the delegated backlog.
 
-Proposed spellings such as `emrys stop JOB_ID`, cleanup commands, and a Run
-center remain design inputs. Select and record the smallest complete interface
-after auditing the existing CLI operations and authorities. Snakemake remains
-the execution backend; Slurm provides
-placement. A Run remains immutable. Scheduler state and display convenience
-do not authorize lock removal, output adoption, or evidence fabrication.
+The selected public interfaces and their limits live with the existing CLI
+and coordinator owners. Deferred cleanup and broader guided operation retain
+their own scope in the main backlog. Snakemake remains the execution backend;
+Slurm provides placement. A Run remains immutable. Scheduler state and display
+convenience do not authorize lock removal, output adoption, or evidence
+fabrication.
 
 Implementation on the active cluster installation must not be updated beneath
 the running scientific job. Keep changes in the development checkout and
@@ -52,35 +52,38 @@ to that earlier approved slice; it is not a blanket allowance for this campaign.
 
 ## Remaining delivery scope
 
-The approved pre-closure tranche permits planning, implementation, push and
-sequential stacked PR creation through this order. Items 1–2 share the first
-PR; each later item has its own PR. Applicable CI starts on publication but
-does not gate the next item; review and address CI failures as a batch after
-item 9. Final acceptance still requires the applicable exact-source results.
+The selected source and documentation corrections are implemented:
 
-1. Record scope and the approved CV-U06 accounting exception.
-2. Reconcile Viking allocation and scratch guidance with current source.
-3. Fix or explicitly narrow cluster-scoped usage (`SCHED-USAGE-01`).
-4. Reconcile concise preapproval resource disclosure (`SUBMISSION-PREVIEW-01`).
-5. Honor the selected Projects home from repository-root Init (`INIT-01`).
-6. Read the maintained study selection during guided Init (`INIT-02`).
-7. Confirm reviewed Project creation interactively (`INIT-03`).
-8. Complete the focused novice guide, output orientation, optional smoke guide
-   and CV-12/CV-27 wording/navigation corrections.
-9. Reconcile current owners, card dispositions and the concise verification
-   handoff; retain required hosted and institutional evidence as pending.
+- Viking allocation and scratch guidance now describe the current owners.
+- `SCHED-USAGE-01` preserves selected-cluster terminal accounting and explicitly
+  bounds live sampling; `SUBMISSION-PREVIEW-01` provides compact resource
+  disclosure for every Slurm approval, including Doctor.
+- `INIT-01` through `INIT-03` honor the selected Projects home, read the
+  explicitly selected maintained study manifest, and confirm Project creation
+  after review in the same invocation.
+- The focused Quickstart includes output orientation and links the separate
+  optional smoke guide. CV-12/CV-27 wording and report-transfer navigation are
+  reconciled, and Deferred work has named enduring owners.
 
 The [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up)
-owns the new source outcomes. The broader documentation, reduction, size,
-assurance, schema, collaborator and release work belongs to the
-[polish campaign](polish-campaign.md#current-follow-up-scope), not closure.
-CV-U06's one-line accounting exception is approved; that disposition proves
-neither functional behavior nor institutional resource policy. CV-10's accepted
-trusted-workspace limitation is already retained by its recovery owner.
+owns these outcomes and their remaining acceptance. Its
+[closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+is the single remaining verification and handoff sequence. Applicable hosted
+checks and institutional observations remain required on the selected revision;
+this source-completeness disposition claims no new execution evidence.
 
-This tranche ends with source and documentation ready for required verification.
-It does not authorize institutional execution, evidence deletion, campaign
-retirement, merge or changes to the active scientific installation.
+CV-U06's one-line accounting exception is approved and settled; it proves
+neither functional behavior nor institutional resource policy. CV-10's accepted
+trusted-workspace limitation remains with its recovery owner. Broader
+documentation, 25% code reduction, the explicit >600-line exception audit,
+assurance, schema, collaborator and release work remains accepted under the
+[polish campaign](polish-campaign.md#current-follow-up-scope). Deferred cleanup
+and complete guided operation transfer to `CLEANUP-01` and `INTERACTIVE-01` in
+the [main backlog](backlog_matrix.md#deferred-operational-work).
+
+The development tranche authorizes neither institutional execution nor evidence
+deletion, campaign retirement, merge or changes to the active scientific
+installation. Verification and any later retirement retain their own authority.
 
 ## Evidence register
 
@@ -122,59 +125,48 @@ that one previously successful hostname is the only valid placement.
 
 ## Delivery approach
 
-Priorities guide selection within the approved development stack. A useful
-dependency order is:
+Follow the enduring closure checklist for final-source checks, the selected
+130-pair disposable-Slurm journey and the coordinated institutional campaign.
+Ordinary PR CI does not select that journey. Retain the exact stop target,
+current Task/Attempt, real native child exit, positively closed interruption,
+unchanged predecessors, distinct resume and final scientific/reporting oracles.
+Local stop fixtures or a direct managed golden path cannot supply that proof.
 
-1. Characterize the unexplained qualification failure and cancellation state;
-   define the required diagnostic and recovery outcomes.
-2. Make startup, runtime reuse, resource fit, and node qualification explicit.
-   Improve actual-data onboarding through those same owners.
-3. Make submission, active-task, reporting, and terminal states legible;
-   expose the same states and actions through monitoring.
-4. Extend the managed golden path with each delivered behavior and its fault
-   cases, then repeat the relevant institutional journey on an exact revision.
-5. Select optional Run-center, cleanup, report-access, and performance work
-   independently. Deferred proposals remain visible and require disposition
-   before campaign closure; they do not justify delaying a safe current Run.
+CV-01 remains a continuing integration obligation, not a success-only test.
+Label scheduler simulations and injected faults honestly; retain real Slurm
+and institutional evidence separately. The institutional combinations include
+missing memory metadata plus unavailable UID lookup, reused runtimes plus
+node placement, and cancellation during native-output publication. A disposable
+single-node result establishes neither Viking memory policy nor cross-node
+behavior. The optional novice smoke guide does not waive required synthetic
+acceptance.
 
-CV-01 is a continuing integration obligation, not a final success-only test.
-Use real supported entry points and dependency execution where those are the
-claims. Label scheduler simulations and injected faults honestly; retain
-real Slurm and institutional evidence separately. Exercise combinations such
-as missing memory metadata plus unavailable UID lookup, reused runtimes plus
-node placement, and cancellation during native-output publication.
-
-Every implementation slice audits its complete affected owner and callers,
-records consolidation candidates, preserves independent defenses, and uses
-focused local checks plus applicable CI. This campaign adds no dependency or
-test framework. Doctor validation, runtime inspection, CLI planning,
-application logging, lifecycle recovery, and reporting publication already
-have owners; avoid parallel authorities in new commands or the dashboard.
+The current CV-12 and CV-21 dispositions retain E01 and E06 as unexplained
+historical observations; neither requires causal reconstruction. New failures
+found during verification belong with their existing source or operational
+owner. Doctor validation, runtime inspection, CLI planning, application logging,
+lifecycle recovery and reporting publication retain their existing authorities.
 
 ## Completion and handoff
 
-The enduring main backlog records the
+The enduring main backlog owns the
 [remaining closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
-and named follow-up owners. Use it to reconcile source defects, the separate
-CV-U06 accounting exception, exact-revision software evidence, institutional
-acceptance and transfer of Deferred work. Recording that sequence neither
-closes this campaign nor retires its backlog. Optional novice smoke guidance
-must be reconciled with required synthetic acceptance before closure; a change
-in guide placement alone waives no evidence requirement.
+and named follow-up owners. This charter retains scope and historical evidence;
+recording the handoff neither closes this campaign nor retires its backlog.
 
 For each card, retain the selected scope, implementation revision, applicable
 local/CI checks, site observations, and remaining limits. A statement that
-code appears fixed is insufficient for Completed status. Record visual report
-review separately from receipt-based reporting completion. Numerical/scientific
-review and biological interpretation remain outside this software campaign.
+code appears fixed is insufficient for Completed status. Record report visual
+and link review separately from receipt-based reporting completion, and record
+required scientific review with its scientific owner. Biological interpretation
+remains external work, never a pipeline completion gate.
 
-A read-only adversarial audit on **2026-09-17** found source, journey,
-documentation, and acceptance conflicts behind several `Verification pending`
-statuses. Passing hosted CI remains valid evidence for the behavior it exercised,
-but does not establish that the original outcome is fully implemented. The
-affected cards in the delegated backlog return to **Open** until the recorded
-gap is implemented or the original acceptance is explicitly revised; additional
-site evidence alone cannot close a source-completeness gap.
+A read-only adversarial audit on **2026-09-17** returned affected cards to
+**Open** at that checkpoint because source, journey, documentation or acceptance
+gaps remained. Those historical checkpoint labels do not override each card's
+current disposition. Passing hosted CI remains valid evidence for the behavior
+it exercised; neither hosted success nor additional site evidence closes an
+unresolved source-completeness gap.
 
 Campaign closure requires:
 
@@ -190,14 +182,17 @@ Campaign closure requires:
   promoted to scientific acceptance.
 - The main matrix, delegated backlog, owner contracts, quickstart, runbook,
   and troubleshooting agree. Preserve evidence and lasting decisions with
-  their owners before retiring the temporary campaign documents.
+  their owners before retiring the temporary campaign documents. The complete
+  E01–E12 register and all retained exact-revision results remain here until
+  that authorized transfer; retirement and evidence deletion are separate
+  actions requiring their own authority.
 
 ## Related work
 
 - `SITE-PARITY-01` retains institutional qualification and direct/Slurm parity
   acceptance; this campaign supplies the walkthrough-driven improvements.
-- `SCHED-01` retains its narrower explicit-memory preflight acceptance; CV-11
-  coordinates that prerequisite with heterogeneous-node resource fit.
+- `SCHED-01` retains final-source verification of its implemented explicit-memory
+  preflight; CV-11 owns the broader institutional heterogeneous-node acceptance.
 - The institutional owner accepted CV-16/CV-24's installed watch replacement on
   2026-09-17. `DASHBOARD-RETIRE-01` has implemented new scheduler-stream naming
   with legacy read compatibility; institutional verification and the separate
