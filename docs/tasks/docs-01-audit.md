@@ -46,6 +46,15 @@ permission to change or delete the source.
   `d8d11f00`. It reviewed the reference guides, scientific decision, diagrams,
   stage and selected other owner guides, and test/tooling claims. It added
   F34–F43 and refined F32–F33. No runtime or cluster work was performed.
+- The fourth read-only pass checked the same source after audit-only commit
+  `e9b69dd0`: all nine root and operations Markdown files, all 62 source
+  READMEs and 15 owner contracts, all 53 Markdown files under tests,
+  scripts, and `.github`, all 19 Markdown/Mermaid files in architecture,
+  design, and reference, and all eight task/history Markdown files. It added
+  F44–F45 and refined F01, F07, and F18. These counts describe static reading
+  and comparison, not executed behavior or completion of the full
+  repository audit. The 14 grouped-validator `CHECK_IDS` sets matched their
+  contract lists in a static comparison.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -65,11 +74,11 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 | Area | Compared to date | Further reading needed |
 | --- | --- | --- |
-| Scientist and operator paths | Root README, Quickstart, configuration, Runbook, Troubleshooting, engineering guide, reference index/glossary/external-evaluation guide | Other operations guides and end-to-end reader routes. |
-| Architecture and decisions | Documentation authority, platform direction, reporting and scientific decisions, logging contract, owner inventory, all three Mermaid diagrams | Other decision records and architecture maps. |
-| Task and evidence records | Main backlog, CV campaign/backlog, polish and optimization campaigns, history index/compendium | Remaining task rows, original evidence origins, and retained artifacts. |
-| Product owners | Coordinator contract, runtime availability, reporting, resource defaults, all stage READMEs and contracts, selected analysis/evidence/ingestion/schema/workflow/library READMEs | Remaining owner contracts, schemas, and adjacent production callers. |
-| Tests, scripts, and CI | Golden README, selected owner tests, hook scope, workflow README, documentation-check source/tests, workflow profile guides | Remaining test/fixture READMEs, documentation tooling, and executable checks. |
+| Scientist and operator paths | All nine root and operations Markdown files; configuration and selected reference guides | End-to-end reader routes and any reference guides not yet compared. |
+| Architecture and decisions | All 19 architecture, design, and reference Markdown/Mermaid files, including all three diagrams | Check remaining source implications and reader routes; no visual rendering was performed. |
+| Task and evidence records | All eight task/history Markdown files; 61 CV index entries reconciled to card endings | Original evidence origins and retained artifacts still need independent verification. |
+| Product owners | All 62 source READMEs and all 15 owner contracts, with focused production comparisons | Remaining code and schema claims beyond selected owner paths. |
+| Tests, scripts, and CI | All 53 Markdown files in these trees, plus selected source assertions and documentation-check code | Executable checks were not run; compare remaining code, fixtures, and retained evidence. |
 
 ## Findings matrix
 
@@ -79,13 +88,13 @@ and the boundary for each row.
 
 | ID | Kind | Observation at the pinned revision | Next check or likely owner |
 | --- | --- | --- | --- |
-| [F01](docs-01-discoveries.md#f01-public-stop-in-the-platform-decision) | Contradiction | Platform decision denies a public stop command; exact-request Slurm stop is public. | Reconcile decision with stop contract and CV-18 ceiling. |
+| [F01](docs-01-discoveries.md#f01-public-stop-in-the-platform-decision) | Contradiction | Platform decision denies public stop and limits resume to failed/interrupted Runs; exact-request stop and prepared finalization exist. | Reconcile both decision claims with the stop/resume contracts and CV-18 ceiling. |
 | [F02](docs-01-discoveries.md#f02-standalone-resource-floor) | Contradiction | Runbook gives a fixed 12-CPU/240-GiB standalone floor; defaults resolve against capacity and reject unmet task minima. | Check resource resolver and planning minima; correct operator capacity advice. |
 | [F03](docs-01-discoveries.md#f03-init-02-in-cluster-summaries) | Contradiction | CV summaries call INIT-01–03 source-complete while INIT-02 is Open. | Preserve explicit-manifest proof; reconcile present status with the authoritative backlog. |
 | [F04](docs-01-discoveries.md#f04-root-quickstart-description) | Reader route | Root README calls Quickstart a synthetic first Run; Quickstart leads with real EV/PUM1. | Align root journey and retain optional smoke link. |
 | [F05](docs-01-discoveries.md#f05-generic-study-versus-named-evpum1-route) | Reader route | “Own study” Runbook route points into fixed EV/PUM1 inputs and choices. | Separate generic study guidance from the named example. |
 | [F06](docs-01-discoveries.md#f06-existing-project-and-new-project-recovery) | Reader route | Troubleshooting combines existing-Project navigation with absent-child Init. | Give each failure its own recovery instruction. |
-| [F07](docs-01-discoveries.md#f07-doctor-repair-does-not-always-install) | Contradiction | Runbook and a decision say Doctor repair installs tools every time; a ready runtime can be verified without installation. | Align operator and decision wording with Doctor plan and contract. |
+| [F07](docs-01-discoveries.md#f07-doctor-repair-does-not-always-install) | Contradiction | Runbook and a decision imply Doctor always installs; the decision also assigns it uv work, but Python setup is separate. | Align operator and decision wording with Doctor plan and package-manager ownership. |
 | [F08](docs-01-discoveries.md#f08---version-and-local-env) | Behavior question | Runbook promises `--version` from any directory; `.env` is parsed before the version response. | Exercise malformed marked `.env` in a tiny local fixture before changing the promise. |
 | [F09](docs-01-discoveries.md#f09-runbook-entry-order) | Reader route | Advanced request/watch/stop procedures precede Runbook orientation. | Test whether moving the orientation improves entry without hiding recovery commands. |
 | [F10](docs-01-discoveries.md#f10-contract-location-claim) | Contradiction | Two indexes claim every source owner has an adjacent `CONTRACT.md`; many use a README or schema instead. | State actual owner-specific contract locations. |
@@ -96,7 +105,7 @@ and the boundary for each row.
 | [F15](docs-01-discoveries.md#f15-cv-u22-interim-status-prose) | Preserve chronology | CV-U22's dated checkpoints explain why the card returned to Open; compression has no demonstrated benefit yet. | Keep the causal record unless a concrete reader conflict is found. |
 | [F16](docs-01-discoveries.md#f16-polish-merged-pr-tables) | Compression candidate | Polish campaign repeats merged-PR chronology in two long tables. | Check unique decisions before leaving routine genealogy to Git. |
 | [F17](docs-01-discoveries.md#f17-main-backlog-chronology-and-run-repetition) | Preserve row evidence | One hosted run supports three distinct backlog rows; repeated row-local citations may be warranted. | Check only routine genealogy for safe compression. |
-| [F18](docs-01-discoveries.md#f18-history-filing-rule-and-existing-compendium) | Evidence placement | History requires dated topic filenames; its indexed evidence compendium is undated. | Map links and origins before a rule exception or lossless split. |
+| [F18](docs-01-discoveries.md#f18-history-filing-rule-and-existing-compendium) | Evidence placement | History requires dated topic files, yet its compendium is undated and backlog names it as the CV evidence transfer destination. | Decide legacy exception versus dated records after mapping links and origins. |
 | [F19](docs-01-discoveries.md#f19-doctor-experiment-evidence-in-workflow-readme) | Evidence placement | CI workflow README repeats a shorter Doctor experiment summary already detailed in the CV backlog. | Use the CV card as evidence source before considering a history transfer. |
 | [F20](docs-01-discoveries.md#f20-independent-golden-migration-comparisons) | Evidence placement | Independent-golden README mixes current oracle use with successive migration history. | Preserve comparison evidence before shortening owner instructions. |
 | [F21](docs-01-discoveries.md#f21-coordinator-contracts-no-write-section) | Navigation candidate | Coordinator contract has a 632-line no-write section without subheadings; similar topics guard distinct boundaries. | Map topics before restructuring; no deletion inferred. |
@@ -122,6 +131,8 @@ and the boundary for each row.
 | [F41](docs-01-discoveries.md#f41-step-05-checks-read-only-help) | Script help contradiction | Retained Step 05 check calls itself read-only while writing a TSV and directory probe. | State input immutability and output mutation precisely. |
 | [F42](docs-01-discoveries.md#f42-report-transfer-in-the-coordinator-test-index) | Evidence placement | Coordinator test index lists report transfer as a check but links an operator procedure, not a test. | Route the prior tiny copy observation to its CV evidence record. |
 | [F43](docs-01-discoveries.md#f43-print-behavior-in-the-reporting-test-guide) | Evidence ceiling | Reporting test guide says it pins print behavior; checks cover CSS/HTML structure, while visual acceptance is pending. | Name source-level print checks without implying rendered review. |
+| [F44](docs-01-discoveries.md#f44-internal-workers-described-as-standalone-commands) | Contract contradiction | STAR and RSeQC contracts call producers repository-path commands although both are internal Run workers. | Correct opening command ownership; retain direct help and grouped validators. |
+| [F45](docs-01-discoveries.md#f45-watch-and-stop-in-the-command-audience-map) | Reader route | Functional-owner audience map omits public `watch` and `stop` despite their novice and operator routes. | Add the audiences or mark the examples nonexhaustive. |
 
 ## Discovery notes
 
@@ -144,3 +155,12 @@ pass found no direct NUL regression fixture. Retain it before shortening that
 owner history or changing the helper. Concise current surfaces, including the
 root CI index and schema README hierarchy, need no change merely because they
 were audited.
+
+The 14 grouped-validator contracts retain distinct producer and validator
+boundaries. For example, canonical BAM QC accepts a nonempty zero-exit
+quickcheck as producer evidence while its validator rejects it; FASTA sidecar
+production permits unordered contig pairs while validation requires order.
+The canonical BAM, partitioned mpileup, and candidate-preprocessing contracts
+also record exact recovery or evidence limits. Compression must preserve those
+limits and the owner-local check IDs rather than treat all repeated checks as
+redundant.

@@ -22,6 +22,12 @@ The decision needs to acknowledge that narrow command. It must not imply a
 generic Run stop or completed cluster proof: CV-18 retains queued/native-task
 cancellation and recovery verification pending in the
 [CV backlog](cluster_verification_backlog.md) around lines 3300–3305.
+The same decision at line 206 limits resume to already interrupted or failed
+Runs. [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 35–50 and the
+coordinator contract lines 1008–1035 also allow `emrys resume RUN` to complete
+an exact prepared Attempt finalization. A prepared success starts no new
+scientific work. Correct both decision claims without implying every resume
+creates another Attempt or that ambiguous evidence authorizes finalization.
 
 ### F02 — Standalone resource floor
 
@@ -93,6 +99,13 @@ verification-only plan. A direct Doctor source test at
 expects no native/R installation when a ready Slurm runtime is rechecked.
 Align both guides and the decision on possible package-manager work, retaining
 where head-node and compute-side checks happen.
+The decision at lines 44–50 additionally names `uv` among Doctor's
+installation delegates. The [root README](../../README.md) lines 53–56 and
+[Runbook](../operations/RUNBOOK.md) lines 258–263 assign Doctor Project-owned
+native/R work through Pixi and `renv`, with Python dependencies left to
+separate package-manager setup. The Doctor implementation's manager commands
+in `doctor.py` lines 1235–1265 call Pixi and Rscript, not `uv`. Correct the
+decision's owner list without suggesting Doctor repairs Python itself.
 
 ### F08 — `--version` and local `.env`
 
@@ -218,6 +231,13 @@ link and each record's origin first; several entries lack a source date.
 Possible outcomes are a documented legacy
 exception or lossless dated records; neither a rename nor evidence deletion is
 implied by the naming mismatch.
+The [backlog's CV retirement condition](backlog_matrix.md) lines 145–150
+explicitly names this undated compendium as the future destination for
+E01–E12 and hosted/artifact records. That conflicts with the history index's
+dated-file and unchanged-record rules, rather than being only a filename
+oddity. Decide whether the legacy compendium is a documented exception or
+whether new dated records and updated backlog/index/checker links are the
+intended route before any transfer. No evidence is moved by this audit.
 
 ### F19 — Doctor experiment evidence in workflow README
 
@@ -516,3 +536,30 @@ HTML text, and an SVG height attribute, not browser or PDF layout review.
 The [backlog](backlog_matrix.md) lines 291–294 still keeps REPORT-01–04 visual
 or layout acceptance pending. Name source-level print rules and generated
 structure in the test guide without implying rendered user acceptance.
+
+### F44 — Internal workers described as standalone commands
+
+The opening of the [STAR contract](../../src/emrys/stages/star_alignment/CONTRACT.md)
+lines 3–6 calls its producer an explicit repository-path command. The
+[RSeQC contract](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md)
+lines 3–8 additionally calls the operation independently runnable. Both
+contracts later call their shells internal Run workers (STAR lines 65–68;
+RSeQC lines 58–61), as do their adjacent READMEs (STAR lines 12–18; RSeQC
+lines 11–16). The STAR shell requires runner-supplied `EMRYS_TASK_WORK_DIR`
+at lines 3, 22–23, and 51–52; the RSeQC shell does likewise at lines 3,
+18–19, and 43–44. Correct the opening command-ownership claims while
+retaining direct `--help` for these scripts and the public grouped validators.
+No standalone production or recovery route is established by the help tests.
+
+### F45 — Watch and stop in the command-audience map
+
+The [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
+lines 22–29 maps commands to audiences but omits `watch` and `stop`. Both
+commands are registered in the public parser
+([CLI](../../src/emrys/__main__.py) lines 275–288); the
+[Quickstart](../../quickstart.md) lines 176–185 teaches `watch` to scientists,
+and the [Runbook](../operations/RUNBOOK.md) lines 139–157 teaches exact-request
+`stop` to operators. The inventory says `emrys --help` owns the complete
+roster, so this is an audience-routing gap rather than a false claim about
+command existence. Add those audience examples or explicitly say the table
+is selective; preserve `stop`'s exact-request and evidence ceilings.
