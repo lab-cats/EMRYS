@@ -13,10 +13,14 @@ import pytest
 from tests.tools import real_synthetic_e2e as driver
 
 
-def _argv(root: Path, *, execute: bool = False) -> list[str]:
+def _argv(
+    root: Path, *, scenario: str = "success-parity", execute: bool = False
+) -> list[str]:
     values = [
         "--profile",
         "130",
+        "--scenario",
+        scenario,
         "--repo-root",
         str(root / "repo"),
         "--operator-root",
@@ -73,7 +77,7 @@ def test_operator_root_is_external_empty_and_never_adopts_contents(
     assert marker.read_text() == "keep\n"
 
 
-def test_production_like_profile_selects_only_slurm_workspace(tmp_path: Path) -> None:
+def test_scenarios_select_only_the_required_workspaces(tmp_path: Path) -> None:
     paths = driver.Paths(
         tmp_path,
         tmp_path / "direct",
@@ -84,13 +88,26 @@ def test_production_like_profile_selects_only_slurm_workspace(tmp_path: Path) ->
         tmp_path / "transcripts",
     )
 
-    assert driver._selected_workspaces(paths, "130") == {
-        "direct": paths.direct_workspace,
-        "slurm": paths.slurm_workspace,
-    }
-    assert driver._selected_workspaces(paths, "100000") == {
-        "slurm": paths.slurm_workspace
-    }
+    for scenario in driver.PARITY_SCENARIOS:
+        assert driver._selected_workspaces(paths, scenario) == {
+            "direct": paths.direct_workspace,
+            "slurm": paths.slurm_workspace,
+        }
+    for scenario in ("stop-resume", "production-like"):
+        assert driver._selected_workspaces(paths, scenario) == {
+            "slurm": paths.slurm_workspace
+        }
+
+
+def test_profile_and_scenario_are_independent_but_compatible(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert driver.main(_argv(tmp_path, scenario="stop-resume")) == 0
+    assert '"scenario": "stop-resume"' in capsys.readouterr().out
+
+    incompatible = _argv(tmp_path, scenario="production-like")
+    assert driver.main(incompatible) == 2
+    assert "requires profile 100000" in capsys.readouterr().err
 
 
 def test_step09_oracle_rejects_unknown_significant_status(tmp_path: Path) -> None:

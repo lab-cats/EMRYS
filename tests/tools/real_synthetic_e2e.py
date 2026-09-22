@@ -20,8 +20,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-SUMMARY_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v6"
+SUMMARY_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v7"
 PROFILE_DATASETS = {"130": "smoke-v1", "100000": "production-like-v1"}
+SCENARIO_PROFILES = {
+    "success-parity": "130",
+    "failure-resume": "130",
+    "stop-resume": "130",
+    "production-like": "100000",
+}
+PARITY_SCENARIOS = frozenset(("success-parity", "failure-resume"))
 DISCOVERY_UTILITIES = ("basename", "dirname", "grep", "rm", "uname")
 TERMINAL_STATES = frozenset(
     {
@@ -164,6 +171,7 @@ def _positive_float(value: str) -> float:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", required=True, choices=tuple(PROFILE_DATASETS))
+    parser.add_argument("--scenario", required=True, choices=tuple(SCENARIO_PROFILES))
     parser.add_argument("--repo-root", required=True, type=Path)
     parser.add_argument("--operator-root", required=True, type=Path)
     parser.add_argument("--runtime-prefix", required=True, type=Path)
@@ -248,10 +256,19 @@ def require_operator_root(operator_root: Path, repo_root: Path) -> Paths:
     )
 
 
-def _selected_workspaces(paths: Paths, profile: str) -> dict[str, Path]:
-    if profile == "130":
+def _selected_workspaces(paths: Paths, scenario: str) -> dict[str, Path]:
+    if scenario in PARITY_SCENARIOS:
         return {"direct": paths.direct_workspace, "slurm": paths.slurm_workspace}
     return {"slurm": paths.slurm_workspace}
+
+
+def _validate_scenario(profile: str, scenario: str) -> None:
+    expected = SCENARIO_PROFILES[scenario]
+    if profile != expected:
+        raise DriverError(
+            "preflight",
+            f"scenario {scenario!r} requires profile {expected}, not {profile}",
+        )
 
 
 def resolve_runtime(prefix: Path, rscript: Path, renv: Path) -> Runtime:
@@ -1372,7 +1389,7 @@ def _admitted_interruption(
     *,
     job: Job,
     gate: NativeGate,
-    failed_attempt_id: str,
+    predecessor_attempt_id: str | None,
 ) -> dict[str, Any]:
     from emrys.orchestration.run_coordinator import inspection
 
@@ -1401,8 +1418,9 @@ def _admitted_interruption(
     attempt_id = str(attempt["workflow_attempt_id"])
     if (
         attempt_id != gate.attempt_id
-        or attempt.get("operation") != "resume"
-        or attempt.get("supersedes_workflow_attempt_id") != failed_attempt_id
+        or attempt.get("operation")
+        != ("resume" if predecessor_attempt_id is not None else "execute")
+        or attempt.get("supersedes_workflow_attempt_id") != predecessor_attempt_id
         or receipt.get("status") != "interrupted"
         or receipt.get("termination_signal") != signal.SIGTERM
         or not receipt.get("task_start_records")
@@ -1411,10 +1429,13 @@ def _admitted_interruption(
     attempts, receipts, blockers = inspection.inspect_attempt_chain(
         run_root, authority=authority
     )
+    expected_receipts = {attempt_id}
+    if predecessor_attempt_id is not None:
+        expected_receipts.add(predecessor_attempt_id)
     if (
         blockers
-        or len(attempts) != 2
-        or set(receipts) != {failed_attempt_id, attempt_id}
+        or len(attempts) != len(expected_receipts)
+        or set(receipts) != expected_receipts
     ):
         raise DriverError("native-stop", "stopped Attempt chain differs")
     selected = [
@@ -1436,7 +1457,7 @@ def _admitted_interruption(
         run_id=observed.run_id,
         attempt_id=attempt_id,
         scheduler_job_id=job.job_id,
-        operation="resume",
+        operation="resume" if predecessor_attempt_id is not None else "execute",
         expected_status="interrupted",
     )
     return {
@@ -1492,7 +1513,9 @@ def _admitted_completion(
         job=latest_job,
         expected_status="succeeded",
         expected_exit_code=0,
-        operation="resume" if failure is not None else "execute",
+        operation="resume"
+        if failure is not None or interruption is not None
+        else "execute",
     )
     if (
         len(
@@ -1520,13 +1543,15 @@ def _admitted_completion(
     if interruption is not None:
         interrupted_id = str(interruption["attempt_id"])
         _assert_predecessor_preserved(interruption["predecessor_evidence"])
+        interruption_index = int(failure is not None)
+        completed_index = interruption_index + 1
         if (
-            failure is None
-            or len(attempts) != 3
-            or str(attempts[1]["workflow_attempt_id"]) != interrupted_id
-            or attempts[2]["operation"] != "resume"
-            or attempts[2]["supersedes_workflow_attempt_id"] != interrupted_id
-            or len({job.job_id for job in jobs}) != 3
+            str(attempts[interruption_index]["workflow_attempt_id"])
+            != interrupted_id
+            or attempts[completed_index]["operation"] != "resume"
+            or attempts[completed_index]["supersedes_workflow_attempt_id"]
+            != interrupted_id
+            or len({job.job_id for job in jobs}) != expected_count
         ):
             raise DriverError("assert-parity", "Stopped Run resume chain differs")
     return {
@@ -1605,6 +1630,302 @@ def _emrys(python: Path, *arguments: str) -> list[str]:
     ]
 
 
+def _resume_failed_runs(
+    *,
+    arguments: argparse.Namespace,
+    transcripts: Transcripts,
+    python: Path,
+    repo: Path,
+    paths: Paths,
+    projects: dict[str, Path],
+    direct_run_root: Path,
+    slurm_run_root: Path,
+    initial_job: Job,
+    scontrol: Path,
+    scancel: Path,
+) -> tuple[dict[str, dict[str, Any]], tuple[Job, Job]]:
+    failures = {
+        "direct": _admitted_failure(direct_run_root),
+        "slurm": _admitted_failure(slurm_run_root, job=initial_job),
+    }
+    transcripts.run(
+        "direct-resume",
+        _emrys(
+            python,
+            "resume",
+            direct_run_root.name,
+            "--project",
+            str(projects["direct"]),
+            "--verbose",
+            "--execute",
+        ),
+        cwd=repo,
+    )
+    resumed = transcripts.run(
+        "slurm-resume-submit",
+        _emrys(
+            python,
+            "resume",
+            slurm_run_root.name,
+            "--project",
+            str(projects["slurm"]),
+            "--profile",
+            "ci",
+            "--verbose",
+            "--execute",
+        ),
+        cwd=repo,
+        timeout_seconds=120,
+    )
+    resumed_job = wait_for_job(
+        resumed.stdout,
+        log_dir=paths.slurm_workspace / "logs",
+        scontrol=scontrol,
+        scancel=scancel,
+        cwd=repo,
+        timeout_seconds=arguments.slurm_timeout_seconds,
+        poll_seconds=arguments.poll_seconds,
+    )
+    if resumed_job.job_id == initial_job.job_id:
+        raise DriverError("failure-resume", "resume reused the failed Slurm job")
+    return failures, (initial_job, resumed_job)
+
+
+def _stop_active_run(
+    *,
+    arguments: argparse.Namespace,
+    transcripts: Transcripts,
+    python: Path,
+    repo: Path,
+    paths: Paths,
+    projects: dict[str, Path],
+    runtime: Runtime,
+    slurm_run_root: Path,
+    submission: subprocess.CompletedProcess[str],
+    scontrol: Path,
+    scancel: Path,
+) -> tuple[tuple[Job, Job], dict[str, Any], dict[str, Any]]:
+    from emrys.orchestration.run_coordinator import slurm_submission
+
+    try:
+        active_job = parse_submission(submission.stdout, paths.slurm_workspace / "logs")
+    except DriverError as exc:
+        job_id = _one(JOB_ID, submission.stdout, "job ID", "submit-slurm")
+        _emergency_cancel(
+            job_id,
+            scancel=scancel,
+            scontrol=scontrol,
+            cwd=repo,
+            poll_seconds=arguments.poll_seconds,
+            original=exc,
+        )
+        raise
+    try:
+        request_root = parse_submission_request(submission, paths.slurm_workspace)
+        request = slurm_submission.select_submission_request(
+            projects["slurm"], request_root.name
+        )
+        if (
+            request.request_root != request_root
+            or request.recorded_job_id != active_job.job_id
+            or request.context is None
+            or request.context["project"] != str(projects["slurm"])
+            or request.context["requested_run"] != slurm_run_root.name
+        ):
+            raise DriverError(
+                "native-stop", "retained request does not bind this Run/job"
+            )
+        gate = await_native_gate(
+            paths.native_gate,
+            slurm_run_root,
+            active_job,
+            samtools=runtime.samtools,
+            scontrol=scontrol,
+            cwd=repo,
+            poll_seconds=arguments.poll_seconds,
+        )
+    except BaseException as exc:
+        _emergency_cancel(
+            active_job.job_id,
+            scancel=scancel,
+            scontrol=scontrol,
+            cwd=repo,
+            poll_seconds=arguments.poll_seconds,
+            original=exc,
+        )
+        raise
+    stop_started = False
+    try:
+        selected = ("--project", str(projects["slurm"]))
+        submission_inspect = transcripts.run(
+            "slurm-inspect-active-submission",
+            _emrys(
+                python,
+                "inspect",
+                *selected,
+                "--submission",
+                request_root.name,
+            ),
+            cwd=repo,
+            timeout_seconds=60,
+        )
+        if (
+            request_root.name not in submission_inspect.stdout
+            or active_job.job_id not in submission_inspect.stdout
+        ):
+            raise DriverError("native-stop", "active submission inspection differs")
+        active_inspect = transcripts.run(
+            "slurm-inspect-active-run",
+            _emrys(python, "inspect", slurm_run_root.name, *selected),
+            cwd=repo,
+            timeout_seconds=60,
+        )
+        if "Attempt outcome: running" not in active_inspect.stdout:
+            raise DriverError("native-stop", "active Run inspection differs")
+        active_watch = transcripts.run(
+            "slurm-watch-active-submission",
+            _emrys(
+                python,
+                "watch",
+                *selected,
+                "--submission",
+                request_root.name,
+                "--snapshot",
+            ),
+            cwd=repo,
+            timeout_seconds=60,
+        )
+        if not all(
+            value in active_watch.stdout
+            for value in (
+                f"Request: {request_root.name}",
+                f"Recorded job: {active_job.job_id}",
+                "Scheduler: RUNNING",
+            )
+        ):
+            raise DriverError("native-stop", "active watch snapshot differs")
+        stop = _emrys(
+            python,
+            "stop",
+            *selected,
+            "--submission",
+            request_root.name,
+        )
+        preview = transcripts.run(
+            "slurm-stop-preview", stop, cwd=repo, timeout_seconds=60
+        )
+        if not all(
+            value in preview.stdout
+            for value in ("Preview only", "--ctld", "--clusters=", "--name=", "--me")
+        ):
+            raise DriverError(
+                "native-stop", "controller-filtered stop preview differs"
+            )
+        stop_started = True
+        stopped = transcripts.run(
+            "slurm-stop-execute",
+            [*stop, "--execute"],
+            cwd=repo,
+            expected_returncode=None,
+            timeout_seconds=60,
+        )
+        if (
+            "scancel exit status: 0" not in stopped.stdout
+            or f"Stop request: {request_root}" not in stopped.stdout
+        ):
+            raise DriverError("native-stop", "public stop did not confirm one request")
+        await_native_exit(gate)
+    except BaseException as exc:
+        if not stop_started:
+            _emergency_cancel(
+                active_job.job_id,
+                scancel=scancel,
+                scontrol=scontrol,
+                cwd=repo,
+                poll_seconds=arguments.poll_seconds,
+                original=exc,
+            )
+        raise
+    finally:
+        os.close(gate.descriptor)
+    stopped_job = wait_for_job(
+        submission.stdout,
+        log_dir=paths.slurm_workspace / "logs",
+        scontrol=scontrol,
+        scancel=scancel,
+        cwd=repo,
+        timeout_seconds=arguments.slurm_timeout_seconds,
+        poll_seconds=arguments.poll_seconds,
+        expected=None,
+        cleanup_on_failure=False,
+    )
+    if stopped_job.state != "CANCELLED":
+        raise DriverError(
+            "native-stop", "controller stop did not cancel the active job"
+        )
+    deadline = time.monotonic() + 30.0
+    while True:
+        try:
+            interruption = _admitted_interruption(
+                slurm_run_root,
+                job=stopped_job,
+                gate=gate,
+                predecessor_attempt_id=None,
+            )
+            break
+        except DriverError as exc:
+            if time.monotonic() >= deadline:
+                raise DriverError("native-stop", str(exc)) from exc
+            time.sleep(min(arguments.poll_seconds, 1.0))
+    resume = _emrys(
+        python,
+        "resume",
+        slurm_run_root.name,
+        "--project",
+        str(projects["slurm"]),
+        "--profile",
+        "ci",
+        "--verbose",
+    )
+    before_preview = _execution_state(paths.slurm_workspace)
+    transcripts.run(
+        "slurm-stopped-resume-preview", resume, cwd=repo, timeout_seconds=60
+    )
+    if before_preview != _execution_state(paths.slurm_workspace):
+        raise DriverError("native-stop", "resume preview changed stopped Run")
+    final_submission = transcripts.run(
+        "slurm-stopped-resume-submit",
+        [*resume, "--execute"],
+        cwd=repo,
+        timeout_seconds=120,
+    )
+    final_job = wait_for_job(
+        final_submission.stdout,
+        log_dir=paths.slurm_workspace / "logs",
+        scontrol=scontrol,
+        scancel=scancel,
+        cwd=repo,
+        timeout_seconds=arguments.slurm_timeout_seconds,
+        poll_seconds=arguments.poll_seconds,
+    )
+    if final_job.job_id == stopped_job.job_id:
+        raise DriverError("native-stop", "final resume reused the stopped job")
+    return (
+        (stopped_job, final_job),
+        interruption,
+        {
+            "request": str(request_root),
+            "native_pid": gate.pid,
+            "native_tool": str(runtime.samtools),
+            "native_task": gate.task,
+            "stopped_job": stopped_job.job_id,
+            "stop_command_returncode": stopped.returncode,
+            "interrupted_attempt": interruption["attempt_id"],
+            "completed_job": final_job.job_id,
+        },
+    )
+
+
 def run_driver(
     arguments: argparse.Namespace,
     transcripts: Transcripts,
@@ -1624,10 +1945,13 @@ def run_driver(
         directory.mkdir(mode=0o700)
 
     profile = str(arguments.profile)
+    scenario = str(arguments.scenario)
+    _validate_scenario(profile, scenario)
     dataset = PROFILE_DATASETS[profile]
-    parity_journey = profile == "130"
-    recovery_journey = parity_journey
-    workspaces = _selected_workspaces(paths, profile)
+    parity_journey = scenario in PARITY_SCENARIOS
+    recovery_journey = scenario == "failure-resume"
+    stop_journey = scenario == "stop-resume"
+    workspaces = _selected_workspaces(paths, scenario)
     failure_profile = paths.scratch / "controlled-missing-snakemake-profile"
     failure_module_init = paths.scratch / "controlled-failure-module-init.sh"
     slurm_failure_marker = paths.scratch / "slurm-fail-once"
@@ -1797,9 +2121,16 @@ def run_driver(
     ):
         raise DriverError("slurm-plan", "scheduler dry-run wrote or submitted")
 
-    failure_environment = None
-    if recovery_journey:
-        failure_environment = {**os.environ, "SNAKEMAKE_PROFILE": str(failure_profile)}
+    planned_slurm_run_root = parse_run_plan(
+        scheduler_plan.stderr,
+        paths.slurm_workspace,
+        no_write=True,
+    )
+    failure_environment = (
+        {**os.environ, "SNAKEMAKE_PROFILE": str(failure_profile)}
+        if recovery_journey
+        else None
+    )
     failure_signature = "but no profile.yaml (or config.yaml) found"
     if direct is not None and direct_run_root is not None:
         direct_execution = transcripts.run(
@@ -1825,303 +2156,81 @@ def run_driver(
                 "direct-execute", "controlled engine failure was not observed"
             )
 
+    if stop_journey:
+        _write(paths.native_gate.with_suffix(".armed"), b"stop one native Task\n")
     submission = transcripts.run(
         "slurm-submit",
         [*scheduled, "--execute"],
         cwd=repo,
+        timeout_seconds=120,
     )
-    initial_job = wait_for_job(
-        submission.stdout,
-        log_dir=paths.slurm_workspace / "logs",
-        scontrol=scontrol,
-        scancel=scancel,
-        cwd=repo,
-        timeout_seconds=arguments.slurm_timeout_seconds,
-        poll_seconds=arguments.poll_seconds,
-        expected=("FAILED", "1:0") if recovery_journey else ("COMPLETED", "0:0"),
-    )
-    execution_stderr = _stream(initial_job.stderr)
-    if recovery_journey and (
-        slurm_failure_marker.exists() or failure_signature not in execution_stderr
-    ):
-        raise DriverError("slurm-submit", "controlled engine failure was not observed")
-    slurm_run_root = parse_run_plan(
-        execution_stderr,
-        paths.slurm_workspace,
-        no_write=False,
-    )
-    if direct_run_root is not None and direct_run_root.name != slurm_run_root.name:
-        raise DriverError("plan-parity", "Direct and Slurm selected different Runs")
-
     failures: dict[str, dict[str, Any] | None] = {label: None for label in workspaces}
-    slurm_jobs = (initial_job,)
     interruption: dict[str, Any] | None = None
     stop_evidence: dict[str, Any] | None = None
+    slurm_run_root = planned_slurm_run_root
+    if stop_journey:
+        slurm_jobs, interruption, stop_evidence = _stop_active_run(
+            arguments=arguments,
+            transcripts=transcripts,
+            python=python,
+            repo=repo,
+            paths=paths,
+            projects=projects,
+            runtime=runtime,
+            slurm_run_root=slurm_run_root,
+            submission=submission,
+            scontrol=scontrol,
+            scancel=scancel,
+        )
+    else:
+        initial_job = wait_for_job(
+            submission.stdout,
+            log_dir=paths.slurm_workspace / "logs",
+            scontrol=scontrol,
+            scancel=scancel,
+            cwd=repo,
+            timeout_seconds=arguments.slurm_timeout_seconds,
+            poll_seconds=arguments.poll_seconds,
+            expected=("FAILED", "1:0")
+            if recovery_journey
+            else ("COMPLETED", "0:0"),
+        )
+        execution_stderr = _stream(initial_job.stderr)
+        if recovery_journey and (
+            slurm_failure_marker.exists() or failure_signature not in execution_stderr
+        ):
+            raise DriverError(
+                "slurm-submit", "controlled engine failure was not observed"
+            )
+        slurm_run_root = parse_run_plan(
+            execution_stderr,
+            paths.slurm_workspace,
+            no_write=False,
+        )
+        if slurm_run_root != planned_slurm_run_root:
+            raise DriverError(
+                "slurm-submit", "Slurm execution selected a different Run"
+            )
+        slurm_jobs = (initial_job,)
+    if direct_run_root is not None and direct_run_root.name != slurm_run_root.name:
+        raise DriverError("plan-parity", "Direct and Slurm selected different Runs")
     if recovery_journey:
         if direct_run_root is None:
             raise DriverError("internal", "recovery parity lacks a direct Run")
-        for label, run_root, job in (
-            ("direct", direct_run_root, None),
-            ("slurm", slurm_run_root, initial_job),
-        ):
-            failures[label] = _admitted_failure(run_root, job=job)
-
-        transcripts.run(
-            "direct-resume",
-            _emrys(
-                python,
-                "resume",
-                direct_run_root.name,
-                "--project",
-                str(projects["direct"]),
-                "--verbose",
-                "--execute",
-            ),
-            cwd=repo,
-        )
-        _write(paths.native_gate.with_suffix(".armed"), b"stop one native Task\n")
-        resume_submission = transcripts.run(
-            "slurm-resume-submit",
-            _emrys(
-                python,
-                "resume",
-                slurm_run_root.name,
-                "--project",
-                str(projects["slurm"]),
-                "--profile",
-                "ci",
-                "--verbose",
-                "--execute",
-            ),
-            cwd=repo,
-            timeout_seconds=120,
-        )
-        from emrys.orchestration.run_coordinator import slurm_submission
-
-        try:
-            active_job = parse_submission(
-                resume_submission.stdout, paths.slurm_workspace / "logs"
-            )
-        except DriverError as exc:
-            job_id = _one(JOB_ID, resume_submission.stdout, "job ID", "submit-slurm")
-            _emergency_cancel(
-                job_id,
-                scancel=scancel,
-                scontrol=scontrol,
-                cwd=repo,
-                poll_seconds=arguments.poll_seconds,
-                original=exc,
-            )
-            raise
-        try:
-            request_root = parse_submission_request(
-                resume_submission, paths.slurm_workspace
-            )
-            request = slurm_submission.select_submission_request(
-                projects["slurm"], request_root.name
-            )
-            if (
-                request.request_root != request_root
-                or request.recorded_job_id != active_job.job_id
-                or request.context is None
-                or request.context["project"] != str(projects["slurm"])
-                or request.context["requested_run"] != slurm_run_root.name
-            ):
-                raise DriverError(
-                    "native-stop", "retained request does not bind this Run/job"
-                )
-            gate = await_native_gate(
-                paths.native_gate,
-                slurm_run_root,
-                active_job,
-                samtools=runtime.samtools,
-                scontrol=scontrol,
-                cwd=repo,
-                poll_seconds=arguments.poll_seconds,
-            )
-        except BaseException as exc:
-            _emergency_cancel(
-                active_job.job_id,
-                scancel=scancel,
-                scontrol=scontrol,
-                cwd=repo,
-                poll_seconds=arguments.poll_seconds,
-                original=exc,
-            )
-            raise
-        stop_started = False
-        try:
-            selected = ("--project", str(projects["slurm"]))
-            submission_inspect = transcripts.run(
-                "slurm-inspect-active-submission",
-                _emrys(
-                    python,
-                    "inspect",
-                    *selected,
-                    "--submission",
-                    request_root.name,
-                ),
-                cwd=repo,
-                timeout_seconds=60,
-            )
-            if (
-                request_root.name not in submission_inspect.stdout
-                or active_job.job_id not in submission_inspect.stdout
-            ):
-                raise DriverError("native-stop", "active submission inspection differs")
-            active_inspect = transcripts.run(
-                "slurm-inspect-active-run",
-                _emrys(python, "inspect", slurm_run_root.name, *selected),
-                cwd=repo,
-                timeout_seconds=60,
-            )
-            if "Attempt outcome: running" not in active_inspect.stdout:
-                raise DriverError("native-stop", "active Run inspection differs")
-            active_watch = transcripts.run(
-                "slurm-watch-active-submission",
-                _emrys(
-                    python,
-                    "watch",
-                    *selected,
-                    "--submission",
-                    request_root.name,
-                    "--snapshot",
-                ),
-                cwd=repo,
-                timeout_seconds=60,
-            )
-            if not all(
-                value in active_watch.stdout
-                for value in (
-                    f"Request: {request_root.name}",
-                    f"Recorded job: {active_job.job_id}",
-                    "Scheduler: RUNNING",
-                )
-            ):
-                raise DriverError("native-stop", "active watch snapshot differs")
-            stop = _emrys(
-                python,
-                "stop",
-                *selected,
-                "--submission",
-                request_root.name,
-            )
-            preview = transcripts.run(
-                "slurm-stop-preview", stop, cwd=repo, timeout_seconds=60
-            )
-            if not all(
-                value in preview.stdout
-                for value in (
-                    "Preview only",
-                    "--ctld",
-                    "--clusters=",
-                    "--name=",
-                    "--me",
-                )
-            ):
-                raise DriverError(
-                    "native-stop", "controller-filtered stop preview differs"
-                )
-            stop_started = True
-            stopped = transcripts.run(
-                "slurm-stop-execute",
-                [*stop, "--execute"],
-                cwd=repo,
-                expected_returncode=None,
-                timeout_seconds=60,
-            )
-            if (
-                "scancel exit status: 0" not in stopped.stdout
-                or f"Stop request: {request_root}" not in stopped.stdout
-            ):
-                raise DriverError(
-                    "native-stop", "public stop did not confirm one request"
-                )
-            await_native_exit(gate)
-        except BaseException as exc:
-            if not stop_started:
-                _emergency_cancel(
-                    active_job.job_id,
-                    scancel=scancel,
-                    scontrol=scontrol,
-                    cwd=repo,
-                    poll_seconds=arguments.poll_seconds,
-                    original=exc,
-                )
-            raise
-        finally:
-            os.close(gate.descriptor)
-        stopped_job = wait_for_job(
-            resume_submission.stdout,
-            log_dir=paths.slurm_workspace / "logs",
+        recovered, slurm_jobs = _resume_failed_runs(
+            arguments=arguments,
+            transcripts=transcripts,
+            python=python,
+            repo=repo,
+            paths=paths,
+            projects=projects,
+            direct_run_root=direct_run_root,
+            slurm_run_root=slurm_run_root,
+            initial_job=initial_job,
             scontrol=scontrol,
             scancel=scancel,
-            cwd=repo,
-            timeout_seconds=arguments.slurm_timeout_seconds,
-            poll_seconds=arguments.poll_seconds,
-            expected=None,
-            cleanup_on_failure=False,
         )
-        if stopped_job.state != "CANCELLED" or stopped_job.job_id == initial_job.job_id:
-            raise DriverError("native-stop", "controller stop did not cancel a new job")
-        deadline = time.monotonic() + 30.0
-        while True:
-            try:
-                interruption = _admitted_interruption(
-                    slurm_run_root,
-                    job=stopped_job,
-                    gate=gate,
-                    failed_attempt_id=str(failures["slurm"]["attempt"]["id"]),
-                )
-                break
-            except DriverError as exc:
-                if time.monotonic() >= deadline:
-                    raise DriverError("native-stop", str(exc)) from exc
-                time.sleep(min(arguments.poll_seconds, 1.0))
-        resume = _emrys(
-            python,
-            "resume",
-            slurm_run_root.name,
-            "--project",
-            str(projects["slurm"]),
-            "--profile",
-            "ci",
-            "--verbose",
-        )
-        before_preview = _execution_state(paths.slurm_workspace)
-        transcripts.run(
-            "slurm-stopped-resume-preview", resume, cwd=repo, timeout_seconds=60
-        )
-        if before_preview != _execution_state(paths.slurm_workspace):
-            raise DriverError("native-stop", "resume preview changed stopped Run")
-        final_submission = transcripts.run(
-            "slurm-stopped-resume-submit",
-            [*resume, "--execute"],
-            cwd=repo,
-            timeout_seconds=120,
-        )
-        final_job = wait_for_job(
-            final_submission.stdout,
-            log_dir=paths.slurm_workspace / "logs",
-            scontrol=scontrol,
-            scancel=scancel,
-            cwd=repo,
-            timeout_seconds=arguments.slurm_timeout_seconds,
-            poll_seconds=arguments.poll_seconds,
-        )
-        if final_job.job_id in {initial_job.job_id, stopped_job.job_id}:
-            raise DriverError("native-stop", "final resume reused an earlier job")
-        slurm_jobs = (initial_job, stopped_job, final_job)
-        stop_evidence = {
-            "request": str(request_root),
-            "native_pid": gate.pid,
-            "native_tool": str(runtime.samtools),
-            "native_task": gate.task,
-            "stopped_job": stopped_job.job_id,
-            "stop_command_returncode": stopped.returncode,
-            "interrupted_attempt": interruption["attempt_id"],
-            "completed_job": final_job.job_id,
-        }
+        failures.update(recovered)
 
     run_roots = {"slurm": slurm_run_root}
     if direct_run_root is not None:
@@ -2190,6 +2299,7 @@ def run_driver(
         "schema_version": SUMMARY_SCHEMA,
         "status": "passed",
         "profile": profile,
+        "scenario": scenario,
         "dataset_profile": dataset,
         "fixture_id": fixtures["slurm"].get("fixture_id"),
         "operator_root": str(paths.root),
@@ -2244,12 +2354,22 @@ def run_driver(
         "parity": parity,
         "commands": transcripts.records,
         "retention": "complete operator root retained; no post-run cleanup or repair",
-        "evidence_boundary": (
-            "real-tool hosted direct and disposable single-node Slurm parity "
-            if parity_journey
-            else "real-tool disposable single-node Slurm production-like exercise "
-        )
-        + ("only; no production, scientific-review, or biological claim"),
+        "evidence_boundary": {
+            "success-parity": (
+                "real-tool hosted direct and disposable single-node Slurm clean parity "
+            ),
+            "failure-resume": (
+                "real-tool hosted direct and disposable single-node Slurm "
+                "failure/resume parity "
+            ),
+            "stop-resume": (
+                "real-tool hosted disposable single-node Slurm stop/resume exercise "
+            ),
+            "production-like": (
+                "real-tool disposable single-node Slurm production-like exercise "
+            ),
+        }[scenario]
+        + "only; no production, scientific-review, or biological claim",
         "biological_interpretation_claimed": False,
     }
 
@@ -2263,6 +2383,7 @@ def _summary(
         "schema_version": SUMMARY_SCHEMA,
         "status": "failed",
         "profile": str(arguments.profile),
+        "scenario": str(arguments.scenario),
         "dataset_profile": PROFILE_DATASETS.get(str(arguments.profile)),
         "operator_root": str(Path(arguments.operator_root).absolute()),
         "failed_stage": error.stage if isinstance(error, DriverError) else "internal",
@@ -2286,6 +2407,11 @@ def _publish(path: Path, value: dict[str, Any]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     arguments = build_parser().parse_args(argv)
+    try:
+        _validate_scenario(str(arguments.profile), str(arguments.scenario))
+    except DriverError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
     if not arguments.execute:
         print(
             json.dumps(
@@ -2293,6 +2419,7 @@ def main(argv: list[str] | None = None) -> int:
                     "schema_version": SUMMARY_SCHEMA,
                     "operation": "plan",
                     "profile": arguments.profile,
+                    "scenario": arguments.scenario,
                     "dataset_profile": PROFILE_DATASETS[arguments.profile],
                     "repo_root": str(Path(arguments.repo_root).absolute()),
                     "operator_root": str(Path(arguments.operator_root).absolute()),

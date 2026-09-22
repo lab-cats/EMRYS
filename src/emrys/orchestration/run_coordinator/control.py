@@ -3010,6 +3010,8 @@ def watch_from_args(arguments: argparse.Namespace) -> int:
     """Resolve the ordinary monitoring shorthand onto one existing watch path."""
 
     arguments.watch = True
+    if getattr(arguments, "submission", None) is not None:
+        return inspect_from_args(arguments)
     selector = getattr(arguments, "run", None)
     explicit_project = getattr(arguments, "project", None) is not None
     interactive = sys.stdin.isatty() and sys.stderr.isatty()

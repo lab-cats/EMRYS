@@ -302,6 +302,39 @@ def test_watch_routes_run_job_id_and_job_name_without_parallel_monitoring_owner(
     assert selected.submission == "submission-exact"
     assert selected._watch_run_root == run
 
+    competing = SimpleNamespace(
+        project=project,
+        run_root=None,
+        request=SimpleNamespace(
+            request_root=tmp_path / "logs" / "submission-competing"
+        ),
+    )
+    monkeypatch.setattr(
+        control,
+        "_project_watch_targets",
+        lambda _project: (
+            SimpleNamespace(project=project, run_root=run, request=request),
+            competing,
+        ),
+    )
+    assert (
+        control.watch_from_args(
+            parser.parse_args(
+                [
+                    "--project",
+                    str(project),
+                    "--submission",
+                    "submission-exact",
+                    "--snapshot",
+                ]
+            )
+        )
+        == 0
+    )
+    selected = captured.pop()
+    assert selected.submission == "submission-exact"
+    assert not hasattr(selected, "_watch_run_root")
+
 
 def test_watch_does_not_discover_current_user_scheduler_jobs_without_a_project(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]

@@ -2249,10 +2249,11 @@ accounting service and requires exact cluster-scoped observation before its
 synthetic journey. That infrastructure alone does not exercise active-native-
 Task cancellation or establish a Viking result.
 
-**Selected source/journey slice (hosted CI pending):** The 130-pair real-Slurm
-journey now inspects each qualified Project before a Run exists. It retains the
-existing direct/Slurm pre-Task failure, public resume, final scientific oracle,
-and report parity. In the Slurm Run, an additional resume enters a Task with a
+**Selected source/journey slice (hosted CI pending):** The 130-pair real-E2E is
+split into three independently provisioned scenarios. `success-parity` compares
+clean direct and Slurm completion. `failure-resume` retains the existing
+direct/Slurm pre-Task failure, public resume, final scientific oracle, and report
+parity. `stop-resume` starts from a fresh Slurm Run and enters a Task with a
 test-gated, pinned real `samtools view` child: the adapter preserves that Task
 invocation's options but substitutes a blocking FIFO for its input. The driver
 admits the native process identity, Task start, exact recorded submission and
@@ -2260,11 +2261,11 @@ active Run; it exercises public submission/Run inspection, a watch snapshot,
 a no-write stop preview and one public controller-filtered `stop --execute`.
 It then requires the native child to exit, a terminal scheduler record, a
 positively closed interrupted Attempt and Task, a no-write resume preview, and
-a distinct public resume to real-tool scientific and reporting completion. The three Slurm
-Attempts and their retained predecessors are checked explicitly; the direct
-journey remains a separate two-Attempt parity comparator. A scheduler
-`CANCELLED` state by itself never authorizes recovery. No hosted result for
-this new journey is claimed until the selected exact-commit CI run passes.
+a distinct public resume to real-tool scientific and reporting completion.
+Every scenario inspects each qualified Project before a Run exists and retains
+its own predecessors. A scheduler `CANCELLED` state by itself never authorizes
+recovery. No hosted result for these new scenarios is claimed until the selected
+exact-commit CI run passes.
 
 The selected journey's resource fixture no longer substitutes fixed CPU,
 memory, concurrency or thread ceilings. It derives one CI profile from the
