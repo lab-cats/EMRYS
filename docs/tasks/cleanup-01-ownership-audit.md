@@ -39,7 +39,7 @@ claim that every possible future subtype is inherently undeletable.
 | F2 | Native outputs, publication staging, locks and backups; Task, reporting, validation and reference-provenance publishers | Live transaction cleanup differs by owner; failed rollback can leave backups after a lock disappears. | No-go on current evidence. | Can ownership, writer quiescence and recovery safety be proved after process loss for one exact owner and path subtype? |
 | F3 | Managed runtime generations and caches; Doctor and runtime owner | Shared or ordinary Project inventories and retained Attempt tool identities can name generations; seals reveal some cache links. | No-go on current evidence. | What enumerates every current and historical Project, Attempt and package reference? |
 | F4 | Qualification probes and receipts; storage qualification owner | The owner cleans known probes after durable publication; a site compute receipt names its probes, while staged or failed cleanup remains evidence. | No-go on current evidence. | Can any exact direct-probe remainder prove ownership, no writer and recovery safety after process loss? |
-| F5 | Inputs, references, sidecars and reference-provenance outputs; Project admission, Step 00c and reconciliation owner | Admission binds content without exclusive ownership; FAI/dictionary files sit beside potentially shared FASTA files, while reconciliation writes under a caller-supplied root. | No-go on current evidence. | Can any generated subtype be separated from external and cross-Run consumers? |
+| F5 | Inputs, references, sidecars, source profiles and created roots; Project admission, onboarding, Step 00c and reconciliation owner | Admission binds content without exclusive ownership; generated roots can remain partial, while reference outputs and selected profiles may lie outside a Project. | No-go on current evidence. | Can any generated subtype be separated from external and cross-Run consumers? |
 | F6 | Submission and application records; Control, submission and logging owners | Retained requests feed inspection, watch, stop and association after terminal state; Run, reporting and maintenance logs and raw transcripts have separate readers. | No-go on current evidence. | Can every request and maintenance-record subtype close its historical and external readers without losing evidence? |
 
 ### Repo-wide supplemental owner matrix
@@ -49,7 +49,7 @@ This source pass inventoried physical publication/removal calls across
 contracts, callers and distinguishing fault tests. It separately inspected
 `tests/tools` and `.github/workflows` for evidence retention boundaries.
 This is a bounded source inventory, not a dynamic filesystem census or a
-complete reverse-reference graph. S1–S5 refine or bound F1–F6; they do not
+complete reverse-reference graph. S1–S11 refine or bound F1–F6; they do not
 create new accepted cleanup classes. A source search can establish a known
 reader or producer, but cannot close operator, external, cross-Project or
 post-crash writer references.
@@ -61,6 +61,12 @@ post-crash writer references.
 | S3 | Shared exclusive-file publication; F1–F5 | `publish_exclusive` creates `.emrys-stage` and, on replacement, `.displaced` paths for several distinct callers, removing only its live transaction state. | Unknown after process loss; suffix and helper identity do not substitute for the calling owner's proof. |
 | S4 | Slurm batch scratch; F2/F6 execution boundary | The wrapper creates a private `TMPDIR` under configured `scratch_parent` and removes it in an EXIT trap; ordinary exit and TERM have focused tests. | Unknown after abrupt loss; path and scheduler status do not establish owner or writer quiescence. |
 | S5 | Validation harness and hosted CI artifacts; scope boundary | The test runner retains failed or interrupted lane logs; synthetic E2E retains its operator root; CI uploads have configured expiry. | Separate from Project cleanup. Hosted expiry grants no local deletion authority. |
+| S6 | Create-absent Project, manifest-draft and synthetic roots; F5 | One publisher reserves a caller-selected root, writes members and a completion member last, then preserves the whole partial tree on failure. | No-go for a partial root; completion-name presence or absence does not classify the tree or close external references. |
+| S7 | Execution-profile source; F5 | Default, named or absolute external profile paths are re-read; Attempts retain the selected source path and hash. | Open historical and cross-Project references; distinguish these files from managed runtime inventories. |
+| S8 | Retired producer residue; F2 | Owner contracts preserve characterized older anchor, backup and lock failure states even though current workers delegate publication to Task. | Unknown without exact artifact provenance; old path names are neither current producers nor deletion certificates. |
+| S9 | Operator resource-benchmark output; scope boundary | An opt-in script retains per-trial streams, timings, hashes and summaries in a caller-selected absent directory, including failed trials. | Preserve under its operator evidence authority even if physically nested beneath a Project. |
+| S10 | External R restoration environment; F3 scope boundary | Explicit `RENV_PROJECT` can own settings, locks, caches and libraries outside a managed Project generation. | External operator ownership and consumers remain open; managed cache inventory is not a universal R cache roster. |
+| S11 | Run-local Snakemake metadata; F1 | The execution backend can mutate `.snakemake/` during retry, while EMRYS inspection does not use it as completion authority. | Opaque backend and possible foreign state; no source-backed retained deletion rule. |
 
 ## First source discovery pass
 
@@ -234,6 +240,32 @@ is deletion eligibility.
   Tasks, reused Runs, report validation and scientist-facing transfer read
   these paths. The [Run-root contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#run-root-contract)
   lists their distinct authorities.
+- **Report input paths and publication roots — open.** The private
+  [reporting owner](../../src/emrys/reporting/README.md#code-and-artifact-roots)
+  admits an explicit artifact source root independently of its output roots;
+  [HTML receipts](../../src/emrys/reporting/_run_report/receipt.py) retain
+  exact data-input paths and hashes, including provider and figure inputs
+  (lines 74–99). The production
+  [Run coordinator](../../src/emrys/orchestration/run_coordinator/reporting_operation.py)
+  pins the artifact source and both output roots to its selected Run (lines
+  78–107). A root-local file list does not close a report receipt's input
+  references, and the private library's broader root boundary must not be
+  misreported as the current public `emrys report` destination.
+- **Snakemake metadata — backend state unknown.**
+  [Lifecycle](../../src/emrys/orchestration/run_coordinator/lifecycle.py)
+  executes Snakemake with the Run root as its working directory and forbids
+  engine cleanup or unlock flags (lines 605–630). The fixed
+  [profile](../../src/emrys/workflow/profiles/local/profile.v9+.yaml) keeps
+  incomplete outputs, and the [resume binding](../../src/emrys/orchestration/run_coordinator/run_implementation.py)
+  selects the backend's incomplete-output behavior (lines 24–32). EMRYS
+  [inspection](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+  does not treat `.snakemake/` as completion authority (lines 1151–1155),
+  while a [retry test](../../tests/orchestration/run_coordinator/test_materialization.py)
+  observes engine metadata mutation (around lines 6678–6688). A
+  [foreign-member test](../../tests/orchestration/run_coordinator/test_lifecycle.py)
+  leaves `.snakemake/foreign` in a successful Run (around lines 1767–1773).
+  Neither status independence nor an engine directory name proves its contents
+  disposable or its writer universe closed.
 - **Uncommitted Run quarantine — unknown.**
   [Materialization](../../src/emrys/orchestration/run_coordinator/materialization.py)
   admits only a real root with no `run.json` and at most regular, nonsymlink
@@ -298,6 +330,19 @@ is deletion eligibility.
   leaves three backups after failed restoration with no lock or recovery
   marker (around lines 462–517). Treat finals, stage, backups and lock as one
   recovery context, including when the root lies outside the Project.
+- **Historical worker backups, anchors and locks — provenance unknown.**
+  Current scientific workers receive staging destinations from Task; the
+  retained [canonical-BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md),
+  [split-N-cigar](../../src/emrys/stages/split_n_cigar/CONTRACT.md) and
+  [scientific-context](../../src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/CONTRACT.md)
+  contracts separately record old producer failure states (around lines
+  82–118, 62–69 and 98–112). These include anchor cleanup failures,
+  predecessor restoration loss, and a linked final without its old staging
+  anchor or lock. Those producers are retired, so the old cases are historical
+  recovery evidence, not a claim that current Task produces the same residue.
+  No Project-data census establishes whether any such paths survive; if they
+  do, neither current publisher behavior nor absent old locks authorizes
+  deleting them.
 - **Shared exclusive-publication stage and displaced names — unknown.** The
   [library primitive](../../src/emrys/libraries/exclusive_publication.py)
   creates `.<final>.<token>.emrys-stage` for exclusive publication and a
@@ -359,6 +404,15 @@ is deletion eligibility.
   generation name nor a cache path is a complete cache-object consumer roster.
   Package-manager cache paths and `cache/repair-*` scratch have different
   owners and lifetimes; neither basename establishes post-crash quiescence.
+- **External operator R environment — outside the managed-generation roster.**
+  The opt-in [renv owner](../../src/emrys/renv/README.md) describes a separate
+  explicit `RENV_PROJECT` for bootstrap settings, locks, staging and caches,
+  plus operator-owned libraries (lines 3–28). Its
+  [restoration script](../../src/emrys/resources/runtime/restore_r_environment.R)
+  requires that external project and lock, then calls `renv::restore` with
+  `clean = FALSE` (lines 43–80). Managed Project generation inspection cannot
+  enumerate or authorize cleanup of these external paths; their operator and
+  package-manager references remain open.
 - **Maintenance claim — owner known, quiescence unknown.** A retained claim
   blocks admission and records unresolved repair or selector publication.
   Runtime reuse checks the donor claim before probing; borrower replacement
@@ -414,6 +468,23 @@ is deletion eligibility.
 
 ### F5 path subtypes
 
+- **Partial create-absent roots — owner and external references open.** The
+  shared [tree publisher](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+  reserves an absent output directory, writes members, publishes a completion
+  member last and preserves the entire partial root on any failure, even when
+  that member exists but fails readmission (lines 580–651). The callers are
+  [Project creation](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+  with `project.yaml` last (around lines 1376–1390), manifest-draft creation
+  with `samples.tsv` last (around lines 1563–1595), and
+  [synthetic fixture creation](../../src/emrys/orchestration/run_coordinator/synthetic_fixture.py)
+  with `fixture.manifest.json` last (around lines 732–785). The
+  [Project contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+  refuses adoption or overwrite of partial Project roots (lines 135–145);
+  [tests](../../tests/orchestration/run_coordinator/test_onboarding.py)
+  retain a root lacking Project YAML after input drift and characterize a
+  present-but-invalid completion member (around lines 1044–1075 and
+  1873–1901). Completion-name presence, absence or physical location cannot
+  classify these three caller-owned roots as deletable.
 - **Project-created samples and partitions manifests — Project-local readers
   known, wider references open.** [Onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
   authors or copies these members and publishes Project YAML last
@@ -436,6 +507,20 @@ is deletion eligibility.
 - **Declared FASTQs, FASTA/GTF and regions — ownership and references open.**
   Project setup names their existing locations. Normalization admits bytes,
   not exclusive file ownership or a complete list of external consumers.
+- **Execution-profile source — positive Attempt references, external use open.**
+  [Profile selection](../../src/emrys/orchestration/run_coordinator/execution_profile.py)
+  reads the Project default, a named Project profile or an absolute external
+  path (lines 92–120). An Attempt's placement records the exact selected
+  source path and SHA-256 (lines 293–313), and
+  [resume admission](../../src/emrys/orchestration/run_coordinator/control.py)
+  re-reads the selected file and rejects source-byte drift (around lines
+  823–867 and 1705–1721). The [Run contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+  also names Doctor, Run and report readers (lines 729–746). Retired adjacent
+  configuration names block omitted-default migration rather than becoming
+  cleanup residue (execution-profile lines 92–109). These source YAML files
+  are distinct from F3's managed runtime inventory; an absolute selection
+  could be shared across Projects, and a historical Attempt is already a
+  positive inbound reference.
 - **FAI and dictionary beside the FASTA — open.** EMRYS can produce an exact
   pair, but the parent may be shared, complete pairs can be reused across Runs,
   and a cross-Run lock protects publication. A partial pair blocks work. The
@@ -454,8 +539,12 @@ is deletion eligibility.
   checks one explicit FASTA/FAI/dictionary/GTF/BED12/STAR inventory and
   publishes artifact, contig and summary TSVs under a caller-supplied root;
   it neither repairs nor regenerates the declared sources (lines 26–36 and
-  130–175). A bounded production-source search found this publisher and no
-  automatic reader for its named TSV finals. That negative source result does
+  130–175). The [inventory loader](../../src/emrys/evidence/reference_provenance/_reference_inventory.py)
+  resolves its own absolute or base-relative source paths independently of a
+  Project manifest (lines 21–122). Its input files and output evidence have
+  separate reference universes. A bounded `src/emrys` search found only the
+  publisher's filename constants, not an automatic reader for its named TSV
+  finals. That negative source result does
   not close operator or external readers, nor does it establish that the
   source reference files are owned by reconciliation. Publication residue has
   the separate F2 recovery boundary above.
@@ -514,6 +603,15 @@ is deletion eligibility.
   lines 532–550). The [logging contract](../design/LOGGING_CONTRACT.md)
   forbids automatic rotation
   or deletion (lines 144–169).
+- **Incomplete application-log attempt directory — source inference, unknown.**
+  [Storage](../../src/emrys/libraries/application_logging/storage.py)
+  exclusively creates an Attempt directory before creating its JSONL file and
+  closes descriptors without removing created directories when initialization
+  fails (lines 124–160 and 179–209). A later open of the same Attempt name
+  refuses an existing directory. This suggests that an interrupted open can
+  leave an empty or partial directory that blocks retry; no focused fault case
+  here proves an exact survivor. Its path, location and missing JSONL are
+  insufficient ownership or deletion evidence.
 - **Maintenance JSONL and raw siblings — separate roster, open.** Doctor's
   waited qualification stores `slurm-submit.stdout` and `.stderr` beside its
   maintenance log
@@ -555,6 +653,33 @@ evidence (around lines 860–899, 936–946 and 1294–1383). That hosting polic
 does not transfer ownership or authorize removal of local Project, operator
 or scientific evidence. Validation-specific transient log cleanup is not a
 model for retained Run or Project cleanup.
+
+The [Python shard tool](../../tests/tools/python_test_shards.py) writes
+selection receipts before the complete-suite coverage job reads and checks
+them (around lines 169–196, 245–266 and 360–375); the
+[CI workflow](../../.github/workflows/ci.yml) downloads them before
+finalization (around lines 967–991 and 1083–1097). Their seven-day upload
+expiry does not mean they lacked an in-run reader. The disposable
+[CI Slurm setup](../../tests/tools/configure_ci_slurm.sh) removes only its
+pending temporary configuration files during setup or EXIT cleanup (around
+lines 62–71 and 119–141), while the workflow retains selected diagnostics
+and excludes private configuration (around lines 1344–1358). This runner
+infrastructure and its evidence selection have a different owner from any
+Project or institutional Slurm installation.
+
+### Operator benchmark evidence boundary
+
+The opt-in [resource benchmark](../../scripts/benchmark_stage_resources.py)
+requires a caller-selected absent output directory, previews without writes,
+and on execution retains per-trial stdout/stderr, timing, artifact hashes,
+`trials.tsv` and `summary.tsv`, including failed trial rows (around lines
+370–510). [Focused tests](../../tests/test_benchmark_stage_resources.py)
+cover preview, retained failures and refusal to reuse an existing output
+(around lines 145–153, 194–264 and 343–354). A caller can place this evidence
+under a Project, but location alone does not give the Project cleanup owner
+authority over it. The separate [SETUP-02 retirement card](backlog_matrix.md#deferred-operational-work)
+requires raw measurements and scientific-equivalence evidence to survive
+helper retirement. No benchmark output is selected for cleanup here.
 
 ### Narrow candidate triage
 
@@ -614,7 +739,7 @@ No retained subtype is selected; none has a justified space-saving claim.
 | --- | --- |
 | Product code | The reporting publishers already share [stage removal](../../src/emrys/reporting/_files.py) and [lock helpers](../../src/emrys/libraries/exclusive_publication.py), while [transaction validation](../../src/emrys/reporting/transaction_validation.py) centralizes recognized residue names. A future reporting preview should use those seams rather than add a second name scan. Validation and reference-provenance publication have documented distinct rollback gaps; similar `.previous` names do not justify collapsing them into reporting. Task rollback and storage probe cleanup have different writer and roster rules, so no cross-owner deletion helper or current product-code retirement is justified. Existing Run inspection and submission enumeration should serve their own readers without a second registry. |
 | Tests and protections | The cited reuse, interruption, partial-publication and retained-record cases protect distinct failures. This pass identifies no redundant test or high-risk protection safe to retire. A selected subtype must map each added check against those surviving defenses. |
-| Scripts, schemas and configuration | No separate CLEANUP-01 command, schema, retention registry or configuration is present to retire. Slurm scratch and validation harness cleanup already have narrow script owners and do not imply a new cleanup command. Do not add one merely to inventory age or free space. |
+| Scripts, schemas and configuration | No separate CLEANUP-01 command, schema, retention registry or configuration is present to retire. Slurm scratch and validation harness cleanup already have narrow script owners and do not imply a new cleanup command. `SETUP-02` may eventually retire the benchmark helper, but explicitly preserves its raw measurements and evidence; that retirement is not a cleanup route. Do not add a command merely to inventory age or free space. |
 | Documentation | CV-23, the main backlog row and this working matrix currently overlap by design during discovery. After an accepted design, keep status in the backlog, move lasting behavior beside the selected owner, and compress or retire repeated working-audit explanations while preserving decisions and evidence. |
 | Mutable state | No cleanup status cache or reverse-reference registry exists. This pass found no mutable state safe to remove; a new persistent registry would require an independently justified authority and maintenance analysis. |
 
