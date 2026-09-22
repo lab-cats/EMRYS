@@ -45,7 +45,7 @@ states, not another task-status registry.
 | S06 — Prerelease distribution | Partial | The package declares Alpha and `0.1.0.dev0`. On 2026-09-22, the exact PyPI project lookup returned 404, and GitHub listed no releases or tags. The [Quickstart](../../quickstart.md) documents source installation. A wheel test and public CLI, artifact-validation, provider and reporter interfaces establish supported external surfaces, not observed third-party use. | Inventory known collaborators, source installs, private distributions, and downstream readers. The checked public channels do not prove absence of external consumers. |
 | S07 — Retained Runs | Partial | Tracked `Projects/` contains only placeholders and Project data is ignored by Git. The [campaign record](backlog_matrix.md#viking-walkthrough-findings) reports actual-data Runs, including an unresolved cancelled Run and replacement at the time of that report. Their present locations, versions, and recovery needs were not inspected. | Obtain owner-identified locations or a bounded inventory. Inspect version and identity metadata read-only without changing or copying scientific data. |
 | S08 — Version-support boundaries | Observed | The [approved policy](../design/decisions/platform-direction.md#version-support) rejects obsolete Run records, preserves retained evidence, and requires full checks for current-format recovery. The Project v1 schema has two current forms, provider v1 metadata remains admissible while v1 execution is not, and a separate submission-request reader accepts v1–v4 retained diagnostics with narrower stop authority. | Treat each as its own contract; do not group current forms, diagnostic readers, and historical fixture names into one obsolete-alias category. |
-| S09 — Existing protection | Observed | Source tests assert exact closed registration and references, strict JSON refusal, profile graph/order/scope rules, independent backend owner mapping, obsolete Attempt refusal, retained Run recovery, content-bound identity, independent artifact goldens, and installed wheel resources. Test presence and assertions were inspected, but results at this revision were not. | Map each selected change to a surviving defense at the same trust boundary. Run focused checks on an approved implementation and long lanes in CI. |
+| S09 — Existing protection | Observed | Source tests assert exact closed registration and references, strict JSON refusal, profile graph/order/scope rules, independent backend owner mapping, obsolete Attempt refusal, retained Run recovery, content-bound identity, independent artifact goldens, and installed wheel resources. This source pass inspected their assertions; live hosted results belong to an exact PR head. | Map each selected change to a surviving defense at the same trust boundary. Run focused checks on an approved implementation and long lanes in CI. |
 | S10 — Reduction opportunities | Partial | Both registries repeat strict JSON parsing and Draft 2020-12 setup, but differ in exact-ID enforcement, selectors, diagnostics, and semantic admission. Artifact and orchestration common definitions share only two identical small shapes. The field screen found a private generated profile triplet, an always-null Attempt field, and copied per-scope issues as qualified candidates. Raw overlap is not net savings. | Prototype caller-complete savings before sharing machinery or definitions. Inventory tests, scripts, configuration, docs, compatibility, and mutable state separately; retain independent evidence. |
 | S11 — Contract decision | Open | No reset or removal follows from this pass. | Compare keeping current contracts, justified field transitions, and a selected v1 reset with quantified consumer impact and maintenance cost. Record a reasoned disposition for each candidate. |
 
@@ -64,8 +64,8 @@ resources. A family-by-family field screen remains required before S11.
 | `owner_tasks[].rule_name` | [Snakemake](../../src/emrys/workflow/Snakefile) uses it to name processing rules and in an independent fixed mapping check. A test swaps machine keys under unchanged rule names to exercise that check. | Could a pinned backend mapping or stable owner identity derive it while retaining exact names and the independent remapping defense? The field is used, not dead. |
 | `owner_tasks[].scope_selector` | Validation requires the current one-to-one mapping from `scope_type`; Snakemake's fixed processing check reads both. | Test whether derivation preserves the independent scope fence and exact profile binding. |
 | `artifact_templates[].scope_selector` | [Inventory expansion](../../src/emrys/contracts/orchestration/artifact_inventory.py) groups templates in first-seen selector order and rejects selector/scope mismatches. | Derivation from `scope_type` must preserve inventory rows, order, grouping, and rejection behavior. The field is used, not dead. |
-| `workflow_attempt.scratch` | The schema requires an absolute path or null; the current [Attempt producer](../../src/emrys/orchestration/run_coordinator/materialization.py) always writes null. A repository search found no production read of this record field. Active Slurm `scratch_parent` and Task worker scratch are separate values. | Inventory retained Attempts and external readers before calling the field dead. Removing its null member saves 15 canonical bytes per record but changes an exact shape and a Run-bound schema, not yet measured product code. |
-| `run_summary.expected_scopes[].warnings` and `errors` | The [summary producer](../../src/emrys/reporting/_run_summary/projection.py) copies and stably deduplicates artifact issues into each scope, and the schema requires both arrays. No production reader was found, but a [valid fixture](../../tests/contracts/artifacts/fixtures/artifact_schema_v2/valid/run_summary.json) has a scope warning message different from its sole artifact warning. Semantic admission does not require issue-array equality. | These arrays are not universally derivable from artifacts under the admitted contract. Determine external meaning and retained evidence needs before proposing a semantic change; report-template non-use alone is insufficient. |
+| `workflow_attempt.scratch` | The schema requires an absolute path or null; the current [Attempt producer](../../src/emrys/orchestration/run_coordinator/materialization.py) always writes null for execute and resume. A repository search found no direct production read. Slurm `scratch_parent` and Task worker scratch are separate values with different lifetimes. | Decide whether per-Attempt scratch provenance remains needed, then inventory retained Attempts and external readers. Removing its null member saves 15 canonical bytes per currently produced Attempt but changes exact references and a Run-bound schema, not yet measured product code. |
+| `run_summary.expected_scopes[].warnings` and `errors` | The [summary producer](../../src/emrys/reporting/_run_summary/projection.py) copies and stably deduplicates artifact issues into each scope, and the schema requires both arrays. No direct in-repository reader of these nested arrays was found, but a [valid fixture](../../tests/contracts/artifacts/fixtures/artifact_schema_v2/valid/run_summary.json) has a scope warning message different from its sole artifact warning. Semantic admission does not require issue-array equality. | These arrays are not universally derivable from artifacts under the admitted contract. Determine external meaning and retained evidence needs before proposing a semantic change; report-template non-use alone is insufficient. |
 | Adjacent `workflow_inputs["profile"]` | Source review found a generated private backend projection of profile ID, version, and hash with no production reader found so far. It is not a JSON Schema field. | Check external/API exposure and route any justified removal to its proper reduction owner. Do not infer that the schema's profile ID or version fields are unused. |
 | Adjacent `validate_record(..., profile=...)` | The orchestration API includes this optional parameter and serializes it into the successful-validation cache key, but the called record validator does not read it. Inspection forwards it, while a separate successor-Run check actually validates Run/profile consistency. This is an API/cache candidate, not a schema field. | Inspect external Python callers and error precedence before removing the parameter or cache dimension. Preserve the separate successor-Run admission. |
 
@@ -162,6 +162,27 @@ STAR parameters, provider policy, execution placement, and repeated
 Run/Task/reporting identity fields likewise have source-level producers and
 readers or binding checks. These are bounded negative findings for deadness,
 not a claim that every field's external meaning has been established.
+
+For Attempt `scratch`, [placement](../../src/emrys/orchestration/run_coordinator/execution_profile.py)
+records a Slurm scratch parent, the [submission wrapper](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
+creates a private `TMPDIR`, and [Task execution](../../src/emrys/orchestration/run_coordinator/task.py)
+derives its own scratch. None populates the Attempt field. Inspection,
+lifecycle, Task, backend, and reporting still admit the whole closed Attempt
+record. A removal therefore changes exact Attempt bytes and references even
+without a direct field reader; retained records and the possible value of
+per-Attempt provenance remain open.
+
+For Run-summary scope issues, the current producer copies artifact issues,
+but the [valid fixture](../../tests/contracts/artifacts/fixtures/artifact_schema_v2/valid/run_summary.json)
+has different scope, artifact, and Run warning messages. Semantic admission
+does not enforce their equality. An independent report golden uses that
+fixture but does not render the scope warning text. No owner decision was
+found saying whether distinct scope wording is
+intentional. The full summary reaches reporter plugins and its exact bytes
+are bound by the [report receipt](../../src/emrys/reporting/_run_report/receipt.py)
+and [transaction revalidation](../../src/emrys/reporting/transaction_validation.py).
+Removing the arrays or adding an equality check would therefore be a contract
+decision, not a mechanical cleanup.
 
 ### Consumer and retained-record premise
 
@@ -345,7 +366,40 @@ This is a scope split, not a recommendation to change any resource. A v1
 | Nine resources with v1 `$id`s | No `$id` reset to v1 is needed. `application_model` still contains three separately versioned current records; `execution_profile` sits in packaged `v3` while its ID is v1. Directory names remain resource paths. | Retain current IDs pending any independently justified format change. |
 | Three artifact resources with non-v1 `$id`s | Artifact entry is nested in Run summary; summary and receipt serialize `8.0.0`. A selected change would touch reporting writers/readers, public artifact validation, references, fixtures, independent goldens, wheel resources, and Attempt package provenance. They are not explicit Run admission roots. | Open until actual consumer and reporting impact is bounded. |
 | Seven non-v1 orchestration Run roots | `run_lock`, `task_attempt`, `task_start`, `verified_task`, `workflow_attempt`, `attempt_receipt`, and `profile` enter the explicit Run implementation closure. A selected path or byte change affects new Run identity and current-format recovery comparisons. | Open until retained state, all callers, and surviving defenses are bounded. |
-| Non-v1 `reporting_start` | Reporting ledger writer/reader and installed-package provenance depend on it, while the explicit Run-root list omits it. | Open as a reporting/recovery decision, not an inferred Run-ID change. |
+| Non-v1 `reporting_start` | Its schema file is outside the explicit Run-root list, but a complete `$id` reset must also update the exact ID in Run-bound orchestration registry code. Reporting ledger writer/reader and installed-package provenance also depend on it. | Open as a reporting/recovery decision; a complete `$id` reset changes new Run identity through the edited registry code. |
+
+The next table closes the 11 non-v1 IDs at source level. `Direct Run root`
+means the schema file itself is in
+[Run implementation identity](../../src/emrys/orchestration/run_coordinator/run_implementation.py).
+All 11 are packaged and exposed through a record selector, appear in the
+[wheel roster](../../tests/test_package_distribution.py), and affect the
+[installed-package tree digest](../../src/emrys/libraries/installed_package_identity.py)
+retained for new Attempts. A no in that column does not make a full reset
+Run-neutral: edited registry or admission code can also be a Run root.
+
+| Non-v1 `$id` | Direct Run root | Other exact coupling and retained check |
+| --- | --- | --- |
+| Artifact entry v4 | No | Run-summary `$ref`; report receipt records artifact-entry `4.0.0`; nested retained summaries and public validator. |
+| Run summary v8 | No | Serialized `8.0.0`; report receipt binds summary name, version, and hash; retained summary transaction and reporter input. |
+| Report receipt v8 | No | Serialized `8.0.0` in receipt and TSV; binds both HTML output hashes; retained report transaction revalidation. |
+| Reporting start v2 | No | Reporting ledger and verified-reporting record reference; exact orchestration registry ID also changes in a complete reset. |
+| Run lock v2 | Yes | Active/released lock projection, prepared or terminal receipt, and inspection byte comparisons. |
+| Task start v3 | Yes | Task-attempt start reference, Attempt receipt roster, and retained Task chain. |
+| Task attempt v4 | Yes | Carries a Task-start record reference; verified Task references this Task attempt; Attempt receipt roster and recovery inspection. |
+| Verified Task v2 | Yes | Task-attempt reference and Attempt receipt verified roster. |
+| Workflow Attempt v4 | Yes | References execution-profile v1; immutable Attempt, lock, Task, and reporting origins. |
+| Attempt receipt v3 | Yes | Prepared/terminal closure, literal current-version checks, reporting and successor admission. |
+| Profile v2 | Yes | Serialized `emrys.profile.v2` plus `profile_version=v2`; retained profile snapshot, Attempt digest, backend/functional checks. |
+
+These are affected authorities, not evidence that any actual retained Project
+contains each class. Schema `$ref` edges are only part of the dependency
+closure. The [report receipt schema](../../src/emrys/contracts/schemas/artifacts/v5/report_receipt.schema.json)
+and [writer](../../src/emrys/reporting/_run_report/receipt.py) bind artifact
+entry and Run-summary version labels without `$ref`. A `$id`-only change may
+leave serialized record labels intact while changing new Run implementation
+identity for direct roots and new Attempt package provenance for every row.
+Resetting serialized labels is a separate choice that changes retained-record
+admission. Neither choice rewrites an existing Run ID or retained evidence.
 
 ### Packaged record paths
 
@@ -353,8 +407,8 @@ This source-level map names production producers and readers rather than
 treating a registered schema as proof that a serialized record is used. All
 20 resources are packaged and registered by their respective loaders; the
 two `common` resources are definition-only. The 15 orchestration selectors
-include `application-model`,
-which admits three current labels: analysis revision v2, Execution Plan v1,
+include `application-model`, which admits three current labels: analysis
+revision v2, Execution Plan v1,
 and Run binding v1. The three artifact selectors have separate public
 validation. This map does not establish external use or complete route parity.
 
