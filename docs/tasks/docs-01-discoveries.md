@@ -270,9 +270,16 @@ candidate at lines 269–290 counted 24 Git subprocess calls per task then;
 that is historical source counting, not measured latency. Current
 [source authority](../../src/emrys/libraries/source_authority.py) lines 68–125
 uses installed package bytes and build metadata for identity rather than that
-old Git-object path. Inspect today's complete task-entry caller chain and
-measure only if this candidate is selected; do not rewrite the dated audit as
-though it was false at its recorded revision.
+old Git-object path. At PR head `e500e7c0`, the normal successful task path
+calls `admit_origins()` at [task entry](../../src/emrys/orchestration/run_coordinator/task.py)
+lines 2561, 2651, 2662, and 2676 before producer entry. The shared helper at
+1861–1898 observes the installed package; its current identity routine calls
+[`installed_python_package_identity`](../../src/emrys/libraries/installed_package_identity.py)
+at lines 286–293, which traverses package bytes. Neither current attestation
+owner invokes Git, so the historical 24-Git-subprocess count does not describe
+this path. Four package observations still occur; their latency and independent
+necessity remain unestablished. The dated source count was not false at its pinned
+revision.
 
 ### F15 — CV-U22 interim status prose
 

@@ -120,6 +120,10 @@ permission to change or delete the source.
   test-tool claims with their current owners. It refined F37 and F56 and added
   F62–F64. Source and tests were read, not executed; no owner guide, product
   source, or retained evidence was changed.
+- The seventeenth read-only pass at `e500e7c0` traced F14's current task-entry
+  source-attestation path. Four installed-package observations remain before
+  producer entry, but the historical 24-Git-call count no longer describes
+  that path. This is a source count, not a timing measurement.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -166,7 +170,7 @@ and the boundary for each row.
 | [F11](docs-01-discoveries.md#f11-python-hook-scope) | Contradiction | Engineering guide omits root `setup.py` from hook scope. | Align the guide with `.pre-commit-config.yaml`. |
 | [F12](docs-01-discoveries.md#f12-init-preview-proposal) | Prior-revision proposal | Polish campaign's dated audit says Init preview shows only destination and directories; normal preview now shows scientific values. | Compare remaining requested fields and preview/publication protection. |
 | [F13](docs-01-discoveries.md#f13-doctor-profile-proposal) | Prior-revision proposal | Polish campaign's dated audit says Doctor has no `--profile`; the public option now exists. | Reconcile proposal with accepted work and tests. |
-| [F14](docs-01-discoveries.md#f14-old-source-attestation-cost-candidate) | Recheck candidate | Old optimization Git-call finding counts a prior revision's source calls, not necessarily current execution. | Re-evaluate the current source before selecting optimization work. |
+| [F14](docs-01-discoveries.md#f14-old-source-attestation-cost-candidate) | Historical cost claim | Old optimization finding counts 24 Git calls per task entry; current source has four installed-package observations before producer entry but no Git subprocess in that attestation path. | Repeated package-byte work remains unmeasured; old Git-call count is revision-bound. |
 | [F15](docs-01-discoveries.md#f15-cv-u22-interim-status-prose) | Preserve chronology | CV-U22's dated checkpoints explain why the card returned to Open; compression has no demonstrated benefit yet. | Keep the causal record unless a concrete reader conflict is found. |
 | [F16](docs-01-discoveries.md#f16-polish-merged-pr-tables) | Compression candidate | Polish campaign repeats merged-PR chronology in two tables; the first retains unique slice mappings. | Crosswalk unique mappings before compressing routine genealogy. |
 | [F17](docs-01-discoveries.md#f17-main-backlog-chronology-and-run-repetition) | Preserve row evidence | One hosted run supports three distinct backlog rows; repeated row-local citations may be warranted. | Check only routine genealogy for safe compression. |
