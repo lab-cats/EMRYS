@@ -433,15 +433,15 @@ current create-only boundary. The
 [reporting owner](../../src/emrys/reporting/README.md) lines 3–16 says
 `--execute` publishes only from empty owned state, while a complete bundle is
 revalidated and reused (lines 102–112). The [Runbook](../operations/RUNBOOK.md)
-lines 477–490 correctly distinguishes generation after skipped reporting,
+distinguishes these cases at baseline lines 477–490 (lines 437–450 at PR head
+`0cb5d507`): generation after skipped reporting,
 reuse of complete bundles, and refusal of partial or blocked bundles.
 [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 74–80 explicitly
 forbids treating `report` as a repair or overwrite route. “Regenerated” could
-lead a reader to expect replacement of an existing or partial bundle; no
-actual misuse is observed. Clarify absent-output generation and complete-bundle
-reuse in both the root overview and decision wording, with partial-bundle
-recovery routed to existing operator guidance. Preserve the decision's
-Run/Attempt identity boundary, create-only publication, and retained evidence.
+imply replacement of an existing or partial bundle; no misuse is observed.
+The open wording gap concerns empty-state generation versus complete-bundle
+reuse. Existing recovery guidance, Run/Attempt identity, and retained evidence
+still govern the boundary.
 
 ### F53 — Dependent Project in shared-runtime replacement
 
@@ -454,16 +454,15 @@ borrower's `--project`. Runtime discovery resolves an omitted Project to
 lines 270–285 and 2304–2321). From outside the dependent Project, those
 commands can fail or select another current Project for inspection; the
 separate source-selection and admission checks still govern any mutation.
-The [Runbook](../operations/RUNBOOK.md) lines 683–693 already shows the exact
-dependent `--project /absolute/dependent/project.yaml` selector for the same
-replacement. Its preceding lines 683–685 describe source-Project Doctor
-repair with bare `emrys doctor --repair`, immediately after a borrower Doctor
-example. Doctor likewise defaults to the current directory's Project
-(`doctor.py:2041–2046`). Name the source Project explicitly there, and add
-the borrower selector to both recovery commands or state the required working
-directory. Preserve preview before `--execute`, exact-source replacement,
-the old managed generation, seals, claims, and blocked-state evidence. This
-is a static reader-route finding; no runtime replacement was exercised.
+The [Runbook](../operations/RUNBOOK.md) baseline lines 683–693 (PR head
+`0cb5d507` lines 643–650) shows the exact dependent
+`--project /absolute/dependent/project.yaml` selector for the same
+replacement. Baseline lines 683–685 (PR head lines 643–646) describe
+source-Project repair with bare `emrys doctor --repair`, after a borrower
+example. Doctor also defaults to the current directory's Project
+(`doctor.py:2041–2046`), leaving the source Project implicit. Preview,
+exact-source checks, the old generation, seals, and blocked-state evidence
+remain protective boundaries. No runtime replacement was exercised.
 
 ### F54 — Analysis reporter return shape
 
@@ -580,11 +579,12 @@ report print a `Submission request:` directory after approval without naming
 placement. Run and resume schedule a request only for a Slurm profile outside
 an existing job ([control](../../src/emrys/orchestration/run_coordinator/control.py)
 lines 1743–1783); report does likewise at lines 2099–2149. Direct placement
-executes without a Slurm request. The Runbook already distinguishes direct
-from Slurm in its Run plan (lines 441–450) and reporting route (488–493).
-Scope the opening promise to Slurm submissions so direct users do not search
-for a nonexistent request. Keep the exact pre-Run request retention and
-uncertain-job guidance for Slurm. No operation was executed here.
+executes without a Slurm request. The Runbook distinguishes direct
+from Slurm in its Run plan (baseline lines 441–450; PR head `0cb5d507`
+lines 401–411) and reporting route (baseline lines 488–493; PR head 449–453).
+The opening promise could send direct users searching for a nonexistent
+request. Slurm's pre-Run request retention and uncertain-job guidance still
+apply. No operation was executed here.
 
 ### F61 — Run-summary commit marker pronoun
 
