@@ -1087,7 +1087,7 @@ jobs:
       github.event_name == 'schedule' ||
       (github.event_name == 'workflow_dispatch' &&
       (inputs.synthetic_130 || inputs.synthetic_100000))
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 360
     steps:
       - name: Select managed-runtime paths
@@ -1162,7 +1162,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
             munge \
-            slurm-wlm
+            slurm-wlm \
+            slurmdbd
 
       - name: Restore exact R dependency cache
         id: renv-cache
@@ -1336,6 +1337,9 @@ jobs:
           scontrol show nodes -o > "${E2E_EVIDENCE_ROOT}/slurm/final-nodes.txt" 2>&1
           systemctl --no-pager --full status munge slurmctld slurmd \
             > "${E2E_EVIDENCE_ROOT}/slurm/final-systemd-status.txt" 2>&1
+          systemctl show --property=Id,ActiveState,SubState,Result,ExecMainStatus \
+            mysql slurmdbd > "${E2E_EVIDENCE_ROOT}/slurm/final-accounting-systemd-state.txt" 2>&1
+          # Keep private accounting configuration and database journals runner-local.
           # shellcheck disable=SC2024 # Privileged read; the runner owns the destination.
           sudo journalctl --no-pager -u munge -u slurmctld -u slurmd \
             > "${E2E_EVIDENCE_ROOT}/slurm/final-journal.txt" 2>&1

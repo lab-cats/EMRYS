@@ -159,7 +159,7 @@ def test_python311_full_suite_is_nightly_or_explicitly_selected() -> None:
 
 def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
     job = _workflow_jobs()["synthetic-e2e"]
-    assert job["runs-on"] == "ubuntu-24.04"
+    assert job["runs-on"] == "ubuntu-26.04"
     assert job["timeout-minutes"] == 360
     condition = _expression(job["if"])
     assert "github.event_name == 'schedule'" in condition
@@ -189,6 +189,16 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
 
     slurm = _named_step(job, "Configure and prove one disposable Slurm node")
     assert "tests/tools/configure_ci_slurm.sh" in slurm["run"]
+    provision = _named_step(job, "Install disposable Slurm")
+    assert "slurm-wlm" in provision["run"]
+    assert "slurmdbd" in provision["run"]
+    step_names = [step.get("name") for step in job["steps"]]
+    assert step_names.index(provision["name"]) < step_names.index(slurm["name"])
+    for journey in (
+        "Run the selected 130-pair real synthetic E2E",
+        "Run the selected 100,000-pair real synthetic E2E",
+    ):
+        assert step_names.index(slurm["name"]) < step_names.index(journey)
 
     authorities = _named_step(
         job, "Record exact runtime authorities outside the checkout"
@@ -741,6 +751,18 @@ def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:
         assert step["with"]["include-hidden-files"] is True
         assert step["with"]["retention-days"] == 14
 
+    shared = _named_step(job, "Upload shared runtime and Slurm evidence")
+    assert shared["with"]["path"].splitlines() == [
+        "${{ runner.temp }}/emrys-synthetic-e2e/runtime",
+        "${{ runner.temp }}/emrys-synthetic-e2e/slurm",
+    ]
+    # Accounting credentials and database files are runner-local, not artifacts.
+    terminal = _named_step(job, "Retain terminal scheduler diagnostics")
+    assert "systemctl show --property=" in terminal["run"]
+    assert "mysql slurmdbd" in terminal["run"]
+    assert "-u mysql" not in terminal["run"]
+    assert "-u slurmdbd" not in terminal["run"]
+
     final = _named_step(
         job, "Require every selected synthetic lane and evidence upload to pass"
     )
@@ -761,10 +783,33 @@ def test_ci_slurm_setup_is_guarded_real_and_diagnostic() -> None:
     assert "scontrol ping" in script
     assert '[[ "$state" =~ ^[[:space:]]*idle[[:space:]]*$ ]]' in script
     assert "idle([*~+#-])?" not in script
-    assert "single-node CI Slurm partition did not become idle" in script
+    assert "single-node CI Slurm partition/accounting did not become ready" in script
     assert "journalctl" in script
-    assert "slurmdbd" not in script
-    assert "mariadb" not in script
+    assert "slurmdbd" in script
+    assert "AccountingStorageType=accounting_storage/slurmdbd" in script
+    assert "squeue --clusters=emrys-ci" in script
+    assert '"$evidence_dir/qualified-readiness.txt"' in script
+    assert "cluster_scoped_squeue=exit_0" in script
+    assert "for command in scancel slurmctld slurmdbd slurmd; do" in script
+    assert r"([0-9]+\.[0-9]+\.[0-9]+)$" in script
+    assert '[[ "${BASH_REMATCH[1]}" == "$slurm_release" ]]' in script
+    assert 'dpkg --compare-versions "$slurm_release" ge 23.11.6' in script
+    assert "sacctmgr" in script
+    assert "add cluster emrys-ci" in script
+    assert "show clusters format=Cluster" in script
+    assert "mysql" in script
+    assert (
+        "sudo install -o slurm -g slurm -m 0600 "
+        '"$config_pending" /etc/slurm/slurmdbd.conf'
+    ) in script
+    assert "cat /etc/slurm/slurmdbd.conf" not in script
+    assert "cp -- /etc/slurm/slurmdbd.conf" not in script
+    assert "systemctl show --property=" in script
+    assert "-u mysql" not in script
+    assert "-u slurmdbd" not in script
+    assert script.index("dpkg --compare-versions") < script.index("CREATE DATABASE")
+    assert script.index("restart slurmdbd") < script.index("add cluster emrys-ci")
+    assert script.index("add cluster emrys-ci") < script.index("restart slurmctld")
 
 
 def test_python311_shard_receipts_round_trip_outside_source_checkout() -> None:

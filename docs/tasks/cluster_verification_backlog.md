@@ -2163,6 +2163,14 @@ monitoring combinations required by this card. Those are source/journey coverage
 gaps distinct from the later institutional rerun. CV-01 returns to **Open**;
 existing hosted results remain valid for the narrower cases they exercised.
 
+**Disposable Slurm prerequisite:** The separately selected real-Slurm CI lane
+must provide a supported, version-matched client, controller, worker, and
+accounting service and prove exact cluster-scoped observation before its
+synthetic journey. This makes controller-filtered cancellation testable on a
+disposable host; it does not itself exercise active-native-Task cancellation.
+That missing journey and the institutional memory-policy and cross-node cases
+remain CV-01 acceptance work. CV-01 stays **Open**.
+
 ### CV-02 Individual qualification diagnostics
 
 **Finding:** Generic qualification failure required manual reconstruction of

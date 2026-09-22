@@ -19,7 +19,8 @@ evidence_dir="$1"
    ! -L "$evidence_dir" ]] ||
     die "evidence directory must be a real existing child of RUNNER_TEMP"
 
-for command in hostname munge openssl scontrol sinfo slurmctld slurmd sudo systemctl unmunge; do
+for command in dpkg mysql hostname munge openssl sacctmgr scancel scontrol \
+    sinfo slurmctld slurmdbd slurmd squeue sudo systemctl timeout unmunge; do
     command -v "$command" >/dev/null 2>&1 ||
         die "required CI scheduler command is unavailable: $command"
 done
@@ -29,17 +30,28 @@ collect_diagnostics() {
     trap - EXIT
     set +e
     slurmctld -V > "$evidence_dir/slurmctld-version.txt" 2>&1
+    slurmdbd -V > "$evidence_dir/slurmdbd-version.txt" 2>&1
     slurmd -V > "$evidence_dir/slurmd-version.txt" 2>&1
+    scancel -V > "$evidence_dir/scancel-version.txt" 2>&1
+    mysql --version > "$evidence_dir/mysql-version.txt" 2>&1
     dpkg-query -W -f='${binary:Package}\t${Version}\n' \
-        munge slurm-client slurmctld slurmd slurm-wlm-basic-plugins \
+        munge slurm-client slurmctld slurmdbd slurmd slurm-wlm-basic-plugins \
+        slurm-wlm-mysql-plugin \
         > "$evidence_dir/debian-packages.tsv" 2>&1
     # shellcheck disable=SC2024 # Privileged read; the runner owns the destination.
     sudo cat /etc/slurm/slurm.conf > "$evidence_dir/slurm.conf" 2>&1
     scontrol ping > "$evidence_dir/scontrol-ping.txt" 2>&1
     scontrol show nodes -o > "$evidence_dir/scontrol-nodes.txt" 2>&1
     sinfo --all --long > "$evidence_dir/sinfo.txt" 2>&1
+    timeout 5 sacctmgr --noheader --parsable2 show clusters format=Cluster \
+        > "$evidence_dir/accounting-clusters.txt" 2>&1
+    timeout 5 squeue --clusters=emrys-ci --noheader \
+        > "$evidence_dir/cluster-scoped-squeue.txt" 2>&1
     systemctl --no-pager --full status munge slurmctld slurmd \
         > "$evidence_dir/systemd-status.txt" 2>&1
+    systemctl show --property=Id,ActiveState,SubState,Result,ExecMainStatus \
+        mysql slurmdbd > "$evidence_dir/accounting-systemd-state.txt" 2>&1
+    # Do not upload the private slurmdbd.conf, database logs, or database journal.
     # shellcheck disable=SC2024 # Privileged read; the runner owns the destination.
     sudo journalctl --no-pager -u munge -u slurmctld -u slurmd \
         > "$evidence_dir/journal.txt" 2>&1
@@ -65,6 +77,36 @@ node_record="${node_probe%%$'\n'*}"
 [[ "$node_record" == "NodeName=$node_name "* ]] ||
     die "slurmd hardware probe did not describe the current runner node"
 printf '%s\n' "$node_probe" > "$evidence_dir/slurmd-hardware.txt"
+
+# The production stop path needs a version with exact cluster-scoped scancel.
+# Every daemon and client must come from the same installed Slurm release.
+slurm_release=""
+for command in scancel slurmctld slurmdbd slurmd; do
+    version="$($command -V)"
+    [[ "$version" =~ ^slurm[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+)$ ]] ||
+        die "cannot determine $command Slurm release"
+    if [[ -z "$slurm_release" ]]; then
+        slurm_release="${BASH_REMATCH[1]}"
+    else
+        [[ "${BASH_REMATCH[1]}" == "$slurm_release" ]] ||
+            die "Slurm daemon/client releases do not match"
+    fi
+done
+dpkg --compare-versions "$slurm_release" ge 23.11.6 ||
+    die "Slurm release is below the exact-cancellation minimum"
+printf '%s\n' "$slurm_release" > "$evidence_dir/qualified-slurm-release.txt"
+
+sudo systemctl start mysql
+# Fail closed if the disposable runner cannot administer its local database
+# through socket authentication; no image-default password is embedded here.
+sudo mysql --protocol=socket --batch --skip-column-names -e 'SELECT 1' \
+    >/dev/null || die "local MySQL socket administration is unavailable"
+db_password="$(openssl rand -hex 32)"
+sudo mysql --protocol=socket <<SQL
+CREATE DATABASE IF NOT EXISTS emrys_ci_slurm;
+CREATE USER IF NOT EXISTS 'emrys_ci_slurm'@'localhost' IDENTIFIED BY '$db_password';
+GRANT ALL PRIVILEGES ON emrys_ci_slurm.* TO 'emrys_ci_slurm'@'localhost';
+SQL
 
 if [[ ! -s /etc/munge/munge.key ]]; then
     umask 077
@@ -92,6 +134,8 @@ config_pending="$(mktemp "$RUNNER_TEMP/emrys-slurm-conf.XXXXXX")"
         'SelectType=select/cons_tres' \
         'SelectTypeParameters=CR_Core_Memory' \
         'JobAcctGatherType=jobacct_gather/none' \
+        'AccountingStorageType=accounting_storage/slurmdbd' \
+        'AccountingStorageHost=localhost' \
         'StateSaveLocation=/var/spool/slurmctld' \
         'SlurmdSpoolDir=/var/spool/slurmd' \
         'SlurmctldLogFile=/var/log/slurm/slurmctld.log' \
@@ -105,20 +149,57 @@ sudo install -o root -g root -m 0644 "$config_pending" /etc/slurm/slurm.conf
 rm -f -- "$config_pending"
 config_pending=""
 
+config_pending="$(mktemp "$RUNNER_TEMP/emrys-slurmdbd-conf.XXXXXX")"
+{
+    printf '%s\n' \
+        'AuthType=auth/munge' \
+        'DbdHost=localhost' \
+        'SlurmUser=slurm' \
+        'StorageType=accounting_storage/mysql' \
+        'StorageHost=localhost' \
+        'StorageLoc=emrys_ci_slurm' \
+        'StorageUser=emrys_ci_slurm' \
+        "StoragePass=$db_password" \
+        'LogFile=/var/log/slurm/slurmdbd.log'
+} > "$config_pending"
+sudo install -o slurm -g slurm -m 0600 "$config_pending" /etc/slurm/slurmdbd.conf
+rm -f -- "$config_pending"
+config_pending=""
+unset db_password
+
 sudo systemctl restart munge
 munge -n | unmunge > "$evidence_dir/munge-round-trip.txt"
+sudo systemctl restart slurmdbd
+accounting_ready=false
+for ((attempt = 1; attempt <= 30; attempt++)); do
+    if timeout 5 sacctmgr --noheader --parsable2 show clusters format=Cluster \
+        >/dev/null 2>&1; then
+        accounting_ready=true
+        break
+    fi
+    sleep 1
+done
+[[ "$accounting_ready" == true ]] || die "CI Slurm accounting service did not become ready"
+sudo sacctmgr --immediate add cluster emrys-ci >/dev/null
 sudo systemctl restart slurmctld
 sudo systemctl restart slurmd
 
 ready=false
 for ((attempt = 1; attempt <= 30; attempt++)); do
     state="$(sinfo --noheader --partition=emrys-ci --format='%T' 2>/dev/null || true)"
+    clusters="$(timeout 5 sacctmgr --noheader --parsable2 show clusters format=Cluster 2>/dev/null || true)"
     if scontrol ping 2>/dev/null | grep -Fq 'UP' &&
-       [[ "$state" =~ ^[[:space:]]*idle[[:space:]]*$ ]]; then
+       [[ "$state" =~ ^[[:space:]]*idle[[:space:]]*$ ]] &&
+       grep -Fxq 'emrys-ci' <<< "$clusters" &&
+       timeout 5 squeue --clusters=emrys-ci --noheader >/dev/null 2>&1; then
         ready=true
         break
     fi
     sleep 1
 done
-[[ "$ready" == true ]] || die "single-node CI Slurm partition did not become idle"
-printf 'CI Slurm ready: partition=emrys-ci node=%s\n' "$node_name"
+[[ "$ready" == true ]] ||
+    die "single-node CI Slurm partition/accounting did not become ready"
+printf 'cluster=emrys-ci\nnode=%s\nslurm_release=%s\ncontroller=up\npartition=idle\naccounting=registered\ncluster_scoped_squeue=exit_0\n' \
+    "$node_name" "$slurm_release" > "$evidence_dir/qualified-readiness.txt"
+printf 'CI Slurm ready: partition=emrys-ci node=%s release=%s accounting=available\n' \
+    "$node_name" "$slurm_release"

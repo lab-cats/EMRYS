@@ -12,6 +12,15 @@ retains their JUnit results and tiny native outputs beside its existing evidence
 This covers the hosted worker boundary; it does not establish Slurm cancellation,
 lost-worker reconciliation or safe postentry retry.
 
+The selected real-Slurm lane uses a disposable, single-runner controller,
+worker, and accounting service with matching supported Slurm binaries. Setup
+must prove their versions and readiness, cluster registration, and an exact
+`squeue --clusters=emrys-ci` observation before either synthetic journey starts.
+Its private service state stays on the runner; only bounded, redacted setup and
+terminal diagnostics enter the existing infrastructure evidence artifact. This
+is a prerequisite for testing controller-filtered stop, not evidence that an
+active Task was cancelled or that cross-node Viking behavior works.
+
 ## Doctor namespace experiment disposition
 
 The temporary two-worker R namespace comparison is retired; product probes
