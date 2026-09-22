@@ -4055,6 +4055,12 @@ original complete-operation attribution and comparable before/after acceptance.
 CV-26 remains **Open** for those measurements and institutional E11 timing; no
 Viking speedup is claimed. Further tuning remains independently selectable.
 
+**Selected CI follow-up:** The real synthetic E2E now requests verbose output
+for complete direct and disposable-Slurm Doctor repair, and checks the retained
+phase, runtime-probe and Slurm accounting records. Its selected hosted run is
+still required. Even a passing run would establish only hosted observation,
+not comparable before/after resource measurements or Viking E11 timing.
+
 ## P3 outcome
 
 ### CV-27 Terminal-only report access
