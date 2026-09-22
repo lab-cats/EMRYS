@@ -2,11 +2,11 @@
 
 ## Scope and evidence
 
-This is the working investigation record for `ASSURANCE-01`. Its starting source is PR #302 at commit `42d02c5a38ecffaba59e58d5d56ba0ab858eda1f`. The audit covers the entire repository: product code, tests, fixtures, scripts, configuration, documentation checks, packaging, and CI. It is **incomplete**; the entries below are discoveries from the first pass, not a conclusion that other areas are clear.
+This is the working investigation record for `ASSURANCE-01`. Its starting source is PR #302 at commit `42d02c5a38ecffaba59e58d5d56ba0ab858eda1f`. The audit covers the entire repository: product code, tests, fixtures, scripts, configuration, documentation checks, packaging, and CI. It is **incomplete**; the entries below are discoveries from successive source passes, not a conclusion that other areas are clear.
 
 The [backlog matrix](backlog_matrix.md) owns the accepted outcome and task status. This document records evidence and questions. It authorizes no implementation, protection removal, coverage change, or evidence deletion. `QUAL-01` owns measured test cost; `HARNESS-01` owns simulated-science harness choices; `REPORT-ROSTER-01` owns the reporting roster decision.
 
-All `path:line` references below refer to the pinned commit. **Source reviewed** means code or documentation was inspected, without execution in this audit. **Test characterized** means a committed test explicitly asserts the behavior; that test was not rerun for this record. **Inference** identifies a conclusion still needing a focused reproduction. No product or repository test suite, institutional Slurm run, scientific review, or biological validation was performed for this pass. A01-07 records one isolated local function reproduction.
+All `path:line` references below refer to the pinned commit. **Source reviewed** means code or documentation was inspected, without execution in this audit. **Test characterized** means a committed test explicitly asserts the behavior; that test was not rerun for this record. **Inference** identifies a conclusion still needing a focused reproduction. No product or repository test suite, institutional Slurm run, scientific review, or biological validation was performed for this pass. Focused helper reproductions are identified in their entries; they do not execute a full Run or report transaction.
 
 ## Findings matrix
 
@@ -52,6 +52,20 @@ All `path:line` references below refer to the pinned commit. **Source reviewed**
 | A01-38 | Installed-wheel smoke | Wheel is built outside Git and expects unavailable commit provenance | Source; test | Preserve install proof; require separate Git-build provenance evidence |
 | A01-39 | Python shard planner | Stale timing IDs block selection; complete receipt proof is separate | Source | Measure collection cost and stale-estimate policy under `QUAL-01` |
 | A01-40 | Source topology parity | Test checks documented seams and transitions against executable rosters | Source; test | Retain this defense; avoid a duplicate registry |
+| A01-41 | Step 07 gzip selector | Supported compressed region file is reported failed | Source; test characterized | Reconcile validator with Project and producer admission |
+| A01-42 | Step 00b BED12 reporting | Reporting rejects owner-valid strand `.` | Source; owner test; isolated reader reproduction | Fix reporting parity after tracing artifact transaction |
+| A01-43 | Step 04/05 read groups | Validator reports check headers, not every alignment tag | Source; fixture review | Define per-record report promise; retain producer checks |
+| A01-44 | Step 05 header admission | Worker substring matching is weaker than exact validator tokens | Source inference | Decide and test exact producer header policy |
+| A01-45 | Storage JSON reader | Duplicate keys and nonstandard constants pass helper parsing | Source; isolated helper reproduction | Reconcile parser policy while preserving receipt identity checks |
+| A01-46 | Storage receipt generations | Unicode digit name raises raw conversion error | Source; isolated helper reproduction | Define malformed-name refusal or ignore rule |
+| A01-47 | Viking execution profile | Tracked example repeats packaged resource defaults | Source | Decide whether full illustration is needed before reducing config |
+| A01-48 | Print-layout tests | CSS tokens and SVG height do not prove printed-page fit | Source | Bound test claim or obtain rendered print evidence |
+| A01-49 | PDF artifact reader | PDF-like bytes with a nonexistent root object pass its structure check | Source; isolated adapter reproduction | Decide required renderability without weakening existing checks |
+| A01-50 | RSeQC orientation evidence | Native and validator reports have different input and interpretation ceilings | Source; contract | Retain mechanical fractions and independent manifest policy |
+| A01-51 | Reporting QC parsers | Reporter duplicates flagstat/RSeQC parsing with different acceptance | Source | Map lexical reuse and artifact status before consolidation |
+| A01-52 | Reference contig parsers | Raw exceptions escape shared malformed-input contract | Source; tests; focused helper reproduction | Normalize shared errors across Project, sidecar, provenance callers |
+| A01-53 | Step 07 receipt parsing | Missing fields can escape controlled exit with traceback | Source; owner contract | Compare strict TSV reader after caller-boundary decision |
+| A01-54 | Public manifest validator | Blank condition and unsafe sample ID pass before stricter Run admission | Source; focused fixture | Decide public validator promise; preserve Step 08 refusal |
 
 ## Discovery notes
 
@@ -215,6 +229,62 @@ The producer test permits an internally inconsistent flag subcount to be emitted
 ### A01-40 — Source topology has an executable parity defense
 
 `tests/test_source_dependencies.py:476-518` parses the documented CLI seams and source transitions in `src/emrys/contracts/SOURCE_TOPOLOGY.md` and compares them with the executable rosters. This is a surviving defense against documentation/code drift, in addition to the source-direction check. An ad hoc source comparison found the 25 seams and 22 transitions agree at the pinned commit; it was not a product test run. Retain the parity test and avoid adding a parallel policy registry.
+
+### A01-41 — Compressed Step 07 selectors are falsely failed
+
+Project admission and the Step 07 producer read gzip region files (`src/emrys/orchestration/run_coordinator/onboarding.py:1617-1628`; `src/emrys/stages/partitioned_cohort_mpileup/producer.py:106-169`). The validator reads the gzip bytes as text in `src/emrys/libraries/validation/mpileup.py:142-153`. A retained test expects `selector_reconciliation=fail` for a valid `.bed.gz` (`tests/stages/partitioned_cohort_mpileup/test_validate_step_07_mpileup_outputs.py:397-421`), while Project and producer tests cover accepted gzip input. The Run task requires semantic all-pass before verified publication (`src/emrys/orchestration/run_coordinator/task.py:2771-2807`), so source composition implies this supported path is blocked; no live Run was executed. Preserve gzip support and the characterization, then decide caller-complete selector parsing and identity binding.
+
+### A01-42 — Reporting rejects owner-valid BED12 strand
+
+The Step 00b converter, shared BED12 validator, and literal producer test accept strand `.` (`src/emrys/stages/gtf_to_bed12/converter.py:12,52-66`; `src/emrys/libraries/alignments/bed.py:44-49`; `tests/stages/gtf_to_bed12/test_gtf_to_bed12.py:200-206`). The registered reporting reader permits only `+` or `-` (`src/emrys/reporting/_artifact_index/_text_genomic.py:176-208`), and adapter failure marks a present source failed (`src/emrys/reporting/_artifact_index/inspection.py:200-213`). The exact reader function, executed in isolation on the owner-test BED12 row, raised `ArtifactIndexError`; a full artifact transaction was not run because local dependencies were unavailable. Preserve the owner validator; decide reporting parity and add a reporting regression at its own boundary.
+
+### A01-43 — Read-group report checks are narrower than record tags
+
+The shared header parser checks one exact `@RG` with matching ID/SM (`src/emrys/libraries/alignments/bam.py:56-65`); Step 04 and Step 05 validators use it without recounting alignment tags (`src/emrys/stages/duplicate_marking/validator.py:60-67,96-100`; `src/emrys/stages/split_n_cigar/validator.py:88-96,127-131`). Step 05's worker checks every record's RG count (`src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh:95-101`), while Step 04's worker does not. Validator fake samtools fixtures support quickcheck/header only, so they cannot exercise record-tag mismatch. Retain Step 02 and Step 05 worker tag defenses. Decide whether either validation report must attest per-record preservation before adding or retiring a check.
+
+### A01-44 — Step 05 worker accepts broader header text
+
+`src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh:84-93` uses grep and substring checks for coordinate sort and RG ID/SM, whereas `src/emrys/libraries/alignments/bam.py:56-65` requires exact tab-delimited tokens. For example, a sort token containing `SO:coordinate` as a prefix could pass the worker's header check and fail validation; other worker checks still apply. Native tests cover `SO:unknown` but not a prefix mutation (`tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh:238`). This is source inference, not a reproduced Run. Preserve exact validator parsing and decide the worker's admitted header grammar before adding a focused native negative case.
+
+### A01-45 — Storage JSON parsing accepts ambiguous syntax
+
+`src/emrys/evidence/storage_inventory/qualification.py:330-337` calls plain `json.loads` for a purportedly strict object. An isolated helper call accepted both a duplicate key and `NaN`; `tests/evidence/storage_inventory/test_storage_inventory.py:595-607` only rejects malformed JSON and non-object input. Other contract loaders reject duplicate keys and nonstandard constants. Later storage receipt field, identity, and snapshot checks still protect distinct properties; this finding does not claim a complete forged receipt is admitted. Decide whether storage records require the same strict JSON grammar, then add focused reader cases without removing later checks.
+
+### A01-46 — Storage receipt generation scan can raise raw ValueError
+
+`src/emrys/evidence/storage_inventory/qualification.py:212-232` accepts a candidate suffix with `isdigit()` and then calls `int()`. A temporary evidence directory containing `q.direct-qualified.².json` caused an isolated call to raise raw `ValueError`. Existing tests cover ordinary successors and pending publication, not malformed generation names. Decide whether malformed names fail closed or are ignored, preserving immutable receipt identity and staged-marker checks. This helper reproduction does not establish a full Doctor or Run failure.
+
+### A01-47 — Tracked Viking profile duplicates resource defaults
+
+`configs/execution_profile.csu_viking_ev_pum1.yaml:4-43` repeats the packaged resource policy in `src/emrys/orchestration/run_coordinator/resources/default_execution.yaml:2-41`. The resource content matches; the tracked example adds placement comments after it. A placement-only example exists (`configs/execution_profile.example.yaml:1-21`), and Project creation emits a placement-only Viking default (`src/emrys/orchestration/run_coordinator/execution_profile.py:66-89`). This is a concrete configuration-reduction candidate, not an approved edit. Establish whether the full tracked illustration serves an operator need, then preserve Viking placement and admission tests if reducing it.
+
+### A01-48 — Static print checks do not establish printed fit
+
+`tests/reporting/test_report.py:695-735` names a nonoverflow print-layout test but asserts CSS source substrings. `tests/reporting/test_figures.py:654-665` checks declared SVG height. These can catch removed rules and geometry declarations, but neither renders a printed page or proves pagination and overflow. Keep HTML structure, accessibility, and rendered-semantic checks (`src/emrys/reporting/_run_report/validation.py:362-475`; `tests/reporting/test_report.py:737-999`). Clarify the static evidence claim or define a separate visual/PDF oracle if print fit is accepted.
+
+### A01-49 — PDF structure check has a narrow acceptance ceiling
+
+`src/emrys/reporting/_artifact_index/binary_readers.py:221-265` checks a PDF header, terminal startxref/EOF, and selected xref/trailer tokens without resolving the catalog or pages. Its exact function accepted, in isolation, a 117-byte PDF-like file with `/Root 999 0 R` and no objects. The fixture proves only adapter-level acceptance, not a complete artifact transaction. Retain current signature, xref, transaction, and Step 09 numerical checks. Decide whether “complete” should assert renderability before considering a maintained parser or renderer.
+
+### A01-50 — RSeQC reports are mechanical, not manifest policy
+
+The Step 03 worker publishes nonempty RSeQC output; the validator checks three exact finite fractions and their sum (`src/emrys/evidence/rseqc_orientation/validator.py:59-76`). It receives no BAM, index, BED12, tool identity, or Attempt receipt, and no computational stage derives manifest strandedness from it (`src/emrys/evidence/rseqc_orientation/CONTRACT.md:18-29,72-107`). Producer and validator tests retain different malformed-output boundaries. Preserve those protections and the independent declared strandedness policy; a passing fraction report is not biological strand classification.
+
+### A01-51 — Reporting duplicates QC lexical parsers with different results
+
+`src/emrys/reporting/_artifact_index/inspection.py:259-294` parses flagstat and RSeQC separately from `src/emrys/libraries/evidence/qc.py:8-62`, used by their validators. The reporter rejects blank flagstat lines but overwrites duplicate total/mapped rows; the shared parser ignores blanks and reports duplicate rows. Reporter RSeQC accepts any matching fraction label, while the owner parser requires three exact labels and catches duplicates/nonfinite values. Metric projection and owner validation are different boundaries. Map artifact status and exact inputs before considering reuse of lexical parsing; do not silently unify pass/fail policy.
+
+### A01-52 — Shared reference parsers leak raw errors
+
+`src/emrys/libraries/references/contigs.py:27-31,65-70` raises raw `IndexError` for a whitespace-only FASTA header and raw `ValueError` for a Unicode DICT length. Tests explicitly characterize both (`tests/libraries/test_reference_contigs.py:98-102,220-228`); focused local calls reproduced them. Project admission, Step 00c validation, and reference provenance catch their declared parser error but not both raw types (`src/emrys/orchestration/run_coordinator/onboarding.py:789-796`; `src/emrys/stages/fasta_sidecars/validator.py:68-74`; `src/emrys/evidence/reference_provenance/_reference_contigs.py:105-123`). Provenance STAR-length parsing has a related `isdigit()`/`int()` path. Normalize malformed-input errors at the shared boundary or map all callers together, retaining valid contig/order semantics and controlled report behavior.
+
+### A01-53 — Step 07 receipt parsing can escape its exit contract
+
+`src/emrys/libraries/validation/tsv.py:51-55` uses permissive `csv.DictReader` for the Step 07 receipt, then `src/emrys/stages/partitioned_cohort_mpileup/validator.py:125-169` directly indexes and assumes field values. The owner contract (`src/emrys/stages/partitioned_cohort_mpileup/CONTRACT.md:98-103`) records that some missing-field shapes can raise `KeyError` or `AttributeError` with traceback and exit 1 instead of controlled exit 2. This is source plus contract evidence, without a new runtime reproduction. Preserve exact receipt and check identities; evaluate the existing strict TSV reader only after its behavior is compared for every caller.
+
+### A01-54 — Public manifest pass is weaker than Run admission
+
+The legacy public manifest validator lists `condition` as required but accepts a blank value, prints “Conditions: none,” and checks sample IDs only for nonempty uniqueness (`src/emrys/ingestion/sample_manifest_admission/validator.py:18-21,120-175`). Step 08 requires nonempty condition, replicate, and safe IDs (`src/emrys/contracts/scientific_evidence/step08.py:326-353`). Tiny temporary fixtures confirmed that blank condition and `S/1` pass the public helper but fail Step 08. The existing test named “empty required fields fail” covers sample ID and FASTQ fields, not condition (`tests/ingestion/sample_manifest_admission/test_validate_manifest.py:190-203`). Decide the public command's promised scope; preserve Step 08's stricter Run-boundary refusal and intentional optional-replicate distinction.
 
 ## Protections to preserve during the next pass
 
