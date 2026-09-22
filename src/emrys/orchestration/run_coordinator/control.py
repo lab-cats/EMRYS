@@ -2347,15 +2347,19 @@ def _report_stop_run_evidence(
 
     try:
         application = _submission_inspection.inspect_submission_application(request)
-        if scheduler_terminal and application.run_root and application.workflow_attempt_id:
-            attempt_root = application.run_root / "attempts" / application.workflow_attempt_id
-            candidates = (
-                attempt_root / "attempt-receipt.json",
-                attempt_root / "prepared-attempt-receipt.json",
+        if (
+            scheduler_terminal
+            and application.run_root
+            and application.workflow_attempt_id
+        ):
+            attempt_root = (
+                application.run_root / "attempts" / application.workflow_attempt_id
             )
+            terminal_receipt = attempt_root / "attempt-receipt.json"
             deadline = time.monotonic() + 10
-            # Path appearance only wakes the final full admission; it is not evidence.
-            while not any(path.exists() or path.is_symlink() for path in candidates):
+            # A prepared receipt is not terminal. Path appearance only wakes the
+            # final full admission; it is not evidence by itself.
+            while not (terminal_receipt.exists() or terminal_receipt.is_symlink()):
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     break
@@ -2445,7 +2449,9 @@ def stop_from_args(arguments: argparse.Namespace) -> int:
                 "The exact scheduler record is already terminal; no stop request is needed."
             )
             if arguments.execute:
-                _report_stop_run_evidence(project, plan.request, scheduler_terminal=True)
+                _report_stop_run_evidence(
+                    project, plan.request, scheduler_terminal=True
+                )
             return 0
         _print_safe(f"Client: {plan.client_version}; command: {shlex.join(plan.argv)}")
         if not arguments.execute:
@@ -2537,7 +2543,9 @@ def stop_from_args(arguments: argparse.Namespace) -> int:
             warning="WARNING: stop logging degraded; raw diagnostics are retained and the outcome remains unconfirmed.",
         )
         _report_stop_run_evidence(
-            project, plan.request, scheduler_terminal=bool(result.observation["terminal"])
+            project,
+            plan.request,
+            scheduler_terminal=bool(result.observation["terminal"]),
         )
         return (
             0

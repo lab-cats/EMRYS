@@ -775,6 +775,8 @@ def test_ci_slurm_setup_is_guarded_real_and_diagnostic() -> None:
     script = SLURM_SETUP_PATH.read_text(encoding="utf-8")
     assert "GITHUB_ACTIONS" in script
     assert "AuthType=auth/munge" in script
+    assert "CredType=cred/munge" in script
+    assert "CryptoType=crypto/munge" not in script
     assert "ProctrackType=proctrack/linuxproc" in script
     assert "TaskPlugin=task/none" in script
     assert "PartitionName=emrys-ci" in script
@@ -808,8 +810,18 @@ def test_ci_slurm_setup_is_guarded_real_and_diagnostic() -> None:
     assert "-u mysql" not in script
     assert "-u slurmdbd" not in script
     assert script.index("dpkg --compare-versions") < script.index("CREATE DATABASE")
+    assert script.index(
+        'sudo install -o root -g root -m 0644 "$config_pending" /etc/slurm/slurm.conf'
+    ) < script.index("for command in scancel slurmctld slurmdbd slurmd; do")
     assert script.index("restart slurmdbd") < script.index("add cluster emrys-ci")
     assert script.index("add cluster emrys-ci") < script.index("restart slurmctld")
+
+
+def test_workflow_lint_only_exempts_the_supported_new_runner_label() -> None:
+    lint = _named_step(
+        _workflow_jobs()["workflow-lint"], "Lint GitHub Actions workflows"
+    )
+    assert "-ignore='^label \"ubuntu-26[.]04\" is unknown[.]'" in lint["run"]
 
 
 def test_python311_shard_receipts_round_trip_outside_source_checkout() -> None:

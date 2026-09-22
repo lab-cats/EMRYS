@@ -6715,10 +6715,19 @@ def test_public_real_snakemake_native_cancellation_and_stop_outcome(
                 assert marker.read_text().splitlines() == ["issued"]
                 assert len(queries) >= 3
                 assert "Application association: run-and-attempt-associated" in output
-                assert "Run outcome: interrupted" in output
                 assert "Task evidence:" in output
-                assert "Attempt receipt: interrupted" in output
-                assert "Recovery available: yes" in output
+                if "Attempt receipt: prepared; terminal publication pending" in output:
+                    assert "Run outcome: blocked" in output
+                    assert "Recovery available: not yet" in output
+                    assert (
+                        "Next action: Use emrys resume to finish the exact prepared "
+                        "Attempt finalization."
+                    ) in output
+                    assert "Attempt receipt: interrupted" not in output
+                else:
+                    assert "Run outcome: interrupted" in output
+                    assert "Attempt receipt: interrupted" in output
+                    assert "Recovery available: yes" in output
                 assert "native-task quiescence" in output
             else:
                 os.kill(process.pid, signal.SIGTERM)
@@ -6740,9 +6749,10 @@ def test_public_real_snakemake_native_cancellation_and_stop_outcome(
             assert observed.integrity == "valid"
             assert observed.attempt_outcome == "interrupted"
             assert observed.recovery_available
-            assert observed.latest_receipt["workflow_attempt_id"] == evidence[
-                "interrupted_attempt"
-            ]
+            assert (
+                observed.latest_receipt["workflow_attempt_id"]
+                == evidence["interrupted_attempt"]
+            )
         completed = True
     finally:
         os.close(writer)

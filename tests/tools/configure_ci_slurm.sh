@@ -78,8 +78,50 @@ node_record="${node_probe%%$'\n'*}"
     die "slurmd hardware probe did not describe the current runner node"
 printf '%s\n' "$node_probe" > "$evidence_dir/slurmd-hardware.txt"
 
+if [[ ! -s /etc/munge/munge.key ]]; then
+    umask 077
+    openssl rand -hex 512 | sudo tee /etc/munge/munge.key >/dev/null
+fi
+sudo chown munge:munge /etc/munge/munge.key
+sudo chmod 0400 /etc/munge/munge.key
+
+sudo install -d -o slurm -g slurm -m 0755 /var/spool/slurmctld /var/log/slurm
+sudo install -d -o root -g root -m 0755 /var/spool/slurmd
+
+config_pending="$(mktemp "$RUNNER_TEMP/emrys-slurm-conf.XXXXXX")"
+{
+    printf '%s\n' \
+        'ClusterName=emrys-ci' \
+        "SlurmctldHost=$node_name" \
+        'SlurmUser=slurm' \
+        'AuthType=auth/munge' \
+        'CredType=cred/munge' \
+        'MpiDefault=none' \
+        'ProctrackType=proctrack/linuxproc' \
+        'TaskPlugin=task/none' \
+        'ReturnToService=2' \
+        'SchedulerType=sched/backfill' \
+        'SelectType=select/cons_tres' \
+        'SelectTypeParameters=CR_Core_Memory' \
+        'JobAcctGatherType=jobacct_gather/none' \
+        'AccountingStorageType=accounting_storage/slurmdbd' \
+        'AccountingStorageHost=localhost' \
+        'StateSaveLocation=/var/spool/slurmctld' \
+        'SlurmdSpoolDir=/var/spool/slurmd' \
+        'SlurmctldLogFile=/var/log/slurm/slurmctld.log' \
+        'SlurmdLogFile=/var/log/slurm/slurmd.log' \
+        'SlurmctldDebug=info' \
+        'SlurmdDebug=info' \
+        "$node_record State=UNKNOWN" \
+        "PartitionName=emrys-ci Nodes=$node_name Default=YES MaxTime=INFINITE State=UP"
+} > "$config_pending"
+sudo install -o root -g root -m 0644 "$config_pending" /etc/slurm/slurm.conf
+rm -f -- "$config_pending"
+config_pending=""
+
+# Slurm clients read slurm.conf even when asked only for their version. Install
+# the disposable configuration before probing them or changing database state.
 # The production stop path needs a version with exact cluster-scoped scancel.
-# Every daemon and client must come from the same installed Slurm release.
 slurm_release=""
 for command in scancel slurmctld slurmdbd slurmd; do
     version="$($command -V)"
@@ -107,47 +149,6 @@ CREATE DATABASE IF NOT EXISTS emrys_ci_slurm;
 CREATE USER IF NOT EXISTS 'emrys_ci_slurm'@'localhost' IDENTIFIED BY '$db_password';
 GRANT ALL PRIVILEGES ON emrys_ci_slurm.* TO 'emrys_ci_slurm'@'localhost';
 SQL
-
-if [[ ! -s /etc/munge/munge.key ]]; then
-    umask 077
-    openssl rand -hex 512 | sudo tee /etc/munge/munge.key >/dev/null
-fi
-sudo chown munge:munge /etc/munge/munge.key
-sudo chmod 0400 /etc/munge/munge.key
-
-sudo install -d -o slurm -g slurm -m 0755 /var/spool/slurmctld /var/log/slurm
-sudo install -d -o root -g root -m 0755 /var/spool/slurmd
-
-config_pending="$(mktemp "$RUNNER_TEMP/emrys-slurm-conf.XXXXXX")"
-{
-    printf '%s\n' \
-        'ClusterName=emrys-ci' \
-        "SlurmctldHost=$node_name" \
-        'SlurmUser=slurm' \
-        'AuthType=auth/munge' \
-        'CryptoType=crypto/munge' \
-        'MpiDefault=none' \
-        'ProctrackType=proctrack/linuxproc' \
-        'TaskPlugin=task/none' \
-        'ReturnToService=2' \
-        'SchedulerType=sched/backfill' \
-        'SelectType=select/cons_tres' \
-        'SelectTypeParameters=CR_Core_Memory' \
-        'JobAcctGatherType=jobacct_gather/none' \
-        'AccountingStorageType=accounting_storage/slurmdbd' \
-        'AccountingStorageHost=localhost' \
-        'StateSaveLocation=/var/spool/slurmctld' \
-        'SlurmdSpoolDir=/var/spool/slurmd' \
-        'SlurmctldLogFile=/var/log/slurm/slurmctld.log' \
-        'SlurmdLogFile=/var/log/slurm/slurmd.log' \
-        'SlurmctldDebug=info' \
-        'SlurmdDebug=info' \
-        "$node_record State=UNKNOWN" \
-        "PartitionName=emrys-ci Nodes=$node_name Default=YES MaxTime=INFINITE State=UP"
-} > "$config_pending"
-sudo install -o root -g root -m 0644 "$config_pending" /etc/slurm/slurm.conf
-rm -f -- "$config_pending"
-config_pending=""
 
 config_pending="$(mktemp "$RUNNER_TEMP/emrys-slurmdbd-conf.XXXXXX")"
 {

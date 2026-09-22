@@ -153,10 +153,12 @@ jobs:
           "${RUNNER_TEMP}/actionlint" -version
 
       - name: Lint GitHub Actions workflows
+        # actionlint 1.7.12 predates GitHub's supported ubuntu-26.04 label.
         run: >-
           "${RUNNER_TEMP}/actionlint"
           -shellcheck="${GITHUB_WORKSPACE}/.venv/bin/shellcheck"
           -pyflakes=
+          -ignore='^label "ubuntu-26[.]04" is unknown[.]'
           -color
 
   static-wheel:
