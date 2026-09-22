@@ -202,8 +202,9 @@ Campaign closure requires:
 - The [optimization campaign](optimization_campaign.md) owns future tuning
   candidates. CV-26's source reduction removed one full head diagnosis while
   retaining exact readmission, storage finalization and final readiness.
-  CV-26 remains Open for its original complete-operation attribution,
-  comparable before/after measurements and institutional E11 timing. The
+  The owner superseded CV-26's original full-attribution and institutional E11
+  timing criteria on 2026-09-22. CV-26 is Completed to its structural outcome
+  and exact hosted checks; E11 remains historical and unexplained. The
   structural change alone establishes no speedup.
 - The [polish campaign](polish-campaign.md) retains earlier audit observations.
   Its overlap is reconciled through the existing main-matrix owners, not a
