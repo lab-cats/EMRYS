@@ -7,6 +7,7 @@ import argparse
 import csv
 import hashlib
 import json
+import math
 import os
 import re
 import select
@@ -606,6 +607,96 @@ def _one(pattern: re.Pattern[str], text: str, label: str, stage: str) -> str:
     if len(values) != 1:
         raise DriverError(stage, f"expected one {label}; observed {len(values)}")
     return values[0]
+
+
+def check_doctor_timing(
+    label: str, workspace: Path, repair: subprocess.CompletedProcess[str]
+) -> None:
+    """Require retained timing evidence from the complete Doctor repair."""
+
+    stage = f"{label}-doctor-repair"
+    expected = (
+        "Doctor phase timing (head/local):",
+        "Doctor invocation timing (head/local,",
+        "Doctor elapsed:",
+    )
+    if label == "slurm":
+        expected += ("Slurm accounting observation:", "Slurm accounting timing (job")
+    missing = [item for item in expected if item not in repair.stderr]
+    if missing:
+        raise DriverError(stage, f"Doctor timing transcript lacks {missing}")
+
+    candidates = []
+    for path in sorted(
+        (workspace / "logs/application").glob(
+            "maintenance-*/repair-*/emrys-doctor.jsonl"
+        )
+    ):
+        events = [json.loads(line) for line in path.read_text().splitlines()]
+        names = {item["event"] for item in events}
+        if "repair_requalified" in names and (
+            label == "direct" or "repair_compute_submitted" in names
+        ):
+            candidates.append(events)
+    if len(candidates) != 1:
+        raise DriverError(
+            stage, f"expected one final Doctor log; found {len(candidates)}"
+        )
+    events = candidates[0]
+    phases = [
+        item["fields"] for item in events if item["event"] == "doctor_phase_timing"
+    ]
+    if not phases or any(
+        item.get("execution_context") != "head/local"
+        or not item.get("phase_name")
+        or not isinstance(item.get("elapsed_seconds"), (int, float))
+        or not math.isfinite(item["elapsed_seconds"])
+        or item["elapsed_seconds"] < 0
+        for item in phases
+    ):
+        raise DriverError(stage, "Doctor head phase timing is missing or invalid")
+    if not any(
+        item["fields"].get("check_id")
+        and item["fields"].get("host")
+        and item.get("phase")
+        for item in events
+        if item["event"] == "runtime_check_passed"
+    ):
+        raise DriverError(stage, "Doctor runtime probe evidence is missing")
+    if label == "slurm":
+        submitted = [
+            item["fields"]["scheduler_job_id"]
+            for item in events
+            if item["event"] == "repair_compute_submitted"
+        ]
+        timing = [
+            item["fields"]
+            for item in events
+            if item["event"] == "doctor_scheduler_timing"
+        ]
+        if (
+            len(submitted) != 1
+            or len(timing) != 1
+            or (timing[0].get("scheduler_job_id") != submitted[0])
+        ):
+            raise DriverError(stage, "Doctor Slurm timing lacks the submitted job ID")
+        intervals = timing[0].get("timing") or {}
+        observed = all(
+            isinstance(intervals.get(name), (int, float))
+            and math.isfinite(intervals[name])
+            and intervals[name] >= 0
+            for name in (
+                "submission_to_start_seconds",
+                "eligible_to_start_seconds",
+                "allocation_wall_seconds",
+            )
+        )
+        if not observed and not (
+            intervals.get("diagnostic") or timing[0].get("diagnostic")
+        ):
+            raise DriverError(
+                stage, "Doctor Slurm timing lacks intervals or a limitation"
+            )
 
 
 def parse_run_plan(text: str, workspace: Path, *, no_write: bool) -> Path:
@@ -1727,13 +1818,20 @@ def run_driver(
         )
 
         fasta = workspace / "inputs/reference/reference.fa"
-        transcripts.run(
+        repair = transcripts.run(
             f"{label}-doctor-repair",
             _emrys(
-                python, "doctor", "--project", str(project), "--repair", "--execute"
+                python,
+                "doctor",
+                "--project",
+                str(project),
+                "--repair",
+                "--execute",
+                "--verbose",
             ),
             cwd=repo,
         )
+        check_doctor_timing(label, workspace, repair)
         admit_storage = (
             qualification.admit_direct_qualification
             if label == "direct"
