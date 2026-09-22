@@ -3,7 +3,8 @@
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
 holds F62 onward. F62–F64 use PR head `b67e0eeb`; F65–F66 began at
 `cf94af08`, with F66 extended at `9c4fafdc`; F67–F70 use `c0a6027a`;
-F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`; F74–F77 use `ab25ea9b`,
+F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`; F74–F77 use `ab25ea9b`;
+F78–F83 use PR head `7a07d502`,
 all read on 2026-09-22.
 These are documentation observations, not runtime results or accepted changes.
 
@@ -242,3 +243,74 @@ That suite's opening identifies immutable Analysis/Plan/Run protections, with
 content identity and canonicalization cases at lines 270–428 and Run authority
 cases at 623–757. The index thus omits a substantial direct contract suite;
 the test file exists, and no test result was inferred.
+
+### F78 — Omitted Python shard-duration baseline
+
+The [test-baselines index](../../tests/baselines/README.md) lines 1–9
+describes only `python_coverage.json`. Its sibling
+[`python_test_durations.json`](../../tests/baselines/python_test_durations.json)
+has default and selected node-duration values (lines 1–9).
+The [shard planner](../../tests/tools/python_test_shards.py) names that file
+at line 19, validates it at 66–90, and uses it to weight assignments at
+139–164; the [Make lane](../../scripts/make_quality.mk) passes it at 134–140.
+The index omits an active tracked baseline with a different purpose. Those
+values are scheduling estimates, not test outcomes or coverage; no shard ran.
+
+### F79 — Shared fixture consumer count
+
+The [fixtures index](../../tests/fixtures/README.md) lines 3–5 says the
+directory holds tracked inputs used by more than one test owner. The tracked
+inventory at this revision contains one data fixture,
+[`make_target_expansions.json`](../../tests/fixtures/public_cli_contracts/make_target_expansions.json),
+and [one test module](../../tests/test_public_cli_contracts.py) names it at
+lines 22–27. A repository reference search found no second test consumer.
+This is a current tracked-use discrepancy; it does not rule out future shared
+fixtures or imply that the existing fixture should move.
+
+### F80 — Alignment helper tool boundary
+
+The [alignment-library guide](../../src/emrys/libraries/alignments/README.md)
+lines 3–14 describes parsers and says they run no scientific tools.
+[`bam.py`](../../src/emrys/libraries/alignments/bam.py) lines 32–53 invokes a
+supplied `samtools` executable for `quickcheck -v` and `view -H` through
+`subprocess.run`. The [canonical BAM validator](../../src/emrys/stages/canonical_bam/validator.py)
+calls that helper at lines 55–70, as do the duplicate-marking and split-N-Cigar
+validators. These are read-only validation calls, and the guide's no-tool
+boundary does not describe them. No output mutation or runtime result is inferred.
+
+### F81 — Terminal task result versus verified marker
+
+The [orchestration contract index](../../src/emrys/contracts/orchestration/README.md)
+lines 24–30 says each task has a terminal result and a verified marker binding
+it. The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 966–976 publishes the marker only after producer success, output
+admission, validator completion, and semantic all-pass; interruption may leave
+neither record. A [task test](../../tests/orchestration/run_coordinator/test_task.py)
+lines 768–776 asserts a failed terminal result without a verified marker.
+The index therefore applies a success-only evidence form to failed tasks.
+This is a wording discrepancy, not an observed execution defect.
+
+### F82 — Reference-provenance private test calls
+
+The [test guide](../../tests/evidence/reference_provenance/README.md) lines
+3–8 says the suite calls the public reconciliation command and uses private
+`reconciler.py` functions only to inject failures. Its
+[test module](../../tests/evidence/reference_provenance/test_reference_provenance.py)
+directly calls `load_inventory`, `observe`, and `render` to build report data
+at 181–184, uses that path for a parser-row assertion at 268–287, and calls
+`publish` directly in publication-fault cases at 438 and 474. The private
+calls have more than failure-injection scope. This static comparison does not
+establish test independence or a runtime result; no test ran.
+
+### F83 — Direct-host study versus allocation-only rule
+
+The [delivery decision](../design/decisions/repository-and-delivery.md) lines
+12–17 says heavy scientific work runs only in an approved whole-Run Slurm
+allocation. The [root environment summary](../../README.md) lines 44–47
+supports direct execution on one host, and the [Runbook](../operations/RUNBOOK.md)
+lines 223–230 and 267–283 describes an own-data Run on an approved non-Slurm
+compute host. The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 3–5 and 365–375 also defines direct placement. The decision does not
+state where a direct study ceases to be local development and becomes the
+“heavy” work it reserves for Slurm. This is an operator scope question, not
+a claim that direct execution is unsafe or that either route was exercised.

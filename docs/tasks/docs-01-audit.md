@@ -150,6 +150,14 @@ permission to change or delete the source.
   and [selected run 34857300341](https://github.com/lab-cats/EMRYS/actions/runs/34857300341)
   confirms success at `fdc7cc79`; the selected job's 130-pair step reports
   success. Artifacts and underlying runtime/scientific results were not read.
+- A read-only adversarial review at `f96ac3bb` checked F01–F77 against their
+  matrix summaries and cited owners. It found no material false positive;
+  F52, F53, and F60 now give both baseline and post-compression Runbook line
+  locations. No product check or owner-document change followed.
+- The next read-only pass at `7a07d502` compared selected test indexes,
+  owner boundaries, and placement guidance with current source and tests. It
+  added F78–F83. The fixture consumer count is limited to tracked references;
+  no shard, reconciler, task, or scientific Run was executed.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -260,6 +268,12 @@ and the boundary for each row.
 | [F75](docs-01-discoveries-third.md#f75-validation-lane-diagnostic-bounds) | Evidence-scope overclaim | Test baseline calls failed and cancelled lane diagnostics bounded; the validation driver retains complete logs and prints complete failed logs. | No lane or log content was observed; distinct from Slurm artifact F68. |
 | [F76](docs-01-discoveries-third.md#f76-step-07-dataset-promotion-route) | Authority-route overclaim | Step 07 test guide says the linked stage contract owns dataset-promotion criteria, but that contract states no such criteria. | The finding concerns a reader route, not Step 07 behavior. |
 | [F77](docs-01-discoveries-third.md#f77-omitted-application-model-test-suite) | Test-index omission | Orchestration contract test README names two suites but omits the present Analysis/Plan/Run application-model suite. | The tests exist; no result or coverage level is inferred. |
+| [F78](docs-01-discoveries-third.md#f78-omitted-python-shard-duration-baseline) | Baseline-index omission | Test-baselines README describes only the coverage snapshot; the adjacent duration baseline actively weights Python shards. | The duration values are scheduling estimates, not test outcomes or coverage. |
+| [F79](docs-01-discoveries-third.md#f79-shared-fixture-consumer-count) | Scope overclaim | Shared-fixtures README says tracked inputs serve multiple test owners, while its sole tracked data fixture has one test-module consumer. | This is the current tracked inventory; future sharing is not ruled out. |
+| [F80](docs-01-discoveries-third.md#f80-alignment-helper-tool-boundary) | Owner-boundary wording | Alignment-library README says its parsers run no scientific tools; the BAM helper executes supplied `samtools` checks for stage validators. | The observed calls are read-only validation checks; no output publication is inferred. |
+| [F81](docs-01-discoveries-third.md#f81-terminal-task-result-versus-verified-marker) | Evidence overclaim | Orchestration index assigns every task a terminal result and verified marker; failed tasks can retain a terminal result without a marker, and interruption can leave neither. | Marker publication remains success-gated; no behavior defect is inferred. |
+| [F82](docs-01-discoveries-third.md#f82-reference-provenance-private-test-calls) | Test-scope wording | Reference-provenance test guide says private reconciler calls only inject failures; the suite also calls parsing, rendering, and publication directly. | Direct private coverage and public-command coverage remain distinct; tests were not run. |
+| [F83](docs-01-discoveries-third.md#f83-direct-host-study-versus-allocation-only-rule) | Placement-scope question | Delivery decision limits heavy science to Slurm allocations, while root and Runbook admit own-data Runs on approved non-Slurm compute hosts. | The intended boundary for a direct study is unstated; no runtime safety conclusion follows. |
 
 ## Discovery notes
 
