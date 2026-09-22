@@ -465,6 +465,11 @@ lines 22–27 already names the correct return annotation. Clarify the private
 guide's API shape without changing provider behavior or core-owned fixed
 outputs. This is a source-level wording mismatch; no provider was run.
 
+The [paired-CMH report guide](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/README.md)
+lines 22–27 also says its provider “returns scientific HTML bytes.” Its
+[provider](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/provider.py)
+lines 121–160 returns the same structured carrier, so F54 covers both guides.
+
 ### F55 — CI lane selection route
 
 The [workflow README](../../.github/workflows/README.md) lines 3–6 says the
@@ -561,3 +566,14 @@ from Slurm in its Run plan (lines 441–450) and reporting route (488–493).
 Scope the opening promise to Slurm submissions so direct users do not search
 for a nonexistent request. Keep the exact pre-Run request retention and
 uncertain-job guidance for Slurm. No operation was executed here.
+
+### F61 — Run-summary commit marker pronoun
+
+The [Run result manifest guide](../../src/emrys/reporting/_run_summary/README.md)
+lines 16–21 describes the summary JSON, then the QC TSV, then says
+“Installing it last commits the two TSV projections.” The nearest noun is the
+QC TSV, but the [publication owner](../../src/emrys/reporting/_artifact_index/publication.py)
+orders summary TSV, QC TSV, and summary JSON (lines 94–98, 173–183); JSON is
+the final commit member. The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 1218–1222 states that order correctly. This is pronoun ambiguity in the
+owner guide, not evidence of wrong publication order. No publisher was run.

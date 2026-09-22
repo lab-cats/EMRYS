@@ -121,6 +121,14 @@ should state which choices the operator must author and link those contracts
 before borrowing an Init command. No generic scientific defaults or completed
 new-study journey are established by these documents alone.
 
+At PR head `0cb5d507`, the Runbook now distinguishes generic choices at
+lines 288–294, but lines 295–296 direct every new study to Quickstart steps
+4–7. Those steps use `Projects/pum1-study` (Quickstart lines 126–132) and
+describe Slurm submission (lines 161–174). The Runbook's direct-host route at
+lines 280–284 and general Project commands at 385–418 show why this is not a
+literal continuation for every study. The finding remains a reader-route
+ambiguity; no user journey or command was exercised.
+
 ### F06 — Existing Project and new Project recovery
 
 [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 100–107 opens one
@@ -176,12 +184,15 @@ The [Runbook](../operations/RUNBOOK.md) lines 184–188 promises
 lines 349–368 reads `.env` before version dispatch; the
 [environment loader](../../src/emrys/orchestration/run_coordinator/onboarding.py)
 lines 153–185 can reject a malformed marked file. This is a source-level edge
-case, not a reproduced command failure. `tests/test_public_cli_contracts.py`
+case, not a reproduced command failure. `main` catches that error and returns
+exit 2 at lines 352–356 before building the argument parser; the version branch
+cannot run for that input if the package imports successfully. An unmarked
+regular `.env` is skipped at loader lines 168–169.
+`tests/test_public_cli_contracts.py`
 lines 713–734 covers version from a clean temporary directory; the malformed
 `.env` test at `tests/orchestration/run_coordinator/test_onboarding.py:267–281`
-does not combine that file with `--version`. A tiny local fixture should
-establish the exact failure and exit before deciding whether the promise or
-CLI ordering changes.
+does not combine that file with `--version`. Source order identifies the
+guard, while exact installed-command output remains unobserved.
 At audit-only commit `d977e055`, a local attempt bound `PYTHONPATH` to this
 source and compared clean and malformed marked `.env` directories. Both
 commands failed during import because the available Python lacks `jsonschema`;
@@ -413,6 +424,13 @@ The later `Resume, inspection, Results, and reporting` section at 1141–1223
 remains a separate Run/Task/Results authority; retain links to both when a
 sentence addresses both boundaries. No safe prose deletion is established.
 
+The coordinator [README](../../src/emrys/orchestration/run_coordinator/README.md)
+lines 68–71 says its later-section link covers watch selection, but exact
+watch/request selection chiefly lives at contract lines 56–67 and 470–681.
+The anchor exists; its destination is narrower than that README promise. At PR
+head `0cb5d507`, the Runbook's Init mechanics link (lines 310–312) also lands
+in the broad no-write section, so its navigation precision remains limited.
+
 ### F22 — Coordinator cross-owner detail
 
 The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
@@ -422,8 +440,12 @@ event shape and flushing. Coordinator runtime orchestration at lines 313–339
 overlaps the
 [runtime owner](../../src/emrys/evidence/runtime_availability/README.md)
 lines 59–104, which owns the closed seal and fixed-content boundary. Watch
-keys at lines 622–637 also appear in the Runbook for operator use. These are
-mostly distinct trust boundaries. Keep the coordinator command handoff,
+keys at contract lines 622–624 also appear in the Runbook table at lines
+96–104; presentation lines 289–297 overlap label/value and plain-output rules
+in the [logging owner](../../src/emrys/libraries/application_logging/README.md)
+at lines 13–17. The contract adds prompt/default hints, `NAME=value` fields,
+mouse handling, and sanitized evidence-view guarantees. These are narrow
+summary overlaps across distinct trust boundaries. Keep the command handoff,
 runtime admission, logging event rules, and operator keys with their owners;
 cross-owner summaries can remain when they explain a real handoff.
 
@@ -438,6 +460,12 @@ choose, observe, or preserve after interruption. Compare the detailed
 paragraphs with owner tests and configuration rules before replacing mechanics
 with links; a shorter Runbook must still warn that preview does not hash FASTQ
 contents and creation can refuse changed inputs.
+
+At PR head `0cb5d507`, the approved Runbook slice removed 75 lines and added
+35. Its shorter own-study section retains preview, confirmation, changed-input
+and destination cautions while linking exact mechanics to the config guide and
+coordinator contract. This records a PR-local documentation change, not audit
+closure or proof of a generic end-to-end reader journey; F05 remains open.
 
 ### F24 — Named-profile procedure placement
 
