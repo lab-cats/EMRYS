@@ -53,11 +53,11 @@ real-Slurm lane nor an institutional walkthrough.
 
 | Remaining acceptance | Current owner and required work or evidence |
 | --- | --- |
-| Reopened implementation and acceptance gaps | Every card marked **Open** in the indexes below owns the dated source, journey, documentation or acceptance correction recorded in its detailed entry. Implement and verify that gap or explicitly revise the original acceptance before external evidence can advance the card; in particular, site execution alone cannot close CV-01's missing managed-journey combinations, CV-10's unverified prepared-finalization path or CV-18's missing active-native-task stop path. |
+| Reopened implementation and acceptance gaps | Every card marked **Open** in the indexes below owns the dated source, journey, documentation or acceptance correction recorded in its detailed entry. Implement and verify that gap or explicitly revise the original acceptance before external evidence can advance the card; in particular, site execution alone cannot close CV-01's missing managed-journey combinations, CV-10's prepared-finalization path and unresolved recycled-inode ownership limit, or CV-18's missing active-native-task stop outcome. |
 | Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27 and CV-U28: exercise the maintained RUNBOOK on one exact installed revision; retain selected profile/runtime, resolved allocation-aware policy and report identities. Visual review is separate. |
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
 | Historical unexplained failures | CV-12/E01 and CV-21/E06 remain unexplained historical observations whose causal reconstruction is not an acceptance requirement. CV-21 now needs only ordinary institutional execution of current reporting/inspection behavior. CV-10/E09 retains its separate current reconciliation requirement; newer successful checks cannot identify that cause. |
-| Postentry Task retry and finalization | CV-10: current-version closed-abort retry has hosted acceptance evidence. The approved prepared-finalization path through `resume` remains Open for exact hosted CI, then Verification pending for institutional cancellation. Existing blocked receipts and missing prepared evidence remain ineligible. |
+| Postentry Task retry and finalization | CV-10: current-version closed-abort retry has hosted acceptance evidence. The prepared-finalization path through `resume` remains Open until exact hosted CI passes and the recycled-inode ownership limit is resolved or explicitly accepted; only then can it become Verification pending for institutional cancellation. Existing blocked receipts and missing prepared evidence remain ineligible. |
 | Doctor operation | CV-26 is Completed for exact pre-storage readmission, storage finalization and one final full diagnosis after removing the redundant intervening head diagnosis. Exact implementation CI passed; no Viking timing or speedup claim is required. Future measured tuning remains independently owned by the optimization campaign. |
 | Optional interface and retirement | CV-23 keeps cleanup Deferred; CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns institutional replacement validation and coordinated standalone entry-point/caller/name retirement. |
 
@@ -3139,6 +3139,23 @@ to report the actual terminal and recovery state. Its principal public stop
 fixture intentionally creates no Run, so stopping during an active native task—
 the card's required case—is not implemented end to end. CV-18 returns to
 **Open**.
+
+**Selected outcome slice (exact CI pending):** After the single cancellation
+request, re-read the same exact retained submission request, its application
+association and independently admitted Run evidence. Association is diagnostic:
+only an association to the Run's current Attempt can support a Run/Task outcome;
+it cannot authorize cancellation or recovery. If the scheduler is terminal but
+the matching Attempt has no terminal receipt yet, allow at most ten seconds of
+read-only settlement checks for publication. Do not resend cancellation. Report
+an admitted terminal state and recovery eligibility only from Run evidence;
+otherwise report recovery unconfirmed and direct the operator to inspect/watch
+the exact request or Run. A prepared finalization is a distinct `resume` next
+action, not already-available recovery. Preserve transport exit-code meaning
+and all uncertain records. The public active-native-Task fixture must exercise
+real Snakemake, Task and native child cancellation through this path. Hosted
+software checks cannot prove the Viking controller or institutional native-task
+outcome. CV-18 remains **Open** until exact CI passes, then **Verification
+pending** for institutional queued and active-native-task cancellation.
 
 ### CV-19 Verification and repair vocabulary
 

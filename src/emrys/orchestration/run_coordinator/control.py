@@ -7,6 +7,7 @@ import hashlib
 import os
 import shlex
 import sys
+import time
 import uuid
 from collections import Counter
 from collections.abc import Callable, Mapping
@@ -2336,6 +2337,73 @@ def _print_submission_roster(project: Path, selector: str | None = None) -> None
         )
 
 
+def _report_stop_run_evidence(
+    project: Path,
+    request: slurm_submission.SubmissionRequestObservation,
+    *,
+    scheduler_terminal: bool,
+) -> None:
+    """Report admitted Run evidence without changing the stop transport result."""
+
+    try:
+        application = _submission_inspection.inspect_submission_application(request)
+        if scheduler_terminal and application.run_root and application.workflow_attempt_id:
+            attempt_root = application.run_root / "attempts" / application.workflow_attempt_id
+            candidates = (
+                attempt_root / "attempt-receipt.json",
+                attempt_root / "prepared-attempt-receipt.json",
+            )
+            deadline = time.monotonic() + 10
+            # Path appearance only wakes the final full admission; it is not evidence.
+            while not any(path.exists() or path.is_symlink() for path in candidates):
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                time.sleep(min(0.5, remaining))
+        selected = slurm_submission.select_submission_request(
+            project, str(request.request_root)
+        )
+        if selected != request:
+            raise inspection.InspectionError("Selected submission changed after stop")
+        application = _submission_inspection.inspect_submission_application(selected)
+        _print_safe(f"Application association: {application.status}")
+        for diagnostic in application.diagnostics:
+            _print_safe(f"Application diagnostic: {diagnostic}")
+        if application.run_root is None or application.workflow_attempt_id is None:
+            _print_safe("Recovery available: unconfirmed; no admitted current Attempt")
+            return
+        observed = inspection.inspect_run(application.run_root)
+        if (
+            observed.latest_attempt is None
+            or observed.latest_attempt["workflow_attempt_id"]
+            != application.workflow_attempt_id
+        ):
+            _print_safe("Run/Task verification: selected Attempt is not current")
+            _print_safe("Recovery available: unconfirmed")
+            return
+        _print_safe(f"Run outcome: {observed.attempt_outcome}")
+        task_counts = _inspection_presentation.project_run(observed).task_counts
+        _print_safe(
+            "Task evidence: "
+            + ", ".join(f"{count} {state}" for state, count in task_counts)
+        )
+        if observed.prepared_finalization is not None:
+            _print_safe("Attempt receipt: prepared; terminal publication pending")
+            _print_safe("Recovery available: not yet")
+        elif observed.latest_receipt is None:
+            _print_safe("Attempt receipt: not admitted")
+            _print_safe("Recovery available: unconfirmed")
+        else:
+            _print_safe(f"Attempt receipt: {observed.latest_receipt['status']}")
+            _print_safe(
+                f"Recovery available: {'yes' if observed.recovery_available else 'no'}"
+            )
+        _print_safe(f"Next action: {_next_supported_action(observed)}")
+    except (Exception, KeyboardInterrupt) as exc:
+        _print_safe(f"Run/Task verification unavailable: {exc}")
+        _print_safe("Recovery available: unconfirmed")
+
+
 def stop_from_args(arguments: argparse.Namespace) -> int:
     attempt = None
     try:
@@ -2376,6 +2444,8 @@ def stop_from_args(arguments: argparse.Namespace) -> int:
             print(
                 "The exact scheduler record is already terminal; no stop request is needed."
             )
+            if arguments.execute:
+                _report_stop_run_evidence(project, plan.request, scheduler_terminal=True)
             return 0
         _print_safe(f"Client: {plan.client_version}; command: {shlex.join(plan.argv)}")
         if not arguments.execute:
@@ -2465,6 +2535,9 @@ def stop_from_args(arguments: argparse.Namespace) -> int:
                 },
             ),
             warning="WARNING: stop logging degraded; raw diagnostics are retained and the outcome remains unconfirmed.",
+        )
+        _report_stop_run_evidence(
+            project, plan.request, scheduler_terminal=bool(result.observation["terminal"])
         )
         return (
             0

@@ -683,9 +683,20 @@ The client has a ten-second timeout. Normal return, nonzero exit or timeout is
 followed by one fresh exact scheduler observation; process-control interruption
 preserves diagnostics and unwinds without additional queries. Command exit zero
 means the request was processed, not that the target matched or all processes
-stopped. Missing identity or uncertain output remains unconfirmed. Run receipts,
-locks, Task records and recovery admission are untouched; this command cannot
-promise resume or reconstruct missing terminal evidence.
+stopped. Missing identity or uncertain output remains unconfirmed. The stop
+command then re-reads the selected request and its application association and
+uses ordinary Run inspection for independently admitted Attempt, Task, terminal
+and recovery evidence. That diagnostic association is not mutation or recovery
+authority. Only the Run's current matching Attempt can support a Run outcome;
+an absent Run, stale/mismatched Attempt, active Task or missing terminal evidence
+leaves recovery unconfirmed. If the scheduler is terminal and the matching
+Attempt has no terminal receipt, at most ten seconds of read-only settlement
+checks may observe publication. No check reissues cancellation or alters a
+receipt, lock, Task output or retained record. An admissible prepared
+finalization is identified separately as a `resume` next action, not as
+already-available recovery. Unsettled evidence directs the operator to inspect
+or watch the exact request or Run. Transport exit codes retain their existing
+meaning and never represent Run success or recoverability.
 
 ## Profiles and immutable planning
 

@@ -145,7 +145,18 @@ emrys stop --project "$EMRYS_PROJECT_ROOT" --submission "submission-EXACT_TOKEN"
 ```
 
 Review the displayed identity and scheduler observation. Add `--execute` to
-issue that stop request; retain its records if the result is uncertain. The
+issue that stop request. Its exit status reports the stop transport, not Run
+completion. The post-stop message checks the same retained request and, when
+the application can be associated with the Run's current Attempt, reports
+independently admitted Task, terminal and recovery evidence. A terminal
+scheduler state alone does not prove native work stopped. If the matching
+Attempt has not published a terminal receipt, stop may wait up to ten seconds
+while checking read-only; it does not send another cancellation. Treat
+"recovery unconfirmed" as pending or unknown, and use the displayed exact
+`emrys inspect` command or watch an associated exact Run to check again. A
+prepared finalization needs the separate `emrys resume RUN` plan; it is not yet
+recoverable work. Retain
+all stop records if the transport or Run result is uncertain. The
 [stop contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries)
 owns the exact identity, mutation, and evidence rules.
 

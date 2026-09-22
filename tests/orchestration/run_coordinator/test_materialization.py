@@ -3877,11 +3877,6 @@ def test_public_stop_requires_durable_intent_and_preserves_uncertain_outcomes(
             "command_bytes",
             replace_during_readmission,
         )
-    monkeypatch.setattr(
-        control._submission_inspection,
-        "inspect_submission_application",
-        lambda *_args: pytest.fail("stop scanned application logs"),
-    )
     arguments = _parsed_arguments(
         control.configure_stop_parser,
         [
@@ -3903,6 +3898,9 @@ def test_public_stop_requires_durable_intent_and_preserves_uncertain_outcomes(
     assert "native-task quiescence" in captured.out
     assert "Stop diagnostics:" in captured.out
     if attempted:
+        if outcome != "interrupt":
+            assert "Recovery available: unconfirmed" in captured.out
+        assert "Recovery available: yes" not in captured.out
         (log,) = log_root.glob("maintenance-*/application-*/emrys-stop.jsonl")
         records = _read_log(log)
         assert records[1]["event"] == "slurm_stop_intent"
@@ -3930,6 +3928,59 @@ def test_public_stop_requires_durable_intent_and_preserves_uncertain_outcomes(
         if outcome.startswith("replace-"):
             assert (moved / "emrys-stop.jsonl").is_file()
         assert len(fixture.queries) == 2
+
+
+@pytest.mark.parametrize(
+    "failure",
+    (inspection.InspectionError, KeyboardInterrupt),
+    ids=("inspection-error", "inspection-interrupt"),
+)
+def test_public_stop_retains_terminal_transport_when_run_postcheck_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    failure: type[BaseException],
+) -> None:
+    from tests.orchestration.run_coordinator.test_slurm_submission import _stop_fixture
+
+    fixture = _stop_fixture(tmp_path, monkeypatch)
+    log_root = tmp_path / "stop-logs"
+
+    def fail_inspection(_request: object) -> None:
+        raise failure("controlled read-only post-check failure")
+
+    monkeypatch.setattr(
+        control._submission_inspection,
+        "inspect_submission_application",
+        fail_inspection,
+    )
+    arguments = _parsed_arguments(
+        control.configure_stop_parser,
+        [
+            "--project",
+            str(fixture.project),
+            "--submission",
+            fixture.root.name,
+            "--execute",
+            "--log-root",
+            str(log_root),
+        ],
+    )
+    assert control.stop_from_args(arguments) == 0
+    output = capsys.readouterr().out
+    assert "Post-check scheduler observation: CANCELLED" in output
+    assert "Run/Task verification unavailable:" in output
+    assert "controlled read-only post-check failure" in output
+    assert "Recovery available: unconfirmed" in output
+    assert "Recovery available: yes" not in output
+    assert len(fixture.marker.read_text().splitlines()) == 1
+    assert len(fixture.queries) == 3
+    (log,) = log_root.glob("maintenance-*/application-*/emrys-stop.jsonl")
+    records = _read_log(log)
+    assert records[1]["event"] == "slurm_stop_intent"
+    assert records[-1]["event"] == "slurm_stop_observed"
+    assert records[-1]["fields"]["returncode"] == 0
+    assert records[-1]["fields"]["scheduler"]["terminal"] is True
 
 
 def test_oversized_submission_context_prevents_scheduler_invocation(
@@ -6266,9 +6317,42 @@ def _verified_snapshot(root: Path) -> dict[Path, tuple[bytes, int]]:
     }
 
 
-def _public_native_cancellation_child(root: Path) -> None:
+def _public_native_cancellation_child(
+    root: Path, *, through_stop: bool = False
+) -> None:
     """Keep real Snakemake/Task processes; substitute only scientific effects/readiness."""
     readiness, resources, project, workspace = _readiness(root / "case")
+    if through_stop:
+        from tests.orchestration.run_coordinator.test_slurm_submission import (
+            _request_record,
+        )
+
+        profile_path = workspace / "runtime/profiles/default.yaml"
+        profile_document = yaml.safe_load(profile_path.read_bytes())
+        slurm_document = yaml.safe_load(
+            _slurm_profile(root / "case", cpus_per_task=1).read_bytes()
+        )
+        profile_document["placement"] = slurm_document["placement"]
+        profile_path.write_text(yaml.safe_dump(profile_document, sort_keys=False))
+        profile = load_execution_profile(config_path=profile_path)
+        request_project, request_root, _context = _request_record(
+            workspace,
+            stdout=b"700123;alpha\n",
+            version="v3",
+            project=str(project),
+            application_log_root=str(workspace / "logs/application"),
+            profile_binding_sha256=profile.binding_sha256,
+            emrys_argv=[
+                sys.executable,
+                "-m",
+                "emrys",
+                "run",
+                "--project",
+                str(project),
+            ],
+        )
+        assert request_project == project
+        (root / "stop-request.json").write_text(str(request_root))
     run_id = _run_candidate(readiness, resources).run_id
     run_root = workspace / "runs" / run_id
     owner = "emrys.stage.construct_canonical_BAM.v1"
@@ -6307,6 +6391,20 @@ def _public_native_cancellation_child(root: Path) -> None:
         observe_phase=observe_phase,
     )
     with pytest.MonkeyPatch.context() as patched:
+        if through_stop:
+            patched.setenv(
+                control.slurm_submission.DELEGATE_MARKER_ENV,
+                control.slurm_submission.DELEGATE_MARKER,
+            )
+            patched.setenv(
+                control.slurm_submission.PROFILE_SHA256_ENV, profile.binding_sha256
+            )
+            patched.setenv(control.slurm_submission.SUBMIT_UID_ENV, str(os.getuid()))
+            patched.setenv(
+                control.slurm_submission.REQUEST_TOKEN_ENV,
+                request_root.name.removeprefix("submission-"),
+            )
+            patched.setenv("SLURM_JOB_ID", "700123")
         patched.setattr(control.doctor, "diagnose_project", lambda *_a, **_k: readiness)
         patched.setattr(
             control.capacity, "observe_allocation", lambda: resources.allocation
@@ -6369,6 +6467,17 @@ def _public_native_cancellation_child(root: Path) -> None:
             record["start"] is None and record["verified"] is None
             for record in interrupted.reporting_completion_records.values()
         )
+        if through_stop:
+            (root / "stop-completed.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": run_id,
+                        "interrupted_attempt": first_id,
+                        "quiescence_checks": quiescence_checks,
+                    }
+                )
+            )
+            return
 
         receipt_path = first_attempt / "attempt-receipt.json"
         prepared_path = first_attempt / "prepared-attempt-receipt.json"
@@ -6488,8 +6597,14 @@ def _public_native_cancellation_child(root: Path) -> None:
 @pytest.mark.skipif(
     sys.platform != "linux", reason="Task retry requires Linux descendant closure"
 )
-def test_public_real_snakemake_native_cancellation_resumes_after_closed_abort(
+@pytest.mark.parametrize(
+    "through_stop", (False, True), ids=("direct-signal-resume", "public-stop")
+)
+def test_public_real_snakemake_native_cancellation_and_stop_outcome(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    through_stop: bool,
 ) -> None:
     ready_path = tmp_path / "native-ready.fifo"
     os.mkfifo(ready_path, mode=0o600)
@@ -6507,8 +6622,10 @@ def test_public_real_snakemake_native_cancellation_resumes_after_closed_abort(
                     "from pathlib import Path; import sys; "
                     "from tests.orchestration.run_coordinator.test_materialization import "
                     "_public_native_cancellation_child; "
-                    "_public_native_cancellation_child(Path(sys.argv[1]))",
+                    "_public_native_cancellation_child(Path(sys.argv[1]), "
+                    "through_stop=sys.argv[2] == 'stop')",
                     str(tmp_path),
+                    "stop" if through_stop else "signal",
                 ],
                 cwd=REPO_ROOT,
                 env={**os.environ, "XDG_CACHE_HOME": str(tmp_path / "cache")},
@@ -6547,10 +6664,85 @@ def test_public_real_snakemake_native_cancellation_resumes_after_closed_abort(
                 item.start_reference and item.record is None for item in active.tasks
             )
             assert os.getpgid(native["pid"]) == native["pgid"]
-            os.kill(process.pid, signal.SIGTERM)
-            # This now includes a complete resumed pipeline and report production.
+            if through_stop:
+                request_root = Path((tmp_path / "stop-request.json").read_text())
+                context = json.loads((request_root / "request.json").read_text())
+                project = Path(context["project"])
+                marker = tmp_path / "scancel-issued"
+                client = tmp_path / "scancel"
+                client.write_text(
+                    f"#!{sys.executable}\n"
+                    "import os, pathlib, signal, sys\n"
+                    "if sys.argv[1:] == ['--version']:\n"
+                    " print('slurm 23.11.6'); raise SystemExit(0)\n"
+                    f"with pathlib.Path({str(marker)!r}).open('a') as stream:\n"
+                    " stream.write('issued\\n')\n"
+                    f"os.kill({process.pid}, signal.SIGTERM)\n"
+                )
+                client.chmod(0o700)
+                monkeypatch.setattr(
+                    control.slurm_submission.shutil, "which", lambda _name: str(client)
+                )
+                queries: list[tuple[str, ...]] = []
+
+                def observe(argv: list[str], **_kwargs: object) -> bytes:
+                    queries.append(tuple(argv))
+                    state = "CANCELLED" if marker.exists() else "RUNNING"
+                    return (
+                        f"700123|{os.getuid()}|{state}|alpha|"
+                        f"{context['scheduler_stdout_pattern']}|"
+                        f"{context['scheduler_stderr_pattern']}|None|"
+                        f"{context['scheduler_job_name']}\n"
+                    ).encode()
+
+                monkeypatch.setattr(
+                    control.slurm_submission.scheduler_observation,
+                    "command_bytes",
+                    observe,
+                )
+                arguments = _parsed_arguments(
+                    control.configure_stop_parser,
+                    [
+                        "--project",
+                        str(project),
+                        "--submission",
+                        request_root.name,
+                        "--execute",
+                    ],
+                )
+                assert control.stop_from_args(arguments) == 0
+                output = capsys.readouterr().out
+                assert marker.read_text().splitlines() == ["issued"]
+                assert len(queries) >= 3
+                assert "Application association: run-and-attempt-associated" in output
+                assert "Run outcome: interrupted" in output
+                assert "Task evidence:" in output
+                assert "Attempt receipt: interrupted" in output
+                assert "Recovery available: yes" in output
+                assert "native-task quiescence" in output
+            else:
+                os.kill(process.pid, signal.SIGTERM)
+            # The direct-signal case also resumes and produces reports.
             assert process.wait(timeout=300) == 0, log_path.read_text()
-        assert (tmp_path / "cancellation-resume-completed.json").is_file()
+        assert (
+            tmp_path
+            / (
+                "stop-completed.json"
+                if through_stop
+                else "cancellation-resume-completed.json"
+            )
+        ).is_file()
+        if through_stop:
+            evidence = json.loads((tmp_path / "stop-completed.json").read_text())
+            observed = inspection.inspect_run(
+                tmp_path / "case/project/runs" / evidence["run_id"]
+            )
+            assert observed.integrity == "valid"
+            assert observed.attempt_outcome == "interrupted"
+            assert observed.recovery_available
+            assert observed.latest_receipt["workflow_attempt_id"] == evidence[
+                "interrupted_attempt"
+            ]
         completed = True
     finally:
         os.close(writer)
