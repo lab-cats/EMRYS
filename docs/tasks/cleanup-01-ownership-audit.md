@@ -35,7 +35,7 @@ claim that every possible future subtype is inherently undeletable.
 | --- | --- | --- | --- | --- |
 | F1 | Runs, older Attempts, scientific artifacts; Run coordinator, Task and declared artifact owners | Downstream Runs using processing-source reuse bind the source Run, Attempt, receipt and artifact content; resume reads older Attempt history. | No-go on current evidence. | Is there an exact subtype whose complete inbound Run, report and external references can be enumerated? |
 | F2 | Native outputs, staging, locks and reporting partials; Task and reporting publishers | Their cleanup owns only state captured during the live transaction; ambiguous writers and failed rollback preserve residue. | No-go on current evidence. | Can ownership and writer quiescence be proved after process loss, without discarding recovery evidence? |
-| F3 | Managed runtime generations and caches; Doctor and runtime owner | Borrower Projects and retained Attempts can name older donor seals and generations; cache links complicate ownership. | No-go on current evidence. | What authority enumerates all current and historical borrowers and package links? |
+| F3 | Managed runtime generations and caches; Doctor and runtime owner | Shared or ordinary Project inventories and retained Attempt tool identities can name generations; seals reveal some cache links. | No-go on current evidence. | What enumerates every current and historical Project, Attempt and package reference? |
 | F4 | Qualification probes and receipts; storage qualification owner | The owner cleans known probes after durable publication; a site compute receipt names its probes, while staged or failed cleanup remains evidence. | No-go on current evidence. | Can any exact direct-probe remainder prove ownership, no writer and recovery safety after process loss? |
 | F5 | Inputs, references and sidecars; Project admission and Step 00c | Admission binds content without exclusive ownership; FAI/dictionary files sit beside potentially shared FASTA files. | No-go on current evidence. | Can any generated subtype be separated from external and cross-Run consumers? |
 | F6 | Submission and application records; Control, submission and logging owners | Retained requests feed duplicate protection, inspection, watch, stop and association; application logs supply diagnostic evidence and log discovery. | No-go on current evidence. | Can every record subtype and its historical readers be bounded without losing evidence? |
@@ -215,8 +215,10 @@ is deletion eligibility.
   `.uncommitted-*` name, refusing a name collision (lines 1664–1727).
   [Fault tests](../../tests/orchestration/run_coordinator/test_materialization.py)
   distinguish prebinding quarantine from exact postbinding reuse and blocked
-  postbinding obstruction (lines 2339–2439). Quarantine preserves the bytes;
-  it is not a deletion certificate.
+  postbinding obstruction (lines 2339–2439). A bounded search of current
+  `src/emrys` finds the `.uncommitted-*` name only at this producer, with no
+  automatic reader by that name. Quarantine still preserves the bytes, and
+  that source search cannot close operator or external references.
 
 ### F2 path subtypes
 
@@ -237,9 +239,10 @@ is deletion eligibility.
   The [HTML publisher](../../src/emrys/reporting/_run_report/publication.py)
   stages two views and a receipt, then links the receipt last (lines 112–180).
   It preserves control state after uncertain rollback (lines 181–261).
-  Validation recognizes some older `.previous` names, but this pass did not
-  establish their current producer. The shared
-  [stage remover](../../src/emrys/reporting/_files.py) checks a captured
+  Validation recognizes older `.previous` names. A bounded current
+  `src/emrys` search found that suffix in the recognizer, with no publisher
+  producing it; this does not dismiss historical backups or recovery state.
+  The shared [stage remover](../../src/emrys/reporting/_files.py) checks a captured
   directory device/inode and token only during live publication (lines 85–100);
   neither it nor recognized-name validation certifies post-crash deletion.
 - **Live Run lock and prepared finalization — local roster known, deletion
@@ -255,6 +258,10 @@ is deletion eligibility.
 - **Retained Attempt runtime selector — open.** Each Attempt freezes an exact
   runtime profile under its Run contract; lifecycle re-reads it, and resume
   can use a predecessor selector when the current Project inventory is absent.
+  Its immutable `required_tools` also record selected `path` and
+  `resolved_path` identities
+  ([doctor.py](../../src/emrys/orchestration/run_coordinator/doctor.py),
+  lines 304–365); searching only profile TSVs misses these retained paths.
 - **Donor seals and managed generations — open across Projects.** Current
   borrower inventories and retained Attempt selectors can point to older
   seals and fixed tool paths after donor repair. The current
@@ -262,16 +269,22 @@ is deletion eligibility.
   admits `runtime/shared.json` or `runtime/generations/<32-hex>/shared.json`
   seal paths and records the absolute seal path, hash and borrower Python
   (lines 81–119). Parsing allows a missing seal for later admission; it does
-  not prove that an absent file had no borrower. No reverse borrower list
-  exists in the [runtime owner](../../src/emrys/evidence/runtime_availability/README.md#sealed-managed-runtime-reuse).
+  not prove that an absent file had no borrower. Ordinary runtime inventories
+  also accept absolute tool and library paths without a shared seal (lines
+  304–324). They could name a managed generation directly; this is an
+  inference from permitted paths, not a tested cross-Project fixture. No
+  reverse borrower list exists in the
+  [runtime owner](../../src/emrys/evidence/runtime_availability/README.md#sealed-managed-runtime-reuse).
 - **Managed caches — unknown.** Doctor scopes Pixi and renv caches within its
   selected generation and uses repair scratch there
   ([doctor.py](../../src/emrys/orchestration/run_coordinator/doctor.py),
   lines 1164–1175, 1208–1232 and 1756–1762). Sealed R package trees may link
   into that managed tree
   ([_profile_contract.py](../../src/emrys/evidence/runtime_availability/_profile_contract.py),
-  lines 228–244). Neither a generation name nor a cache path is a complete
-  cache-object consumer roster.
+  lines 228–244). A seal can prove a positive reference through such an
+  internal link, as [tested](../../tests/evidence/runtime_availability/test_runtime_availability.py)
+  (lines 1427–1460); it does not cover the whole managed directory. Neither a
+  generation name nor a cache path is a complete cache-object consumer roster.
 - **Maintenance claim — owner known, quiescence unknown.** A retained claim
   blocks admission and records unresolved repair or selector publication.
   Runtime reuse checks the donor claim before probing; borrower replacement
@@ -346,7 +359,10 @@ is deletion eligibility.
   not exclusive file ownership or a complete list of external consumers.
 - **FAI and dictionary beside the FASTA — open.** EMRYS can produce an exact
   pair, but the parent may be shared, complete pairs can be reused across Runs,
-  and a cross-Run lock protects publication. A partial pair blocks work.
+  and a cross-Run lock protects publication. A partial pair blocks work. The
+  [Task boundary](../../src/emrys/orchestration/run_coordinator/task.py)
+  permits exactly this pair outside the Run root, snapshots a complete existing
+  pair, and rejects replacement during reuse (lines 1300–1445).
   [Step 00c](../../src/emrys/stages/fasta_sidecars/CONTRACT.md) publishes no
   creator receipt or transaction summary (lines 34–49); a complete pre-existing
   pair can be adopted. The source therefore cannot identify an existing pair
