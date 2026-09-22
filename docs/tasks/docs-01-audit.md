@@ -68,6 +68,12 @@ permission to change or delete the source.
   removed an unsupported clause from F36, refined F07, F13, and F26, and added
   F48. Discovery notes were split at F30 to keep both temporary files below
   the 600-line review threshold. No source or runtime behavior changed.
+- The seventh source-comparison pass checked operator recovery, coordinator contract
+  navigation, and evidence-authority overlap at the same source after
+  audit-only commit `d977e055`. It added F49–F51 and refined F08, F18, and
+  F21. A tiny source-bound `--version` fixture could not reach the CLI because
+  the available Python lacks `jsonschema`; it supplies no behavioral result
+  for F08. No dependency was installed and no product behavior was verified.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -121,7 +127,7 @@ and the boundary for each row.
 | [F18](docs-01-discoveries.md#f18-history-filing-rule-and-existing-compendium) | Evidence placement | History requires dated topic files, yet its compendium is undated and backlog names it as the CV evidence transfer destination. | Decide legacy exception versus dated records after mapping links and origins. |
 | [F19](docs-01-discoveries.md#f19-doctor-experiment-evidence-in-workflow-readme) | Evidence placement | CI workflow README repeats a shorter Doctor experiment summary already detailed in the CV backlog. | Use the CV card as evidence source before considering a history transfer. |
 | [F20](docs-01-discoveries.md#f20-independent-golden-migration-comparisons) | Evidence placement | Independent-golden README mixes current oracle use with successive migration history. | Preserve comparison evidence before shortening owner instructions. |
-| [F21](docs-01-discoveries.md#f21-coordinator-contracts-no-write-section) | Navigation candidate | Coordinator contract has a 632-line no-write section without subheadings; similar topics guard distinct boundaries. | Map topics before restructuring; no deletion inferred. |
+| [F21](docs-01-discoveries.md#f21-coordinator-contracts-no-write-section) | Navigation candidate | Coordinator contract has a 632-line no-write section without subheadings; the mapped topics guard distinct boundaries. | Add topic anchors and retarget precise links; no deletion inferred. |
 | [F22](docs-01-discoveries.md#f22-coordinator-cross-owner-detail) | Ownership question | Coordinator, logging, runtime, and Runbook descriptions overlap but have different trust boundaries. | Preserve each owner's guarantee and useful cross-links. |
 | [F23](docs-01-discoveries.md#f23-init-details-in-the-runbook) | Compression candidate | Runbook Init guidance mixes operator choices with hashing and file-identity internals. | Retain actionable warnings; place exact mechanics beside coordinator/config owners. |
 | [F24](docs-01-discoveries.md#f24-named-profile-procedure-placement) | Audience question | Config guide holds a long named-profile operator procedure while Runbook routes there. | Decide whether Runbook needs a concise command path and config guide the format. |
@@ -149,6 +155,9 @@ and the boundary for each row.
 | [F46](docs-01-discoveries-continued.md#f46-artifact-common-schema-description) | Schema description | Public common-schema metadata still says it serves v1 records; current registry reuses it for v4/v8 documents. | Review schema-byte compatibility before any wording correction. |
 | [F47](docs-01-discoveries-continued.md#f47-r-probe-concurrency-candidate-after-cv-26) | Selection context | Optimization candidate still asks for a bounded R-probe concurrency comparison after CV-26 already measured and deferred two workers. | Bind any future proposal to CV-26's disposition and new resource/cancellation authority. |
 | [F48](docs-01-discoveries-continued.md#f48-project-name-lookup-from-the-repository-root) | Reader route | Root guide suggests `--project NAME_OR_PATH` outside a Project, but bare names resolve only beside the current directory. | Give a path from the repository root or an absolute Project path. |
+| [F49](docs-01-discoveries-continued.md#f49-incomplete-allocation-recovery-command) | Recovery instruction | Troubleshooting tells users to preview rejected submissions with only `--verbose </dev/null`, omitting the command and selector. | Give a complete no-write command for the failed operation or a precise instruction to repeat it. |
+| [F50](docs-01-discoveries-continued.md#f50-submission-request-version-in-the-coordinator-contract) | Contract wording | Coordinator inspection prose describes selected requests as v2/v3 and new requests as v3 while current requests are v4. | Name current v4 and preserve exact v2/v3 compatibility rules. |
+| [F51](docs-01-discoveries-continued.md#f51-viking-walkthrough-history-in-the-active-backlog) | Evidence placement | Main backlog retains a long dated Viking walkthrough beside active acceptance; the CV campaign overlaps only part of its exact evidence. | Crosswalk unique IDs, decisions, limits, and inbound links before any lossless transfer. |
 
 ## Discovery notes
 

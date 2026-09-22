@@ -246,3 +246,61 @@ boundary. From the Quickstart's repository root, `--project pum1-study` does
 not select its `Projects/pum1-study` child. Explain when a bare name works and
 show `--project Projects/pum1-study` from that root or an exact absolute path.
 This is a guide correction, not a proposed new discovery behavior.
+
+### F49 — Incomplete allocation-recovery command
+
+[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 222–225 tells a
+reader with a rejected allocation or scratch path to preview the submission
+with only `--verbose </dev/null`. This fragment names neither an `emrys`
+operation nor its Project/Run selector. `--verbose` belongs to the relevant
+leaf parser; the failed submission may be Run, resume, report, or Doctor
+repair. The [control parser](../../src/emrys/orchestration/run_coordinator/control.py)
+lines 1800–1868 shows command-specific controls. Give a complete no-write
+example for the intended operation or tell the reader to repeat its exact
+preview command with `--verbose` and no `--execute`. This is an actionability
+gap, not a demonstrated parser failure.
+
+### F50 — Submission-request version in the coordinator contract
+
+The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 487–490 describes selected scheduler binding as “v2/v3” and calls new
+requests v3. Its own lines 410–424 define new `emrys.submission-request.v4`
+requests. The [submission owner](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
+lines 54–59 declares v4 current and v3/v4 named requests; lines 110–111,
+182–185, and 239–243 require and observe the bound job name for both. A
+[source test](../../tests/orchestration/run_coordinator/test_slurm_submission.py)
+lines 925–934 likewise exercises both versions. Align the present-tense
+inspection wording with v4 while preserving the v2/v3 historical observation
+rules. This is a documentation discrepancy, not a request-format migration.
+
+### F51 — Viking walkthrough history in the active backlog
+
+The [main backlog](backlog_matrix.md) lines 182–276 retains the dated Viking
+walkthrough inside the active status authority. The
+[CV evidence register](cluster_verification_campaign.md) lines 90–117 overlaps
+some observations but points back to the backlog for earlier exact evidence.
+Backlog lines 191–205 uniquely retain the first checkout, job `614786`,
+qualification ID, receipt location, and the approved allowance of up to 750
+net additional product lines, with no new product files or receipt formats
+and Rich as the terminal library. Lines 223–256 retain jobs `605171`,
+`618134`, `618190`, commit `c52178d2`,
+node/account/resource observations, and the four login-name variables. Lines
+269–276 retain hosted run `34885186045` and its disposable-Slurm ceiling.
+The [history compendium](../history/validation-evidence.md) lines 81–102
+already retains job `605171` as manual NORAD Step 08 evidence at exact
+`64b14a11`; the backlog adds that job's scheduler request and accounting
+context. Preserve these as distinct aspects and do not turn either into an
+EMRYS whole-Run proof.
+E04/E09/E12 overlap the synthetic and actual-data observations at 258–267;
+preserve operator-report attribution, the cancelled Run without terminal
+receipt, and deferred visual review. The `#viking-walkthrough-findings` anchor
+has live inbound links from the SITE-PARITY-01 row and CV charter. Map every
+fact and both links before any transfer; dated evidence belongs in an
+appropriate qualified home, while the backlog retains concise current
+acceptance. The charter's closure criteria and backlog's procedure are
+complementary, not safely interchangeable.
+The old 5–15-minute setup guidance at backlog lines 217–219 is framed as an
+earlier decision; the [CV-U05 card](cluster_verification_backlog.md) lines
+393–406 and [Quickstart](../../quickstart.md) lines 161–163 carry the later
+5–25-minute user request. Keep chronology dated and route current readers to
+the current notice rather than call the old figure a current contract.

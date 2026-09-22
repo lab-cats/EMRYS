@@ -121,6 +121,11 @@ lines 713–734 covers version from a clean temporary directory; the malformed
 does not combine that file with `--version`. A tiny local fixture should
 establish the exact failure and exit before deciding whether the promise or
 CLI ordering changes.
+At audit-only commit `d977e055`, a local attempt bound `PYTHONPATH` to this
+source and compared clean and malformed marked `.env` directories. Both
+commands failed during import because the available Python lacks `jsonschema`;
+the CLI/environment branch was never reached. This is an environment limit,
+not confirmation or refutation of the documented behavior.
 
 ### F09 — Runbook entry order
 
@@ -224,11 +229,12 @@ do not compress distinct acceptance criteria or alter task status.
 `YYYY-MM-DD-topic.md` and an originating immutable commit. Its only indexed
 record, [validation evidence](../history/validation-evidence.md), has no date
 in its filename and aggregates multiple observations; one local R anecdote at
-lines 132–139 lacks an explicit source date/revision. The compendium is linked
+lines 132–139 lacks an exact observation date, originating document, and
+commit. Do not invent these identities. The compendium is linked
 from the docs index, backlog, and coordinator contract; both
 `scripts/documentation/validate_structure.py:14–34` and
 `tests/documentation/test_validate_structure.py:29` name it. Map every inbound
-link and each record's origin first; several entries lack a source date.
+link and each record's origin first; this paragraph's source remains unresolved.
 Possible outcomes are a documented legacy
 exception or lossless dated records; neither a rename nor evidence deletion is
 implied by the naming mismatch.
@@ -239,6 +245,15 @@ dated-file and unchanged-record rules, rather than being only a filename
 oddity. Decide whether the legacy compendium is a documented exception or
 whether new dated records and updated backlog/index/checker links are the
 intended route before any transfer. No evidence is moved by this audit.
+The [campaign evidence register](cluster_verification_campaign.md) lines
+90–100 says E01–E12 combine operator-supplied output with source review; raw
+logs and artifacts remain with the operator. Its `f2c0149` identifies reviewed
+code, not the exact installed package for every observation. Any future history
+record must retain that attribution and identity gap rather than presenting
+these as independently reproduced or commit-bound Viking proof. The charter's
+closure conditions at lines 173–190 preserve distinct cross-document agreement
+and evidence-retention requirements; the main backlog checklist supplies the
+procedural sequence. Their overlap does not justify deleting either wholesale.
 
 ### F19 — Doctor experiment evidence in workflow README
 
@@ -272,9 +287,18 @@ has a single `No-write and publication boundaries` section spanning lines
 87–718 without subheadings. The apparent Init repeats separate prompts and
 publication (89–150) from hashing and input stability (184–215); watch
 selection (56–67) differs from dated view, refresh, and action rules
-(557–683). The second pass found navigability pressure, not proven deletable
+(557–681). The second pass found navigability pressure, not proven deletable
 duplication. Build a topic map before changing headings; preserve independent
 refusals and evidence levels, and coordinate size disposition with SIZE-01.
+The deeper pass mapped possible subheadings without deleting prose: Init
+preview/publication 89–151; Validate/Doctor 153–182; Init continuity 184–215;
+Doctor plans/timing 217–287; managed runtime 299–339; Run/Slurm planning
+365–409; submission request 410–468; request/Run inspection 470–556;
+watch diagnostics 557–681; exact-request stop 682–717. Coordinator README
+68–71 and Runbook 36, 118, 161, and 722 can then link to precise anchors.
+The later `Resume, inspection, Results, and reporting` section at 1141–1223
+remains a separate Run/Task/Results authority; retain links to both when a
+sentence addresses both boundaries. No safe prose deletion is established.
 
 ### F22 — Coordinator cross-owner detail
 
