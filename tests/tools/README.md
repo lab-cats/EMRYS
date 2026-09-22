@@ -22,6 +22,10 @@ public workflow commands.
   and missing or ambiguous
   job IDs never authorize cancellation. This hosted single-node journey does not
   establish Viking memory policy or cross-node behavior.
-  Its explicit four-core resource fixture is also used by the hosted managed
-  golden path; those small-run checks do not inherit the Viking product budget.
+  Real hosted scientific Runs derive their resource policy from the packaged
+  allocation-aware defaults and resolve against the runner allocation. The tiny
+  fixture lowers only repeatable-stage memory admission floors to 2048 MiB; it
+  is not a production memory recommendation. Disposable Slurm requests all node
+  CPUs, all node memory, and exclusive placement. These checks establish policy
+  selection and resolution, not sustained utilization or performance.
 - The coverage tools compare results with reviewed baselines.

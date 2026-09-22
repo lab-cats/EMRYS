@@ -26,6 +26,28 @@ assert_identical <- function(observed, expected, message) {
     }
 }
 
+test_worker_count <- function() {
+    requested <- Sys.getenv("EMRYS_TEST_WORKERS", unset = "1")
+    if (!grepl("^[1-9][0-9]*$", requested)) {
+        abort_test(
+            "EMRYS_TEST_WORKERS must be a positive integer; observed ",
+            requested
+        )
+    }
+    workers <- suppressWarnings(as.integer(requested))
+    available <- parallel::detectCores(logical = TRUE)
+    if (is.na(workers) || is.na(available) || workers > available) {
+        abort_test(
+            "EMRYS_TEST_WORKERS must not exceed the available CPU count; ",
+            "requested ", requested, ", available ", available
+        )
+    }
+    if (.Platform$OS.type == "windows" && workers != 1L) {
+        abort_test("EMRYS_TEST_WORKERS must be 1 on Windows.")
+    }
+    workers
+}
+
 write_lines <- function(lines, path) {
     dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
     writeLines(lines, path, useBytes = TRUE)
@@ -961,7 +983,7 @@ negative_results <- parallel::mclapply(
             error = function(error) conditionMessage(error)
         )
     },
-    mc.cores = if (.Platform$OS.type == "windows") 1L else 2L,
+    mc.cores = test_worker_count(),
     mc.preschedule = FALSE,
     mc.set.seed = FALSE
 )

@@ -108,7 +108,16 @@ CV-10's accepted trust boundary remains in the
 [recovery contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
 and [operator guidance](../operations/TROUBLESHOOTING.md#run-and-reporting-state).
 Broad audits, including the >600-line inventory, remain with polish; Deferred
-work has the named owners above. Required verification is:
+work has the named owners above. The selected final-source resource follow-up
+uses one test-owned profile derived from packaged allocation-aware defaults for
+the managed golden and real synthetic journeys. It preserves allocation-derived
+workflow CPU/memory and automatic repeatable-stage sharing, with a fixture-only
+2048 MiB repeatable minimum; disposable Slurm requests node CPU, all scheduler-
+available memory and exclusivity. Safely parallelizable lanes use all process-
+visible CPUs, while ordered recovery and end-to-end boundaries remain serial.
+This is still pending hosted verification and can establish mechanics on the
+free-tier runner, not utilization, performance, Viking memory safety or
+institutional qualification. Required verification is:
 
 - [ ] **Final-source software evidence:** applicable hosted regressions and the
   explicitly selected, exact-revision **130-pair disposable-Slurm** journey.

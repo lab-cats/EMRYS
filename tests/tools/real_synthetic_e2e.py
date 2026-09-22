@@ -161,14 +161,6 @@ def _positive_float(value: str) -> float:
     return selected
 
 
-def _memory_mb(value: str) -> int:
-    matched = re.fullmatch(r"([1-9][0-9]*)([MG])", value)
-    if matched is None:
-        raise argparse.ArgumentTypeError("must be a positive size such as 6144M or 6G")
-    amount = int(matched.group(1))
-    return amount if matched.group(2) == "M" else amount * 1024
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", required=True, choices=tuple(PROFILE_DATASETS))
@@ -180,8 +172,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--slurm-partition", required=True)
     parser.add_argument("--slurm-account")
     parser.add_argument("--slurm-qos")
-    parser.add_argument("--slurm-cpus", type=_positive_int, default=4)
-    parser.add_argument("--slurm-memory", type=_memory_mb, default="8G")
     parser.add_argument("--slurm-time", default="06:00:00")
     parser.add_argument("--slurm-nodelist")
     parser.add_argument("--scontrol", type=Path)
@@ -442,7 +432,7 @@ def runtime_environment(paths: Paths, runtime: Runtime) -> dict[str, str]:
 
 
 def symbolic_resource_document() -> dict[str, Any]:
-    """Explicit small budget for symbolic-admission tests and hosted E2E."""
+    """Explicit fixed budget retained for focused symbolic-admission fixtures."""
     from emrys.orchestration.run_coordinator.resource_policy import (
         REPEATABLE_STAGE_IDS,
         STAGE_IDS,
@@ -470,13 +460,27 @@ def symbolic_resource_document() -> dict[str, Any]:
     }
 
 
+def ci_resource_document() -> dict[str, Any]:
+    """Derive the hosted-fixture policy from packaged allocation-aware defaults."""
+    from emrys.orchestration.run_coordinator.execution_profile import (
+        load_execution_profile,
+    )
+    from emrys.orchestration.run_coordinator.resource_policy import (
+        REPEATABLE_STAGE_IDS,
+    )
+
+    document = load_execution_profile().resource_policy.document()
+    document["stage_memory_mb"].update(
+        {step_id: {"minimum_mb": 2048} for step_id in REPEATABLE_STAGE_IDS}
+    )
+    return document
+
+
 def slurm_execution_profile_bytes(
     *,
     account: str | None,
     partition: str,
     qos: str | None,
-    cpus_per_task: int,
-    memory_mb: int,
     time_limit: str,
     nodelist: str | None,
     scratch_parent: Path,
@@ -488,16 +492,16 @@ def slurm_execution_profile_bytes(
     try:
         document = {
             "schema_version": SCHEMA_VERSION,
-            "resources": symbolic_resource_document(),
+            "resources": ci_resource_document(),
             "placement": {
                 "kind": "slurm",
                 "account": account,
                 "partition": partition,
                 "qos": qos,
-                "cpus_per_task": cpus_per_task,
-                "memory_mb": memory_mb,
+                "cpus_per_task": "node",
+                "memory_mb": 0,
                 "time": time_limit,
-                "exclusive": False,
+                "exclusive": True,
                 "nodelist": nodelist,
                 "scratch_parent": str(scratch_parent),
                 "modules": (
@@ -1084,6 +1088,41 @@ def _resource_snapshot(
     }
 
 
+def _assert_ci_allocation_resources(resources: dict[str, Any]) -> None:
+    symbolic = resources["symbolic"]
+    effective = resources["effective"]
+    allocation = resources["allocation"]
+    if (
+        symbolic.get("workflow_cores") != "allocation"
+        or symbolic.get("workflow_memory_mb") != "allocation"
+    ):
+        raise DriverError(
+            "assert-parity",
+            "Hosted Run did not retain allocation-wide CPU and memory policy",
+        )
+    if (
+        effective.get("workflow_cores") != allocation.get("cores")
+        or effective.get("workflow_memory_mb") != allocation.get("memory_mb")
+    ):
+        raise DriverError(
+            "assert-parity",
+            "Hosted Run did not resolve CPU and memory to its observed allocation",
+        )
+    sample_stage_ids = ("01", "02", "02b", "03", "04", "05", "06")
+    symbolic_concurrency = symbolic.get("stage_concurrency", {})
+    effective_concurrency = effective.get("stage_concurrency", {})
+    if any(symbolic_concurrency.get(step_id) != "auto" for step_id in sample_stage_ids):
+        raise DriverError(
+            "assert-parity",
+            "Hosted Run did not retain automatic sample-stage concurrency",
+        )
+    if any(effective_concurrency.get(step_id) != 4 for step_id in sample_stage_ids):
+        raise DriverError(
+            "assert-parity",
+            "Hosted Run did not resolve four-library stages to four-way concurrency",
+        )
+
+
 def _application_log_snapshot(
     workspace: Path,
     *,
@@ -1233,11 +1272,21 @@ def _attempt_snapshot(
         or placement["request"].get("kind") != expected_kind
     ):
         raise DriverError("assert-parity", "Attempt placement provenance differs")
+    if expected_kind == "slurm" and (
+        placement["request"].get("cpus_per_task") != "node"
+        or placement["request"].get("memory_mb") != 0
+        or placement["request"].get("exclusive") is not True
+    ):
+        raise DriverError(
+            "assert-parity",
+            "Hosted Slurm Attempt did not request the whole disposable runner",
+        )
     resources = _resource_snapshot(attempt)
     if resources["allocation"]["slurm_job_id"] != scheduler_job_id:
         raise DriverError(
             "assert-parity", "Resource allocation scheduler identity differs"
         )
+    _assert_ci_allocation_resources(resources)
     attempt_id = str(attempt["workflow_attempt_id"])
     return {
         "id": attempt_id,
@@ -1528,11 +1577,8 @@ def _assert_direct_slurm_parity(
     scheduled_resources = scheduled["attempt"]["resources"]
     if direct_resources["symbolic"] != scheduled_resources["symbolic"]:
         raise DriverError("assert-parity", "Run-bound resource declaration differs")
-    if direct_resources["effective"] == scheduled_resources["effective"]:
-        raise DriverError(
-            "assert-parity",
-            "Hosted proof did not exercise allocation-sensitive resource resolution",
-        )
+    _assert_ci_allocation_resources(direct_resources)
+    _assert_ci_allocation_resources(scheduled_resources)
     return {
         "immutable_authority": direct["authority"],
         "attempt_ids_distinct": True,
@@ -1617,12 +1663,13 @@ def run_driver(
         )
         transcripts.run(f"{label}-init-plan", init, cwd=repo)
         transcripts.run(f"{label}-init", [*init, "--execute"], cwd=repo)
-        # Pin the disposable fixture budget before Doctor or any Run exists.
+        # Keep the packaged allocation policy while lowering only repeated-stage
+        # memory admission floors for this tiny disposable fixture.
         (workspace / "runtime/profiles/default.yaml").write_bytes(
             json.dumps(
                 {
                     "schema_version": "emrys.execution-profile.v1",
-                    "resources": symbolic_resource_document(),
+                    "resources": ci_resource_document(),
                     "placement": {"kind": "direct"},
                 }
             ).encode()
@@ -1634,8 +1681,6 @@ def run_driver(
         account=arguments.slurm_account,
         partition=arguments.slurm_partition,
         qos=arguments.slurm_qos,
-        cpus_per_task=arguments.slurm_cpus,
-        memory_mb=arguments.slurm_memory,
         time_limit=arguments.slurm_time,
         nodelist=arguments.slurm_nodelist,
         scratch_parent=paths.scratch,

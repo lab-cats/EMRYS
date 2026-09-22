@@ -37,20 +37,46 @@ SHELL_SYNTAX_PATHS := \
 	tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh \
 	tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh
 
+SHELL_CONTRACT_PATHS := \
+	tests/libraries/test_file_checks.sh \
+	tests/stages/fasta_sidecars/test_step_00c_prepare_gatk_reference.sh \
+	tests/stages/star_alignment/test_step_01_star_align.sh \
+	tests/stages/canonical_bam/test_step_02_sort_index_bam.sh \
+	tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh \
+	tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh \
+	tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh \
+	tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh \
+	tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh \
+	tests/shell/test_local_r_environment.sh
+
+define REQUIRE_TEST_WORKERS
+workers="$${EMRYS_TEST_WORKERS:-1}"; \
+case "$$workers" in ''|*[!0-9]*) \
+	printf 'ERROR: EMRYS_TEST_WORKERS must be a positive integer; observed %s\n' "$$workers" >&2; \
+	exit 2 ;; \
+esac; \
+test "$$workers" -ge 1 || { \
+	printf 'ERROR: EMRYS_TEST_WORKERS must be positive; observed %s\n' "$$workers" >&2; \
+	exit 2; \
+}; \
+available="$$(if command -v nproc >/dev/null 2>&1; then nproc; else getconf _NPROCESSORS_ONLN; fi)"; \
+case "$$available" in ''|*[!0-9]*|0) \
+	printf 'ERROR: could not determine the process-visible CPU count\n' >&2; \
+	exit 2 ;; \
+esac; \
+test "$$workers" -le "$$available" || { \
+	printf 'ERROR: EMRYS_TEST_WORKERS=%s exceeds %s process-visible CPUs\n' "$$workers" "$$available" >&2; \
+	exit 2; \
+}
+endef
+
 documentation-check:
 	"$(REPORT_PYTHON_BIN)" ./scripts/documentation/validate_structure.py --repo "$(CURDIR)"
 
 validation-shell-contracts:
-	bash tests/libraries/test_file_checks.sh
-	bash tests/stages/fasta_sidecars/test_step_00c_prepare_gatk_reference.sh
-	bash tests/stages/star_alignment/test_step_01_star_align.sh
-	bash tests/stages/canonical_bam/test_step_02_sort_index_bam.sh
-	bash tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh
-	bash tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh
-	bash tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh
-	bash tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh
-	bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh
-	bash tests/shell/test_local_r_environment.sh
+	@$(REQUIRE_TEST_WORKERS); \
+		printf '%s\0' $(SHELL_CONTRACT_PATHS) \
+		| xargs -0 -n 1 -P "$$workers" bash
 
 shell-test: validation-shell-contracts
 
@@ -187,7 +213,7 @@ validation-static: lint documentation-check
 	git diff --check
 	$(STATIC_SHELL_CHECKS)
 	PYTHONDONTWRITEBYTECODE=1 \
-		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts src/emrys tests
+		"$(REPORT_PYTHON_BIN)" -m compileall -q -j 0 scripts src/emrys tests
 	"$(REPORT_PYTHON_BIN)" -I -m emrys validate manifest \
 		--manifest configs/samples.example.tsv
 	"$(REPORT_PYTHON_BIN)" -m pytest -q tests/test_python_test_shards.py
@@ -202,7 +228,9 @@ smoke:
 lint:
 	"$(REPORT_PYTHON_BIN)" -m "$(RUFF_BIN)" check --no-cache $(PYTHON_LINT_PATHS)
 	"$(REPORT_PYTHON_BIN)" -m "$(RUFF_BIN)" format --check --no-cache $(PYTHON_LINT_PATHS)
-	bash -o pipefail -c 'git ls-files -z -- "*.sh" | xargs -0 "$$1"' -- "$(SHELLCHECK_BIN)"
+	@$(REQUIRE_TEST_WORKERS); \
+		export EMRYS_VALIDATED_TEST_WORKERS="$$workers"; \
+		bash -o pipefail -c 'git ls-files -z -- "*.sh" | xargs -0 -n 1 -P "$${EMRYS_VALIDATED_TEST_WORKERS}" "$$1"' -- "$(SHELLCHECK_BIN)"
 	"$(REPORT_PYTHON_BIN)" -m "$(VULTURE_BIN)" \
 		--min-confidence $(VULTURE_MIN_CONFIDENCE) \
 		$(DEAD_CODE_PATHS)

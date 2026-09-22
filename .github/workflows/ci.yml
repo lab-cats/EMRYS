@@ -182,7 +182,7 @@ jobs:
       - name: Run static, lint, documentation, and wheel checks
         run: |
           set -euo pipefail
-          make -s validation-static
+          EMRYS_TEST_WORKERS="$(nproc)" make -s validation-static
           make -s validation-wheel-smoke
 
   shell-contracts:
@@ -203,7 +203,9 @@ jobs:
         run: uv sync --locked --group workflow --python python
 
       - name: Run direct shell-owner contracts
-        run: make -s validation-shell-contracts
+        run: >-
+          EMRYS_TEST_WORKERS="$(nproc)"
+          make -s validation-shell-contracts
 
   guarded-r:
     name: Guarded R fixtures
@@ -279,7 +281,9 @@ jobs:
           printf 'RENV_LIBRARY=%s\n' "${renv_library}" >> "${GITHUB_ENV}"
 
       - name: Run guarded R environment and fixture checks
-        run: make -s validation-guarded-r RSCRIPT_BIN="$(command -v Rscript)"
+        run: >-
+          EMRYS_TEST_WORKERS="$(nproc)"
+          make -s validation-guarded-r RSCRIPT_BIN="$(command -v Rscript)"
 
   managed-runtime-userspace:
     name: Managed runtime userspace (${{ matrix.label }})
@@ -638,17 +642,18 @@ jobs:
           "${emrys[@]}" init synthetic \
             --output-dir "${project_root}" --execute \
             2>&1 | tee "${evidence_root}/01-init.log"
-          # The hosted fixture uses a four-core budget, independent of Viking defaults.
+          # Keep the packaged allocation policy while scaling only stage minima
+          # to the hosted fixture's tiny inputs.
           "${clean_clone}/.venv/bin/python" - "${project_root}" <<'PY'
           import json
           import sys
           from pathlib import Path
-          from tests.tools.real_synthetic_e2e import symbolic_resource_document
+          from tests.tools.real_synthetic_e2e import ci_resource_document
 
           profile = Path(sys.argv[1]) / "runtime/profiles/default.yaml"
           profile.write_text(json.dumps({
               "schema_version": "emrys.execution-profile.v1",
-              "resources": symbolic_resource_document(),
+              "resources": ci_resource_document(),
               "placement": {"kind": "direct"},
           }) + "\n", encoding="utf-8")
           PY
@@ -915,11 +920,18 @@ jobs:
         run: uv sync --locked --group workflow --python python
 
       - name: Run complete-suite shard with live slow-test timings
+        env: &single_threaded_numerics
+          BLIS_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+          NUMEXPR_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+          OPENBLAS_NUM_THREADS: "1"
+          VECLIB_MAXIMUM_THREADS: "1"
         run: >-
           make -s python-coverage-shard
           PYTHON_TEST_SHARD_INDEX=${{ matrix.shard }}
           PYTHON_TEST_SHARD_COUNT=${{ env.PYTHON_TEST_SHARD_COUNT }}
-          PYTHON_COVERAGE_WORKERS=2
+          PYTHON_COVERAGE_WORKERS="$(nproc)"
 
       - name: Upload coverage fragment and selection receipt
         if: always()
@@ -1003,7 +1015,7 @@ jobs:
         run: |
           set -euo pipefail
           PYTHONDONTWRITEBYTECODE=1 \
-            .venv/bin/python -m compileall -q scripts src/emrys tests
+            .venv/bin/python -m compileall -q -j 0 scripts src/emrys tests
           make -s validation-wheel-smoke
           .venv/bin/python -I -m emrys validate manifest \
             --manifest configs/samples.example.tsv
@@ -1030,12 +1042,13 @@ jobs:
         run: uv sync --locked --group workflow --python python
 
       - name: Run complete-suite shard with live slow-test timings
+        env: *single_threaded_numerics
         run: >-
           .venv/bin/python tests/tools/python_test_shards.py run
           --repo-root "${GITHUB_WORKSPACE}"
           --shard-index ${{ matrix.shard }}
           --shard-count ${{ env.PYTHON_TEST_SHARD_COUNT }}
-          --workers 2
+          --workers "$(nproc)"
           --receipt
           "${RUNNER_TEMP}/emrys-python311-test-shards/python-test-shard-${{ matrix.shard }}-of-${{ env.PYTHON_TEST_SHARD_COUNT }}.json"
 
@@ -1274,7 +1287,6 @@ jobs:
             --rscript "$(command -v Rscript)" \
             --renv-library "${RENV_LIBRARY}" \
             --slurm-partition emrys-ci \
-            --slurm-memory 6G \
             --slurm-time 02:00:00 \
             --slurm-timeout-seconds 7200 \
             --execute
@@ -1310,7 +1322,6 @@ jobs:
             --rscript "$(command -v Rscript)" \
             --renv-library "${RENV_LIBRARY}" \
             --slurm-partition emrys-ci \
-            --slurm-memory 6G \
             --slurm-time 02:00:00 \
             --slurm-timeout-seconds 7200 \
             --execute
