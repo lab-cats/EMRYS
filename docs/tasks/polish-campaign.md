@@ -32,6 +32,10 @@ planning. These outcomes remain accepted; none is a cluster-campaign closure
 gate. The focused novice-guide corrections and `INIT-01` through `INIT-03`
 remain in the cluster campaign's approved pre-closure tranche.
 
+The [SIZE-01 repository-wide audit](size-01-audit.md) is this campaign's
+working path-by-path inventory and evidence review. It creates no separate
+task status or size-exception authority.
+
 ## Evidence and selection
 
 The source audit used GitHub master
