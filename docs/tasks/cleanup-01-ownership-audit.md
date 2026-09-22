@@ -38,7 +38,7 @@ claim that every possible future subtype is inherently undeletable.
 | F3 | Managed runtime generations and caches; Doctor and runtime owner | Shared or ordinary Project inventories and retained Attempt tool identities can name generations; seals reveal some cache links. | No-go on current evidence. | What enumerates every current and historical Project, Attempt and package reference? |
 | F4 | Qualification probes and receipts; storage qualification owner | The owner cleans known probes after durable publication; a site compute receipt names its probes, while staged or failed cleanup remains evidence. | No-go on current evidence. | Can any exact direct-probe remainder prove ownership, no writer and recovery safety after process loss? |
 | F5 | Inputs, references and sidecars; Project admission and Step 00c | Admission binds content without exclusive ownership; FAI/dictionary files sit beside potentially shared FASTA files. | No-go on current evidence. | Can any generated subtype be separated from external and cross-Run consumers? |
-| F6 | Submission and application records; Control, submission and logging owners | Retained requests feed duplicate protection, inspection, watch, stop and association; application logs supply diagnostic evidence and log discovery. | No-go on current evidence. | Can every record subtype and its historical readers be bounded without losing evidence? |
+| F6 | Submission and application records; Control, submission and logging owners | Retained requests feed inspection, watch, stop and association after terminal state; Run, reporting and maintenance logs and raw transcripts have separate readers. | No-go on current evidence. | Can every request and maintenance-record subtype close its historical and external readers without losing evidence? |
 
 ## First source discovery pass
 
@@ -324,14 +324,19 @@ is deletion eligibility.
   Its site compute receipt records each probe directory, and the final receipt
   binds that compute receipt (lines 470–510 and 665–669); a retained site probe
   therefore has a historical receipt reference. The direct receipt does not
-  name its probes (lines 688–717), but that absence does not prove post-crash
-  ownership or writer quiescence. Both routes publish the final receipt before
-  probe cleanup (lines 681–685 and 718–722). A partial cleanup can leave an
-  incomplete directory with a valid final receipt, as characterized by
+  name its probes (lines 688–717), though the two role-specific paths are
+  deterministic and reused across direct receipt generations (lines 174–209).
+  Direct admission does not reread probe bytes or require their absence (lines
+  725–799). When a new direct plan is otherwise possible, occupied probe paths
+  block it (lines 235–268). The probe's `flock` tests storage capability, not
+  lifetime publisher ownership (lines 445–458). Both routes publish the final
+  receipt before probe cleanup (lines 681–685 and 718–722). A partial cleanup
+  can leave an incomplete directory with a valid final receipt, as
+  characterized by
   [fault tests](../../tests/evidence/storage_inventory/test_storage_inventory.py)
   (around lines 513–557). Re-running the current cleanup cannot be presumed
-  to admit every retained partial; direct planning refuses occupied probe
-  paths (lines 262–268).
+  to admit every retained partial; the absence of a probe path in the direct
+  receipt proves neither post-crash ownership nor writer quiescence.
 
 ### F5 path subtypes
 
@@ -381,8 +386,11 @@ is deletion eligibility.
   delegate arguments, scheduler stream patterns/name and time; Control syncs
   it before sbatch
   ([control.py](../../src/emrys/orchestration/run_coordinator/control.py),
-  lines 1170–1209). A locally enumerable roster is not proof that human
-  selectors or historical uses have ended.
+  lines 1170–1209). Terminal status only removes the duplicate-submission
+  warning; inspection, watch discovery and exact stop still select retained
+  records ([control.py](../../src/emrys/orchestration/run_coordinator/control.py),
+  lines 226–243, 1114–1133 and 2222–2300). A locally enumerable roster is
+  not proof that human selectors or historical uses have ended.
 - **Raw sbatch.stdout and sbatch.stderr — request-local, still consumed.**
   The [submission owner](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
   retains both invocation transcripts. Stdout is the sole recorded scheduler
@@ -393,7 +401,11 @@ is deletion eligibility.
   lines 664–689 and 979–1002). Selected-request association needs a complete
   token-bound v2–v4 record and rechecks all three members
   ([_submission_inspection.py](../../src/emrys/orchestration/run_coordinator/_submission_inspection.py),
-  lines 417–505); legacy or partial records remain diagnostic evidence.
+  lines 417–505). Complete v1 lacks request-specific stream identity, whereas
+  exact stop requires a complete named v3/v4 request
+  ([slurm_submission.py](../../src/emrys/orchestration/run_coordinator/slurm_submission.py),
+  lines 225–245 and 303–327). Legacy or partial records remain diagnostic
+  evidence rather than deletion candidates.
 - **Slurm job output and error streams — writer and references open.** Slurm
   writes separate job files at paths frozen into the request. Exact scheduler
   observation compares those recorded *paths* with scheduler metadata
@@ -402,17 +414,38 @@ is deletion eligibility.
   ([_inspection_presentation.py](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py),
   lines 496–528). Terminal status alone does not close the external reader or
   writer question.
-- **Application JSONL — custom-root references open.** The
+- **Run and reporting application JSONL — custom-root references open.** The
   [logging owner](../../src/emrys/libraries/application_logging/storage.py)
   can publish under an absolute log root outside the Project. Selected
   requests, explicit Run inspection and watch consume historical entries.
   Historical Run-log discovery can rebind retained Run/Attempt authority even
   when current Project YAML is gone
   ([_submission_inspection.py](../../src/emrys/orchestration/run_coordinator/_submission_inspection.py),
-  lines 543–609). The
-  [logging contract](../design/LOGGING_CONTRACT.md) preserves partials and
-  forbids automatic deletion; `package-output.log` is a separate retained
-  maintenance subtype (lines 42–47, 66–70 and 144–169).
+  lines 543–609). An unfinished but newline-complete log can still bind a
+  request ([tests](../../tests/orchestration/run_coordinator/test_submission_inspection.py),
+  lines 225–249); a truncated line is rejected by the parser, yet retained as
+  evidence (lines 168–173 of the inspector). Run contracts do not retain custom
+  historical log roots
+  ([Run contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md),
+  lines 532–550). The [logging contract](../design/LOGGING_CONTRACT.md)
+  forbids automatic rotation
+  or deletion (lines 144–169).
+- **Maintenance JSONL and raw siblings — separate roster, open.** Doctor's
+  waited qualification stores `slurm-submit.stdout` and `.stderr` beside its
+  maintenance log
+  ([doctor.py](../../src/emrys/orchestration/run_coordinator/doctor.py),
+  lines 1620–1627). Exact stop records `scancel.stdout` and `.stderr` paths in
+  synchronized intent beside `emrys-stop.jsonl`
+  ([control.py](../../src/emrys/orchestration/run_coordinator/control.py),
+  lines 2456–2499). Doctor also retains `package-output.log` as a separate
+  package-manager byte stream, with its path in repair diagnostics
+  ([doctor.py](../../src/emrys/orchestration/run_coordinator/doctor.py),
+  lines 1705–1720 and 1754–1795) and an
+  [operator recovery route](../operations/TROUBLESHOOTING.md) (lines 181–200).
+  These records are outside the private
+  `submission-*` roster and have distinct operator or source readers. The lack
+  of an application-JSONL parser for a raw stream does not make its bytes
+  disposable.
 
 ### Narrow candidate triage
 
@@ -432,10 +465,14 @@ is deletion eligibility.
   gate. Failed or active cleanup also remains possible.
 - **Direct qualification probe after an admitted receipt — unknown.** The direct
   receipt does not name its probe directories (lines 688–717 of the same owner),
-  yet final publication precedes cleanup, and occupied or partial probe paths
-  block the existing planner or roster cleanup (lines 262–268 and 582–637).
-  There is no post-crash owner, no-writer or recovery proof for one exact
-  remainder.
+  and admission may succeed with a leftover. Yet final publication precedes
+  cleanup; a later eligible plan refuses occupied deterministic paths, and a
+  partial directory fails the existing cleanup roster (lines 235–268 and
+  582–637). The transient capability `flock` supplies no post-crash owner or
+  no-writer proof for one exact remainder. Storage-only Doctor repair has no
+  runtime maintenance claim
+  ([doctor.py](../../src/emrys/orchestration/run_coordinator/doctor.py),
+  lines 1722–1735), so that claim cannot supply the missing proof.
 
 No retained subtype is selected; none has a justified space-saving claim.
 
