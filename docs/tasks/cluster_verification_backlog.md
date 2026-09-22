@@ -75,7 +75,7 @@ real-Slurm lane nor an institutional walkthrough.
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
 | Historical unexplained failures | CV-12/E01 and CV-21/E06 remain unexplained historical observations whose causal reconstruction is not an acceptance requirement. CV-21 now needs only ordinary institutional execution of current reporting/inspection behavior. CV-10 retains verification of the implemented prepared-finalization recovery path. E09 remains unexplained, and missing prepared evidence still cannot authorize recovery. |
 | Postentry Task retry and finalization | CV-10: current-version closed-abort retry has hosted acceptance evidence. The prepared-finalization path through `resume` is implemented and **Verification pending** for its exact hosted CI and institutional cancellation journey. The owner accepted the equal-byte recycled-inode residual limitation for a trusted operator-controlled workspace; existing blocked receipts and missing prepared evidence remain ineligible. |
-| Doctor operation | CV-26's structural reduction removed one redundant full head diagnosis and passed exact implementation CI. CV-26 remains Open against its original complete-operation attribution, comparable before/after measurements and institutional E11 timing. No speedup is claimed. |
+| Doctor operation | CV-26 is Completed under the 2026-09-22 owner-revised structural criterion: one redundant full head diagnosis was removed, final readiness protections remain, and exact implementation CI passed. E11 remains a historical unexplained observation; no speedup is claimed. Further attribution and institutional E11 timing are not CV-26 acceptance gates. |
 | Optional interface and retirement | CV-23 and CV-U19 transfer their Deferred acceptance to `CLEANUP-01` and `INTERACTIVE-01` in the [main backlog](backlog_matrix.md#deferred-operational-work); CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns institutional replacement validation and coordinated standalone entry-point/caller/name retirement. |
 
 The [enduring verification checklist](backlog_matrix.md#cluster-verification-closure-checklist)
@@ -117,7 +117,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-23](#cv-23-safe-project-or-artifact-cleanup) | P2 | Deferred | Decide and scope safe cleanup of unused owned state. |
 | [CV-24](#cv-24-run-center-actions) | P2 | Completed | Explore a dashboard that invokes supported CLI operations. |
 | [CV-25](#cv-25-log-discovery-and-readable-output) | P2 | Completed | Find the correct logs without memorizing scheduler IDs. |
-| [CV-26](#cv-26-repeated-doctor-input-reads) | P2 | Open | Attribute complete Doctor latency and compare the structural reduction without weakening final readiness. |
+| [CV-26](#cv-26-repeated-doctor-input-reads) | P2 | Completed | Remove one redundant full head diagnosis while preserving final readiness and passing exact hosted checks. |
 | [CV-27](#cv-27-terminal-only-report-access) | P3 | Verification pending | Retrieve portable reports from a terminal-based workflow. |
 
 ## Operator findings matrix — 2026-09-15
@@ -1320,13 +1320,16 @@ as inactive rather than becoming another question. All known values remain in
 the guide; novice Viking acceptance is still required, so CV-U20 remains
 **Verification pending**.
 
-**Maintained study selection:** `INIT-02` now lets the guided sample journey
-read the existing primary-contig manifest selected in Quickstart. The operator
-does not paste sequence names or provide a separate regions file for this
-study. The exact `1`–`22`, `X`, `Y`, `MT` selection is validated against the
-admitted FASTA and retained in the Project; additional contigs are not silently
-included and a missing selected name blocks creation. Site selection still
-controls placement only. Exact hosted and novice verification remain pending.
+**Maintained study selection:** With EV/PUM1 sample conditions, guided Init
+offers the packaged `1`–`22`, `X`, `Y`, `MT` selection by name and requires an
+explicit yes. The existing primary-contig manifest path links to the same
+maintained file. The operator enters neither its path nor its 25 names.
+Existing admission checks the selection
+against the FASTA, retains its order, excludes extra contigs and blocks creation
+if a selected name is missing. Declining continues generic region questions;
+explicit selectors bypass the offer. Site selection controls placement only.
+[Exact branch-head hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/35776280689)
+passed; fresh novice Viking verification remains under `INIT-02`.
 
 ### CV-U21 Technical parameter assistance
 
@@ -2502,13 +2505,13 @@ refusal. Static checks pass locally; application/subprocess cases passed the
 current integrated standard CI. Institutional novice walkthrough remains
 pending.
 
-**Current selected-input correction:** `INIT-02` uses the maintained study
-partition manifest alongside guided sample assignment. Sample and partition
-conflicts are checked separately; copied samples still require a partition
-manifest. Imported rows preserve their order and source-relative paths. The Quickstart no longer asks for a
-25-name paste. `INIT-03` provides in-process confirmation and the focused guide
-pass now follows that delivered path. CV-06 is **Verification pending** for
-current hosted regression and institutional acceptance.
+**Current selected-input correction:** `INIT-02` offers the maintained EV/PUM1
+selection in guided Init without a manifest path or 25-name paste. Explicit
+manifests still work alongside guided samples; sample and partition conflicts
+remain separate, and copied samples still require a partition manifest.
+Imported rows preserve order and source-relative paths. `INIT-03` provides
+in-process confirmation. CV-06 is **Verification pending** for current hosted
+regression and institutional acceptance.
 
 **Original-input manifest follow-up:** The operator's fresh-user walkthrough
 exposed vendor FASTQ mates named `_1`/`_2` and 25 explicit whole-chromosome
@@ -3748,8 +3751,9 @@ remains under `DASHBOARD-RETIRE-01`.
 ### CV-26 Repeated Doctor input reads
 
 **Finding:** A verification-only Doctor operation repeated Project/runtime
-observations and exceeded ten minutes (E11). **Original acceptance:** Measure a
-complete Doctor operation and attribute phases, hashes/bytes, probes, and queue time.
+observations and exceeded ten minutes (E11).
+**Superseded original acceptance:** Measure a complete Doctor operation and
+attribute phases, hashes/bytes, probes, and queue time.
 Audit duplicate mechanics across callers; consolidate only observations proven
 equivalent at the same trust/mutation boundary. Preserve detection of input,
 package, runtime, and storage changes during repair and qualification. Report
@@ -3757,6 +3761,13 @@ before/after measurements and residual costs; metadata or cached hashes alone
 do not justify weaker checks. Do not invent an unmeasured time target.
 **Owners/dependencies:** Doctor, normalization/runtime inspection, existing
 validation helpers; coordinate optimization discussions 11–13 and CV-05/17.
+
+**Owner-revised acceptance (2026-09-22):** Remove the redundant full head
+diagnosis while preserving fresh Project/package/profile readmission, storage
+finalization and final readiness. Require exact hosted implementation checks.
+Further read/hash/probe/queue attribution, comparable performance trials and
+institutional E11 timing are not CV-26 closure gates. Retain the unexplained
+E11 observation and measured results without claiming a speedup.
 
 **Selected phase-measurement slice:** Doctor keeps an invocation-local timing
 collector and uses an optional observation callback on the existing progress
@@ -3778,9 +3789,9 @@ no-write diagnosis, existing-log buffering and delegated context. Public fixture
 execution passed the current integrated hosted CI. Read/hash bytes, probe
 attribution, process memory, actual scheduler timing and comparable before/after
 measurements were left open by this slice; they are independently selectable
-future research, not the revised slice's acceptance gate. They remain in
-CV-26's original acceptance. This slice establishes timing observations, not a
-measured speedup.
+future research, not the owner-revised acceptance gate. The original
+attribution requirement was superseded on 2026-09-22. This slice establishes
+timing observations, not a measured speedup.
 
 **Retained hosted observation:** The managed golden path at
 `2e03177747e67e8d970083e3994f3c8970d77caf`
@@ -3840,8 +3851,8 @@ remain unchanged. Focused runtime tests and the integrated hosted standard CI
 pass the public Doctor phase, identity, failure and observation-degradation
 fixtures. Full byte/I/O/memory attribution and institutional before/after
 evidence remained open at this checkpoint; the September 21 disposition makes
-them optional for its revised structural slice, not for CV-26's original
-acceptance retained below.
+them optional for its revised structural slice. The September 22 owner decision
+also removes them from CV-26's active acceptance.
 
 **Retained probe attribution:** The managed golden-path job at
 `1f4171d198cada8833f59ccd5a1bfeffab3ebaff`
@@ -4050,10 +4061,10 @@ target is introduced, and no speedup is claimed. Exact implementation head
 `593f6e728321f535817bcde732d263c2f86079a8` passed all 14 standard jobs, with
 four configured skips and no failures, in
 [CI 35577392877](https://github.com/lab-cats/EMRYS/actions/runs/35577392877).
-The revised structural outcome is complete, but it does not satisfy CV-26's
-original complete-operation attribution and comparable before/after acceptance.
-CV-26 remains **Open** for those measurements and institutional E11 timing; no
-Viking speedup is claimed. Further tuning remains independently selectable.
+This satisfies the owner-revised structural acceptance above; CV-26 is
+**Completed**. The superseded full-attribution and institutional E11 criteria
+are not closure gates. The historical E11 cause and any Viking speedup remain
+unproven. Further tuning remains independently selectable.
 
 ## P3 outcome
 

@@ -9,7 +9,7 @@ This guide defines Project inputs and execution settings. Use the
 | Files | Purpose |
 | --- | --- |
 | `samples.example.tsv` | Five-column fixture for the generic manifest validator; not a complete paired-CMH Project manifest. Use the [Project sample format](#sample-manifest) below. |
-| `step_07_partitions.primary_contigs.tsv` | The EV/PUM1 study's whole-sequence selection: `1`–`22`, `X`, `Y`, `MT`. |
+| `step_07_partitions.primary_contigs.tsv` | Link to the packaged EV/PUM1 whole-sequence selection: `1`–`22`, `X`, `Y`, `MT`. |
 | Other `step_07_partitions*.tsv` | Example region partitions for cohort processing. |
 | `execution_profile*.yaml` | Example local or Slurm execution settings. |
 | Other `.example.*` files | Specialist formats owned by the component that consumes them. |
@@ -181,15 +181,15 @@ declares them so. Retain provider checksums: file binding does not prove provena
 | `selector_value` | A FASTA/FAI contig or interval, or a literal regions-file path. |
 
 The [quickstart's guided Project creation](../quickstart.md#3-create-the-project)
-reads the retained EV/PUM1 selection from
-[`step_07_partitions.primary_contigs.tsv`](step_07_partitions.primary_contigs.tsv)
-through `--partition-manifest`, while still guiding sample creation. It copies
-the selected rows in order into the Project and checks the names against the
-reference during creation. Other FASTA sequences are not silently included;
-`--site viking` alone never chooses a scientific selection.
+offers the retained [EV/PUM1 selection](step_07_partitions.primary_contigs.tsv)
+after the operator assigns the EV and PUM1 samples. An explicit yes copies its
+25 rows in order into the Project and checks the names against the reference.
+Other FASTA sequences are not silently included; `--site viking` alone never
+chooses a scientific selection. The same file remains available through
+`--partition-manifest` for explicit and noninteractive creation.
 
-Without a supplied partition manifest, guided creation asks for selectors.
-Its advanced command form accepts repeated
+Declining the offered selection continues the guided selector questions.
+The advanced command form accepts repeated
 `--region PARTITION_ID SELECTOR` and
 `--regions-file PARTITION_ID PATH` options. They can be combined; partition IDs
 must be unique across both forms. A selector such as `1` selects that entire

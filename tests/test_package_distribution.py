@@ -63,6 +63,7 @@ RESOURCE_PATHS = (
     "emrys/contracts/schemas/orchestration/v3/resource_config.schema.json",
     "emrys/contracts/schemas/orchestration/v3/execution_profile.schema.json",
     "emrys/orchestration/run_coordinator/resources/default_execution.yaml",
+    "emrys/orchestration/run_coordinator/resources/step_07_partitions.primary_contigs.tsv",
     "emrys/resources/runtime/runtime_policy.tsv",
     "emrys/resources/runtime/pixi.toml",
     "emrys/resources/runtime/pixi.lock",

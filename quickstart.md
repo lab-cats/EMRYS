@@ -95,19 +95,17 @@ From the repository root, start guided creation. EMRYS uses the Projects home
 saved during setup:
 
 ```bash
-emrys init pum1-study \
-  --partition-manifest "$EMRYS_SOURCE_ROOT/configs/step_07_partitions.primary_contigs.tsv"
+emrys init pum1-study
 ```
 
 Enter the FASTA path, matching GTF path and FASTQ directory. Check that all six
 pairs were found. Enter `reverse` for study strandedness, then enter each
 sample's condition and pairing group from the table above.
 
-The supplied selection covers `1`–`22`, `X`, `Y` and `MT`; there is no regions
-question. A reference contig name is the first word after `>` in each FASTA
-header. EMRYS checks the selected names against your reference and saves the
-selection inside the Project. If the names differ, stop and confirm the intended
-selection.
+When asked, choose `y` for the EV/PUM1 whole-sequence selection. EMRYS reads
+the maintained `1`–`22`, `X`, `Y` and `MT` names, checks them against your
+reference, and saves them inside the Project. If a name is missing, stop and
+confirm the intended reference and selection.
 
 Choose the number beside `EV -> PUM1`, and enter `A>G` for target change.
 At `Use these paired-CMH defaults?`, review and accept minimum sample depth `1`,
