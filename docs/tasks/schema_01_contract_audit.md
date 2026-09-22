@@ -64,8 +64,8 @@ resources. A family-by-family field screen remains required before S11.
 | `owner_tasks[].rule_name` | [Snakemake](../../src/emrys/workflow/Snakefile) uses it to name processing rules and in an independent fixed mapping check. A test swaps machine keys under unchanged rule names to exercise that check. | Could a pinned backend mapping or stable owner identity derive it while retaining exact names and the independent remapping defense? The field is used, not dead. |
 | `owner_tasks[].scope_selector` | Validation requires the current one-to-one mapping from `scope_type`; Snakemake's fixed processing check reads both. | Test whether derivation preserves the independent scope fence and exact profile binding. |
 | `artifact_templates[].scope_selector` | [Inventory expansion](../../src/emrys/contracts/orchestration/artifact_inventory.py) groups templates in first-seen selector order and rejects selector/scope mismatches. | Derivation from `scope_type` must preserve inventory rows, order, grouping, and rejection behavior. The field is used, not dead. |
-| `workflow_attempt.scratch` | The schema requires an absolute path or null; the current [Attempt producer](../../src/emrys/orchestration/run_coordinator/materialization.py) always writes null. A repository search found no production read of this record field. Active Slurm `scratch_parent` and Task worker scratch are separate values. | Inventory retained Attempts and external readers before calling the field dead. Removing it would change an exact record shape and a Run-bound schema. |
-| `run_summary.expected_scopes[].warnings` and `errors` | The [summary producer](../../src/emrys/reporting/_run_summary/projection.py) copies and stably deduplicates artifact issues into each scope. The schema requires both arrays; no production reader of these scope arrays was found. Summary validation checks grouping and aggregate state but does not recompute the issue arrays. | Determine whether downstream summary readers use these evidence fields; compare derived order and exact bytes before a selected transition. Do not infer safe deletion from the report template's non-use. |
+| `workflow_attempt.scratch` | The schema requires an absolute path or null; the current [Attempt producer](../../src/emrys/orchestration/run_coordinator/materialization.py) always writes null. A repository search found no production read of this record field. Active Slurm `scratch_parent` and Task worker scratch are separate values. | Inventory retained Attempts and external readers before calling the field dead. Removing its null member saves 15 canonical bytes per record but changes an exact shape and a Run-bound schema, not yet measured product code. |
+| `run_summary.expected_scopes[].warnings` and `errors` | The [summary producer](../../src/emrys/reporting/_run_summary/projection.py) copies and stably deduplicates artifact issues into each scope, and the schema requires both arrays. No production reader was found, but a [valid fixture](../../tests/contracts/artifacts/fixtures/artifact_schema_v2/valid/run_summary.json) has a scope warning message different from its sole artifact warning. Semantic admission does not require issue-array equality. | These arrays are not universally derivable from artifacts under the admitted contract. Determine external meaning and retained evidence needs before proposing a semantic change; report-template non-use alone is insufficient. |
 | Adjacent `workflow_inputs["profile"]` | Source review found a generated private backend projection of profile ID, version, and hash with no production reader found so far. It is not a JSON Schema field. | Check external/API exposure and route any justified removal to its proper reduction owner. Do not infer that the schema's profile ID or version fields are unused. |
 | Adjacent `validate_record(..., profile=...)` | The orchestration API includes this optional parameter and serializes it into the successful-validation cache key, but the called record validator does not read it. Inspection forwards it, while a separate successor-Run check actually validates Run/profile consistency. This is an API/cache candidate, not a schema field. | Inspect external Python callers and error precedence before removing the parameter or cache dimension. Preserve the separate successor-Run admission. |
 
@@ -128,6 +128,23 @@ triplet is a private generated projection in
 [normalization](../../src/emrys/orchestration/run_coordinator/normalization.py);
 the repository search found no production lookup. External Python use has
 not been established or excluded, so this is a separate reduction candidate.
+
+A tiny standard-library measurement of the packaged base profile used the
+[canonical JSON encoding](../../src/emrys/contracts/orchestration/api.py).
+It has 12 owners, 57 templates, and 21,124 canonical bytes. Removing each
+candidate independently saves 617 bytes for `semantic_owner_keys`, 617 for
+the profile `required_owner_keys`, 551 for 12 rule names, 332 for 12 owner
+selectors, and 1,591 for 57 template selectors. Removing all five groups
+together saves 3,708 bytes (17.55%) from that serialized profile. In the
+base profile, both rosters exactly follow owner-key order and both selectors
+match the five-scope mapping. A source-projected built-in composition has 14
+owners, 70 templates, and 26,103 canonical bytes; its combined deletion is
+4,424 bytes (16.95%). That composed value was not runtime-validated because
+the local Python lacks `jsonschema`; no dependency was installed. Analysis
+rule names are generated differently from processing machine-key slugs, so a
+single slug derivation does not cover the composed profile. These figures
+measure serialized bytes only, not product-code savings, compatible records,
+or surviving defenses.
 
 A family-wide source screen also found repeated values that currently serve
 independent checks. Run-summary `computational_rollup` and per-scope
@@ -447,6 +464,14 @@ blanket rename of all `v2`/`v3`/`v5` directories. Any implementation must
 move all affected current callers together, reject incompatible records
 without modifying evidence, and avoid unnecessary aliases or historical
 readers.
+
+| Option for owner decision | Supported reason to consider it | Known cost or missing proof | Current audit disposition |
+| --- | --- | --- | --- |
+| Retain current IDs and record shapes | Preserves current package, Run, reporting, recovery, and potential consumer contracts. | Does not itself reduce code; still permits separately justified source cleanup. | Viable default while P3/P4 remain unbounded. |
+| Transition selected profile fields | Some values can be derived from existing semantic inputs. | Independent backend/scope defenses, ordering, profile bytes, Run IDs, Attempt provenance, retained recovery, and caller-complete product savings need proof. | Open with `PROFILE-CONTRACT-01`; no version bump solely for cleanup. |
+| Transition selected Attempt or artifact fields | Always-null Attempt scratch and producer-copied scope issues have no found repository reader. | Public record shape, external readers, retained evidence, Run-bound workflow-attempt schema, report outputs, and exact bytes remain at risk. A valid summary fixture disproves universal issue-array derivation under current admission. | Qualified candidates, not approved deletions. |
+| Reset selected non-v1 IDs to v1 | Could give a cleaner prerelease label if an actual consumer inventory and benefit justify it. | Eleven current IDs span distinct families; seven are Run admission roots. References, installed resources, Python APIs, fixtures, reporting, and recovery require a complete migration. | No reset justified by current evidence. |
+| Retire adjacent private projection or API cache dimension | Source review found bounded unused-input candidates outside JSON Schema. | Exported Python shape/signature, diagnostics, installed package provenance, and real product savings still need measurement. | Route to a separately bounded reduction decision. |
 
 Stop a decision when a consumer, field meaning, recovery behavior, required
 defense, or maintenance exception cannot be bounded from available evidence.
