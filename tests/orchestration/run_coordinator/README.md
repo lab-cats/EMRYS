@@ -10,7 +10,7 @@ These are fixture boundaries, not a record of new execution or current CI result
 
 | Check | Capability and limit |
 | --- | --- |
-| [Submission usage](test_slurm_submission.py) | Canned scheduler replies check initial cluster selection but mask lost cluster scope in later usage queries. Correct nonlocal observation needs argument-sensitive replies through the complete query sequence. |
+| [Submission usage](test_slurm_submission.py) | Argument-sensitive replies check selected-cluster terminal accounting and local-only live samples, including identical job numbers on different clusters. These in-memory transports establish query/identity behavior, not scheduler or institutional execution. |
 | [Prepared-finalization substitution](test_lifecycle.py) | Equal-byte replacement uses a different inode. It does not prove continuity after inode recycling; the [trusted-workspace limitation](../../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle) remains accepted. |
 | [Public native cancellation](test_materialization.py) | Real backend and native-process behavior is exercised with substituted scientific effects, readiness and scheduler replies. It does not establish controller or institutional behavior. |
 | [CI Slurm setup configuration](../../test_ci_workflow.py) | `test_ci_slurm_setup_is_guarded_real_and_diagnostic` asserts script text; it does not execute Slurm. The separately selected [real-Slurm journey](../../tools/README.md) requires its own exact-revision result and retained interruption/resume evidence. |

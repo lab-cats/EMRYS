@@ -1480,10 +1480,12 @@ def test_recorded_submission_retains_raw_responses_without_waiting_for_the_job(
 
 
 @pytest.mark.parametrize("version", ["v2", "v3", "v4"])
-@pytest.mark.parametrize("cluster", [None, "alpha"])
-@pytest.mark.parametrize("state", ["PENDING", "RUNNING", "COMPLETED"])
-def test_request_resources_share_exact_root_and_usage_has_local_identity_brackets(
-    tmp_path, monkeypatch, version, cluster, state
+@pytest.mark.parametrize(
+    ("cluster", "local_cluster"), [(None, "alpha"), ("alpha", "alpha"), ("alpha", "beta")]
+)
+@pytest.mark.parametrize("state", ["PENDING", "RUNNING", "COMPLETED", "CANCELLED"])
+def test_request_resources_respect_supported_cluster_scope(
+    tmp_path, monkeypatch, version, cluster, local_cluster, state
 ):
     project, _root, context = _request_record(
         tmp_path,
@@ -1501,35 +1503,42 @@ def test_request_resources_share_exact_root_and_usage_has_local_identity_bracket
         fields["JobName"] = (
             "emrys-local-pilot-" if version == "v3" else "emrys-"
         ) + "a" * 32
-    plain = _root_row(**fields)
-    detailed = _root_row(
-        **fields,
+    resources = dict(
         Elapsed="00:01:00",
         Timelimit="01:00:00",
         AllocCPUS="4",
         Partition="compute",
         NodeList="node[1-2]",
     )
-    replies = [detailed]
-    if state == "RUNNING":
-        replies += [
-            plain,
-            b"700123.batch|00:00:02|1024K|8M|0\n",
-            plain,
-        ]
-    elif state == "COMPLETED":
-        replies = [
-            b"",
-            detailed,
-            b"",
-            plain,
-            f"700123.batch|{os.getuid()}|alpha|00:00:02|1024K|8M|0\n".encode(),
-            b"",
-            plain,
-        ]
+
+    def reply(argv, timeout=10, environment=None):
+        assert timeout == 10 and "SLURM_CLUSTERS" not in environment
+        selected = next(
+            (
+                arg.removeprefix("--clusters=")
+                for arg in argv
+                if arg.startswith("--clusters=")
+            ),
+            local_cluster,
+        )
+        if argv[0] == "sstat":
+            assert local_cluster == "alpha"
+            return b"700123.batch|00:00:02|1024K|8M|0\n"
+        if argv[0] == "squeue" and state == "COMPLETED":
+            return b""
+        if "700123.batch" in argv:
+            return (
+                f"700123.batch|{os.getuid()}|{selected}|00:00:02|1024K|8M|0\n"
+            ).encode()
+        detailed = "TimeUsed:0" in argv[-1] or ",Elapsed,Timelimit" in argv[-1]
+        return _root_row(
+            **fields, Cluster=selected, **(resources if detailed else {})
+        )
+
     monkeypatch.setenv("SLURM_CLUSTERS", "other")
-    command = _scheduler_replies(
-        monkeypatch, slurm_submission.scheduler_observation, *replies
+    command = Mock(side_effect=reply)
+    monkeypatch.setattr(
+        slurm_submission.scheduler_observation, "command_bytes", command
     )
     result = slurm_submission.observe_submission_request(
         request, include_resources=True
@@ -1545,10 +1554,9 @@ def test_request_resources_share_exact_root_and_usage_has_local_identity_bracket
     )
     if source == "sacct":
         assert "--duplicates" in initial and "-X" in initial
-    for call in command.call_args_list:
-        assert call.kwargs["timeout"] == 10
-        assert "SLURM_CLUSTERS" not in call.kwargs["environment"]
-    assert result["state"] == state and result["terminal"] is (state == "COMPLETED")
+    assert result["state"] == state
+    assert result["terminal"] is (state in {"COMPLETED", "CANCELLED"})
+    assert result["cluster"] == "alpha"
     assert [result[key] for key in ("elapsed", "cpus", "partition", "node")] == [
         "00:01:00",
         "4",
@@ -1556,7 +1564,7 @@ def test_request_resources_share_exact_root_and_usage_has_local_identity_bracket
         "node[1-2]",
     ]
     assert result["time_limit" if state == "COMPLETED" else "left"] == "01:00:00"
-    if state in {"RUNNING", "COMPLETED"}:
+    if state == "COMPLETED" or (state == "RUNNING" and local_cluster == "alpha"):
         expected = (
             ["squeue", "squeue", "sstat", "squeue"]
             if state == "RUNNING"
@@ -1576,7 +1584,7 @@ def test_request_resources_share_exact_root_and_usage_has_local_identity_bracket
             if state == "RUNNING"
             else [
                 "sacct",
-                "--local",
+                "--clusters=alpha",
                 "--duplicates",
                 "-n",
                 "-P",
@@ -1592,10 +1600,13 @@ def test_request_resources_share_exact_root_and_usage_has_local_identity_bracket
             result[key] for key in ("ave_cpu", "max_rss", "disk_read", "disk_write")
         ] == ["00:00:02", "1024K", "8M", "0"]
     else:
-        assert [call[0] for call in calls] == ["squeue"]
+        assert [call[0] for call in calls] == (
+            ["squeue", "squeue"] if state == "RUNNING" else ["squeue"]
+        )
         assert "ave_cpu" not in result and result["usage_diagnostic"]
     if state == "COMPLETED":
         assert "left" not in result
+        assert all("--clusters=alpha" in call for call in calls[2:])
 
 
 @pytest.mark.parametrize("boundary", ["initial", "before-usage", "after-usage"])

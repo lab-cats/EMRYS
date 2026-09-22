@@ -68,7 +68,7 @@ real-Slurm lane nor an institutional walkthrough.
 
 | Remaining acceptance | Current owner and required work or evidence |
 | --- | --- |
-| Source and documentation follow-ups | CV-U33 and CV-22 are **Open** pending `SCHED-USAGE-01` and `SUBMISSION-PREVIEW-01` in the main matrix; site evidence alone cannot close them. `VIKING-POLICY-01` and `CV-DOCS-01` own the remaining guidance/wording corrections. |
+| Source and documentation follow-ups | CV-U33 has the selected cluster-scope correction and is **Verification pending** under `SCHED-USAGE-01`. CV-22 remains **Open** under `SUBMISSION-PREVIEW-01`; site evidence alone cannot close a source gap. `VIKING-POLICY-01` and `CV-DOCS-01` own the remaining guidance/wording corrections. |
 | Recently implemented outcomes awaiting verification | CV-10's prepared-finalization `resume` path and CV-18's active-native-task stop outcome are **Verification pending**. Their exact hosted checks and institutional cancellation journeys remain unverified; site execution alone cannot substitute for the hosted checks, and neither status claims a reproduced E09 cause. CV-10's equal-byte recycled-inode ownership limit is an accepted residual risk in a trusted operator-controlled workspace, not a proven defense. |
 | Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27 and CV-U28: exercise the maintained RUNBOOK on one exact installed revision; retain selected profile/runtime, resolved allocation-aware policy and report identities. Visual review is separate. |
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
@@ -165,7 +165,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U30](#cv-u30-dashboard-color-and-pane-layout) | Restore dashboard colors and readable pane layout | Verification pending |
 | [CV-U31](#cv-u31-dashboard-automatic-run-selection) | Select the current Run without parameters; record lost functionality | Verification pending |
 | [CV-U32](#cv-u32-dashboard-independent-of-working-directory) | Open the dashboard from outside the Project directory | Verification pending |
-| [CV-U33](#cv-u33-dashboard-resource-usage) | Restore resource-usage display; keep future wall-time tuning separate | Open |
+| [CV-U33](#cv-u33-dashboard-resource-usage) | Restore resource-usage display; keep future wall-time tuning separate | Verification pending |
 
 ### September 17 adversarial implementation audit
 
@@ -2039,12 +2039,14 @@ and rendering matrices pass; standard CI and institutional accounting/display
 remain pending. Future wall-time tuning
 and its measurements remain with the optimization campaign, not this card.
 
-**Current source disposition:** CV-U33 is **Open**. The new cluster-scope
-defect and its corrective acceptance are transferred to `SCHED-USAGE-01` in
-the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up).
-Resolving or explicitly narrowing that source outcome is required before this
-card can become source-complete; institutional accounting/display acceptance
-remains here. Canned scheduler responses do not resolve the defect.
+**Current supported scope:** Terminal usage and its root rechecks retain the
+admitted cluster. Live `sstat` has no cluster selector, so its exact-root checks
+remain local; nonlocal live samples are explicitly unavailable without losing
+the selected request state. `SCHED-USAGE-01` in the
+[main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up) owns this
+source correction and argument-sensitive cases. CV-U33 is **Verification pending**
+for exact hosted regression and institutional accounting/display acceptance;
+transport fixtures are not scheduler execution.
 
 ## Additional Viking UX findings — 2026-09-16
 

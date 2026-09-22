@@ -87,9 +87,10 @@ command-line diagnostic selection precedes
 `EMRYS_DASHBOARD_JOB_ID`/`EMRYS_DASHBOARD_LOG_DIR`. Offline mode needs an exact
 ID plus both streams.
 
-The resource panel labels active `sstat` values as a live sample and terminal
-`sacct` values as final accounting. Either may be unavailable without erasing
-the admitted root scheduler state; usage is diagnostic and does not establish
+The resource panel labels local-cluster `sstat` values as a live sample and
+terminal `sacct` values from the selected cluster as final accounting. Slurm
+does not support remote-cluster selection for `sstat`, so nonlocal live usage
+is unavailable. Missing usage never erases admitted scheduler state or proves
 Run completion, recovery safety, or a wall-time improvement.
 
 | Control | Behavior |

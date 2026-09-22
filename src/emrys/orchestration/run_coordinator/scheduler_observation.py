@@ -351,28 +351,26 @@ def _accounting_timing(metadata):
 def _observe_batch_usage(
     job_id, stdout_pattern, stderr_pattern, job_name, root, environment
 ):
-    """Observe one exact batch step between exact local root checks."""
+    """Observe exact batch usage; live sstat requires matching local roots."""
     active = {"RUNNING", "SUSPENDED", "COMPLETING"}
+    terminal = root["source"] == "sacct"
+    cluster = root["cluster"] if terminal else None
 
     def root_matches():
-        current = observe_job(job_id, stdout_pattern, stderr_pattern, job_name=job_name)
+        current = observe_job(
+            job_id, stdout_pattern, stderr_pattern, cluster, job_name=job_name
+        )
         return all(current[key] == root[key] for key in ("source", "state", "cluster"))
 
     unavailable = {"usage_diagnostic": "Exact batch-step usage is unavailable"}
-    if not (
-        (root["source"] == "squeue" and root["state"] in active)
-        or (root["source"] == "sacct" and root["terminal"])
-    ):
-        return unavailable
-    if not root_matches():
+    if not (terminal or root["state"] in active) or not root_matches():
         return unavailable
     batch_id = str(job_id) + ".batch"
-    terminal = root["source"] == "sacct"
-    client = ["sacct", "--local", "--duplicates"] if terminal else ["sstat"]
     identity = "JobIDRaw,UID,Cluster" if terminal else "JobID"
     reply = command_bytes(
         [
-            *client,
+            "sacct" if terminal else "sstat",
+            *(["--clusters=" + cluster, "--duplicates"] if terminal else []),
             "-n",
             "-P",
             "-j",

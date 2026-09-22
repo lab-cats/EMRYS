@@ -574,14 +574,16 @@ One daemon worker coalesces read-only refreshes. Painting performs no I/O.
 Timers update scheduler diagnostics and full workflow streams plus one bounded
 selected tail; explicit refresh rechecks association and full Run evidence.
 A terminal scheduler result is retained with its original date until explicit
-refresh. Exact-request resources come from the same admitted root record. Live
-batch usage comes from the exact `sstat` batch step; final usage comes from the
-exact terminal `sacct` batch record. Both require matching root identity before
-and after the usage query. Duplicate or mismatched ID, UID or cluster rows and
-malformed metrics are rejected. Root and usage dates reflect their actual
-replies, not later proof-query time. Missing usage preserves the admitted root
-state and reports usage unknown. Rendering labels live samples and final
-accounting distinctly.
+refresh. Exact-request resources come from the same admitted root record.
+Live `sstat` usage requires that exact root on the locally configured cluster:
+`sstat` cannot select a remote cluster. Final `sacct` usage selects the admitted
+root's cluster for both the batch record and surrounding root rechecks. Both
+paths require matching root identity before and after the usage query.
+Duplicate or mismatched ID, UID or cluster rows and malformed metrics are
+rejected. Root and usage dates reflect their actual replies, not later
+proof-query time. Missing usage, including a nonlocal live request, preserves
+the admitted root state and reports usage unknown. Rendering labels live
+samples and final accounting distinctly.
 
 When an exact scheduler observation is terminal and not `COMPLETED`, the
 dashboard freezes log-derived work as `INTERRUPTED`, `INCOMPLETE`, or
