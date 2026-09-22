@@ -8,6 +8,12 @@ preserves the operator's eventual direction: guided setup and analysis launch by
 default, with an optional manual route. It does not select a prompt sequence,
 transition, or `--advanced` spelling.
 
+**Accepted owner decision (2026-09-22).** Bare `emrys` on a terminal will start
+guidance; existing named commands remain the manual route. This selects the
+entry and route, not the guide's full transcript, implementation slice, or an
+`--advanced` flag. The [backlog row](backlog_matrix.md#deferred-operational-work)
+remains the status and acceptance authority.
+
 ## Review basis and evidence limit
 
 The source review is pinned to [PR #304](https://github.com/lab-cats/EMRYS/pull/304)
@@ -22,9 +28,9 @@ and [PR #320](https://github.com/lab-cats/EMRYS/pull/320) are separate open
 branches proposing INIT-02 study selection and CV-U22 runtime donor selection;
 their changes are compared, not included in this documentation branch.
 PR #320 is stacked on an earlier #316 head, so its integration remains to be
-reconciled. Source, owner contracts, tests, and guides were inspected; no
-product test, installed-command trial,
-PTY walkthrough, dependency installation, or Viking execution has been completed.
+reconciled. Source, owner contracts, tests, and guides were inspected. No
+product test was run locally for this audit; no installed-command walkthrough,
+PTY journey, dependency installation, or Viking execution has been completed.
 The line references below are to the pinned source revision and must be
 rechecked if the target changes.
 
@@ -40,7 +46,7 @@ creation or completion.
 
 | No. | Boundary | Source-grounded discovery | Unsettled choice or next evidence |
 | --- | --- | --- | --- |
-| [1](#1-public-entry-and-manual-route) | Public entry | Bare `emrys` currently exits with usage error; marked saved settings load even before help/version parsing. Explicit owner commands already provide manual control. | Select the guided entry, default transition, advanced route, and nonterminal behavior. |
+| [1](#1-public-entry-and-manual-route) | Public entry | Bare `emrys` currently exits with usage error; marked saved settings load even before help/version parsing. | Accepted: bare terminal entry starts guidance, named commands remain manual. Specify the transcript and preserve nonterminal behavior. |
 | [2](#2-bootstrap-and-saved-settings) | Setup | Setup is checkout-bound, defaults to a dry-run, and creates one `.env` only with `--execute`; the CLI loads saved settings once before dispatch. | Decide same-invocation approval and exact propagation of newly saved values. |
 | [3](#3-project-context) | Project | Named Init uses the selected Projects home or current directory; Project-aware commands use an exact Project path and never search parents for one. | Define new versus existing selection without newest-Project or partial-root inference. |
 | [4](#4-scientific-input-questions) | Scientific intent | Init already asks for reference, FASTQs, assignments, comparison, regions, target, and disclosed defaults. | Reuse its questions; review a complete prompt transcript and refusal paths. |
@@ -71,16 +77,18 @@ The `emrys` console script enters the controlled Python launcher declared in
 imports (`source_authority.py` lines 146-153). That launch isolation is an
 adjacent contract to preserve, not a second guide entry to introduce.
 
-**To settle.** A candidate is bare `emrys` on a TTY for guidance, retaining
-explicit subcommands as the manual route. Whether that route satisfies the
-operator's requested opt-in advanced mode is an open decision; neither the
-`--advanced` spelling nor a default-mode transition is approved. Changing bare
-`emrys`'s existing exit-2 behavior itself needs public-contract approval, even
-without a new flag. Check TTY and non-TTY invocation, clean and malformed
-saved settings, help/version, unknown flags, exits, and both the installed
-console launcher and isolated `-m emrys` path. Existing public tests cover
-isolated help/version and named commands, but no bare-command TTY journey was
-found (`test_public_cli_contracts.py` lines 482-532 and 713-800).
+**Accepted design choice.** The owner approved bare `emrys` on a terminal as
+the guided entry and existing named commands as the manual route. Route only
+the no-command interactive case after existing argv and saved-settings
+admission; preserve the controlled console launcher and parser ownership. A
+new `--advanced` flag is not selected. Preserve the current no-write usage
+failure for nonterminal bare invocation unless separately approved, along with
+help/version, unknown-option, and named-command behavior. Check clean and
+malformed saved settings, both the installed console launcher and isolated
+`-m emrys` path, and TTY detection using the existing stdin/stderr boundary.
+Existing public tests cover isolated help/version and named commands, but no
+bare-command TTY journey was found (`test_public_cli_contracts.py` lines
+482-532 and 713-800).
 
 ### 2. Bootstrap and saved settings
 
@@ -183,9 +191,11 @@ through the existing partition admission; refusal continues to generic regions,
 explicit selectors bypass the offer, and missing nonterminal selectors still
 fail. Its Quickstart uses that route and its `INIT-02` row says Verification
 pending. The change is absent from this branch and has no completed installed
-package or novice Viking evidence. The eventual INTERACTIVE-01 guide must
-recheck the exact integrated behavior instead of copying this sibling proposal
-as a current contract.
+guided-command or novice Viking evidence. Its exact-head ordinary
+[hosted run](https://github.com/lab-cats/EMRYS/actions/runs/35776280689) passes,
+including the wheel lane; selected real synthetic E2E is skipped. The
+eventual INTERACTIVE-01 guide must recheck the exact integrated behavior
+instead of copying this sibling proposal as a current contract.
 
 ### 6. Project preview and publication
 
@@ -263,9 +273,11 @@ canonical Projects home with runtime inventories. The list is explicitly
 unverified; a numbered choice still runs the existing donor admission.
 Omitting a choice returns zero without a write. A bare source in a nonterminal
 call, or combined with `--execute`/`--replace`, is refused. This proposal is
-absent here, its base predates PR #316's current head, and hosted/site evidence
-is pending. A future guide must recheck the integrated result; it must not
-interpret a listed candidate or zero exit as admitted reuse.
+absent here, and its base predates PR #316's current head. Its exact-head
+[ordinary hosted run](https://github.com/lab-cats/EMRYS/actions/runs/35776414501)
+passes with selected real synthetic E2E skipped; installed donor selection and
+site acceptance remain separate. A future guide must recheck the integrated
+result; it must not interpret a listed candidate or zero exit as admitted reuse.
 
 ### 9. Doctor readiness and repair
 
@@ -491,14 +503,15 @@ on its exact commit before it supports even that hosted claim.
 
 This is a candidate interaction sequence for the study in the
 [Quickstart](../../quickstart.md), not accepted prompt wording or a new command
-contract. The public entry, INIT-02 integration, optional donor selection, and
-nonterminal behavior remain decisions. Each answer with scientific meaning
-must be supplied or explicitly reviewed by the operator.
+contract. The bare-terminal entry and named-command manual route are accepted;
+INIT-02 integration, optional donor selection, and the exact nonterminal
+transcript remain to settle. Each answer with scientific meaning must be
+supplied or explicitly reviewed by the operator.
 
 | Checkpoint | Proposed visible decision | Owner boundary and stop condition |
 | --- | --- | --- |
 | Installed start | Follow the Quickstart's one head-node install path, then enter guidance from the checkout. | The CLI cannot perform its own uv/Pixi installation before it exists. A failed install stops before the guide. |
-| Entry | Enter the settled default guide while keeping its approved manual route available; show what Project and settings are in scope. | Changing bare `emrys` or adding a flag needs a separate public-interface decision. Malformed saved settings stop before argument parsing today. |
+| Entry | Bare `emrys` on a terminal starts the guide; named commands remain manual. Show what Project and settings are in scope. | This entry is owner-approved. Preserve malformed-settings refusal before parsing, other CLI behavior, and the current nonterminal no-write error unless separately approved. |
 | Saved settings | Show the Projects home, `viking` site, optional log root, and value precedence; ask before one create-absent `.env` publication. | Setup owns the file. A dry-run/decline does not continue as a saved setting; same-invocation values are carried explicitly. |
 | Project context | Choose new or an exact existing `project.yaml`; show the canonical path. | No latest/parent/global lookup, adoption of a partial tree, or implicit Project switch. |
 | New study | Ask for reference FASTA/GTF and the FASTQ directory; review six detected pairs, the Quickstart's EV/PUM1 assignments, study-wide `reverse`, and `EV -> PUM1`. | Init owns pairing and scientific admission. A missing or incompatible input stops before Project publication. |
@@ -512,11 +525,12 @@ must be supplied or explicitly reviewed by the operator.
 
 ## Proposed design and delivery order
 
-These are review proposals, not accepted interface decisions or authority to
-edit product code.
+The entry choice above is accepted. The remaining steps are review proposals;
+implementation must satisfy the owner and measured-footprint gates below.
 
-1. Set the installed starting point, guided entry, manual route, nonterminal
-   behavior, and full prompt/exit transcript. Resolve the `INIT-02` dependency.
+1. Use the approved bare-terminal entry and named-command manual route. Set the
+   nonterminal behavior and full prompt/exit transcript. Resolve the `INIT-02`
+   dependency.
 2. Map each existing public handler's no-write, success, blocked, and partial
    outcomes. Select the smallest private result interface that preserves public
    exits and text. Measure the affected product footprint before adding code.
@@ -533,9 +547,19 @@ edit product code.
    Verify with focused local checks, applicable hosted CI, and separately
    authorized institutional novice acceptance.
 
-Stop and return for a decision if the design changes bare-command behavior,
-needs a new public command/flag, an unapproved scientific default, new persistent
-state/schema/dependency,
+The first candidate owner slice is an exact Init publication outcome: return
+the canonical created `project.yaml` path or a no-write preview/decline result
+to a private caller while preserving the public handler's exits, printed text,
+questions, one-pass FASTQ hashing, and create-absent transaction. Its bounded
+owners would be `onboarding.py`, focused onboarding tests, and the coordinator
+contract. The audit found no caller-complete product deletion to offset even
+this smaller seam. Quantify its actual product-line and file delta before
+implementation; a net-growth exception needs separate explicit approval.
+Neither test nor retained-evidence deletion offsets that growth.
+
+Stop and return for a decision if the design changes bare-command behavior
+beyond the approved terminal entry, needs a new public command/flag, an
+unapproved scientific default, new persistent state/schema/dependency,
 cross-owner policy, changed mutation or recovery authority, evidence deletion,
 or a quantified product-code/file-growth exception. Implementation uses one
 authorized worktree and branch based on a rechecked target head.
