@@ -42,6 +42,20 @@ must reconcile the matrix, both CV indexes, detailed cards, charter, owner
 guidance, and any transferred acceptance; it cannot infer completeness from a
 status label or a passing suite alone.
 
+The 51 main-matrix rows are accounted for across maintainability/release
+(seven), novice follow-up (nine), deferred operation (two), reliability
+(seven), platform/portability (eleven), science (two), reporting (five), and
+completed/closed outcomes (eight). Their index labels total 19 Open, 15
+Verification pending, nine Completed, six Deferred, one Closed, and one Needs
+decision. Source spot checks confirm that `REFERENCE-INPUT-01` still reaches
+an empty-token index in the shared FASTA parser, `FUT-INDEX-01` still lacks an
+external-index input in its reference schema, and `REPORT-ROSTER-01` still
+lacks exact ordered validation-check membership in the generic artifact-index
+owner. These checks support retaining those rows; they do not constitute a
+full implementation or site acceptance audit. Quickstart's `/tmp` request
+and the Runbook's site-qualification caveat are consistent, so this review
+does not infer a `SCRATCH-01` status change.
+
 ## Findings matrix
 
 Finding numbers identify review questions within this temporary record. They
@@ -63,6 +77,7 @@ discovery below and names the next evidence needed before changing authority.
 | 11. Optimization source drift | The September 7 audit is correctly pinned, but most cited source blobs changed by the baseline. Candidates 8 and 12 have materially changed source premises. | Re-evaluate all 13 candidates against current owners and measurements without converting old proposals into defects. |
 | 12. Time-bound campaign authority | The charter repeats earlier blanket development authority and an active-cluster-job precaution as present-tense guidance. | Date-bound historical instructions; keep current authorization and cluster safety with their authoritative owners. |
 | 13. Polish proposals versus current owners | Several original findings describe capabilities now delivered; others retain a live gap. | Reconcile each numbered proposal with source, tests, accepted rows, and its original evidence ceiling. |
+| 14. `HARNESS-01` status versus source gap | The row is Verification pending, yet its acceptance names a remaining test-simulation admission mismatch also visible in fixtures and production records. | Review the owner boundary and status definition; retain simulation proof without calling it scientific execution. |
 
 ## Initial discoveries
 
@@ -437,6 +452,28 @@ tests or live policy before recommending their final disposition. The
 campaign's old PR chronology can be shortened only after unique decisions
 and dated evidence have a verified owner.
 
+### 14. `HARNESS-01` status versus source gap
+
+**Observed:** The [main matrix](backlog_matrix.md) line 161 marks
+`HARNESS-01` Verification pending while its acceptance explicitly requires
+reconciling a remaining `local-science-tools` naming/admission mismatch.
+The [workflow fixture](../../tests/orchestration/run_coordinator/fixtures/workflow.py)
+line 1015 emits that mode; a
+[test callback](../../tests/orchestration/run_coordinator/test_materialization.py)
+at lines 6350–6371 injects storage/runtime admission. The mode remains in the
+production [Attempt schema](../../src/emrys/contracts/schemas/orchestration/v1/workflow_attempt.schema.json)
+line 146 and [materialization](../../src/emrys/orchestration/run_coordinator/materialization.py)
+line 1499. The matrix defines Verification pending as implementation
+appearing complete with evidence outstanding, which does not plainly describe
+this named source/contract mismatch.
+
+**Next:** Trace every production and fixture caller before deciding whether
+the mode is a valid admitted local execution contract or a test-only seam.
+Then reconcile the row's status and acceptance with the existing owner. Keep
+controlled partial-failure/resume tests, but label their simulation level
+without implying real scientific execution. This source review is not itself
+a status change or proof of a weaker/stronger replacement defense.
+
 ## Retention boundary for later edits
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
@@ -448,3 +485,12 @@ must keep the originating commit, run date, job/artifact/hash identity,
 observation, and its limits before removing the old location. This working
 record should be retired or reduced to durable findings once the authoritative
 documents and evidence homes are reconciled.
+
+Inbound links constrain later placement changes: the matrix's
+`#viking-walkthrough-findings` heading is referenced by `SITE-PARITY-01` and
+the charter; `#cluster-verification-closure-checklist` is referenced by the
+campaign row, delegated backlog, and charter; the polish campaign's
+`#current-follow-up-scope` is referenced by the design decision, main matrix,
+and charter. [Validation history](../history/validation-evidence.md) also has
+inbound guides and a required-document check. If a heading or evidence home
+moves, update its inbound links and checker ownership in the same change.
