@@ -74,7 +74,7 @@ discovery below and names the next evidence needed before changing authority.
 | 5. Dashboard retirement | The matrix says the standalone entry point and callers are retired; several CV summaries still say that retirement remains. | Current-sounding text is corrected in this branch; keep shared watch code, historical readers, and pending visual verification. |
 | 6. Repeated cluster closure instructions | The main checklist, cluster backlog summary, and charter repeat remaining work. | Keep one operative sequence and retain unique card acceptance and evidence limits at their owners. |
 | 7. Viking walkthrough chronology | The main matrix holds dated jobs, a qualification identity, capacity observations, approvals, and a last-supplied Run state. | Review the [additive dated record](../history/2026-09-14-viking-walkthrough.md) against both sources before proposing any source shortening. |
-| 8. Compression closeout chronology | The completed section combines the user closure, quantified shortfall, exact CI, and PR chronology. | Keep the closure decision; preserve unique measurements and evidence ceiling before condensing routine integration history. |
+| 8. Compression closeout chronology | The completed section combines the user closure, quantified shortfall, exact CI, and PR chronology. | Review the [additive dated record](../history/2026-09-14-compression-closeout.md) before any closeout shortening; retain the closure decision in the matrix. |
 | 9. CV card checkpoint narratives | Detailed cards repeatedly recount Open-to-implemented-to-pending transitions alongside live acceptance. | Classify each paragraph; retain original outcome, current status/acceptance, trust limits, and exact evidence pointers. |
 | 10. Polish chronology and overlap | The campaign contains an old audit/PR narrative and merged-PR tables plus proposals already implemented elsewhere. | Classify PR chronology and preserve unique rationale and evidence before compression. |
 | 11. Optimization source drift | The September 7 audit is correctly pinned, but most cited source blobs changed by the baseline. Candidates 8 and 12 have materially changed source premises. | Re-evaluate all 13 candidates against current owners and measurements without converting old proposals into defects. |
@@ -275,16 +275,16 @@ exact evidence from the original matrix and charter.
 
 ### 8. Compression closeout chronology
 
-**Observed:** [Main matrix](backlog_matrix.md) lines 303–350 contains the
-explicit user closure of `COMPRESS-01`, its 484-line shortfall against the
-agreed 20% target, two different comparison baselines, a seven-surface net
+**Observed:** The [main matrix closeout](backlog_matrix.md#completed-and-closed-outcomes)
+contains the explicit user closure of `COMPRESS-01`, its 484-line shortfall
+against the agreed 20% target, two different comparison baselines, a seven-surface net
 table, exact CI links, and PR integration chronology. The closure decision and
 measurement definitions remain material; Git already keeps routine PR order.
 
-**Next:** Preserve the user decision in the row and place exact counts,
-baselines, checks, and evidence ceilings in a dated record before shortening
-the closeout narrative. The old dashboard statement is now date-bound to its
-September 14 checkpoint; the remaining evidence has not moved.
+**Next:** Review the [additive dated record](../history/2026-09-14-compression-closeout.md)
+for source completeness before any closeout shortening. Keep the user decision
+in the row. The old dashboard statement is now date-bound to its September 14
+checkpoint; the matrix's original evidence remains in place.
 
 **Preservation check:** The Closed row records 42 completed CS cards, with
 CS-05 transferred to `REPORT-ROSTER-01`, after PR #169 merged as `2ecf7d44`.
@@ -304,7 +304,8 @@ E2E run `34857300341` at `fdc7cc79a3cf8637bb1c591c95a82020816fe863`;
 that commit and merge `2ecf7d44` have equal Git trees. Earlier ordinary runs
 `34306975901` at `b491aac5` and `34301289787` on PR #140's integrated tree
 support narrower hosted claims. This audit verified the Git identities/tree
-relationship and arithmetic, not the hosted outcomes independently. None of
+relationship, arithmetic, and GitHub's run-level success/head metadata, not
+every selected job or artifact independently. None of
 those results establishes institutional execution, scientific review, or
 biological interpretation. Routine sequencing of 93 commits across PR #140,
 PRs #148–168, and merge #169 is held by Git; the user closure, count rules,
@@ -622,6 +623,7 @@ originals remain intact; the draft does not itself authorize shortening them.
 | Charter's earlier development grant and running-job reference | Date-bound the original authorization and job circumstance; keep the enduring active-installation safety rule. | Confirm the historical approval wording and current workflow authority. |
 | Roughly 205 lines across the three cluster closure regions | Link secondary delivery prose to the matrix's operative checklist. | Compare each condition with card acceptance and the E register; the region size is not a duplicate-line count. |
 | Matrix walkthrough and charter E01–E12 | Additive dated record drafted and indexed; source records remain intact. | Verify source completeness, exact identities, unknown causes, absent receipts, limits, and inbound links before any separately approved reduction. |
+| `COMPRESS-01` closeout counts and hosted checks | Additive dated record drafted and indexed; the matrix remains authoritative for the Closed decision. | Verify both baselines, count scope, exact run heads, evidence limits, and inbound links before any separately approved evidence reduction. |
 | Polish audit/PR chronology and CV checkpoint narratives | Condense routine sequence after proposal and card-by-card disposition. | Keep unique rationale, exact CI/artifact identity, measurements, approvals, and recovery decisions. |
 | Optimization old priority and traversal/attestation counts | Frame the counts as the pinned September 7 observation; re-evaluate priority against current source. | Retain raw PR45 measurements and obtain comparable new data before claiming benefit. |
 
