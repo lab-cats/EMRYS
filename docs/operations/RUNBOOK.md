@@ -313,13 +313,15 @@ supplied biological values while their paths are normalized, explicit `--sample`
 rows bypass these missing-row prompts, and noninteractive omission still fails.
 The normal preview keeps the
 strand summary, comparison and target, five thresholds, background state and
-maximum, and all three STAR values visible before replay.
+maximum, and all three STAR values visible before confirmation.
 
 Preview checks paths and scientific structure without reading FASTQ contents,
 derives an omitted `genomeSAindexNbases` from the reference, and labels omitted
 `sjdbOverhang` and `genomeChrBinNbits` values as automatic at creation. The
-printed creation command carries every explicit answer while preserving those
-omissions. Creation hashes each FASTQ's stored bytes once while validating every
+`Create this Project? [y/N]` prompt accepts the reviewed answers without repeating
+the questions. Enter, `n`, or end of input writes nothing; `--preview` skips the
+confirmation and `--execute` authorizes creation for automation. Creation hashes
+each FASTQ's stored bytes once while validating every
 plain or gzip-decoded record, then freezes the maximum read length minus one and
 the reference/read-length chromosome-bin setting. The reference summary is bound
 to its device, inode, size, nanosecond modification time and nanosecond change

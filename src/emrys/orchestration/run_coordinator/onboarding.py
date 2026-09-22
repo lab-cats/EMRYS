@@ -58,7 +58,6 @@ from emrys.libraries.exclusive_publication import (
     release_lock,
 )
 from emrys.libraries.process_environment import guarded_r_environment
-from emrys.libraries.source_authority import controlled_python_argv
 from emrys.libraries.references.contigs import (
     ReferenceContigError,
     parse_fasta_lines,
@@ -749,8 +748,14 @@ def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
         default="primary",
         help="Human name for the initial Analysis; default: primary.",
     )
-    parser.add_argument(
-        "--execute", action="store_true", help="Create; omission is a no-write plan."
+    publication = parser.add_mutually_exclusive_group()
+    publication.add_argument(
+        "--execute",
+        action="store_true",
+        help="Create without confirmation for automation.",
+    )
+    publication.add_argument(
+        "--preview", action="store_true", help="Preview without offering creation."
     )
     parser.set_defaults(_command_parser=parser)
 
@@ -1155,41 +1160,6 @@ def _project_manifest_members(
     return members
 
 
-def _project_replay_flags(
-    arguments: argparse.Namespace, answers: Mapping[str, object]
-) -> tuple[str, ...]:
-    flags: list[str] = []
-    for name, value in {**answers, "site": getattr(arguments, "site", None)}.items():
-        if name in _STAR_INDEX_FIELDS and getattr(arguments, name, None) is None:
-            continue
-        if value is not None:
-            flags.extend((f"--{name.replace('_', '-')}", str(value)))
-    for name in ("sample_manifest", "partition_manifest"):
-        value = getattr(arguments, name, None)
-        if value is not None:
-            flags.extend((f"--{name.replace('_', '-')}", str(Path(value).absolute())))
-    if getattr(arguments, "sample_manifest", None) is None:
-        flags.append("--fastq")
-        flags.extend(
-            str(Path(path).absolute()) for path in getattr(arguments, "fastq", ())
-        )
-        for row in getattr(arguments, "sample", ()):
-            flags.append("--sample")
-            flags.extend(str(value) for value in row)
-        for name in ("regions_file", "region"):
-            for row in getattr(arguments, name, ()):
-                flags.append(f"--{name.replace('_', '-')}")
-                flags.extend(
-                    (
-                        str(row[0]),
-                        str(Path(row[1]).absolute())
-                        if name == "regions_file"
-                        else str(row[1]),
-                    )
-                )
-    return tuple(flags)
-
-
 def _print_project_preview(
     output: Path,
     project_bytes: bytes,
@@ -1286,20 +1256,6 @@ def _print_project_preview(
                 f"  Partition {partition['partition_id']}: {partition['selector_type']} "
                 f"{partition['selector_value']!r}"
             )
-    replay = controlled_python_argv(
-        sys.executable,
-        "-m",
-        "emrys",
-        "init",
-        output.name,
-        *_project_replay_flags(arguments, answers),
-        "--execute",
-    )
-    if not getattr(arguments, "execute", False):
-        present("Preview complete; Project not created.", style="yellow")
-        print("Next action: copy and run the complete command below. It will hash each")
-        print("FASTQ once, reject changed inputs, and create without asking again.")
-        print(f"cd {shlex.quote(str(output.parent))} && {shlex.join(replay)}")
 
 
 def init_project_from_args(arguments: argparse.Namespace) -> int:
@@ -1354,7 +1310,13 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             arguments,
             verbose=getattr(arguments, "verbose", False),
         )
-        if not arguments.execute:
+        if not arguments.execute and (
+            getattr(arguments, "preview", False)
+            or not _confirm_admission("Create this Project?")
+        ):
+            console_print(
+                "Preview complete; Project not created.", style="yellow", file=sys.stdout
+            )
             return 0
         print(
             "Project creation reads and hashes each declared FASTQ once, then "
@@ -2325,11 +2287,11 @@ def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
     parser.set_defaults(_command_parser=parser)
 
 
-def _confirm_runtime_admission() -> bool:
+def _confirm_admission(question: str) -> bool:
     if not _interactive_terminal():
         return False
     console_print(
-        "Admit this runtime inventory? [y/N] ",
+        f"{question} [y/N] ",
         style="bold",
         file=sys.stderr,
         end="",
@@ -2374,7 +2336,9 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
                 )
         if not inspection.required_ready:
             return 1
-        if not arguments.execute and not _confirm_runtime_admission():
+        if not arguments.execute and not _confirm_admission(
+            "Admit this runtime inventory?"
+        ):
             print(
                 "Dry-run complete; no files were written. Run again and answer y, "
                 "or use --execute for automation."

@@ -23,9 +23,10 @@ records required dispositions before this temporary document can retire.
 
 The approved [remaining delivery scope](cluster_verification_campaign.md#remaining-delivery-scope)
 includes `INIT-01` through `INIT-03` and the focused Quickstart corrections.
-CV-U07 is **Verification pending** after `INIT-01`; CV-06, CV-U08 and CV-U18
-remain **Open** for the selected input/confirmation and guide prerequisites
-before their remaining novice acceptance can run. Their new
+The `INIT-01`–`INIT-03` source outcomes are implemented and **Verification
+pending**. CV-U07 is likewise **Verification pending**; CV-06, CV-U08 and CV-U18
+remain **Open** until the final focused Quickstart reconciliation, followed by
+their required hosted and novice acceptance. Their new
 implementation acceptance lives in the main backlog; prior selected replay and
 manual-selector behavior does not complete the newly approved requirements.
 CV-U06's accounting exception is approved independently of its pending site proof.
@@ -1185,6 +1186,14 @@ incompatible shapes retain the separate questions. Explicit `--sample` rows and
 copied manifests are unchanged. Public preview/replay/publication tests cover the
 new routing; novice Viking/PTY acceptance remains, so CV-U18 stays
 **Verification pending**.
+
+**Current confirmation correction:** `INIT-03` replaces the generated replay
+command with a yes/no prompt after the complete review. Approval uses the same
+collected answers and existing creation checks; decline, EOF and explicit
+`--preview` leave the Project absent. Automation retains `--execute`. The
+remaining focused guide reconciliation and exact hosted/novice verification
+remain explicit; earlier replay fixtures are historical evidence for the
+superseded interface.
 
 ### CV-U19 Long-term interactive CLI
 
@@ -2440,18 +2449,18 @@ places advanced paths outside the main walkthrough. Preserve old bundles.
 **Owners/dependencies:** Onboarding/normalization, quickstart, configuration
 guide; CV-07, CV-08, CV-14, CV-17. Import format is a design decision.
 
-**Selected implementation:** Strengthen the existing guided path. No-write
-initialization shows the admitted study interpretation and prints a safely
-quoted creation command carrying every answer, exact parent, and current Python
-interpreter. The novice reviews once and replays without another questionnaire.
-Inputs are rechecked at creation. Existing explicit mate/biology admission and
-scientific values are preserved; unsupported schemas keep their original
-diagnostics with actionable current-format guidance. Existing Projects remain
-supported in place. No new importer, flag, file, or automatic legacy mapping is
-needed for this selected route. Product growth is 80 net lines under the user's
-minimum necessary expansion approval.
+**Current selected implementation:** Named Init uses the selected Projects
+home, accepts the maintained partition input alongside guided samples, and
+asks for approval after showing the study interpretation. Approval continues
+through the same creation owner with collected answers, manifest bytes and
+reference snapshot; there is no replay command or repeated questionnaire.
+`--preview` ends without writing and `--execute` retains explicit automation.
+Existing mate/biology admission, scientific values, one-pass FASTQ hashing,
+reference freshness and create-absent publication remain. Existing Projects and
+current-format diagnostics remain supported; no automatic legacy mapping is
+introduced.
 
-**Verification:** Existing onboarding/normalization tests cover actual printed
+**Earlier replay verification:** Existing onboarding/normalization tests covered actual printed
 shell replay with closed stdin, changed working directory, quoted paths,
 arbitrary explicitly assigned mate names, background selection, direct/Viking
 placement, exact scientific values, and preserved source bytes after schema
@@ -2463,8 +2472,9 @@ pending.
 partition manifest alongside guided sample assignment. Sample and partition
 conflicts are checked separately; copied samples still require a partition
 manifest. Imported rows preserve their order and source-relative paths. The Quickstart no longer asks for a
-25-name paste. `INIT-03` and the focused guide pass still block source completion
-of this card; existing institutional acceptance remains required.
+25-name paste. `INIT-03` now also provides in-process confirmation; the final
+focused guide pass still blocks source completion of this card. Current hosted
+regression and institutional acceptance remain required.
 
 **Original-input manifest follow-up:** The operator's fresh-user walkthrough
 exposed vendor FASTQ mates named `_1`/`_2` and 25 explicit whole-chromosome

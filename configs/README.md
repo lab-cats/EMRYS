@@ -217,9 +217,10 @@ partition IDs are unique.
 
 Operate a current Project in place with `emrys validate --project /absolute/path/project.yaml`
 and the same `--project` selection on Doctor and Run. Named `emrys init NAME`
-provides guided creation: omit `--execute`, review its admitted study summary,
-then copy its quoted creation command to retain every answer without repeating
-the questions. Referenced inputs are freshly checked on that second invocation.
+provides guided creation: review its study summary, then answer `y` to create
+the Project with those answers. Enter, `n`, or end of input leaves it unchanged.
+Use `--preview` for a preview without confirmation, or `--execute` for explicit
+automation. Creation admits the selected inputs without repeating the questions.
 
 Legacy bundles are preserved, not translated automatically. Unsupported fields
 retain their schema diagnostics and point to guided setup or correction of a

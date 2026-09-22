@@ -86,8 +86,10 @@ be selected consistently for Doctor and Run.
 
 ## No-write and publication boundaries
 
-`emrys init PROJECT_NAME` is dry-run-first and publishes only with `--execute`
-into an absent child of `EMRYS_PROJECTS_ROOT`, or the current directory when no
+`emrys init PROJECT_NAME` previews before offering interactive y/N confirmation.
+`--execute` authorizes creation for automation; mutually exclusive `--preview`
+never offers confirmation or creates a Project. Publication uses an absent
+child of `EMRYS_PROJECTS_ROOT`, or the current directory when no
 Projects home is selected. The selected parent must be canonical, writable and
 searchable; the preview shows the complete destination. Saved defaults load only
 from the current directory or its ancestors; outside that tree, a process
@@ -142,9 +144,11 @@ publishes `project.yaml` last. Failure preserves the partial root and never
 overwrites or adopts it. Publication checks the exact prepared member types,
 modes, sizes, and bytes.
 
-A no-write initialization ends with `Preview complete; Project not created`,
-then labels its complete replay command as the next action. Only successful
-publication emits `Project ready:`.
+Only an interactive terminal with an explicit `y` or `yes` confirms creation.
+Enter, `n`, any other answer, end of input, and noninteractive use without
+`--execute` leave the Project uncreated. A no-write initialization ends with
+`Preview complete; Project not created`. Only successful publication emits
+`Project ready:`.
 
 `emrys validate` re-admits every selected Analysis and its reference,
 annotation, sample, and partition compatibility. It invokes no external tool
@@ -200,12 +204,12 @@ sample/mate and biological assignments, input/region paths, and normalized
 scientific choices. Normal output keeps the strand summary, comparison and
 target, all five paired-CMH values, background state and maximum, and all three
 STAR values visible because they define the immutable scientific plan; verbose
-output displays per-sample and path detail. Its quoted replay command
-selects the same Python interpreter and exact Projects parent and supplies every
-explicit collected answer. Automatically derived STAR flags stay omitted so
-creation derives them from current admitted inputs rather than treating preview
-observations as overrides. Creation performs the one content admission; preview
-is not a frozen-input promise. Publication still requires explicit `--execute`.
+output displays per-sample and path detail. Confirmation continues with the same
+in-memory destination, answers and prepared manifest bytes. It retains any
+reference snapshot used for automatic STAR derivation across the confirmation
+wait. Creation admits the selected inputs and resolves deferred read-based STAR
+settings without another questionnaire or a second FASTQ hashing pass. Preview
+does not read FASTQ contents or promise their continuity before creation.
 Unsupported Project schema diagnostics retain their original detail and identify
 guided current setup; no unsupported legacy schema translation or YAML-only
 import is performed.

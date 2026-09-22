@@ -128,8 +128,8 @@ locations depend on your delivery.
 Stay in the repository root. EMRYS uses the Projects home saved during setup and
 shows the new Project's destination in the preview.
 
-The next command starts a questionnaire and previews the Project. It does not
-create the Project on this first pass:
+The next command starts a questionnaire, previews the Project, and asks whether
+to create it:
 
 ```bash
 emrys init pum1-study \
@@ -170,19 +170,17 @@ conclusions.
 
 This study has no background cohort, so there is no active background-limit
 question. The preview and saved closed configuration still show
-`background max fraction: 0.01 (inactive)`. Before the generated command, the
+`background max fraction: 0.01 (inactive)`. Before confirmation, the
 normal preview also shows the strand summary, selected comparison and target,
 all five thresholds, background state, and all three STAR settings.
 
-The preview ends with `Preview complete; Project not created.` It then prints
-one long command under `Next action`. Review the interpretation immediately
-above it, then copy and run that entire generated command. The command carries
-the explicit answers forward while leaving the automatic STAR flags omitted;
-creation freshly derives them, hashes each FASTQ once, checks the reference and
-selectors, and creates the Project without another questionnaire.
+Review the destination and scientific choices, then answer `y` at
+`Create this Project? [y/N]`. Press Enter or answer `n` to leave everything
+unchanged. Creation uses your reviewed answers without another questionnaire.
+Add `--preview` to the command if you only want a preview.
 
-Do not type another command from this guide until the generated command ends
-with `Project ready:` and the path to `project.yaml`. If it stops instead, keep
+Wait for `Project ready:` and the path to `project.yaml` before continuing.
+If creation stops instead, keep
 the partial Project and the printed diagnostic.
 
 ## 4. Validate the Project

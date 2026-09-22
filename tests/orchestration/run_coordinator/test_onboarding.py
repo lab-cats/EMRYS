@@ -8,7 +8,6 @@ import io
 import json
 import os
 import re
-import shlex
 import shutil
 import stat
 import subprocess
@@ -363,7 +362,7 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     assert list(projects.iterdir()) == []
     preview = capsys.readouterr()
     assert "Preview complete; Project not created." in preview.out
-    assert "Next action: copy and run the complete command below." in preview.out
+    assert "Create this Project?" not in preview.err
     assert "Reading and hashing Project inputs" not in preview.err
     assert f"Output directory: {output}" in preview.out
     assert "Libraries (4):" in preview.out
@@ -423,10 +422,88 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     assert arguments.sample_manifest.read_bytes() == manifest_bytes
 
 
-def test_project_preview_skips_fastq_hashing_and_creation_hashes_each_fastq_once(
+@pytest.mark.parametrize(
+    ("answer", "interactive", "preview_only"),
+    (
+        ("\n", True, False),
+        ("n\n", True, False),
+        ("", True, False),
+        ("unexpected\n", True, False),
+        ("y\n", False, False),
+        ("y\n", True, True),
+    ),
+)
+def test_project_confirmation_decline_and_preview_leave_inputs_unchanged(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    answer: str,
+    interactive: bool,
+    preview_only: bool,
+) -> None:
+    arguments = _project_arguments(tmp_path, tmp_path / "study", execute=False)
+    command = ["init", arguments.project_name]
+    for name, value in vars(arguments).items():
+        if name not in {"project_name", "execute"} and value is not None:
+            command.extend((f"--{name.replace('_', '-')}", str(value)))
+    if preview_only:
+        command.append("--preview")
+    stdin = (_Terminal if interactive else io.StringIO)(answer)
+    stderr = _Terminal()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(onboarding.sys, "stdin", stdin)
+    monkeypatch.setattr(onboarding.sys, "stderr", stderr)
+    original = _tree_bytes(tmp_path)
+
+    assert cli.main(command) == 0
+    assert _tree_bytes(tmp_path) == original
+    assert "Preview complete; Project not created." in capsys.readouterr().out
+    assert ("Create this Project? [y/N]" in stderr.getvalue()) == (
+        interactive and not preview_only
+    )
+    if not interactive or preview_only:
+        assert stdin.tell() == 0
+
+
+def test_project_preview_and_execute_are_mutually_exclusive() -> None:
+    with pytest.raises(SystemExit) as rejected:
+        cli.main(["init", "study", "--preview", "--execute"])
+    assert rejected.value.code == 2
+
+
+def test_project_confirmation_retains_reference_derivation_freshness(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "study"
+    arguments = _project_arguments(tmp_path, output, execute=False)
+    arguments.genome_sa_index_nbases = None
+    reference = arguments.reference_fasta
+    command = ["init", arguments.project_name]
+    for name, value in vars(arguments).items():
+        if name not in {"project_name", "execute"} and value is not None:
+            command.extend((f"--{name.replace('_', '-')}", str(value)))
+
+    class ChangedReference(_Terminal):
+        def readline(self, *args: object) -> str:
+            reference.write_bytes(reference.read_bytes() + b"\n")
+            return super().readline(*args)
+
+    stderr = _Terminal()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(onboarding.sys, "stdin", ChangedReference("y\n"))
+    monkeypatch.setattr(onboarding.sys, "stderr", stderr)
+
+    assert cli.main(command) == 2
+    assert "Reference FASTA changed after its STAR settings were derived" in (
+        stderr.getvalue()
+    )
+    assert not output.exists()
+
+
+def test_project_preview_skips_fastq_hashing_and_creation_hashes_each_fastq_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     output = tmp_path / "my-study"
     monkeypatch.chdir(tmp_path)
@@ -456,16 +533,17 @@ def test_project_preview_skips_fastq_hashing_and_creation_hashes_each_fastq_once
 
     assert onboarding.init_project_from_args(arguments) == 0
     assert set(counts.values()) == {0}
-    replay = next(
-        line
-        for line in capsys.readouterr().out.splitlines()
-        if " -m emrys init " in line
-    )
-    replay_argv = shlex.split(replay.split(" && ", 1)[1])
-    assert "--sjdb-overhang" not in replay_argv
-    assert "--genome-sa-index-nbases" not in replay_argv
-    assert "--genome-chr-bin-nbits" not in replay_argv
-    assert cli.main(replay_argv[replay_argv.index("emrys") + 1 :]) == 0
+    assert not output.exists()
+
+    class BeforeCreation(_Terminal):
+        def readline(self, *args: object) -> str:
+            assert set(counts.values()) == {0}
+            assert not output.exists()
+            return super().readline(*args)
+
+    monkeypatch.setattr(onboarding.sys, "stdin", BeforeCreation("y\n"))
+    monkeypatch.setattr(onboarding.sys, "stderr", _Terminal())
+    assert onboarding.init_project_from_args(arguments) == 0
     assert set(counts.values()) == {1}
     definition = yaml.safe_load((output / "project.yaml").read_text())
     assert definition["reference"]["star_index"]["sjdb_overhang"] == 3
@@ -477,7 +555,7 @@ def test_project_preview_skips_fastq_hashing_and_creation_hashes_each_fastq_once
     ("selection", "control", "treatment"),
     (("1", "EV", "PUM1"), ("2", "PUM1", "EV")),
 )
-def test_guided_project_preview_replays_defaults_and_publishes_real_answers(
+def test_guided_project_confirmation_publishes_reviewed_answers_once(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -486,23 +564,10 @@ def test_guided_project_preview_replays_defaults_and_publishes_real_answers(
     treatment: str,
 ) -> None:
     output = tmp_path / "guided-study"
-    arguments, _rows = _guided_project_arguments(tmp_path, output, execute=False)
+    arguments = _project_arguments(tmp_path, output, execute=False)
     reads = tmp_path / "source" / "reads"
-    arguments.fastq = []
-    arguments.region = []
-    arguments.sjdb_overhang = None
-    arguments.genome_sa_index_nbases = None
-    arguments.genome_chr_bin_nbits = None
     reference_fasta = arguments.reference_fasta
     reference_gtf = arguments.reference_gtf
-    arguments.reference_fasta = None
-    arguments.reference_gtf = None
-    arguments.control_condition = None
-    arguments.treatment_condition = None
-    arguments.target_change = None
-    for field in onboarding._PAIRED_CMH_DEFAULTS:
-        setattr(arguments, field, None)
-    arguments.background_max_fraction = None
     terminal = _Terminal(
         "\n".join(
             (
@@ -523,6 +588,7 @@ def test_guided_project_preview_replays_defaults_and_publishes_real_answers(
                 selection,
                 "A>G",
                 "",
+                "y",
             )
         )
         + "\n"
@@ -540,10 +606,10 @@ def test_guided_project_preview_replays_defaults_and_publishes_real_answers(
 
     monkeypatch.setattr(onboarding, "_reference_contigs", count_reference)
 
-    result = onboarding.init_project_from_args(arguments)
+    result = cli.main(["init", output.name, "--analysis-name", arguments.analysis_name])
     assert result == 0, _decoded_terminal(terminal_output.getvalue()).plain
     assert reference_reads == [reference_fasta]
-    assert not output.exists()
+    assert output.is_dir()
     prompts = terminal_output.getvalue()
     plain_prompts = _plain_terminal_history(prompts)
     assert prompts.index("reference fasta") < prompts.index("FASTQ directory")
@@ -577,16 +643,10 @@ def test_guided_project_preview_replays_defaults_and_publishes_real_answers(
     ):
         assert text in preview
     assert preview.count("automatic at creation") == 2
-    replay = next(line for line in preview.splitlines() if line.startswith("cd "))
-    tokens = shlex.split(replay)
-    assert tokens.count("--sample") == 4
-    assert "--sjdb-overhang" not in tokens
-    assert "--genome-sa-index-nbases" not in tokens
-    assert "--genome-chr-bin-nbits" not in tokens
-
-    monkeypatch.setattr(onboarding.sys, "stdin", io.StringIO())
-    assert cli.main(tokens[tokens.index("emrys") + 1 :]) == 0
-    assert reference_reads == [reference_fasta, reference_fasta]
+    assert plain_prompts.count("Create this Project? [y/N]") == 1
+    assert plain_prompts.count("target change:") == 1
+    assert "Project ready:" in preview
+    assert "Project not created" not in preview
     definition = yaml.safe_load((output / "project.yaml").read_text(encoding="utf-8"))
     analysis = definition["analyses"][arguments.analysis_name]
     assert (analysis["control_condition"], analysis["treatment_condition"]) == (
@@ -811,7 +871,7 @@ def test_guided_project_rejects_selector_absent_from_supplied_fasta(
 
 
 @pytest.mark.parametrize("site", (None, "viking"))
-def test_copied_manifest_preview_replays_exact_answers_without_new_prompts(
+def test_copied_manifest_confirmation_keeps_exact_answers_and_paths(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -869,14 +929,16 @@ def test_copied_manifest_preview_replays_exact_answers_without_new_prompts(
             command.extend((f"--{name.replace('_', '-')}", str(value)))
     before = _tree_bytes(tmp_path)
     monkeypatch.chdir(projects)
-    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("c>t\n71.5\n"))
-    monkeypatch.setattr(onboarding.sys, "stderr", _Terminal())
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("c>t\n71.5\ny\n"))
+    prompts = _Terminal()
+    monkeypatch.setattr(onboarding.sys, "stderr", prompts)
 
     assert cli.main(command) == 0
 
     preview = capsys.readouterr().out
-    assert _tree_bytes(tmp_path) == before
-    assert not output.exists()
+    assert output.is_dir()
+    assert "Project ready:" in preview
+    assert prompts.getvalue().count("Create this Project? [y/N]") == 1
     assert (
         f"Comparison: {arguments.control_condition} -> "
         f"{arguments.treatment_condition}; target C>T"
@@ -896,13 +958,6 @@ def test_copied_manifest_preview_replays_exact_answers_without_new_prompts(
     for path in (arguments.reference_fasta, arguments.reference_gtf):
         assert str(path) in preview
     assert "SHA-256" not in preview
-    replay = next(line for line in preview.splitlines() if line.startswith("cd "))
-    tokens = shlex.split(replay)
-    assert tokens[:4] == ["cd", str(projects), "&&", sys.executable]
-    assert tokens[-1] == "--execute"
-
-    assert cli.main(tokens[tokens.index("emrys") + 1 :]) == 0
-    assert "Project ready:" in capsys.readouterr().out
     expected = yaml.safe_load(
         (study / "source/project.yaml").read_text(encoding="utf-8")
     )
@@ -1469,18 +1524,15 @@ def test_project_init_reads_study_partitions_with_guided_vendor_samples(
     assert cli.main(command) == 0
     assert _tree_bytes(tmp_path) == original
     preview = capsys.readouterr()
-    replay = shlex.split(
-        next(line for line in preview.out.splitlines() if line.startswith("cd "))
-    )
-    assert replay[:3] == ["cd", str(tmp_path), "&&"]
-    assert replay[replay.index("--partition-manifest") + 1] == str(partition_source)
-    assert "--region" not in replay
     assert "optional regions file" not in preview.err
-    monkeypatch.chdir(replay[1])
-    assert cli.main(replay[replay.index("emrys") + 1 :]) == (0 if include_mt else 2)
+    prompts = _Terminal()
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("y\n"))
+    monkeypatch.setattr(onboarding.sys, "stderr", prompts)
+    assert cli.main(command) == (0 if include_mt else 2)
+    assert prompts.getvalue().count("Create this Project? [y/N]") == 1
     assert partition_source.read_bytes() == retained
     if not include_mt:
-        assert "absent from the reference FASTA" in capsys.readouterr().err
+        assert "absent from the reference FASTA" in prompts.getvalue()
         assert _tree_bytes(tmp_path) == original
         return
     table, _, _ = step08.validate_sample_manifest(output / "samples.tsv")
@@ -1502,7 +1554,7 @@ def test_project_init_reads_study_partitions_with_guided_vendor_samples(
     ]
     assert onboarding.validate_project(output / "project.yaml").sample_count == 6
     published = _tree_bytes(tmp_path)
-    assert cli.main(replay[replay.index("emrys") + 1 :]) == 2
+    assert cli.main([*command, "--execute"]) == 2
     assert _tree_bytes(tmp_path) == published
 
 
