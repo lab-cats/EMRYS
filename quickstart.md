@@ -114,12 +114,9 @@ At `Use these paired-CMH defaults?`, review and accept minimum sample depth `1`,
 mean-depth threshold `50`, FDR `0.05`, common odds ratio `1.2` and absolute
 difference `0.005`. This study has no background cohort.
 
-Review the normal preview's strand summary (`reverse: 6`), comparison and target,
-five paired-CMH values, and `Background max fraction: 0.01 (inactive)`. Also
-review the STAR index settings: the preview derives `genomeSAindexNbases` from
-the reference and marks `sjdbOverhang` and `genomeChrBinNbits` automatic at
-creation from the admitted reads and reference. You do not need to calculate
-or enter them.
+Review the preview: all six samples should be `reverse`, the comparison should
+be `EV -> PUM1`, the target should be `A>G`, and the five paired-CMH values
+should match those above. Confirm that no background cohort is selected.
 
 Once these choices are correct, answer `y` at `Create this Project? [y/N]`.
 Pressing Enter or `n` leaves the Project uncreated; `--preview` offers review
