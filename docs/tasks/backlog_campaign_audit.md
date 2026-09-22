@@ -369,6 +369,9 @@ real-Slurm acceptance. No current card status changed.
 the separate [job 621154 timeout](../history/2026-09-16-cv10-timeout.md),
 [CV-26 hosted measurements](../history/2026-09-15-cv26-doctor-measurements.md),
 and [CV-U28 fixed-policy provenance](../history/2026-09-15-cv-u28-resource-provenance.md).
+The separate [CV-UX-01 job 621172 collision](../history/2026-09-16-cvux01-doctor-collision.md)
+now has an indexed dated record with its ordinary-CI limit. The card's original
+Open checkpoint is date-bound against its final Verification pending status.
 Their original cards remain intact. These records do not transfer the later
 prepared-finalization, structural Doctor, or allocation-aware decisions in
 full, and they authorize no source evidence deletion.
@@ -445,6 +448,9 @@ citation to the pinned September 7 tree, but cannot establish the current
 path or behavior without the comparison above. The dated PR45 experiment at
 lines 329–339 remains bounded evidence; it does not prove an adopted current
 whole-Run optimization.
+Candidate 8's campaign text now dates the former output-directory spill path
+and names current runner-owned Step 05 scratch; it retains the unmeasured
+qualified fast-scratch question.
 
 ### 12. Time-bound campaign authority
 
@@ -487,6 +493,9 @@ source, accepted owners, and remaining evidence. Several old missing-feature
 premises are superseded, while items 6, 7, 9, 11, 12, 33, and 35 need direct
 checks or a policy decision. Delivered source capability does not by itself
 close a larger backlog outcome or institutional acceptance.
+The companion and source campaign now distinguish baseline CI from the
+remaining visual review for polish item 14, and date item 36's former missing
+Slurm preflight while retaining CV-11's institutional capacity limit.
 
 **Next:** Resolve those ambiguous items against direct tests or live policy.
 Transfer any unique decision and dated evidence before shortening the

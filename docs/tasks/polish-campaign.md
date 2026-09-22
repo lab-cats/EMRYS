@@ -797,18 +797,20 @@ preselected implementation.
 
 ### 36. Reject explicitly insufficient Slurm memory before submission
 
-**Finding:** [Submission control][slurm-preflight]
-checks requested CPUs against workflow cores. Existing **`SCHED-01`** owns the
-corresponding missing preflight for explicitly undersized memory requests.
+**September 7 finding:** At the [audited submission-control revision][slurm-preflight],
+requested CPUs were checked against workflow cores, but an explicit
+undersized-memory preflight was missing. `SCHED-01` became its accepted owner.
 
-**Outcome and acceptance:** Reference `SCHED-01` and its full acceptance rather
-than creating another scheduler-policy task. Trace placement, resource
-overrides, and the applicable workflow/stage minimum through the existing
-submission path. Reject known insufficient capacity before `sbatch`; unknown
-capacity remains unknown. Preserve the CPU authority, dry-run/confirmation
-boundary, and absence of scheduler/workspace writes on rejection. Reuse the
-current resource owners without a general resource solver. Local submission
-proof does not establish institutional execution or memory performance.
+**Current disposition and acceptance (September 22):** `SCHED-01` implements
+effective-profile CPU and memory admission before submission, Doctor repair
+planning, profile authoring and placement-only resume. Its public no-submit,
+no-write software cases passed
+[ordinary baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692).
+Known insufficient capacity is rejected before `sbatch`; symbolic or omitted
+capacity stays unknown. The dry-run/confirmation boundary and current resource
+owners remain. [CV-11](cluster_verification_backlog.md#cv-11-resource-profile-compatibility)
+retains heterogeneous institutional acceptance. Software proof does not
+establish institutional execution or memory performance.
 
 ### 37. Verify reports in browsers, copied Results, and print
 

@@ -198,18 +198,25 @@ avoid a second independent resource policy.
 
 ### 8. Use qualified fast scratch for GATK spill
 
-[Slurm already establishes private temporary storage][slurm-scratch], but
-[Step 05][gatk-scratch] deliberately places GATK spill under the output directory
-because CSU `/tmp` can be too small. Evaluate sufficiently large fast scratch
+At the September 7 audit revision, [Slurm established private temporary
+storage][slurm-scratch] while [Step 05][gatk-scratch] placed GATK spill under the
+output directory because CSU `/tmp` could be too small. Current
+[Step 05](../../src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh)
+passes runner-owned `EMRYS_TASK_WORK_DIR` to both Java and GATK, as its
+[contract](../../src/emrys/stages/split_n_cigar/CONTRACT.md) records. The runner
+creates that `.scratch` directory beside the Task output working directory,
+on the same filesystem; placement alone does not qualify it as fast site
+scratch or remove shared-storage I/O. Evaluate sufficiently large fast scratch
 for disposable tool spill while keeping final-output staging and publication
 on their required filesystem.
 
 Preserve capacity qualification, headroom, ownership, interruption handling,
 and recovery. Do not blindly redirect to `/tmp`; a memory-backed filesystem
 can worsen memory pressure. Compare spill-heavy workloads on the intended
-institutional storage. This can reduce shared-storage traffic and wall time
-without reducing total bytes written or persistent output size. PR44 does not
-implement this scratch-placement change.
+institutional storage. A faster qualified path might reduce shared-storage
+traffic or wall time without reducing total bytes written or persistent output
+size; this remains unmeasured. At the September 7 audit, PR44 did not implement
+the proposed scratch-placement change.
 
 ### 9. Reduce Step 09 validation allocations
 

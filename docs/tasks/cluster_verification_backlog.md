@@ -2161,7 +2161,9 @@ without collision, loss or reordering. Cover a real PTY with color, narrow-line
 wrapping and `NO_COLOR`/plain rendering. Keep the timer and phase label readable
 when the wait duration is zero. CV-U04 owns Doctor's broader presentation and
 CV-26 retains its historical duration evidence; future measured tuning belongs
-to the optimization campaign. CV-UX-01 remains **Open** until Viking/PTY acceptance.
+to the optimization campaign. At the original September 16 report checkpoint,
+CV-UX-01 was **Open** pending a software response and Viking/PTY acceptance;
+its current disposition after that response is below.
 
 **Implemented slice:** The shared live-progress owner now redirects ordinary
 stdout/stderr through Rich's active display boundary, which clears and redraws
@@ -2169,9 +2171,12 @@ the row around diagnostics. Doctor passes its normal/verbose policy into the
 submission transport: normal output hides transcript and scheduler-log paths,
 while `--verbose` retains them. Real narrow-PTY checks cover color and
 `NO_COLOR`, diagnostic ordering, a line boundary before `Slurm submission
-records:`, and readable zero-duration timing. Focused progress, submission and
-Slurm Doctor suites passed 418 tests locally. CV-UX-01 is **Verification pending**
-for Viking terminal acceptance; the integrated standard CI passed.
+records:`, and readable zero-duration timing. The card reported 418 focused
+local progress, submission and Slurm Doctor tests. CV-UX-01 is
+**Verification pending** for Viking terminal acceptance; integrated
+[ordinary CI 35174741384](https://github.com/lab-cats/EMRYS/actions/runs/35174741384)
+passed at `feff802057f035c8e18893ef37c4f8e69a05ac2d`, with the selected
+real synthetic E2E lane skipped.
 
 **September 17 integrated presentation refinement:** The same serialized owner
 now colors the phase key cyan, elapsed time dim, and terminal outcome separately

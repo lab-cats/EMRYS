@@ -126,7 +126,10 @@ preserves the charter observations. Additive dated records now preserve
 [job 621154's distinct timeout](../history/2026-09-16-cv10-timeout.md),
 [CV-26 hosted measurements](../history/2026-09-15-cv26-doctor-measurements.md),
 and [CV-U28 fixed-policy provenance](../history/2026-09-15-cv-u28-resource-provenance.md).
-Job 621172 and later CV-10/CV-26/CV-U28 decisions have not been fully
+The [CV-UX-01 collision record](../history/2026-09-16-cvux01-doctor-collision.md)
+preserves job 621172's separate presentation observation and bounded software
+checks. Its historical Open checkpoint is date-bound in the source card. Later
+CV-10/CV-26/CV-U28 decisions have not been fully
 transferred. The detailed card records remain untouched; no shortening is
 authorized by these partial transfers.
 

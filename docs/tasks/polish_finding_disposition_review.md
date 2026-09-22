@@ -23,7 +23,7 @@ verbose detail. Item 8
 direct-storage-plan premise (lines 341–358) is narrowed by Doctor's current
 Slurm branch at lines 835–857; site behavior still needs review. Item 36
 (lines 798–811) describes explicit-memory preflight as missing, while the
-[current `SCHED-01` row](backlog_matrix.md) line 172 says its source is
+[current `SCHED-01` row](backlog_matrix.md#platform-operation-and-portability) says its source is
 implemented and verification remains.
 
 **Still live or undecided:** Item 11's environment-parity question persists:
@@ -60,7 +60,7 @@ durable disposition is decided.
 | 11 | Quickstart and managed-golden CI still select different `uv` groups. | Retain parity question; compare actual installed environments. |
 | 12 | Draft FASTQ physical-identity check differs from Project normalization's path-based check. | Preserve explicit mate-path proposal and settle admission policy before calling this a defect. |
 | 13 | Ineffective reporting-memory control is retired. | Historical disposition only. |
-| 14 | Standalone dashboard retirement is implemented, with CI/site visual checks pending. | Reconcile with `DASHBOARD-RETIRE-01` and legacy readers. |
+| 14 | Standalone dashboard retirement is implemented; ordinary baseline software/docs CI passed, while institutional visual review remains. | Keep `DASHBOARD-RETIRE-01`, legacy readers and the separate evidence-deletion gate. |
 | 15 | Per-script Bash syntax checking is delivered. | Keep owner check, not an open proposal. |
 | 16 | ShellCheck is delivered under `DEV-01`. | Keep its locked-tool owner. |
 | 17 | Selected Ruff correctness rules are delivered. | Do not infer all possible rules were adopted. |
@@ -82,7 +82,7 @@ durable disposition is decided.
 | 33 | Merge-rule observations were an audit-time hosted snapshot. | Re-read effective rules before a current claim or settings change. |
 | 34 | Complete R dependency closure is accepted as Open `RUNTIME-CLOSURE-01`. | Keep recursive closure and snapshot-off acceptance with the row. |
 | 35 | Installed Snakemake content guarantee remains unresolved. | Trace current package binding before calling an escape or solution proven. |
-| 36 | Explicit Slurm memory preflight is implemented; `SCHED-01` is Verification pending. | Replace the old missing-implementation premise; keep final-source no-submit checks and site limits. |
+| 36 | Explicit Slurm memory preflight is implemented and its ordinary baseline software checks passed; `SCHED-01` remains Verification pending. | Date-bound the old missing-implementation premise; keep CV-11's institutional capacity limit. |
 | 37 | Browser/copy/print report review remains pending under report rows 01–03. | Retain rendered visual and link acceptance separate from receipts. |
 | 38 | Pre-execution cancellation policy remains unselected. | Decide expected signal/EOF behavior before changing public exits. |
 | 39 | Machine-readable inspection needs a concrete consumer and remains unselected. | Preserve human inspection authority and exit meaning. |

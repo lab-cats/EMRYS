@@ -45,6 +45,13 @@ steady-ready trials, failed prototype checks, and the decision to retain
 serial R namespace checks and fresh content admission. It does not establish
 Viking or comparable whole-operation speedup; CV-26 remains Open.
 
+## September 16 CV-UX-01 Doctor terminal collision
+
+The [source-bound collision and repair record](2026-09-16-cvux01-doctor-collision.md)
+preserves the job `621172` presentation report and bounded local and ordinary
+CI response. Viking terminal acceptance remains pending; CV-U04 and CV-26 own
+broader Doctor presentation and timing.
+
 ## PORT-NC-01 integration replay
 
 Tests from `fix/no-clobber` informed but did not validate the differently
