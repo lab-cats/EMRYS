@@ -113,8 +113,9 @@ claim that every possible future subtype is inherently undeletable.
   [storage qualification owner](../../src/emrys/evidence/storage_inventory/qualification.py)
   creates private probes, rechecks them, durably publishes a final receipt,
   then removes only its known probe roster (around lines 414–722). A staged
-  marker blocks admission and re-execution; cleanup failure can leave partial
-  probes while final authority remains. The
+  marker blocks its own receipt route and re-execution; direct-mode admission
+  can still accept separate valid site evidence. Cleanup failure can leave
+  partial probes while final authority remains. The
   [storage contract](../../src/emrys/evidence/storage_inventory/README.md)
   requires that residue to remain inspectable.
 - **References.** Site receipt identity uses the workspace and FASTA *parents*,
@@ -283,12 +284,27 @@ is deletion eligibility.
 
 - **Direct receipt generations — historical references open.** Doctor and
   Attempts bind their exact path/hash; a newer current receipt does not erase
-  older Attempt identities.
+  older Attempt identities. Direct receipts live beneath the Project's
+  `runtime/.emrys-storage-qualification/`, with an optional `.N` generation
+  suffix. A failed latest receipt is preserved while planning a successor
+  ([qualification.py](../../src/emrys/evidence/storage_inventory/qualification.py),
+  lines 174–268). Admission selects the latest generation (lines 725–799), so
+  preserving an older receipt alone does not ensure a bound Attempt can resume.
 - **Site compute and final receipts — cross-Project references open.** A final
-  receipt binds the compute receipt. Their identity derives from storage-root
-  parents that multiple Projects can share.
+  receipt binds the compute receipt's path and hash and re-reads it on final
+  admission (lines 817–847 of
+  [qualification.py](../../src/emrys/evidence/storage_inventory/qualification.py)).
+  These receipts live under the workspace parent's
+  `.emrys-storage-qualification/`; their identity derives from that parent and
+  the FASTA parent, which multiple Projects may share (lines 147–171 and
+  270–284). The compute receipt also records the exact probe paths and hashes
+  (lines 480–548).
 - **Staged markers — recovery state unknown.** A marker blocks admission and
-  re-execution after an uncertain publication boundary.
+  re-execution for its own receipt route after an uncertain publication
+  boundary. A pending direct marker blocks direct receipt admission; a valid
+  independent site receipt can still satisfy direct-mode requirements
+  ([qualification.py](../../src/emrys/evidence/storage_inventory/qualification.py),
+  lines 223–232 and 802–827).
 - **Probe directories — transaction cleanup known, retained state unknown.**
   The [qualification owner](../../src/emrys/evidence/storage_inventory/qualification.py)
   checks an exact four-member roster during its cleanup (around lines 582–637).
@@ -303,13 +319,21 @@ is deletion eligibility.
 - **Project-created samples and partitions manifests — Project-local readers
   known, wider references open.** [Onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
   authors or copies these members and publishes Project YAML last
-  (around lines 1099–1160 and 1376–1390). New admission reads them, while
-  Run and Attempt snapshots can retain their content. Other Projects may
-  declare their absolute paths; Project ownership does not close that search.
+  (around lines 1099–1160 and 1376–1390). Imported sample and partition
+  manifests are normalized into Project-local copies; FASTQ and region paths
+  resolve from their respective supplied manifest parents (lines 1099–1160).
+  [Tests](../../tests/orchestration/run_coordinator/test_onboarding.py)
+  preserve supplied partition bytes and an external BED reference (lines
+  1521–1592). New admission reads the copies, while Run and Attempt snapshots
+  can retain their content. Other Projects may declare absolute paths to
+  either original or copy; Project ownership does not close that search.
 - **Run-local selected samples projection — bound to Attempt history.**
   [Materialization](../../src/emrys/orchestration/run_coordinator/materialization.py)
-  publishes the selected manifest beneath the Run contract (around lines
-  1338–1376). Its directory is owner-local, but resume and Attempt evidence
+  publishes a projection only for a selected subset at
+  `contract/workflow-inputs/<attempt>/samples.tsv` (around lines 1338–1376).
+  [Resume tests](../../tests/orchestration/run_coordinator/test_materialization.py)
+  retain the predecessor projection after an authored-manifest edit (lines
+  7391–7444). Its directory is owner-local, but resume and Attempt evidence
   still require it.
 - **Declared FASTQs, FASTA/GTF and regions — ownership and references open.**
   Project setup names their existing locations. Normalization admits bytes,
@@ -317,28 +341,56 @@ is deletion eligibility.
 - **FAI and dictionary beside the FASTA — open.** EMRYS can produce an exact
   pair, but the parent may be shared, complete pairs can be reused across Runs,
   and a cross-Run lock protects publication. A partial pair blocks work.
+  [Step 00c](../../src/emrys/stages/fasta_sidecars/CONTRACT.md) publishes no
+  creator receipt or transaction summary (lines 34–49); a complete pre-existing
+  pair can be adopted. The source therefore cannot identify an existing pair
+  as EMRYS-created cleanup residue. The lock and forbidden staging patterns
+  carry writer and recovery meaning
+  ([materialization.py](../../src/emrys/orchestration/run_coordinator/materialization.py),
+  lines 845–859).
 
 ### F6 path subtypes
 
 - **Request context — Project roster known, historical readers open.**
   Control writes the exact request before sbatch. Its identity and contents
   support duplicate checks, inspection, watch, exact-request stop and
-  correlation with an application log and Run. A locally enumerable roster is
-  not proof that human selectors or historical uses have ended.
+  correlation with an application log and Run. Version 4 records the UID,
+  command, Project, requested Run, analysis, application-log root, profile,
+  delegate arguments, scheduler stream patterns/name and time; Control syncs
+  it before sbatch
+  ([control.py](../../src/emrys/orchestration/run_coordinator/control.py),
+  lines 1170–1209). A locally enumerable roster is not proof that human
+  selectors or historical uses have ended.
 - **Raw sbatch.stdout and sbatch.stderr — request-local, still consumed.**
   The [submission owner](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
   retains both invocation transcripts. Stdout is the sole recorded scheduler
   response; deleting either can make a request partial or unconfirmed.
+  Enumeration keeps v1–v4 and partial records (lines 477–632). A missing
+  stderr can leave a parsed job ID but prevent exact scheduler observation
+  ([tests](../../tests/orchestration/run_coordinator/test_slurm_submission.py),
+  lines 664–689 and 979–1002). Selected-request association needs a complete
+  token-bound v2–v4 record and rechecks all three members
+  ([_submission_inspection.py](../../src/emrys/orchestration/run_coordinator/_submission_inspection.py),
+  lines 417–505); legacy or partial records remain diagnostic evidence.
 - **Slurm job output and error streams — writer and references open.** Slurm
   writes separate job files at paths frozen into the request. Exact scheduler
-  observation and watch tails read them; terminal status alone does not
-  close the external reader or writer question.
+  observation compares those recorded *paths* with scheduler metadata
+  ([scheduler_observation.py](../../src/emrys/orchestration/run_coordinator/scheduler_observation.py),
+  lines 94–150 and 158–241); watch tails read the stream bytes
+  ([_inspection_presentation.py](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py),
+  lines 496–528). Terminal status alone does not close the external reader or
+  writer question.
 - **Application JSONL — custom-root references open.** The
   [logging owner](../../src/emrys/libraries/application_logging/storage.py)
   can publish under an absolute log root outside the Project. Selected
-  requests, explicit Run inspection and watch consume historical entries;
-  the [logging contract](../design/LOGGING_CONTRACT.md) preserves partials
-  and forbids automatic deletion.
+  requests, explicit Run inspection and watch consume historical entries.
+  Historical Run-log discovery can rebind retained Run/Attempt authority even
+  when current Project YAML is gone
+  ([_submission_inspection.py](../../src/emrys/orchestration/run_coordinator/_submission_inspection.py),
+  lines 543–609). The
+  [logging contract](../design/LOGGING_CONTRACT.md) preserves partials and
+  forbids automatic deletion; `package-output.log` is a separate retained
+  maintenance subtype (lines 42–47, 66–70 and 144–169).
 
 Two narrow **questions**, not selected candidates, emerge from this pass:
 whether an exact owner-named reporting stage after completed publication, or
