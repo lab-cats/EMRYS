@@ -67,18 +67,18 @@ discovery below and names the next evidence needed before changing authority.
 
 | Finding | Baseline discovery | Next verification or disposition |
 | --- | --- | --- |
-| 1. Status vocabulary and placement | The matrix uses `Needs decision` without defining it; the delegated backlog uses `Discard`; two Completed rows sit under Active backlog. | Reconcile lifecycle meanings and place completed outcomes without changing their acceptance. |
+| 1. Status vocabulary and placement | The baseline matrix left `Needs decision` undefined, the delegated backlog used `Discard`, and two Completed rows sat under Active backlog. | Both terms are now defined narrowly; the completed rows moved without status or acceptance changes. |
 | 2. `INIT-02` and dependent onboarding claims | Automatic maintained-study selection is Open, but CV summaries call `INIT-01`–`INIT-03` source-complete. Quickstart supplies a manifest path explicitly. | Present-tense summaries are corrected in this branch. Review CV-06, CV-U08, CV-U20, and CV-U21 against their own acceptance before any status change. |
 | 3. `CV-U22` runtime reuse | The card remains Open for compatible-donor discovery before installation; the documented known-smoke route is narrower. | Retain Open and the no-silent-donor rule; distinguish known-smoke evidence from the undecided general selection design. |
 | 4. `CV-26` Doctor cost | One redundant full diagnosis was removed; original complete-operation attribution and comparable measurements remain Open. | Separate exact retained measurements and the serial-probe decision from implementation checkpoints and unmeasured speedup claims. |
 | 5. Dashboard retirement | The matrix says the standalone entry point and callers are retired; several CV summaries still say that retirement remains. | Current-sounding text is corrected in this branch; keep shared watch code, historical readers, and pending visual verification. |
-| 6. Repeated cluster closure instructions | The main checklist, cluster backlog summary, and charter repeat remaining work. | Keep one operative sequence and retain unique card acceptance and evidence limits at their owners. |
+| 6. Repeated cluster closure instructions | The main checklist, cluster backlog summary, and charter repeat remaining work. | The charter now links to the operative sequence while retaining its unique disposition, site-combination, and evidence custody rules. |
 | 7. Viking walkthrough chronology | The main matrix holds dated jobs, a qualification identity, capacity observations, approvals, and a last-supplied Run state. | Review the [additive dated record](../history/2026-09-14-viking-walkthrough.md) against both sources before proposing any source shortening. |
 | 8. Compression closeout chronology | The completed section combines the user closure, quantified shortfall, exact CI, and PR chronology. | Review the [additive dated record](../history/2026-09-14-compression-closeout.md) before any closeout shortening; retain the closure decision in the matrix. |
 | 9. CV card checkpoint narratives | Detailed cards repeatedly recount Open-to-implemented-to-pending transitions alongside live acceptance. | The 61-card first pass and CI wording correction are recorded below; transfer exact observations and decisions before any shortening. |
-| 10. Polish chronology and overlap | The campaign contains an old audit/PR narrative and merged-PR tables plus proposals already implemented elsewhere. | Classify PR chronology and preserve unique rationale and evidence before compression. |
+| 10. Polish chronology and overlap | The campaign contains an old audit/PR narrative and merged-PR tables plus proposals already implemented elsewhere. | The [retention map](polish_finding_disposition_review.md#polish-audit-and-pr-chronology-retention-map) separates Git-only chronology candidates from unique decisions and evidence; transfer checks remain before compression. |
 | 11. Optimization source drift | The September 7 audit is correctly pinned, but most cited source blobs changed by the baseline. Candidates 8 and 12 have materially changed source premises. | Re-evaluate all 13 candidates against current owners and measurements without converting old proposals into defects. |
-| 12. Time-bound campaign authority | The charter repeats earlier blanket development authority and an active-cluster-job precaution as present-tense guidance. | Date-bound historical instructions; keep current authorization and cluster safety with their authoritative owners. |
+| 12. Time-bound campaign authority | The charter repeated earlier development authority and a then-running job as present-tense guidance. | The grant and job observation are now dated; current authority and active-installation safety retain their owners. |
 | 13. Polish proposals versus current owners | Several original findings describe capabilities now delivered; others retain a live gap. | The [per-item review](polish_finding_disposition_review.md) maps all 44 findings and five architecture options; item 6 is reproduced locally, item 11 has a confirmed group mismatch, and remaining decisions stay unselected. |
 | 14. `HARNESS-01` status versus source gap | The row is Verification pending, yet its acceptance names a remaining test-simulation admission mismatch also visible in fixtures and production records. | Recommend Open under the matrix vocabulary, subject to fixture and retained-reader review; keep controlled simulation proof distinct from scientific execution. |
 
@@ -86,18 +86,22 @@ discovery below and names the next evidence needed before changing authority.
 
 ### 1. Status vocabulary and placement
 
-**Observed:** [Matrix operating rules](backlog_matrix.md) lines 24–29 define
-Open, In progress, Verification pending, Deferred, Completed, and Closed.
-`REPORT-ROSTER-01` uses `Needs decision` at line 295. The delegated backlog
-uses `Discard` for CV-12 in its index at line 106 and detailed disposition at
-line 3032, while its introduction refers readers to the matrix meanings.
-`VIKING-POLICY-01` and `CV-DOCS-01` are Completed at matrix lines 90–91 under
-`## Active backlog`; the completed section begins at line 297.
+**Observed at the pinned baseline:** [Matrix operating rules](backlog_matrix.md)
+at lines 24–29 defined Open, In progress, Verification pending, Deferred,
+Completed, and Closed. `REPORT-ROSTER-01` used `Needs decision` at line 295.
+The delegated backlog used `Discard` for CV-12 in its index at line 106 and
+detailed disposition at line 3032, while its introduction referred readers to
+the matrix meanings. `VIKING-POLICY-01` and `CV-DOCS-01` were Completed at
+matrix lines 90–91 under `## Active backlog`; the completed section began at
+line 297.
 
-**Next:** Specify whether `Needs decision` is an accepted nonterminal state and
-whether `Discard` is a card disposition rather than a work status. Preserve the
-reason and evidence boundary for CV-12 and move or clearly distinguish the two
-Completed rows. Do not infer a new status from their section placement.
+**Documentation correction:** The matrix now defines `Needs decision` as an
+accepted nonterminal decision stage, with no implementation choice implied.
+The delegated introduction defines `Discard` as CV-12's terminal decision to
+abandon E01 causal reconstruction, not an explanation of the original failure.
+The two Completed novice documentation rows moved byte-for-byte into the
+completed section; their inbound links and the active-section count were
+updated. No row status or acceptance changed.
 
 ### 2. `INIT-02` and dependent onboarding claims
 
@@ -222,21 +226,16 @@ remaining-acceptance table, and the [charter](cluster_verification_campaign.md)
 lines 53–86 and 152–190 repeat delivery and closure instructions. Each also
 contains some distinct evidence limits.
 
-**Next:** Compare each sentence with the operative checklist and detailed
-cards. Replace only verified duplicate guidance with links; keep unique
-conditions, evidence ceilings, and card-specific acceptance at their owners.
-
-**Sentence-level map:** The charter's Delivery approach repeats the matrix's
-selected 130-pair final-source lane, stop/native/resume oracles, and ordinary-CI
-limit. Its Completion and handoff bullets repeat the matrix's institutional
-journey, separate review, exact-revision evidence, and retirement sequence; the
-CV backlog repeats the evidence-transfer instruction after its status map.
-Those passages can point to the [operative checklist](backlog_matrix.md#cluster-verification-closure-checklist).
-Keep the charter's explicit accepted/rejected/transferred disposition choices,
-the three named institutional failure combinations, and the rule that new
-failures remain findings. Keep the CV backlog's card-to-owner table and exact
-hosted limits, plus detailed CV-01, CV-10, and CV-26 acceptance. The repeated
-regions are not interchangeable with the unique E01–E12 register.
+**Documentation correction:** The [main checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+remains the ordered final-source, site, review and retirement sequence. The
+charter's Delivery approach now links to it and CV-01 instead of restating the
+selected stop/native/resume oracles; its Completion section retains the
+accepted/rejected/transferred disposition rule, per-card evidence limits and
+E01–E12 custody.
+The three named institutional combinations and new-failure owner rule remain.
+The CV backlog already links to the operative checklist and retains its exact
+hosted limits, card-to-owner table, and detailed card acceptance. No evidence
+record or status was removed.
 
 ### 7. Viking walkthrough chronology
 
@@ -390,19 +389,23 @@ shortening by that classification.
 
 ### 10. Polish chronology and overlap
 
-**Observed:** [Polish campaign](polish-campaign.md) lines 35–131 details its
-September 7–14 audit/PR sequence. Lines 974–1040 enumerate merged PRs, while
+**Observed:** The [polish campaign](polish-campaign.md#evidence-and-selection)
+details its September 7–14 audit/PR sequence. Its
+[overlap tables](polish-campaign.md#existing-capabilities-and-overlapping-work)
+enumerate merged PRs, while
 the main matrix owns seven current follow-ups (`DOCS-01`, `REDUCE-01`,
 `SIZE-01`, `ASSURANCE-01`, `SCHEMA-01`, `EXTENSION-01`, `RELEASE-01`). Some
 numbered findings also document completed implementation, such as item 43's
 `emrys --version`. The campaign says its numbers are not backlog IDs.
 
-**Next:** Reconcile every finding and option with a current accepted row,
-owner-local contract, still-useful proposal, or dismissal. Preserve unique
-constraints and dated evidence; then condense PR chronology that Git already
-records. Do not re-open completed work from an old proposal heading.
+**Documentation discovery:** The [44-item disposition table and chronology
+retention map](polish_finding_disposition_review.md) now distinguish completed
+implementation, live gaps, dated evidence, five unselected architecture
+options, and possible Git-only PR sequencing. Verify each proposed durable
+owner and any unmatched rationale before shortening the campaign. This review
+does not approve source-evidence removal or reopen completed implementation.
 
-The five architecture options at polish lines 132–225 are unselected
+The [five architecture options](polish-campaign.md#integration-scale-architecture-reduction-options) are unselected
 `REDUCE-01`-adjacent hypotheses. Their withdrawn 6,400–9,200-line estimate is
 not an accepted saving. Keep distinct trust and verification constraints while
 separating them from the PR ledger.
@@ -462,12 +465,7 @@ These are dated campaign circumstances. Current work authority comes from
 the present user instruction; a prior campaign approval is not a blanket
 authorization for new implementation, site work, or evidence deletion.
 
-**Next:** Keep the reason for the live-installation safety boundary, but
-date-bound the original job and approval so readers do not mistake them for
-current state. Recheck all instructions and links before changing the charter.
-
-**Provenance and proposed wording boundary:** The approval summary at charter
-lines 21–27 was recorded in
+**Documentation correction and provenance:** The approval summary was recorded in
 `4d3ba00c41c6b13759d06b691d31cdcee20a1117` on 2026-09-14. The earlier
 charter creation at `1ea21855a4e6db8bc54268e9c6869fa362d424eb` said an
 actual-data Run was continuing and required separately selected bounded
@@ -475,15 +473,12 @@ implementation slices. It does not establish a job running now; E12 gives
 only an active last-supplied observation. The later recorded approval covered
 then-selected slices and stacked PRs, while excluding merge, cluster
 execution, active-installation changes, and evidence deletion. It is a
-repository summary, not the raw approval transcript. Date the grant and
-the running-job precaution in the charter; say neither selects new work or a
-current quantified product-growth exception. Link the enduring fresh-checkout
-and unchanged-existing-installation rule to the
-[Runbook](../operations/RUNBOOK.md#install-a-chosen-release-or-commit), while
+repository summary, not the raw approval transcript. The charter now dates the
+grant and running-job observation, disclaims current work or size authority,
+and links the enduring fresh-installation rule to the
+[Runbook](../operations/RUNBOOK.md#install-a-chosen-release-or-commit).
 [AGENTS.md](../../AGENTS.md) and the [workflow](../operations/WORKFLOW.md)
-continue to govern current authorization. Charter lines 86–88 also call the
-old tranche present-tense and need the same review. No charter text or card
-status is changed by this finding.
+govern current authorization. No card status changed.
 
 ### 13. Polish proposals versus current owners
 

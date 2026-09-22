@@ -21,12 +21,14 @@ decisions](../design/decisions/scientific-pipeline.md).
 - This matrix is not a fixed execution sequence. Select work from its outcome,
   acceptance, risk, value, and current context. Closed campaign cards are
   historical records, not a current execution sequence.
-- **Open** means delivery remains. **In progress** means an approved bounded
-  change is active. **Verification pending** means implementation appears
-  complete but required evidence remains. **Deferred** means accepted work is
-  intentionally retained for a later horizon. **Completed** records an accepted
-  outcome at its stated evidence level. **Closed** records an explicit decision
-  to end a campaign, with any unmet targets stated in its closure record.
+- **Open** means delivery remains. **Needs decision** means the accepted
+  outcome is a decision that remains open; no implementation choice is selected.
+  **In progress** means an approved bounded change is active. **Verification
+  pending** means implementation appears complete but required evidence remains.
+  **Deferred** means accepted work is intentionally retained for a later
+  horizon. **Completed** records an accepted outcome at its stated evidence
+  level. **Closed** records an explicit decision to end a campaign, with any
+  unmet targets stated in its closure record.
 - Mark a task Completed only when its whole outcome and acceptance pass at the claimed
   evidence level and affected interfaces, contracts, and documentation agree.
   Local fixtures, hosted CI, disposable Slurm, institutional-site execution,
@@ -73,10 +75,11 @@ and acceptance.
 ### Novice setup and operational follow-up
 
 These outcomes use the existing onboarding, submission, runtime and
-documentation owners. The [approved pre-closure tranche](cluster_verification_campaign.md#remaining-delivery-scope)
-includes all nine outcomes below, including `INIT-01` through `INIT-03`.
-Its stopping point is source/documentation completion, with required evidence
-still explicit. The exact integrated baseline
+documentation owners. The [previously approved September 14 pre-closure tranche](cluster_verification_campaign.md#remaining-delivery-scope)
+includes the seven unfinished outcomes below and two [completed documentation
+corrections](#novice-setup-documentation-corrections), including `INIT-01`
+through `INIT-03`. Its stopping point is source/documentation completion, with
+required evidence still explicit. The exact integrated baseline
 `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d` passed ordinary Phase 1
 software and documentation checks in
 [CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692);
@@ -92,8 +95,6 @@ novice, institutional, or separately selected real-Slurm acceptance.
 | `SCRATCH-01` | Site decision and verification | Verification pending | `4` | `3` | Decide whether `/tmp` is the appropriate scratch default for this Viking journey. | The [temporary-file guide](../operations/RUNBOOK.md#temporary-files) traces initializer/profile, Doctor package repair/probes, native-task scratch and environment overrides; the earlier unwritable `/local/tmp` failure does not identify a current source defect. Verify permissions, capacity, lifetime and head/compute-node availability at the named site before accepting a default; do not assume `/tmp` and `/local/tmp` share the same failure. Reconcile Quickstart and Troubleshooting and retain explicit errors rather than an unqualified fallback. Source review alone is not institutional evidence. |
 | `SCHED-USAGE-01` | P2 production defect | Verification pending | `4` | `3` | Preserve selected-cluster terminal usage and explicitly bound live sampling. | Terminal `sacct` root rechecks and batch accounting now select the admitted root cluster. Live `sstat` supports only the locally configured cluster and must independently match that exact root; nonlocal live usage stays unavailable without erasing selected request state. Argument-sensitive transport cases cover implicit local, named local and remote requests, including identical job numbers across clusters. Preserve root/batch/UID identity brackets and honest unknown values. Baseline ordinary regression passed as recorded above; institutional accounting/display evidence remains required under CV-U33. |
 | `SUBMISSION-PREVIEW-01` | P2 policy reconciliation | Verification pending | `4` | `3` | Reconcile CV-22 resource disclosure with CV-U02/U04 concise output. | One admitted-profile formatter now supplies a compact summary before every Slurm approval, including Doctor: requested CPUs/memory, exclusivity and maximum runtime; explicit hosts and numeric workflow ceilings when restrictive or capacity is unknown. Stage limits, site settings and diagnostics remain behind `--verbose`. Contract, cards and presentation cases use this same policy; the frozen profile still binds submission. Baseline ordinary regression passed as recorded above; institutional preview acceptance remains under CV-22/U02/U04. |
-| `VIKING-POLICY-01` | P2 documentation defect | Completed | `4` | `2` | Align Viking recovery guidance with the current allocation policy. | Troubleshooting now identifies [`execution_profile.py`](../../src/emrys/orchestration/run_coordinator/execution_profile.py) as the current `memory_mb: 0`, whole-node CPU and exclusive policy; the earlier null-memory workaround is explicitly historical. Source and guidance agree without changing allocation policy. Earlier rejection of other explicit memory requests establishes neither acceptance nor rejection of `--mem=0`; institutional verification remains required. |
-| `CV-DOCS-01` | Acceptance consistency | Completed | `3` | `2` | Correct the remaining CV-12/CV-27 wording and navigation conflicts. | CV-12 now directly records its Discard disposition and unknown E01 cause, with no causal-reconstruction requirement. Quickstart directly links the Runbook terminal-transfer procedure. CV-27 still requires actual generated-bundle contents, relative links, rendering and institutional transfer; its tiny copy fixture proves command mechanics only. These wording/navigation corrections neither promote evidence nor close institutional or visual acceptance. |
 
 ### Deferred operational work
 
@@ -300,6 +301,13 @@ Every reporting row inherits the [shared report acceptance](#shared-report-accep
 | `REPORT-ROSTER-01` | Reporting contract | Needs decision | `3` | `4` | Decide which scientific validation check identities and order reporting must require. | [Reporting consolidation](../../src/emrys/reporting/README.md) and [reporting-independent scientific identity](../design/decisions/execution-evidence-and-reporting.md) are delivered. The remaining CS-05 proposal is transferred here: generic artifact admission checks shape, safe unique IDs, status and count, but does not declare exact membership/order. Preserve current behavior until the scientific owners and external-provider obligations are decided. A selected change must migrate validators, artifact declarations and reporting together, retain independent expectations and malformed-input checks, and qualify meaningful product reduction or receive a quantified exception. Preserve module-specific reports, source/roster rechecks, locks, receipt-last publication, independent goldens, current-version reuse and the existing reporter entry point. |
 
 ## Completed and closed outcomes
+
+### Novice setup documentation corrections
+
+| ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
+|---|---|---|---:|---:|---|---|
+| `VIKING-POLICY-01` | P2 documentation defect | Completed | `4` | `2` | Align Viking recovery guidance with the current allocation policy. | Troubleshooting now identifies [`execution_profile.py`](../../src/emrys/orchestration/run_coordinator/execution_profile.py) as the current `memory_mb: 0`, whole-node CPU and exclusive policy; the earlier null-memory workaround is explicitly historical. Source and guidance agree without changing allocation policy. Earlier rejection of other explicit memory requests establishes neither acceptance nor rejection of `--mem=0`; institutional verification remains required. |
+| `CV-DOCS-01` | Acceptance consistency | Completed | `3` | `2` | Correct the remaining CV-12/CV-27 wording and navigation conflicts. | CV-12 now directly records its Discard disposition and unknown E01 cause, with no causal-reconstruction requirement. Quickstart directly links the Runbook terminal-transfer procedure. CV-27 still requires actual generated-bundle contents, relative links, rendering and institutional transfer; its tiny copy fixture proves command mechanics only. These wording/navigation corrections neither promote evidence nor close institutional or visual acceptance. |
 
 ### Repository maintenance
 

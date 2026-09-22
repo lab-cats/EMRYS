@@ -10,9 +10,12 @@ operator's combined failures, usability findings, and design proposals.
 
 P0–P3 preserve the supplied priorities. All cards began **Open**: prior fixes
 and observed successes are context, not closure of these remaining outcomes.
-Use the main matrix's status meanings. Recording a card accepts the finding
-for tracking; it does not authorize a new command, recovery rule, installation,
-cluster action, evidence promotion, or product-growth exception.
+Use the main matrix's status meanings. **Discard** is CV-12's terminal
+card disposition for causal reconstruction of E01; it does not resolve that
+unknown observation or the separate CV-01/CV-02 verification. Recording a
+card accepts the finding for tracking; it does not authorize a new command,
+recovery rule, installation, cluster action, evidence promotion, or
+product-growth exception.
 
 New maintenance, setup and source follow-ups live in the enduring
 [main backlog](backlog_matrix.md#maintainability-and-release). In particular,
@@ -3078,7 +3081,7 @@ unknown (E01).
 acceptance requirement. Do not attribute E01 to later memory-policy or username
 defects without evidence. Ordinary exact-revision runtime/Doctor verification
 remains with CV-01/CV-02; it does not need to reproduce or explain E01.
-`CV-DOCS-01` in the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up)
+`CV-DOCS-01` in the [main backlog](backlog_matrix.md#novice-setup-documentation-corrections)
 records this wording reconciliation, with no new repair or causal claim.
 
 ## P1 outcomes
@@ -4111,7 +4114,7 @@ Viking speedup is claimed. Further tuning remains independently selectable.
 
 ### CV-27 Terminal-only report access
 
-`CV-DOCS-01` in the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up)
+`CV-DOCS-01` in the [main backlog](backlog_matrix.md#novice-setup-documentation-corrections)
 records the completed direct Quickstart link to the terminal-transfer
 procedure. Generated-report portability, links, rendering and institutional
 transfer remain unverified by the tiny-directory fixture; their existing

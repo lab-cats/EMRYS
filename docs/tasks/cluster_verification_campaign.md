@@ -18,13 +18,15 @@ card-status list.
 
 ## Scope and authority
 
-The user approved implementing this backlog as bounded slices, with a separate
-stacked PR for each slice, and approved the minimum product expansion necessary
-without repeated approval pauses. Follow the
-[development workflow](../operations/WORKFLOW.md): audit existing owners,
-document each selected outcome and its accounting, and preserve its evidence
-limits. This development authority does not authorize merging, cluster
-execution, changing the active installation, or deleting retained evidence.
+**September 14 authority record:** At that campaign checkpoint, the charter
+recorded owner approval for then-selected bounded slices, separate stacked PRs,
+and their necessary product expansion without repeated approval pauses. This is
+historical provenance, not current selection or a standing size exception.
+[AGENTS.md](../../AGENTS.md), the
+[development workflow](../operations/WORKFLOW.md), and a specific current owner
+instruction govern new work. Audit existing owners, account for a selected
+outcome, and retain its evidence limits. The recorded grant excluded merge,
+cluster execution, active-installation changes, and evidence deletion.
 
 Priorities are the operator's P0 through P3 ordering. The duplicate question
 about Doctor starting over is consolidated into CV-05: a retry reused native
@@ -44,9 +46,11 @@ Slurm provides placement. A Run remains immutable. Scheduler state and display
 convenience do not authorize lock removal, output adoption, or evidence
 fabrication.
 
-Implementation on the active cluster installation must not be updated beneath
-the running scientific job. Keep changes in the development checkout and
-qualify a selected revision through an explicitly scheduled site exercise.
+At campaign creation, an actual-data job was reported running; this charter
+does not establish whether any job runs now. Do not update an active scientific
+installation beneath its work. Keep changes in a development checkout and
+qualify a chosen revision through an explicitly scheduled site exercise, using
+the [installation procedure](../operations/RUNBOOK.md#install-a-chosen-release-or-commit).
 The earlier walkthrough's product-growth allowance in the main matrix belongs
 to that earlier approved slice; it is not a blanket allowance for this campaign.
 
@@ -83,9 +87,10 @@ assurance, schema, collaborator and release work remains accepted under the
 and complete guided operation transfer to `CLEANUP-01` and `INTERACTIVE-01` in
 the [main backlog](backlog_matrix.md#deferred-operational-work).
 
-The development tranche authorizes neither institutional execution nor evidence
-deletion, campaign retirement, merge or changes to the active scientific
-installation. Verification and any later retirement retain their own authority.
+That September 14 development tranche did not authorize institutional
+execution, evidence deletion, campaign retirement, merge, or changes to the
+active scientific installation. It grants no current work authority;
+verification and any later retirement retain their own approval boundaries.
 
 ## Evidence register
 
@@ -127,12 +132,11 @@ that one previously successful hostname is the only valid placement.
 
 ## Delivery approach
 
-Follow the enduring closure checklist for final-source checks, the selected
-130-pair disposable-Slurm journey and the coordinated institutional campaign.
-Ordinary PR CI does not select that journey. Retain the exact stop target,
-current Task/Attempt, real native child exit, positively closed interruption,
-unchanged predecessors, distinct resume and final scientific/reporting oracles.
-Local stop fixtures or a direct managed golden path cannot supply that proof.
+Use the [main closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+for the ordered final-source, selected 130-pair disposable-Slurm, institutional,
+review, and handoff gates. [CV-01](cluster_verification_backlog.md#cv-01-managed-golden-path-coverage)
+retains the detailed stop, native-child, resume and final-oracle acceptance.
+Ordinary PR CI does not select that real-Slurm journey.
 
 CV-01 remains a continuing integration obligation, not a success-only test.
 Label scheduler simulations and injected faults honestly; retain real Slurm
@@ -171,19 +175,14 @@ gaps remained. Those historical checkpoint labels do not override each card's
 current disposition. Passing hosted CI remains valid evidence for the behavior
 it exercised; neither hosted success nor additional site evidence closes an
 unresolved source-completeness gap.
+Scheduler completion, file presence, and elapsed time alone never establish
+scientific acceptance.
 
-Campaign closure requires:
+Beyond the operative checklist, this charter's closure criteria require:
 
 - Every card has an explicit terminal disposition: accepted at its stated
   evidence level, rejected by decision, or transferred/deferred to a named
   current owner with the remaining acceptance preserved.
-- The maintained novice journey is exercised from the head node through
-  synthetic completion and a representative actual-data outcome, including
-  the selected runtime reuse, resource placement, monitoring, cancellation,
-  recovery, and report-access behavior. Outstanding failures remain findings.
-- Required CI fault cases and real-site observations are tied to exact
-  revisions; scheduler completion, file presence, and elapsed time are never
-  promoted to scientific acceptance.
 - The main matrix, delegated backlog, owner contracts, quickstart, runbook,
   and troubleshooting agree. Preserve evidence and lasting decisions with
   their owners before retiring the temporary campaign documents. The complete
@@ -195,8 +194,9 @@ Campaign closure requires:
 
 - `SITE-PARITY-01` retains institutional qualification and direct/Slurm parity
   acceptance; this campaign supplies the walkthrough-driven improvements.
-- `SCHED-01` retains final-source verification of its implemented explicit-memory
-  preflight; CV-11 owns the broader institutional heterogeneous-node acceptance.
+- `SCHED-01`'s explicit-capacity preflight passed ordinary software checks at
+  the [integrated baseline](https://github.com/lab-cats/EMRYS/actions/runs/35770811692);
+  CV-11 owns broader institutional heterogeneous-node acceptance.
 - The institutional owner accepted CV-16/CV-24's installed watch replacement on
   2026-09-17. `DASHBOARD-RETIRE-01` has implemented new scheduler-stream naming
   with legacy read compatibility; institutional verification and the separate
