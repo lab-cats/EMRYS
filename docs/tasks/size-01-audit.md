@@ -95,6 +95,25 @@ Paths are relative to the repository root. Line counts belong to the snapshot ab
 | Mutable state | Separate scheduler trace caches and selected-tail state in watch. | Stream rotation, bounded reads, sanitized output, and read-only inspection. |
 
 
+## Candidate size comparison
+
+These are source-level hypotheses, not accepted savings or implementation decisions. The gap is the snapshot path's physical lines above 600. Estimates count a complete touched product path where possible, but no candidate has an actual caller-complete diff or parity result; estimates can shrink, grow, or overlap. Every quantified estimate below is smaller than the listed path's gap.
+
+| Oversized path | Gap | Candidate | Unverified net product-line estimate | Proof needed |
+|---|---:|---|---|---|
+| resource_policy.py | 57 | Replace seven ResourcePlan forwarding accessors across production and test callers. | 25–27 fewer | Public interface decision; exact Run/Attempt resource parity. |
+| inspection.py | 121 | Share the final projection from missing-profile and admitted-profile branches. | 15–20 fewer | Branch defaults, blockers, running and prepared-finalization parity. |
+| scientific_context_figures.py | 483 | Import the existing pair palette/legend constants, then compare the repeated unavailable-track specification. | About 9, plus a separate 10–13 candidate | SVG bytes, unavailable metadata/reasons, and complete renderer callers. |
+| scientific_context_projection.R | 426 | Move identical safe-ID/hash argument checks from Step 09 and Step 10 into the existing R input contract library. | About 14 fewer across product files | R caller/source order, Step 08's different check, and exact diagnostics. |
+| lifecycle.py | 1,847 | Compare pure predecessor/retry checks while retaining both fresh preflights. | Unmeasured; a helper may add code | Outside/under-lock admission and race/error parity. |
+| task.py | 2,453 | Share the directory-membership predicate while retaining five phase checks. | 10–15 fewer | Phase diagnostics and mutation/recovery parity. |
+| synthetic_fixture.py | 216 | Compare limited pair assembly in unique/duplicate loops. | Unmeasured; limited duplicate | Byte-for-byte fixture and failure parity. |
+| candidate_display.py | 24 | Share only equivalent significant-site traversal. | 0–5 fewer | Rank, roster membership, snapshots, and output shapes. |
+| _submission_inspection.py | 9 | Consider folding one fatal result branch into historical result construction. | No credible net saving shown | Partial-scan diagnostic and duplicate-history parity. |
+
+The API profile-cache argument, Step 09/10 TSV mechanics, CI selectors, Watch stream observations, normalization reparse, and ledger scan remain exploratory or runtime questions. No measured size saving is assigned to them. A file still above 600 after a verified reduction would require its own approved retained-path exception or a further caller-complete reduction.
+
+
 ## Coordinator command, recovery, and watch boundaries
 
 These path reviews inspect committed source and direct tests at the inventory snapshot. Reading a test establishes the intended protection, not that the test passed on this audit branch.
@@ -145,7 +164,7 @@ The storage owner shares one [root probe](../../src/emrys/evidence/storage_inven
 
 ### renv/activate.R
 
-The bundled [renv autoloader](../../src/emrys/renv/activate.R#L5) declares renv version 1.2.3 and its MD5. An earlier product-code campaign excluded generated activate.R from its count; SIZE-01's non-test rule still includes this path. The [shell test](../../tests/shell/test_local_r_environment.sh#L64) checks presence and later uses a stub, so it does not prove the bundled bootstrap itself. Before proposing a generated-file exception, verify upstream provenance, exact selected-environment behavior, and the explicit repair route. Hand editing the generated autoloader is not a line-count reduction.
+The bundled [renv autoloader](../../src/emrys/renv/activate.R#L5) declares renv 1.2.3 and its MD5, and [package data](../../pyproject.toml#L79) plus [wheel inventory tests](../../tests/test_package_distribution.py#L49) require the path. The [R profile](../../src/emrys/.Rprofile#L32) checks the selected preinstalled renv package and library in guarded execution; its separate [restoration route](../../src/emrys/.Rprofile#L76) sources activate.R only with explicit opt-in and an external RENV_PROJECT. The [R owner guide](../../src/emrys/renv/README.md#L16) assigns restoration to make r-restore or Doctor repair, not workflow execution. An earlier product-code campaign excluded generated activate.R from its count, but SIZE-01's non-test rule includes it. The [shell test](../../tests/shell/test_local_r_environment.sh#L64) checks presence and later uses a stub; it does not prove the bundled bootstrap. Upstream generated provenance and selected-environment execution still need proof before a path-specific exception. Hand trimming the autoloader is not a line-count reduction.
 
 ## Documentation, workflow, configuration, and generated inputs
 
