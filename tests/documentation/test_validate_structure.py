@@ -139,37 +139,38 @@ def write_fixture(root: Path) -> Path:
 
 def test_quickstart_tracks_guided_init_and_viking_profile() -> None:
     quickstart = (REPO_ROOT / "quickstart.md").read_text(encoding="utf-8")
+    quickstart = " ".join(quickstart.split())
     ordered_guidance = (
-        "Enter the absolute path to the reference FASTA",
-        "asks for the absolute FASTQ directory",
-        "At `study strandedness`, enter `reverse`",
-        "At `optional regions file`",
-        "shows both numbered comparison",
-        "discloses the five built-in paired-CMH settings",
-        "normal preview also shows the strand summary",
+        "emrys init pum1-study",
+        "configs/step_07_partitions.primary_contigs.tsv",
+        "Enter the FASTA path, matching GTF path and FASTQ directory",
+        "Enter `reverse` for study strandedness",
+        "`EV -> PUM1`",
+        "`A>G`",
+        "`Use these paired-CMH defaults?`",
+        "`Create this Project? [y/N]`",
+        "`Project ready:`",
     )
     positions = [quickstart.index(value) for value in ordered_guidance]
 
     assert positions == sorted(positions)
-    assert (
-        "the delivered six paired EV/PUM1 FASTQs and their checksums" not in quickstart
-    )
-    assert "If the data provider supplied checksums, retain them" in quickstart
-    assert "Synthetic Project: ready" in quickstart
+    assert "Keep any provider checksums with the delivery records" in quickstart
+    smoke_link = quickstart.split("[optional smoke test](", 1)[1].split(")", 1)[0]
+    smoke = (REPO_ROOT / smoke_link).read_text(encoding="utf-8")
+    assert "Synthetic Project: ready" in smoke
+    assert quickstart.index("[optional smoke test]") < quickstart.index("## 2.")
     for value in (
-        "`EV -> PUM1`",
-        "`A>G`",
-        "minimum sample depth\n`1`",
+        "minimum sample depth `1`",
         "mean-depth threshold `50`",
-        "FDR threshold `0.05`",
-        "common-odds-ratio threshold\n`1.2`",
-        "absolute-difference threshold `0.005`",
-        "`background max fraction: 0.01 (inactive)`",
+        "FDR `0.05`",
+        "common odds ratio `1.2`",
+        "absolute difference `0.005`",
+        "This study has no background cohort",
         "`viking-users`",
         "`long`",
         "`normal`",
         "One scheduler-selected exclusive node",
-        "All CPUs and all memory on that node",
+        "All CPUs and memory on that node",
         "12 hours",
         "A private directory under `/tmp`",
     ):
@@ -180,7 +181,7 @@ def test_quickstart_tracks_guided_init_and_viking_profile() -> None:
     assert readiness.index("emrys runtime discover --from-project") < readiness.index(
         "emrys doctor --repair"
     )
-    assert "If you skipped the [optional smoke test]" in readiness
+    assert "If you skipped the smoke test, skip that command" in readiness
 
 
 def validate(

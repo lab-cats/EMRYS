@@ -6031,9 +6031,9 @@ def test_standalone_report_uses_project_slurm_placement(
 
     assert control.report_from_args(parser.parse_args([*argv, "--execute"])) == 0
     assert calls == [False] and len(submissions) == 1
-    execution = capsys.readouterr().err
-    assert "Exclusive allocation: requested" in execution
-    assert "all node CPUs (capacity unknown until execution)" in execution
+    execution = capsys.readouterr()
+    assert "Exclusive allocation: requested" in execution.err
+    assert "all node CPUs (capacity unknown until execution)" in execution.err
     submitted = submissions[0]
     (request_path,) = (tmp_path / "logs").glob("submission-*/request.json")
     request = json.loads(request_path.read_bytes())
@@ -6053,7 +6053,7 @@ def test_standalone_report_uses_project_slurm_placement(
         f" report {run_root.name} --project {project} --profile {profile} "
         in submitted.batch_script
     )
-    assert capsys.readouterr().out.startswith("JOB_ID=812345\n")
+    assert execution.out.startswith("JOB_ID=812345\n")
 
     admitted = load_execution_profile(config_path=profile)
     monkeypatch.setenv(scheduler.DELEGATE_MARKER_ENV, scheduler.DELEGATE_MARKER)
