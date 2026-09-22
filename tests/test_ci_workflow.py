@@ -126,7 +126,7 @@ def test_static_job_uses_the_shared_gate_without_repeating_sharder_self_tests() 
     assert "shell" not in step
     assert step["run"].splitlines() == [
         "set -euo pipefail",
-        "make -s validation-static",
+        'EMRYS_TEST_WORKERS="$(nproc)" make -s validation-static',
         "make -s validation-wheel-smoke",
     ]
     assert "tests/test_python_test_shards.py" not in WORKFLOW_PATH.read_text(
@@ -249,10 +249,47 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
         assert "tests/tools/real_synthetic_e2e.py" in step["run"]
         assert "--slurm-partition emrys-ci" in step["run"]
         assert "--slurm-cpus" not in step["run"]
+        assert "--slurm-memory" not in step["run"]
         assert "--execute" in step["run"]
 
     weekly = _named_step(job, "Run the selected 100,000-pair real synthetic E2E")
     assert "github.event.schedule == '17 5 * * 0'" in _expression(weekly["if"])
+
+
+def test_safely_parallel_lanes_use_every_process_visible_cpu_without_nested_blas() -> (
+    None
+):
+    jobs = _workflow_jobs()
+    for job_id, step_name in (
+        ("static-wheel", "Run static, lint, documentation, and wheel checks"),
+        ("shell-contracts", "Run direct shell-owner contracts"),
+        ("guarded-r", "Run guarded R environment and fixture checks"),
+    ):
+        command = _named_step(jobs[job_id], step_name)["run"]
+        assert 'EMRYS_TEST_WORKERS="$(nproc)"' in command
+
+    caps = {
+        "BLIS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "VECLIB_MAXIMUM_THREADS": "1",
+    }
+    for job_id in ("python314-coverage-shards", "python311-full-shards"):
+        shard = _named_step(
+            jobs[job_id], "Run complete-suite shard with live slow-test timings"
+        )
+        assert shard["env"] == caps
+        assert '"$(nproc)"' in shard["run"]
+        assert "--workers 2" not in shard["run"]
+        assert "PYTHON_COVERAGE_WORKERS=2" not in shard["run"]
+
+    minimum = _named_step(
+        jobs["python311-smoke"],
+        "Compile, package, and invoke the supported minimum",
+    )["run"]
+    assert "compileall -q -j 0 scripts src/emrys tests" in minimum
 
 
 def test_managed_runtime_lock_has_one_linux_floor_and_exact_science_versions() -> None:
@@ -422,12 +459,24 @@ def test_managed_golden_path_uses_only_the_public_direct_journey(
     exec(compile(fixture_setup, str(WORKFLOW_PATH), "exec"), {})
     admitted = load_execution_profile(profile)
     resources = resolve_resource_policy(
-        admitted.resource_policy, AllocationCapacity(4, 16384, "hosted fixture")
+        admitted.resource_policy,
+        AllocationCapacity(4, 16384, "hosted fixture"),
+        workload={"samples": 4, "partitions": 1},
     )
     assert admitted.computational_resources_explicit
     assert admitted.placement.document() == {"kind": "direct"}
     assert resources.workflow_cores == 4
     assert resources.workflow_memory_mb == 16384
+    assert dict(resources.stage_concurrency) == {
+        "01": 4,
+        "02": 4,
+        "02b": 4,
+        "03": 4,
+        "04": 4,
+        "05": 4,
+        "06": 4,
+        "07": 1,
+    }
     assert cache["uses"] == ("actions/cache@caa296126883cff596d87d8935842f9db880ef25")
     assert cache["with"]["path"] == (
         "${{ runner.temp }}/emrys-managed-golden/project/runtime/managed/renv/cache"

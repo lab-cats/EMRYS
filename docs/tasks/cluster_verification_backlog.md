@@ -502,6 +502,24 @@ managed golden path. No cluster jobs were started. The follow-up replaces the
 existing resolver and schema mechanics rather than adding a scheduler; the
 complete PR has no new product files.
 
+**Selected hosted full-allocation follow-up (verification pending):** The
+managed golden path and real direct/Slurm synthetic journeys now share one
+test-owned CI resource document derived at call time from the packaged
+allocation-aware defaults. It preserves allocation-derived workflow CPU and
+memory, automatic repeatable-stage concurrency and thread sharing, and
+whole-workflow singleton settings. Only the repeatable-stage minimum is changed
+to 2048 MiB so the tiny hosted fixtures can exercise concurrent work within the
+free-tier runner; that minimum is test admission, not a production
+recommendation. The disposable Slurm profile requests node CPU, all scheduler-
+available memory and exclusive placement instead of a fixed four-core/six-GiB
+budget. Direct and Slurm resource checks require effective workflow CPU and
+memory to equal each Attempt's observed allocation. Safely parallelizable
+ordinary CI lanes select all process-visible CPUs without making ordered
+recovery, publication, environment-repair or end-to-end journeys concurrent.
+No hosted result is claimed until exact-revision CI passes. Even a pass would
+establish allocation and test mechanics only, not sustained utilization,
+wall-time improvement, safe Viking peak memory or institutional qualification.
+
 **Accounting correction — September 17:** The exact first-parent resource-
 tranche diff from `69223787` through merge `125cdc2b`, excluding tests and
 Markdown but retaining product source, schemas and configuration, is 495
@@ -1789,8 +1807,10 @@ allocation and 12 hours. CV-U06 records the subsequent full-allocation change.
 The existing admission, scheduler,
 preview, override and immutable-resume owners are reused without new product
 code paths, schemas, files or dependencies. The retained historical profile
-provided the historical evidence described above. Small symbolic-admission
-and hosted-E2E budgets are explicit fixtures rather than implicit product defaults.
+provided the historical evidence described above. At that checkpoint, small
+symbolic-admission and hosted-E2E budgets were explicit fixtures rather than
+implicit product defaults; CV-U06 records the selected hosted full-allocation
+follow-up that supersedes the E2E budget without rewriting this history.
 
 **Local verification:** 733 checks passed: 695 across `test_execution_profile`,
 `test_resource_policy`, `test_onboarding`, `test_doctor`,
@@ -2245,6 +2265,16 @@ Attempts and their retained predecessors are checked explicitly; the direct
 journey remains a separate two-Attempt parity comparator. A scheduler
 `CANCELLED` state by itself never authorizes recovery. No hosted result for
 this new journey is claimed until the selected exact-commit CI run passes.
+
+The selected journey's resource fixture no longer substitutes fixed CPU,
+memory, concurrency or thread ceilings. It derives one CI profile from the
+packaged allocation-aware defaults, lowering only repeatable-stage minima to
+2048 MiB for tiny hosted data. Direct and Slurm Attempts must retain the
+symbolic allocation policy and resolve workflow CPU and memory to their own
+observed allocations; disposable Slurm requests node CPU, all scheduler-
+available memory and exclusive placement. This checks free-tier single-node
+allocation mechanics, not actual utilization, performance, Viking capacity or
+institutional placement.
 
 Focused public-flow tests also cover an explicit-memory `sbatch` rejection
 with one invocation, retained stderr and no new Run, and a real local

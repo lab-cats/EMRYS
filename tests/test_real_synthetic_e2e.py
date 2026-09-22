@@ -29,8 +29,6 @@ def _argv(root: Path, *, execute: bool = False) -> list[str]:
         str(root / "renv"),
         "--slurm-partition",
         "emrys-ci",
-        "--slurm-memory",
-        "6G",
     ]
     return [*values, "--execute"] if execute else values
 
@@ -45,8 +43,8 @@ def test_cli_defaults_to_a_no_write_plan(
 ) -> None:
     arguments = driver.build_parser().parse_args(_argv(tmp_path))
     assert arguments.execute is False
-    assert arguments.slurm_cpus == 4
-    assert arguments.slurm_memory == 6144
+    assert not hasattr(arguments, "slurm_cpus")
+    assert not hasattr(arguments, "slurm_memory")
     assert driver.main(_argv(tmp_path)) == 0
     output = capsys.readouterr().out
     assert '"operation": "plan"' in output
@@ -124,7 +122,9 @@ def test_step09_oracle_rejects_unknown_significant_status(tmp_path: Path) -> Non
         )
 
 
-def test_adapters_and_explicit_fixture_resource_projection(tmp_path: Path) -> None:
+def test_adapters_and_allocation_aware_fixture_resource_projection(
+    tmp_path: Path,
+) -> None:
     python = Path("/runtime/bin/python")
     java = Path("/runtime/bin/java")
     assert b"importlib.metadata" in driver.rseqc_adapter_bytes(
@@ -167,15 +167,26 @@ def test_adapters_and_explicit_fixture_resource_projection(tmp_path: Path) -> No
         account=None,
         partition="emrys-ci",
         qos=None,
-        cpus_per_task=4,
-        memory_mb=6144,
         time_limit="02:00:00",
         nodelist=None,
         scratch_parent=tmp_path / "scratch",
         module_init=module_init,
     )
     profile_document = json.loads(rendered)
-    assert profile_document["resources"] == driver.symbolic_resource_document()
+    assert profile_document["resources"] == driver.ci_resource_document()
+    assert profile_document["placement"] | {"modules": None} == {
+        "kind": "slurm",
+        "account": None,
+        "partition": "emrys-ci",
+        "qos": None,
+        "cpus_per_task": "node",
+        "memory_mb": 0,
+        "time": "02:00:00",
+        "exclusive": True,
+        "nodelist": None,
+        "scratch_parent": str(tmp_path / "scratch"),
+        "modules": None,
+    }
     assert profile_document["placement"]["modules"] == {
         "mode": "exact",
         "init": str(module_init),
@@ -185,7 +196,28 @@ def test_adapters_and_explicit_fixture_resource_projection(tmp_path: Path) -> No
     profile.write_bytes(rendered)
     admitted = load_execution_profile(config_path=profile)
     admitted.validate_reservation()
-    assert admitted.resource_policy.document() == driver.symbolic_resource_document()
+    assert admitted.resource_policy.document() == driver.ci_resource_document()
+
+
+def test_ci_resource_document_preserves_packaged_policy_with_fixture_minima() -> None:
+    from emrys.orchestration.run_coordinator.execution_profile import (
+        load_execution_profile,
+    )
+    from emrys.orchestration.run_coordinator.resource_policy import (
+        REPEATABLE_STAGE_IDS,
+    )
+
+    packaged = load_execution_profile().resource_policy.document()
+    selected = driver.ci_resource_document()
+
+    assert selected["workflow_cores"] == "allocation"
+    assert selected["workflow_memory_mb"] == "allocation"
+    assert selected["stage_concurrency"] == packaged["stage_concurrency"]
+    assert selected["step_threads"] == packaged["step_threads"]
+    assert selected["stage_memory_mb"] == {
+        **packaged["stage_memory_mb"],
+        **{step_id: {"minimum_mb": 2048} for step_id in REPEATABLE_STAGE_IDS},
+    }
 
 
 def test_native_gate_adapter_passes_version_probe_without_claiming_gate(
@@ -545,6 +577,7 @@ def test_step09_summary_projection_ignores_placement_local_provenance(
 
 
 def _completion(attempt_id: str, memory_mb: int) -> dict[str, object]:
+    sample_stage_ids = ("01", "02", "02b", "03", "04", "05", "06")
     return {
         "authority": {"run": {"id": "run-1", "sha256": "a" * 64}},
         "attempt": {
@@ -552,8 +585,19 @@ def _completion(attempt_id: str, memory_mb: int) -> dict[str, object]:
             "common_fields": {"run_id": "run-1", "executor": "snakemake"},
             "task_roster": [{"machine_key": "owner", "state": "verified"}],
             "resources": {
-                "symbolic": {"workflow_memory_mb": "allocation"},
-                "effective": {"workflow_memory_mb": memory_mb},
+                "symbolic": {
+                    "workflow_cores": "allocation",
+                    "workflow_memory_mb": "allocation",
+                    "stage_concurrency": {
+                        step_id: "auto" for step_id in sample_stage_ids
+                    },
+                },
+                "effective": {
+                    "workflow_cores": 4,
+                    "workflow_memory_mb": memory_mb,
+                    "stage_concurrency": {step_id: 4 for step_id in sample_stage_ids},
+                },
+                "allocation": {"cores": 4, "memory_mb": memory_mb},
             },
         },
         "scientific_results": {"result.tsv": {"sha256": "b" * 64}},
@@ -564,14 +608,18 @@ def _completion(attempt_id: str, memory_mb: int) -> dict[str, object]:
     }
 
 
-def test_direct_slurm_parity_separates_run_authority_from_attempt_resources() -> None:
+def test_direct_slurm_parity_requires_allocation_resolved_attempt_resources() -> None:
     direct = _completion("attempt-direct", 8192)
-    scheduled = _completion("attempt-slurm", 6144)
+    scheduled = _completion("attempt-slurm", 8192)
 
     parity = driver._assert_direct_slurm_parity(direct, scheduled)
 
     assert parity["attempt_ids_distinct"] is True
-    assert parity["direct_effective_resources"] != parity["slurm_effective_resources"]
+    assert parity["direct_effective_resources"] == parity["slurm_effective_resources"]
+    scheduled["attempt"]["resources"]["effective"]["workflow_memory_mb"] = 6144
+    with pytest.raises(driver.DriverError, match="observed allocation"):
+        driver._assert_direct_slurm_parity(direct, scheduled)
+    scheduled = _completion("attempt-slurm", 8192)
     scheduled["scientific_results"] = {"result.tsv": {"sha256": "c" * 64}}
     with pytest.raises(driver.DriverError, match="scientific Results differ"):
         driver._assert_direct_slurm_parity(direct, scheduled)

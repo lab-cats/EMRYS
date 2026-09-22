@@ -285,7 +285,7 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
         "src/emrys/libraries/process_environment.py",
     ):
         assert shared_module in makefile
-    assert "compileall -q scripts src/emrys tests" in makefile
+    assert "compileall -q -j 0 scripts src/emrys tests" in makefile
 
 
 def test_check_is_read_only_and_baseline_update_is_explicit(tmp_path: Path) -> None:

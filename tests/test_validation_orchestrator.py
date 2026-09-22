@@ -127,6 +127,45 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     assert '"$(VULTURE_BIN)"' in quality_makefile
     assert "--exit-zero" not in quality_makefile
     assert "skipping dead-code scan" not in quality_makefile
+    assert "$${EMRYS_TEST_WORKERS:-1}" in quality_makefile
+    assert 'xargs -0 -n 1 -P "$$workers" bash' in quality_makefile
+    assert 'xargs -0 -n 1 -P "$${EMRYS_VALIDATED_TEST_WORKERS}"' in quality_makefile
+    assert "compileall -q -j 0 scripts src/emrys tests" in quality_makefile
+
+    step08 = (
+        REPO_ROOT
+        / "tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.R"
+    ).read_text(encoding="utf-8")
+    assert 'Sys.getenv("EMRYS_TEST_WORKERS", unset = "1")' in step08
+    assert "mc.cores = test_worker_count()" in step08
+
+
+@pytest.mark.parametrize(
+    ("workers", "message"),
+    [("0", "must be positive"), ("not-a-count", "must be a positive integer")],
+)
+def test_parallel_make_lanes_reject_invalid_worker_counts(
+    workers: str, message: str
+) -> None:
+    environment = os.environ.copy()
+    environment["EMRYS_TEST_WORKERS"] = workers
+    result = subprocess.run(
+        [
+            "make",
+            "-s",
+            "-f",
+            str(REPO_ROOT / "scripts" / "make_quality.mk"),
+            "validation-shell-contracts",
+        ],
+        cwd=REPO_ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert message in result.stderr
 
 
 @pytest.mark.parametrize("target", ["smoke", "validation-static"])

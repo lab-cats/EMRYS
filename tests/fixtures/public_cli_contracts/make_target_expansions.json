@@ -13,7 +13,9 @@
   "lint": [
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests setup.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" format --check --no-cache scripts src/emrys tests setup.py",
-    "bash -o pipefail -c 'git ls-files -z -- \"*.sh\" | xargs -0 \"$1\"' -- \"$(dirname -- \"<REPO_ROOT>/.venv/bin/python\")/shellcheck\"",
+    "workers=\"${EMRYS_TEST_WORKERS:-1}\"; case \"$workers\" in ''|*[!0-9]*) printf 'ERROR: EMRYS_TEST_WORKERS must be a positive integer; observed %s\\n' \"$workers\" >&2; exit 2 ;; esac; test \"$workers\" -ge 1 || { printf 'ERROR: EMRYS_TEST_WORKERS must be positive; observed %s\\n' \"$workers\" >&2; exit 2; }; available=\"$(if command -v nproc >/dev/null 2>&1; then nproc; else getconf _NPROCESSORS_ONLN; fi)\"; case \"$available\" in ''|*[!0-9]*|0) printf 'ERROR: could not determine the process-visible CPU count\\n' >&2; exit 2 ;; esac; test \"$workers\" -le \"$available\" || { printf 'ERROR: EMRYS_TEST_WORKERS=%s exceeds %s process-visible CPUs\\n' \"$workers\" \"$available\" >&2; exit 2; }; \\",
+    "\t\texport EMRYS_VALIDATED_TEST_WORKERS=\"$workers\"; \\",
+    "\t\tbash -o pipefail -c 'git ls-files -z -- \"*.sh\" | xargs -0 -n 1 -P \"${EMRYS_VALIDATED_TEST_WORKERS}\" \"$1\"' -- \"$(dirname -- \"<REPO_ROOT>/.venv/bin/python\")/shellcheck\"",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
     "\t\t--min-confidence 95 \\",
     "\t\tscripts src/emrys"
@@ -281,16 +283,9 @@
     "\t\ttests/reporting/test_transaction_validation.py"
   ],
   "shell-test": [
-    "bash tests/libraries/test_file_checks.sh",
-    "bash tests/stages/fasta_sidecars/test_step_00c_prepare_gatk_reference.sh",
-    "bash tests/stages/star_alignment/test_step_01_star_align.sh",
-    "bash tests/stages/canonical_bam/test_step_02_sort_index_bam.sh",
-    "bash tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh",
-    "bash tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh",
-    "bash tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh",
-    "bash tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh",
-    "bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh",
-    "bash tests/shell/test_local_r_environment.sh"
+    "workers=\"${EMRYS_TEST_WORKERS:-1}\"; case \"$workers\" in ''|*[!0-9]*) printf 'ERROR: EMRYS_TEST_WORKERS must be a positive integer; observed %s\\n' \"$workers\" >&2; exit 2 ;; esac; test \"$workers\" -ge 1 || { printf 'ERROR: EMRYS_TEST_WORKERS must be positive; observed %s\\n' \"$workers\" >&2; exit 2; }; available=\"$(if command -v nproc >/dev/null 2>&1; then nproc; else getconf _NPROCESSORS_ONLN; fi)\"; case \"$available\" in ''|*[!0-9]*|0) printf 'ERROR: could not determine the process-visible CPU count\\n' >&2; exit 2 ;; esac; test \"$workers\" -le \"$available\" || { printf 'ERROR: EMRYS_TEST_WORKERS=%s exceeds %s process-visible CPUs\\n' \"$workers\" \"$available\" >&2; exit 2; }; \\",
+    "\t\tprintf '%s\\0' tests/libraries/test_file_checks.sh tests/stages/fasta_sidecars/test_step_00c_prepare_gatk_reference.sh tests/stages/star_alignment/test_step_01_star_align.sh tests/stages/canonical_bam/test_step_02_sort_index_bam.sh tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh tests/shell/test_local_r_environment.sh \\",
+    "\t\t| xargs -0 -n 1 -P \"$workers\" bash"
   ],
   "smoke": [
     "for script in src/emrys/libraries/gatk_invocation.sh src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/emrys/stages/star_index/step_00a_build_star_index.sh src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/emrys/stages/star_alignment/step_01_star_align.sh src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh; do bash -n \"$script\" || exit $?; done"
@@ -331,21 +326,16 @@
     "bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh"
   ],
   "validation-shell-contracts": [
-    "bash tests/libraries/test_file_checks.sh",
-    "bash tests/stages/fasta_sidecars/test_step_00c_prepare_gatk_reference.sh",
-    "bash tests/stages/star_alignment/test_step_01_star_align.sh",
-    "bash tests/stages/canonical_bam/test_step_02_sort_index_bam.sh",
-    "bash tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh",
-    "bash tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh",
-    "bash tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh",
-    "bash tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh",
-    "bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh",
-    "bash tests/shell/test_local_r_environment.sh"
+    "workers=\"${EMRYS_TEST_WORKERS:-1}\"; case \"$workers\" in ''|*[!0-9]*) printf 'ERROR: EMRYS_TEST_WORKERS must be a positive integer; observed %s\\n' \"$workers\" >&2; exit 2 ;; esac; test \"$workers\" -ge 1 || { printf 'ERROR: EMRYS_TEST_WORKERS must be positive; observed %s\\n' \"$workers\" >&2; exit 2; }; available=\"$(if command -v nproc >/dev/null 2>&1; then nproc; else getconf _NPROCESSORS_ONLN; fi)\"; case \"$available\" in ''|*[!0-9]*|0) printf 'ERROR: could not determine the process-visible CPU count\\n' >&2; exit 2 ;; esac; test \"$workers\" -le \"$available\" || { printf 'ERROR: EMRYS_TEST_WORKERS=%s exceeds %s process-visible CPUs\\n' \"$workers\" \"$available\" >&2; exit 2; }; \\",
+    "\t\tprintf '%s\\0' tests/libraries/test_file_checks.sh tests/stages/fasta_sidecars/test_step_00c_prepare_gatk_reference.sh tests/stages/star_alignment/test_step_01_star_align.sh tests/stages/canonical_bam/test_step_02_sort_index_bam.sh tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh tests/shell/test_local_r_environment.sh \\",
+    "\t\t| xargs -0 -n 1 -P \"$workers\" bash"
   ],
   "validation-static": [
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests setup.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" format --check --no-cache scripts src/emrys tests setup.py",
-    "bash -o pipefail -c 'git ls-files -z -- \"*.sh\" | xargs -0 \"$1\"' -- \"$(dirname -- \"<REPO_ROOT>/.venv/bin/python\")/shellcheck\"",
+    "workers=\"${EMRYS_TEST_WORKERS:-1}\"; case \"$workers\" in ''|*[!0-9]*) printf 'ERROR: EMRYS_TEST_WORKERS must be a positive integer; observed %s\\n' \"$workers\" >&2; exit 2 ;; esac; test \"$workers\" -ge 1 || { printf 'ERROR: EMRYS_TEST_WORKERS must be positive; observed %s\\n' \"$workers\" >&2; exit 2; }; available=\"$(if command -v nproc >/dev/null 2>&1; then nproc; else getconf _NPROCESSORS_ONLN; fi)\"; case \"$available\" in ''|*[!0-9]*|0) printf 'ERROR: could not determine the process-visible CPU count\\n' >&2; exit 2 ;; esac; test \"$workers\" -le \"$available\" || { printf 'ERROR: EMRYS_TEST_WORKERS=%s exceeds %s process-visible CPUs\\n' \"$workers\" \"$available\" >&2; exit 2; }; \\",
+    "\t\texport EMRYS_VALIDATED_TEST_WORKERS=\"$workers\"; \\",
+    "\t\tbash -o pipefail -c 'git ls-files -z -- \"*.sh\" | xargs -0 -n 1 -P \"${EMRYS_VALIDATED_TEST_WORKERS}\" \"$1\"' -- \"$(dirname -- \"<REPO_ROOT>/.venv/bin/python\")/shellcheck\"",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
     "\t\t--min-confidence 95 \\",
     "\t\tscripts src/emrys",
@@ -354,7 +344,7 @@
     "git diff --check",
     "for script in src/emrys/libraries/gatk_invocation.sh src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/emrys/stages/star_index/step_00a_build_star_index.sh src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/emrys/stages/star_alignment/step_01_star_align.sh src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh; do bash -n \"$script\" || exit $?; done",
     "PYTHONDONTWRITEBYTECODE=1 \\",
-    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m compileall -q scripts src/emrys tests",
+    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m compileall -q -j 0 scripts src/emrys tests",
     "\"<REPO_ROOT>/.venv/bin/python\" -I -m emrys validate manifest \\",
     "\t\t--manifest configs/samples.example.tsv",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest -q tests/test_python_test_shards.py"
