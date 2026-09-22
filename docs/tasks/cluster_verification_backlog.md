@@ -1224,9 +1224,11 @@ plan was selected here.
 **Current partial state:** Named Init now collects inputs and scientific
 choices, reviews them and confirms creation in one invocation. Runtime
 admission, Doctor and Run also retain their existing confirmations. These do
-not constitute the eventual complete guided setup/launch interface, and no
-advanced-mode transition is selected. CV-U19 remains **Deferred**, with its
-accepted scope transferred to `INTERACTIVE-01` in the
+not constitute the eventual complete guided setup/launch interface. On
+2026-09-22, the owner selected bare `emrys` on a terminal as the guided entry;
+existing named commands remain the manual route. The full guide transcript and
+any `--advanced` spelling remain implementation decisions. CV-U19 remains
+**Deferred**, with its accepted scope transferred to `INTERACTIVE-01` in the
 [main backlog](backlog_matrix.md#deferred-operational-work).
 
 ### CV-U20 Complete Viking values in Quickstart

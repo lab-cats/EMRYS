@@ -598,9 +598,10 @@ cannot validate later documentation-only commits.
 This is a candidate interaction sequence for the study in the
 [Quickstart](../../quickstart.md), not accepted prompt wording or a new command
 contract. The bare-terminal entry and named-command manual route are accepted;
-INIT-02 integration, optional donor selection, and the exact nonterminal
-transcript remain to settle. Each answer with scientific meaning must be
-supplied or explicitly reviewed by the operator.
+the sibling features and guide-only exit details are implementation-time
+decisions. The explicit manifest and known-donor routes are the current
+baseline. Each answer with scientific meaning must be supplied or explicitly
+reviewed by the operator.
 
 | Checkpoint | Proposed visible decision | Owner boundary and stop condition |
 | --- | --- | --- |
@@ -717,13 +718,14 @@ cross-owner policy, changed mutation or recovery authority, evidence deletion,
 or a quantified product-code/file-growth exception. Implementation uses one
 authorized worktree and branch based on a rechecked target head.
 
-## Remaining evidence and decisions
+## Implementation-time evidence and decisions
 
-Refresh the source findings when sibling PRs are integrated. Resolve the
-INIT-02 and CV-U22 sibling dispositions, then recheck the literal prompt and
-exit sequence against that target in an installed environment. Review the
-proposed connective questions above, especially first-setup refusal,
-outside-checkout entry, and guide cancellation exits, before fixing the full
-novice transcript. The first bounded Init outcome slice above is a proposal;
-measure its actual product-code delta before seeking any growth exception or
-implementing it. Keep INTERACTIVE-01 status and acceptance in the main backlog.
+These choices and checks belong to implementation; they do not block this
+discovery draft. On the selected implementation head, refresh the findings if
+sibling PRs have been integrated and recheck the literal prompt and exit
+sequence in an installed environment. Review the proposed connective
+questions, including first-setup refusal, outside-checkout entry, and guide
+cancellation exits, when fixing the full novice transcript. The bounded Init
+outcome slice above remains a proposal: measure its actual product-code delta
+before seeking any growth exception or implementing it. Keep INTERACTIVE-01
+status and acceptance in the main backlog.
