@@ -16,8 +16,11 @@ The snapshot contains 575 tracked files. Under the repository's existing physica
 | Schemas | 159 | 88 | Contract and compatibility decisions remain separate. |
 | Repository scripts | 69 | 60 | Tooling is reported separately. |
 | Configuration and governance | 510 | 257 | Includes product resource configuration. |
+| Other tracked files | 1 | 0 | One `Projects/.gitkeep`; no product saving. |
 
-The 25% target is **not measured as achieved**. The accepted row has not selected comparison refs, counted surfaces, or gross additions versus net growth. If these provisional refs and product code are selected, a gross-additions interpretation requires at least 2,972 fewer added product lines; a net-growth interpretation requires at least 2,179 fewer product lines of growth. Retained evidence has not been proposed for deletion or counted as savings.
+The categories above assign Markdown/diagrams before tests and sum to 41,692 additions and 6,911 deletions across 168 changed files. Orchestration alone accounts for 10,361 added and 2,692 deleted product lines in the provisional diff. The 25% target is **not measured as achieved**. The accepted row has not selected comparison refs, counted surfaces, or gross additions versus net growth. If these provisional refs and product code are selected, a gross-additions interpretation requires at least 2,972 fewer added product lines; a net-growth interpretation requires at least 2,179 fewer product lines of growth. Retained evidence has not been proposed for deletion or counted as savings.
+
+The whole-repository stock extends beyond that diff: orchestration has 26 product files/28,108 lines, reporting 47/12,274, contracts 22/6,984, stages 36/5,063, libraries 33/4,574, analyses 12/3,781, and evidence 20/3,165. The 54 changed product files contain 37,993 current lines; 150 unchanged product files contain 27,287 lines (41.8% of current product code). Some large unchanged owners still need fine-grained review, including scientific-context projections and figures, Step 08/09 contracts, and storage qualification. Their size alone proves no reducible behavior. Coordinate size exceptions with `SIZE-01`; this audit must also inspect their callers and protections.
 
 Evidence here is committed-source review, existing test/contract inspection, and the isolated probes identified below. Repository tests, hosted CI, installed interactive Watch, Slurm, Viking, scientific review, and biological interpretation were not performed for this audit.
 
@@ -40,8 +43,17 @@ Evidence here is committed-source review, existing test/contract inspection, and
 | F13 | Narrow coordinator mechanics | Candidate; low yield | Explicit terminal confirmation and token-bound Slurm schema lists repeat small mechanics across coordinator owners. Request-record publication and recorded scheduler streams already have single or shared owners; directory synchronization wrappers enforce different trust and recovery checks. | Audit each complete caller set and fault behavior before sharing anything. Current source estimates are single-digit product lines, not evidence of a 25% path. |
 | F14 | Scientific and evidence lookalikes | Preserve | Step 08/09 parsers accept different schemas and scientific policies. Step 09 computation and independent validation, Step 10 reference-window re-derivation, and the Snakefile's static owner fence detect distinct failures. | Do not count independent oracles, cross-checks, or different admission boundaries as duplication. Changes require their own scientific/contract review and equal-strength protection. |
 | F15 | Documentation, tests, CI, and formatting | Separate owner review | Documentation structure checks, their failure-injection tests, CI preflight, synthetic E2E, scientific oracles, and retained measurements cover different failures or evidence levels. `SHFMT_BIN` in [`make_quality.mk`](../../scripts/make_quality.mk) has no invocation. | Review gate value under `ASSURANCE-01`, prose under `DOCS-01`, and surviving scripts under `OPS-03`. Removing the unused Make setting would save one tooling line; none of these changes counts as product reduction. |
+| F16 | Artifact-index API facade | Retirement candidate | The 30-line private [`_artifact_index/api.py`](../../src/emrys/reporting/_artifact_index/api.py) only re-exports sibling symbols. No tracked static caller was found at this commit; independent contract goldens import the underlying modules. | Confirm dynamic imports, packaged API expectations, and external use before deleting. Gross saving is 30 product lines and one file; net effect needs an exact diff. |
+| F17 | Run-summary `transaction.py` | Owner consolidation candidate | The 47-line [`_run_summary/transaction.py`](../../src/emrys/reporting/_run_summary/transaction.py) contains deterministic value helpers, no transaction. Only same-owner document/projection modules import it. | Inline or move helpers within that owner, then check summary JSON/TSV, ordering, schema, and independent goldens. Estimated net saving 10–25 product lines and one file, subject to a prototype. |
+| F18 | Report previous-output snapshots | State simplification candidate | Frozen `ReportContext` retains a mutable `previous_snapshots` mapping, but publication uses only its truthiness; the disk is separately rechecked before output. | A boolean may avoid retained mutable state while preserving complete-output refusal. Verify every context construction and publication fault case; no material line saving is established. |
+| F19 | Strict JSON admission | Consolidation candidate; undecided | [Orchestration contracts](../../src/emrys/contracts/orchestration/api.py) and [artifact contracts](../../src/emrys/contracts/artifacts/_artifact_contracts/schema.py) each reject duplicate keys and nonstandard numbers. Their schema registries have different ID, caching, error, and diagnostic policies. | Compare complete callers and diagnostics before sharing the narrow parse policy; do not merge registries by appearance. Net product saving is unmeasured. |
+| F20 | Storage receipt JSON | Potential admission defect; separate review | [Storage qualification](../../src/emrys/evidence/storage_inventory/qualification.py) uses bare `json.loads` for direct and two-phase receipts. Duplicate keys are last-wins and `NaN` is accepted in an isolated parser probe; current tests cover malformed syntax/non-objects only. | Characterize duplicate/nonstandard values through actual receipt admission, preserve raw-byte hashes and direct versus cross-node identity policy, then choose a repair. No bypass or REDUCE saving is established. |
 
 ## Source and protection details
+
+### F01 — Reproducible measurement
+
+The provisional stock uses `git ls-tree -r --name-only 3a672fdf` and physical lines of the tracked product extensions under `src/`, excluding generated `renv/activate.R`. The provisional diff uses `git diff --numstat --no-renames f2c0149e 3a672fdf`; classification gives Markdown/diagrams precedence over tests. Product stock grew from 201 files/56,564 lines to 204 files/65,280 lines. Product gross additions are 11,885 and net growth is 8,716. A 25% reduction of gross additions would cap additions at 8,913; a 25% reduction of net growth would cap growth at 6,537. These are conditional thresholds, not achieved savings. Ref selection, line moves, non-product surfaces, and the exact meaning of “additions” still require an accepted decision before implementation or scorekeeping.
 
 ### F02 — Shared R validators
 
@@ -50,6 +62,10 @@ Step 09 and Step 10 each define the same `validate_safe_id` and `validate_hash` 
 ### F03 — Parser reachability
 
 A job starts with an empty wildcard string. The wildcard event is the only assignment of a nonempty wildcard string and registers its sample immediately. Completion and final active-job processing read that same value; `samples` is never cleared. This makes the two later initialization blocks unreachable under the current parser, including the event-order permutations probed locally. Before removal, assert sample order and history for malformed and repeated events, and retain the contract's distinction between log observations and verified Run progress.
+
+### F04 — Stage-table placeholder
+
+Every `STAGES` row has a third `None`, while tuple consumers and a shape test expect the six-field representation. Removing the placeholder would also require updating that expectation. This is a representation cleanup with no demonstrated reduction in decisions, branches, or owned behavior; its 16 physical lines must remain separate from meaningful product compression.
 
 ### F05 — Installed Watch and inspection
 
@@ -62,6 +78,14 @@ A query-length cap alone would not solve catastrophic backtracking: a short patt
 ### F07 — Step 10 check order
 
 The shell does not own locking, final links, or rollback; the runner does. Its `validate_receipt_payloads` checks hashes and row counts for all four staged outputs before producer success (`scientific_context_projection.sh`, lines 80–139). The runner's prepublication validation set contains only Steps 08 and 09 (`task.py`, 1742–1758); Step 10's grouped validator runs after native publication (2732–2782). The coordinator contract distinguishes producer abort before publication from failed validation after commit (lines 978–988 and 1117–1131). The shell test checks a valid fake receipt and one broken receipt, not each payload mismatch. Retiring the shell requires prepublication parity for all payloads, input hashes, receipt shape, planner/direct callers, and recovery/abort fault paths. No safe 192-line saving is established.
+
+### F08 — Reporting transactions
+
+The coordinator has one production dispatch for each reporting publisher. The artifact-index publisher descriptor-walks a destination below its admitted artifact root, rechecks native sources and package, stages TSV/QC/JSON, then links the JSON manifest last. The HTML publisher can create independent output directories, validates staged and final scientific/evidence HTML, and links a TSV receipt last. Their rollback, lock, and anchor handling differ. The existing `_files.py`, `_signals.py`, and `exclusive_publication.py` already share equivalent low-level mechanics. Direct reporting tests exercise mid-publish failures and retained recovery state. No measured common engine is shorter or equal in protection; independent tests and receipt ordering remain necessary.
+
+### F09 — Replace-in-place recovery
+
+The validation library's one-file publisher serves four validator owners through `validation/runtime.py` (lines 27–49). It validates the staged and predecessor reports, then replaces the final (`validation/publication.py`, 13–70). Existing characterization tests show a late foreign final can be deleted during rollback and a failed restore can leave the predecessor backup while releasing the lock. Reference-provenance reconciliation publishes three outputs and moves all predecessors before entering its rollback handler (`reconciler.py`, 83–126). Its failed-restore test leaves backups with the lock removed; the owner README also records partial backup-move and diagnostic-loss risks. `exclusive_publication.publish_exclusive` covers absent or exactly expected single-file bytes, not this complete replacement policy. Repair and consolidation need separate ownership/fault review. The 58-line validation publisher is gross exposed surface, not a booked net saving, and none of its failure tests are deletion offsets.
 
 ### F10 — Mixed benchmark trials
 
@@ -78,6 +102,34 @@ The Viking profile's resource values match the packaged defaults, and a test che
 ### F13 — Small coordinator repeats
 
 Three `y`/`yes` confirmation helpers in `control.py`, `doctor.py`, and `onboarding.py` repeat a small decision, although prompt and diagnostic ownership may differ. `_submission_inspection.py` hardcodes the same token-bound v2–v4 version set represented by `slurm_submission._REQUEST_SCHEMAS[1:]`; the trust and compatibility boundary needs comparison before sharing it. `request.json` has one writer, and scheduler submit/stop already share transcript publication. Directory-sync helpers vary in no-follow, identity, type, and failure semantics; sharing their surface shape could lose protection. These candidates offer only single-digit product-line savings unless a measured prototype proves otherwise.
+
+### F14 — Scientific and evidence independence
+
+Step 08 admission validates site rows, scope counts, sample DP/AD/AF, and carried location (`contracts/scientific_evidence/step08.py`, 483–555). Step 09 additionally binds analysis identity and exact carry-forward of Step 08 metadata/sample fields (`step09.py`, 804–832); its read-only intrinsic projection deliberately excludes upstream identity, paired CMH, global BH, and publication (665–677). Step 08 and Step 09 validators and artifact-index projection call these at distinct boundaries. The Step 09 validator does not independently recompute CMH statistics; its separate Python/real-R oracle addresses that gap. Step 10 independently re-derives reference windows without rerunning R. The Snakefile's static processing-owner fence rejects even a schema-valid reassignment, as a direct workflow test demonstrates. These are independent protections, not equivalent duplicate callers. Step 08 numerical-oracle work remains open under `SCI-ORACLE-01`; no product saving is defensible here.
+
+### F15 — Gate and evidence ownership
+
+The documentation structure checker validates tracked Markdown/Mermaid inventory, canonical headings, owner adjacency, and local links; its tests inject missing owners/pages and malformed links to verify the checker. The source-dependency gate instead checks Python import direction. Local validation composes lint, documentation, source edges, shell syntax, bytecode, manifests, and test lanes; hosted CI adds static, shell, guarded-R, coverage, and opt-in synthetic E2E with distinct evidence ceilings. No caller-complete gate deletion is established. `SHFMT_BIN` in `scripts/make_quality.mk` has no tracked invocation and is a one-line tooling candidate. A documentation gate change belongs to `ASSURANCE-01`; none of these candidates counts toward the product target.
+
+### F16 — Private artifact-index facade
+
+`_artifact_index/api.py` consists of re-exports and an `__all__` list. A tracked source/test/script/doc search found no static reference to this private facade, while independent contract goldens import its underlying `core`, `models`, and `records` modules. Its 30 product lines and one file are a concrete gross retirement candidate. Dynamic import, packaged API, and external-use checks remain before any deletion; net reduction has not been measured.
+
+### F17 — Run-summary helper owner
+
+`_run_summary/transaction.py` contains `_path_hash`, `_canonical_key`, and `_stable_unique` value helpers, with no transaction. Only same-owner `document.py` and `projection.py` import it. Inlining the one-use path projection and placing stable uniqueness beside its remaining caller could retire the 47-line file, but replacement lines must be counted. Deterministic summary JSON/TSV, schema, warning order, and independent goldens are protected; the owner README's module table would change. The estimated 10–25 net product lines are a hypothesis until a prototype diff exists.
+
+### F18 — Report context state
+
+`ReportContext` is a frozen dataclass, yet its `previous_snapshots` field retains a mutable mapping built during context admission. Publication uses only its truthiness to reject an existing transaction, then separately checks each stable disk path with `lexists`. A boolean could represent the retained decision without keeping mutable snapshot state. The complete-existing-output refusal test protects behavior. This is a state-shape candidate, not an observed publication bypass or a material product-line saving.
+
+### F19 — Strict JSON admission owners
+
+`contracts/orchestration/api.py` (89–137) and `contracts/artifacts/_artifact_contracts/schema.py` (23–53) both parse a JSON object while rejecting duplicate names and `NaN`/infinite numbers. Their closed schema-registry builders also look similar, but orchestration uses an explicit `$id` table and cached validators, while artifact contracts derive IDs and use different errors and order. Public exception types and diagnostic text differ. A narrow shared parser might reduce code if it preserves each owner's contract; a combined registry has no measured saving. Caller and invalid-input characterization must precede any move.
+
+### F20 — Storage receipt admission
+
+The storage owner builds deterministic receipt bytes, then admits retained direct, compute, and final receipts through `_json_object` (`qualification.py`, 330–337). That helper uses bare `json.loads`: an isolated standard-library probe made a duplicate `status` key resolve to the last value and accepted `NaN`. The storage test at `test_storage_inventory.py` 593–607 covers malformed JSON and a non-object, not these cases. Direct admission binds same-host identity including device ID (742–800); two-phase final admission binds retained compute/head receipts while intentionally allowing cross-node device IDs to differ (817–870). The raw receipt-byte digest is retained. This is an ambiguous/nonstandard input-admission finding, not a demonstrated qualification bypass. A repair needs direct and two-phase cases, owner error/compatibility review, and retained receipt protection; reusing contract parsing has no measured net saving.
 
 ## Selection boundary
 
