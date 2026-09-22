@@ -3206,6 +3206,116 @@ def test_runtime_reuse_interactive_confirmation_reuses_preview_probe(
     )
 
 
+def test_runtime_reuse_browse_selects_and_validates_one_project(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    donor, borrower, _seal, _original = _reuse_projects(tmp_path, monkeypatch)
+    _inspector, calls = _record_runtime_reuse_probes(monkeypatch)
+    monkeypatch.setenv("EMRYS_PROJECTS_ROOT", str(tmp_path))
+    output, errors = _Terminal(), _Terminal()
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("1\ny\n"))
+    monkeypatch.setattr(onboarding.sys, "stdout", output)
+    monkeypatch.setattr(onboarding.sys, "stderr", errors)
+    arguments = cli.build_parser().parse_args(
+        ["runtime", "discover", "--project", str(borrower), "--from-project"]
+    )
+
+    assert arguments.from_project == ""
+    assert onboarding.discover_runtime_from_args(arguments) == 0
+    assert len(calls) == 2
+    assert (borrower.parent / "runtime/runtime.tsv").is_file()
+    shown = _decoded_terminal(errors.getvalue()).plain
+    assert f"1. {donor.parent}" in shown
+    assert "not yet verified" in shown
+    assert "Admit this runtime inventory? [y/N]" in shown
+    assert "Runtime inventory admitted" in _decoded_terminal(output.getvalue()).plain
+
+
+def test_runtime_reuse_browse_has_no_implicit_source_or_install(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    donor, borrower, seal, _original = _reuse_projects(tmp_path, monkeypatch)
+    monkeypatch.setenv("EMRYS_PROJECTS_ROOT", str(tmp_path))
+    before = _tree_bytes(tmp_path)
+    output, errors = _Terminal(), _Terminal()
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("\n"))
+    monkeypatch.setattr(onboarding.sys, "stdout", output)
+    monkeypatch.setattr(onboarding.sys, "stderr", errors)
+    arguments = argparse.Namespace(
+        project=borrower, from_project="", execute=False, replace=False, verbose=False
+    )
+
+    assert onboarding.discover_runtime_from_args(arguments) == 0
+    assert f"1. {donor.parent}" in _decoded_terminal(errors.getvalue()).plain
+    assert "no files were written" in output.getvalue()
+    assert _tree_bytes(tmp_path) == before
+    assert not seal.exists()
+    for execute, replace in ((True, False), (False, True)):
+        arguments.execute, arguments.replace = execute, replace
+        assert onboarding.discover_runtime_from_args(arguments) == 2
+        assert _tree_bytes(tmp_path) == before
+    arguments.execute = arguments.replace = False
+    monkeypatch.setattr(onboarding.sys, "stdin", io.StringIO("1\ny\n"))
+    monkeypatch.setattr(onboarding.sys, "stderr", io.StringIO())
+    assert onboarding.discover_runtime_from_args(arguments) == 2
+    assert _tree_bytes(tmp_path) == before
+
+
+def test_runtime_reuse_browse_with_no_donor_continues_without_publication(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    borrower = _project_with_owned_runtime(tmp_path / "borrower")
+    monkeypatch.setenv("EMRYS_PROJECTS_ROOT", str(tmp_path))
+    output, errors = _Terminal(), _Terminal()
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal())
+    monkeypatch.setattr(onboarding.sys, "stdout", output)
+    monkeypatch.setattr(onboarding.sys, "stderr", errors)
+    before = _tree_bytes(tmp_path)
+
+    assert onboarding.discover_runtime_from_args(
+        argparse.Namespace(
+            project=borrower,
+            from_project="",
+            execute=False,
+            replace=False,
+            verbose=False,
+        )
+    ) == 0
+    assert "No other Project with a runtime inventory" in errors.getvalue()
+    assert "no files were written" in output.getvalue()
+    assert _tree_bytes(tmp_path) == before
+
+
+def test_runtime_reuse_browse_rejects_unsafe_home_and_unready_source(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    donor, borrower, _seal, _original = _reuse_projects(tmp_path, monkeypatch)
+    unsafe = tmp_path / "linked-home"
+    unsafe.symlink_to(tmp_path, target_is_directory=True)
+    with pytest.raises(onboarding.OnboardingError, match="canonical real directory"):
+        onboarding._projects_home_children(str(unsafe))
+    monkeypatch.setenv("EMRYS_PROJECTS_ROOT", str(tmp_path))
+    unready = _project_with_owned_runtime(tmp_path / "zzz-unready")
+    (unready.parent / "runtime/runtime.tsv").write_bytes(b"invalid\n")
+    before = _tree_bytes(tmp_path)
+    errors = _Terminal()
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("2\n"))
+    monkeypatch.setattr(onboarding.sys, "stderr", errors)
+    arguments = argparse.Namespace(
+        project=borrower, from_project="", execute=False, replace=False, verbose=False
+    )
+
+    assert onboarding.discover_runtime_from_args(arguments) in (1, 2)
+    assert f"1. {donor.parent}" in _decoded_terminal(errors.getvalue()).plain
+    assert f"2. {unready.parent}" in _decoded_terminal(errors.getvalue()).plain
+    assert _tree_bytes(tmp_path) == before
+    assert not (borrower.parent / "runtime/runtime.tsv").exists()
+
+
 def test_runtime_reuse_confirmation_rejects_content_changed_after_preview(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

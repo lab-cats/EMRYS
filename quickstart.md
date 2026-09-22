@@ -139,18 +139,22 @@ Continue only after `Project validation: PASS`.
 
 ## 5. Prepare the scientific tools and storage
 
-**If you completed the [smoke test](docs/operations/SMOKE_TEST.md), reuse its
-tools before running Doctor:**
+Check for tools already prepared in another Project, whether or not you ran
+the optional [smoke test](docs/operations/SMOKE_TEST.md):
 
 ```bash
-emrys runtime discover --from-project "$EMRYS_SOURCE_ROOT/Projects/emrys-smoke"
+emrys runtime discover --from-project
 ```
 
-Continue only if it reports `Runtime discovery: READY`. Review the source and
-answer `y` at `Admit this runtime inventory? [y/N]`; wait for
-`Runtime inventory admitted:`. If you skipped the smoke test, skip that command.
+If you ran the smoke test, choose `emrys-smoke` from the numbered Projects.
+Otherwise, choose a Project whose tools you want to reuse. The list shows
+possible sources, not verified compatibility. Continue only after the chosen
+source reports `Runtime discovery: READY`; answer `y` at
+`Admit this runtime inventory? [y/N]` and wait for `Runtime inventory admitted:`.
+If a source fails, run the choice again for another Project. When no prepared
+Project is found or none qualifies, Doctor will prepare the tools needed here.
 
-Prepare or verify this Project:
+Verify this Project and prepare tools only if needed:
 
 ```bash
 emrys doctor --repair

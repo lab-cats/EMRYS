@@ -318,6 +318,13 @@ cross-Project sharing; an immutable expected-content seal and fresh borrower
 qualification remain necessary.
 
 Explicit `runtime discover --from-project SOURCE` supplies that sharing route.
+Interactive `--from-project` without `SOURCE` enumerates at most 256 immediate
+children of one configured canonical Projects home, displays only distinct
+Projects with an inventory, and requires a numbered source choice. Listings are
+unverified; the selected source follows the same full reuse admission as an
+explicit path. Browsing never chooses by recency, publishes, installs, or falls
+back to repair. Noninteractive calls, `--execute`, and `--replace` require an
+explicit source path. A missing home or unsafe home blocks browsing.
 One invocation probes and prepares an expected-content seal, displays the
 preview, and either declines without writing or confirms publication. Confirmed
 publication claims the source, rechecks its inventory and content, exclusively

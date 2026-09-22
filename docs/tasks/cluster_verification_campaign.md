@@ -147,7 +147,9 @@ found during verification belong with their existing source or operational
 owner. Doctor validation, runtime inspection, CLI planning, application logging,
 lifecycle recovery and reporting publication retain their existing authorities.
 `INIT-02` still needs hosted and novice acceptance of its explicit guided study
-choice; CV-U22 needs compatible-donor discovery before its source work is complete.
+choice. CV-U22's donor picker needs exact hosted and institutional acceptance;
+its listed inventories are not compatibility proof until the selected reuse
+plan passes.
 
 ## Completion and handoff
 

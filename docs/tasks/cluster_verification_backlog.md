@@ -160,7 +160,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Deferred |
 | [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
 | [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Verification pending |
-| [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse a known smoke donor and resolve broader compatible-donor discovery | Open |
+| [CV-U22](#cv-u22-smoke-project-tool-reuse) | Reuse a known smoke donor and browse existing Projects before repair | Verification pending |
 | [CV-U23](#cv-u23-repair-restriction-when-sharing-tools) | Explain and resolve the permanent repair restriction | Verification pending |
 | [CV-U24](#cv-u24-persistent-cli-defaults) | Save site and other repeated CLI values | Verification pending |
 | [CV-U25](#cv-u25-repeated-fastq-hashing-during-init) | One full FASTQ hashing pass across preview and creation | Verification pending |
@@ -1506,12 +1506,21 @@ reuse cases again exercise that production API directly. Focused local checks
 pass; a fresh institutional smoke-to-study journey remains required, so CV-U22
 was **Verification pending** for the known-smoke route at that checkpoint.
 
-That route does not discover another compatible Project when the optional smoke
-test was skipped. The expanded discover/validate/reuse-before-install requirement
-above remains unimplemented, with no general donor-selection mechanism approved.
-CV-U22 is **Open** against that original requirement; the known-smoke route also
-still needs institutional acceptance. Doctor must not choose another Project's
-tools silently.
+At that checkpoint, the route did not discover another compatible Project when
+the optional smoke test was skipped. The expanded discover/validate/reuse-before-
+install requirement above remained unimplemented, and CV-U22 was **Open**.
+Doctor must not choose another Project's tools silently.
+
+**Current source correction:** Quickstart now browses Projects with retained
+runtime inventories before Doctor on both smoke and direct real-data paths.
+The terminal lists bounded immediate children of the configured canonical
+Projects home and requires an explicit numbered choice. Listings are unverified;
+the selected source undergoes the same runtime, content and freshness checks as
+an explicit `--from-project SOURCE` before any admission. No candidate is chosen
+or installed silently, and Doctor still qualifies the borrower Project and its
+placement. Automation and same-source replacement retain exact source paths.
+CV-U22 is **Verification pending** for exact hosted checks and fresh institutional
+smoke-to-study and no-smoke journeys; a listed inventory alone is not reuse proof.
 
 ### CV-U23 Repair restriction when sharing tools
 

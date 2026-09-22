@@ -249,22 +249,10 @@ def _projects_home_watch_targets() -> tuple[_WatchTarget, ...]:
     selected = os.environ.get("EMRYS_PROJECTS_ROOT", "").strip()
     if not selected:
         return ()
-    declared = Path(selected)
-    if not declared.is_absolute():
-        raise ControlError("EMRYS_PROJECTS_ROOT must be an absolute path")
-    home = _absolute(declared)
     try:
-        if home.is_symlink() or home.resolve(strict=True) != home or not home.is_dir():
-            raise ControlError(
-                f"EMRYS_PROJECTS_ROOT must be one canonical real directory: {home}"
-            )
-        children = tuple(sorted(home.iterdir(), key=lambda path: path.name))
-    except OSError as exc:
-        raise ControlError(
-            f"Could not inspect EMRYS_PROJECTS_ROOT {home}: {exc}"
-        ) from exc
-    if len(children) > 256:
-        raise ControlError(f"EMRYS_PROJECTS_ROOT has more than 256 entries: {home}")
+        children = onboarding._projects_home_children(selected)
+    except onboarding.OnboardingError as exc:
+        raise ControlError(str(exc)) from exc
     result: list[_WatchTarget] = []
     for child in children:
         project = child / "project.yaml"

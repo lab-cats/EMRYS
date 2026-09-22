@@ -662,6 +662,13 @@ generations and visible from the new Project's intended nodes. Keep both Project
 locations stable. An existing runtime inventory is preserved unless `--replace`
 explicitly selects a newer generation from the same source Project.
 
+In a terminal, `emrys runtime discover --from-project` lists immediate Projects
+with runtime inventories beneath the configured `EMRYS_PROJECTS_ROOT`. The list
+is bounded and unverified. Choose one number; the existing runtime reuse checks
+then determine whether that source is compatible. If a choice fails, retry with
+another source. With no listed source, continue to Doctor. Automation must name
+an exact source path, as below.
+
 ```bash
 emrys runtime discover --project /absolute/borrower/project.yaml --from-project /absolute/donor/project.yaml
 ```

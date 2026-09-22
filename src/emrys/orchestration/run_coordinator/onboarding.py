@@ -287,6 +287,26 @@ def project_definition_path(selection: str | Path | None = None) -> Path:
     return candidate
 
 
+def _projects_home_children(selected: str) -> tuple[Path, ...]:
+    """Enumerate one canonical Projects home without following its parent link."""
+
+    declared = Path(selected)
+    if not declared.is_absolute():
+        raise OnboardingError("EMRYS_PROJECTS_ROOT must be an absolute path")
+    home = _absolute(declared)
+    try:
+        if home.is_symlink() or home.resolve(strict=True) != home or not home.is_dir():
+            raise OnboardingError(
+                f"EMRYS_PROJECTS_ROOT must be one canonical real directory: {home}"
+            )
+        children = tuple(sorted(home.iterdir(), key=lambda path: path.name))
+    except OSError as exc:
+        raise OnboardingError(f"Could not inspect EMRYS_PROJECTS_ROOT {home}: {exc}") from exc
+    if len(children) > 256:
+        raise OnboardingError(f"EMRYS_PROJECTS_ROOT has more than 256 entries: {home}")
+    return children
+
+
 def add_project_argument(parser: argparse.ArgumentParser) -> None:
     """Add the one ordinary Project selector shared by public commands."""
 
@@ -2285,8 +2305,10 @@ def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
     add_verbose_argument(parser)
     parser.add_argument(
         "--from-project",
+        nargs="?",
+        const="",
         metavar="SOURCE",
-        help="Reuse a source Project's managed tools; --execute seals the selected generation before selection.",
+        help="Choose a prepared Project in a terminal, or name one for automation; --execute requires a named source.",
     )
     parser.add_argument(
         "--execute",
@@ -2316,6 +2338,35 @@ def _confirm_admission(question: str) -> bool:
     return sys.stdin.readline().strip().casefold() in {"y", "yes"}
 
 
+def _browse_runtime_donor(borrower: Path) -> Path | None:
+    if not _interactive_terminal():
+        raise OnboardingError("--from-project without SOURCE needs an interactive terminal")
+    selected = os.environ.get("EMRYS_PROJECTS_ROOT", "").strip()
+    if not selected:
+        raise OnboardingError("Choose EMRYS_PROJECTS_ROOT before browsing prepared Projects")
+    donors = tuple(
+        project
+        for child in _projects_home_children(selected)
+        if not child.is_symlink() and child.is_dir()
+        for project in (child / "project.yaml",)
+        if project != borrower
+        and os.path.lexists(project)
+        and os.path.lexists(child / "runtime/runtime.tsv")
+    )
+    if not donors:
+        print("No other Project with a runtime inventory was found.", file=sys.stderr)
+        return None
+    print("Projects with runtime inventories (not yet verified):", file=sys.stderr)
+    for number, project in enumerate(donors, 1):
+        print(f"  {number}. {project.parent}", file=sys.stderr)
+    choice = _prompt("source Project number (Enter to skip)")
+    if not choice:
+        return None
+    if not choice.isdecimal() or not 1 <= int(choice) <= len(donors):
+        raise OnboardingError("Choose one displayed source Project number")
+    return donors[int(choice) - 1]
+
+
 def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
     """Discover, probe, and optionally admit the active Project runtime."""
 
@@ -2325,6 +2376,13 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
         replace_existing = getattr(arguments, "replace", False)
         if replace_existing and donor is None:
             raise OnboardingError("--replace requires --from-project")
+        if donor == "":
+            if arguments.execute or replace_existing:
+                raise OnboardingError("--execute and --replace require a named source Project")
+            donor = _browse_runtime_donor(project_definition_path(arguments.project))
+            if donor is None:
+                print("No source Project selected; no files were written.")
+                return 0
         if donor is None:
             plan = _plan_runtime_discovery(
                 project=project_definition_path(arguments.project)
