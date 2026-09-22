@@ -47,14 +47,15 @@ The 51 main-matrix rows are accounted for across maintainability/release
 (seven), platform/portability (eleven), science (two), reporting (five), and
 completed/closed outcomes (eight). Their index labels total 19 Open, 15
 Verification pending, nine Completed, six Deferred, one Closed, and one Needs
-decision. Source spot checks confirm that `REFERENCE-INPUT-01` still reaches
-an empty-token index in the shared FASTA parser, `FUT-INDEX-01` still lacks an
-external-index input in its reference schema, and `REPORT-ROSTER-01` still
-lacks exact ordered validation-check membership in the generic artifact-index
-owner. These checks support retaining those rows; they do not constitute a
-full implementation or site acceptance audit. Quickstart's `/tmp` request
-and the Runbook's site-qualification caveat are consistent, so this review
-does not infer a `SCRATCH-01` status change.
+decision. The following source spot checks support retaining the rows; they
+do not constitute complete implementation or site acceptance.
+
+| Row | Source and direct-check discovery | Next boundary |
+| --- | --- | --- |
+| `REFERENCE-INPUT-01` | The shared [FASTA parser](../../src/emrys/libraries/references/contigs.py) line 31 indexes an empty header token; its [test](../../tests/libraries/test_reference_contigs.py) lines 98–102 expects the resulting raw `IndexError`, while onboarding, alignment, and stage callers catch `ReferenceContigError`. | Correct the parser and characterized test together if implementation is selected; retain valid names/order and normal diagnostics. |
+| `FUT-INDEX-01` | The [reference schema](../../src/emrys/contracts/schemas/orchestration/v1/reference.schema.json) admits FASTA/GTF and construction parameters, not an external index. The standalone [index validator](../../src/emrys/stages/star_index/validator.py) checks required members, reference identity, and parameters but is not Project admission. | Keep Open; bind exact member hashes, STAR identity, and immutable planning before claiming reuse. |
+| `REPORT-ROSTER-01` | The generic [artifact inspector](../../src/emrys/reporting/_artifact_index/inspection.py) checks safe, unique IDs but not exact order/membership. Its [mutation test](../../tests/reporting/test_artifact_adapters.py) lines 585–604 documents that reordered or wrong unique IDs still mark an artifact complete. Step 09's module-specific reporter and an independent roster oracle provide narrower protections. | Preserve `Needs decision` pending its definition and owner choice; do not call every report validator defective or delete independent oracles. |
+| `SCRATCH-01` | Quickstart requests Viking `/tmp`; the [Runbook](../operations/RUNBOOK.md#temporary-files) distinguishes batch, Doctor, and Task scratch and requires actual-host permissions/capacity/lifetime verification. The batch wrapper has source-level parent checks. | Keep Verification pending for site evidence; do not infer suitability from the configured path or a local fixture. |
 
 ## Findings matrix
 
@@ -523,6 +524,15 @@ limits not reproduced by that register. A later transfer must preserve both
 sets, including unknown E01/E06 causes, absent E09 terminal recovery evidence,
 and E12's active-only observation. The charter and matrix cannot be shortened
 as though that transfer has already happened.
+
+| Candidate content | Proposed treatment | Gate before shortening or removal |
+| --- | --- | --- |
+| Current `INIT-02` and dashboard summaries | Correct present-tense claims at their existing owners; keep card acceptance and dated test limits. | Review the proposed wording in findings 2 and 5 against the selected source. |
+| Charter's earlier development grant and running-job reference | Date-bound the original authorization and job circumstance; keep the enduring active-installation safety rule. | Confirm the historical approval wording and current workflow authority. |
+| Roughly 205 lines across the three cluster closure regions | Link secondary delivery prose to the matrix's operative checklist. | Compare each condition with card acceptance and the E register; the region size is not a duplicate-line count. |
+| Matrix walkthrough and charter E01–E12 | Transfer exact dated observations to an approved history home before reducing either narrative. | Preserve all job/hash identities, unknown causes, absent receipts, limits, and inbound links. |
+| Polish audit/PR chronology and CV checkpoint narratives | Condense routine sequence after proposal and card-by-card disposition. | Keep unique rationale, exact CI/artifact identity, measurements, approvals, and recovery decisions. |
+| Optimization old priority and traversal/attestation counts | Frame the counts as the pinned September 7 observation; re-evaluate priority against current source. | Retain raw PR45 measurements and obtain comparable new data before claiming benefit. |
 
 Inbound links constrain later placement changes: the matrix's
 `#viking-walkthrough-findings` heading is referenced by `SITE-PARITY-01` and
