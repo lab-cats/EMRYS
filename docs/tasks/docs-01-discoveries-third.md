@@ -4,7 +4,8 @@ This temporary companion to the [findings matrix](docs-01-audit.md#findings-matr
 holds F62 onward. F62–F64 use PR head `b67e0eeb`; F65–F66 began at
 `cf94af08`, with F66 extended at `9c4fafdc`; F67–F70 use `c0a6027a`;
 F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`; F74–F77 use `ab25ea9b`;
-F78–F83 use PR head `7a07d502`; F84–F88 use `ce9a3289`,
+F78–F83 use PR head `7a07d502`; F84–F88 use `ce9a3289`;
+F89 uses local head `39a21034`,
 all read on 2026-09-22.
 These are documentation observations, not runtime results or accepted changes.
 
@@ -386,3 +387,16 @@ profile creation. The [CV-11 card](cluster_verification_backlog.md) lines
 checks while retaining institutional heterogeneous-node acceptance. Item
 36 is a dated proposal, not the current software status. This audit did not
 rerun the checks or establish institutional behavior.
+
+### F89 — One-Run wording before Run creation
+
+The [Runbook](../operations/RUNBOOK.md) lines 385–394 introduces the
+`emrys validate`, `doctor`, `run`, `inspect` sequence as applying to a ready
+Project “with one Analysis and one Run.” The phrase can describe an already
+existing Run, while [`_plan_run`](../../src/emrys/orchestration/run_coordinator/control.py)
+lines 357–367 plans a new one and validates its destination at line 424.
+[Run admission](../../src/emrys/orchestration/run_coordinator/materialization.py)
+lines 1566–1617 permits a matching pristine committed Run with no Attempt,
+but refuses an existing Run with Attempt entries at 1588–1597 and directs the
+reader to inspect or resume it. The Runbook may intend the post-command
+cardinality; it does not state that precondition. No command was exercised.

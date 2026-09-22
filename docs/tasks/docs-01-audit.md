@@ -164,6 +164,11 @@ permission to change or delete the source.
   and history files resolved to retained local commits, paths, and in-range
   line numbers; that verifies coordinates, not claims or external artifacts.
   No product, test, runtime, or cluster operation ran in this pass.
+- A subsequent read-only pass at local audit head `39a21034` reread the full
+  1,248-line coordinator contract and selected CI/test guides against source;
+  their apparent discrepancies were already F01–F88 or were owner-specific
+  protections. Operator-route comparison added F89. No command, test, CI run,
+  or cluster operation was initiated for this pass.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -285,6 +290,7 @@ and the boundary for each row.
 | [F86](docs-01-discoveries-third.md#f86-step-02b-parallel-validation-claim) | Execution-order wording | Step 02b contract says it may overlap the Step 02 validator; the current Run graph waits for Step 02's verified marker, which follows validation. | An internal worker's local input needs are distinct from the admitted Run order; no Run was executed. |
 | [F87](docs-01-discoveries-third.md#f87-step-05-scratch-owner-in-optimization-candidate) | Historical owner drift | Optimization candidate attributes Step 05 GATK spill placement to its worker; the current runner supplies output-adjacent scratch and binds the worker's temp options. | The candidate's storage and performance question remains unmeasured; no placement change is inferred. |
 | [F88](docs-01-discoveries-third.md#f88-old-slurm-memory-preflight-proposal) | Prior-revision proposal | Polish item 36 calls explicit Slurm memory preflight missing; current `SCHED-01` records the implemented check with verification still pending. | The institutional heterogeneous-node limit remains open; no new software proof is inferred. |
+| [F89](docs-01-discoveries-third.md#f89-one-run-wording-before-run-creation) | Operator precondition ambiguity | Runbook says a ready Project has one Run immediately before `emrys run`; the command plans a new Run and refuses an existing Run with Attempts. | A pristine committed Run without an Attempt is a narrow exception; no command was exercised. |
 
 ## Discovery notes
 
