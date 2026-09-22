@@ -78,6 +78,8 @@ local navigation labels, not new backlog items.
 | `R17` | Obsolete-Run refusal before Slurm report submission | `report --execute` with Slurm placement schedules before the reporting owner inspects the selected Run; source tests show submission from a dummy Run. | If this operation is promised, require obsolete-Run refusal before creating a request or calling `sbatch`; retain a public candidate-artifact check across preview, direct execution, and Slurm placement. | `RELEASE-01`; coordinator/reporting owners and R09 |
 | `R18` | Interactive mutation modes and help | Named Init, runtime discovery, Run/resume, and Doctor repair can write after terminal confirmation without `--execute`; public runtime-discovery help incorrectly says the flag is required to write. | Classify explicit preview, declined/accepted prompt, and `--execute` per promised command; correct the runtime help through its owner and test the selected public mode. | `RELEASE-01`; CLI/onboarding/Doctor owners |
 | `R19` | Direct-host capacity wording | The Runbook states a fixed 12-CPU/240-GiB default-workflow minimum, but the current allocation-aware resolver has per-stage fit rules, not that fixed gate. | Reconcile the Runbook with the current admission rule and separately state study-specific resource needs; do not promote configured or suggested capacity to measured support. | `RELEASE-01`; resource-policy and Runbook owners |
+| `R20` | Specialist report success predicate | Owner validators can return zero while publishing failed check rows; reference reconciliation can return zero with `overall_status=fail`. | If a specialist route is promised, assert its semantic result with `validate all-pass` or the reconciliation summary, not process exit or output presence alone. | `RELEASE-01`; validation/reference owners and R02 |
+| `R21` | Current-request stop and watch scope | Stop admits named v3/v4 requests, but its contract says v3 only and focused stop fixtures use v3; selected real-tool E2E includes a production-request stop when dispatched. | If Slurm stop is promised, reconcile the owner contract and retain an exact current-v4 installed-path preview/execute/refusal check; distinguish request/raw-scheduler watch from Run recovery. | `RELEASE-01`; coordinator/Slurm owners and R02/R15 |
 
 ## Discovery record
 
@@ -147,7 +149,9 @@ Attempt; report preview, publication and verified reuse; Slurm exact-request
 stop; and read-only watch versus opt-in action handoff. Existing owner tests
 protect these boundaries, so an installed-artifact check should sample each
 promised behavior rather than duplicate their complete fault suites. The
-[processing-reuse contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#processing-reuse-and-provider-boundary)
+request-only watch can have no associated Run, while raw-scheduler watch has
+no Project or action authority; neither establishes Run recovery from scheduler
+state (R21). The [processing-reuse contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#processing-reuse-and-provider-boundary)
 also makes `run --through processing` a distinct Steps 00–06 Run with no report
 and `run --from-processing-run` a distinct downstream Run. Neither is implied
 by a normal Project-to-Results promise.
@@ -251,8 +255,9 @@ then use that owner's existing manifest admission. Do not duplicate or infer
 the biological region selection from the site or reference.
 
 A separate open [PR #316](https://github.com/lab-cats/EMRYS/pull/316)
-(head `e1e80217` at the 2026-09-22 refresh; the described source was reviewed
-at `bd3f1399`) proposes to package the maintained selection, keep the
+(head `e1e80217` at the 2026-09-22 refresh; its changes since the reviewed
+`bd3f1399` are documentation-only) proposes to package the maintained
+selection, keep the
 `configs/` path as a link, and offer it after explicit EV/PUM1 guided
 sample assignment. Its wheel check covers resource presence and byte equality,
 while source-level guided Init tests cover selection, explicit-manifest
@@ -260,9 +265,12 @@ preservation, and missing-reference refusal. PR #316 is a sibling of the
 reviewed PR #307 head, so none of these changes are established at this
 document's source revision. If it enters a release candidate, recheck the
 exact built artifact and run public installed guided Init from outside the
-checkout using that packaged choice. Its reviewed wheel smoke still supplies an explicit
+checkout using that packaged choice. Its reviewed wheel smoke still supplies
+an explicit
 fixture partition manifest and does not establish the new interactive path, a
-complete Run, public report regeneration, or novice Viking acceptance.
+complete Run, public report regeneration, or novice Viking acceptance. Its
+backlog row records branch-head hosted regression and leaves novice Viking
+acceptance pending; that is evidence for #316 only, not this target.
 
 ### R06 — Dependency policy
 
@@ -804,6 +812,50 @@ Viking's whole-node request and 12-hour limit are configured requests, not
 measured utilization or completion capacity; its scratch suitability remains
 an operator/site evidence question.
 
+### R20 — Specialist report success predicate
+
+Shared [validator runtime](../../src/emrys/libraries/validation/runtime.py)
+prints a dry-run or publishes a report and returns zero even when a check row
+has `status=fail`. An owner [test](../../tests/stages/star_alignment/test_validate_step_01_star_alignment.py)
+intentionally expects that exit status for malformed STAR evidence. The
+separate read-only [`validate all-pass`](../../src/emrys/orchestration/run_coordinator/all_pass.py)
+command rejects nonpassing rows for the selected step and scope; the Runbook
+already explains this distinction. Candidate checks that promise specialist
+validation must read the report or use that semantic gate. Exit zero or a
+published file establishes neither all-pass nor scientific validity.
+
+Likewise, `reconcile reference-provenance --execute` can publish an inventory
+and return zero with `overall_status=fail` when a declared source is missing or
+hash-mismatched, as its [owner test](../../tests/evidence/reference_provenance/test_reference_provenance.py)
+demonstrates. If this specialist route enters the release promise, inspect its
+summary status separately from publication success. Its known rollback issue
+already has an [existing owner](polish-campaign.md); route it there rather than
+create a new release-only publication layer.
+
+### R21 — Current-request stop and watch scope
+
+The current [Slurm request owner](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
+creates schema v4 requests and admits complete named v3 or v4 records for
+`stop --submission`. Its [contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+still says execute admits only v3. Focused
+[stop fixtures](../../tests/orchestration/run_coordinator/test_slurm_submission.py)
+use v3, while the conditional
+[real synthetic driver](../../tests/tools/real_synthetic_e2e.py) inspects,
+watches, previews, and executes stop on a production-created Slurm request.
+That driver is a checkout/hosted layer and needs an exact candidate result;
+the wheel smoke checks help for watch but omits stop entirely. If stop is in
+the selected release promise, correct the
+owner contract and retain one current-v4 public selected-artifact preview,
+execution, refusal, and post-stop Run inspection/recovery-eligibility check
+using the existing owners.
+Do not infer safe resume from a scheduler state or cancellation response.
+
+A selected request can precede Run creation, so
+[watch inspection](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py)
+does not call `inspect_run` without an associated Run. Raw scheduler diagnostics
+have no Project, Run, or action authority. Classify those observation modes
+separately from a verified Run and its recovery choices.
+
 ## Conditional owner routing
 
 These are dependencies of a **selected claim**, not a second backlog or a
@@ -833,11 +885,12 @@ R11.
    ancestry, clean-tree state, included PRs, and excluded sibling work. Decide
    whether proposed changes such as PR #316 enter the candidate. If the head
    changes later, identify which artifact and evidence checks it invalidates.
-2. **Write the release promise (R02/R03/R14/R16/R18/R19).** For prerelease and v1 separately,
+2. **Write the release promise (R02/R03/R14/R16/R18–R20).** For prerelease and v1 separately,
    classify each public operation and environment as promised, limited, or
    unsupported. For each selected combination, state required inputs, success
-   and refusal behavior, interactive/explicit execution modes, platform/resource
-   bounds, and the owner of its proof. Reconcile the direct-host guide's fixed
+   and refusal behavior, interactive/explicit execution modes, semantic success
+   predicates for specialist reports, platform/resource bounds, and the owner
+   of its proof. Reconcile the direct-host guide's fixed
    minimum with the current resource admission rule before describing capacity.
    Resolve whether Viking is a named support claim and whether any performance
    or capacity figure is promised; hosted Slurm alone cannot decide either.
@@ -848,7 +901,7 @@ R11.
    version, source, and artifact identities are checked. Record why rejected
    routes do not meet the chosen scope. Decide product numbering independently
    of schema IDs and obsolete-Run policy.
-4. **Route only selected gaps to existing owners (R05/R08–R10/R13/R15/R16/R18/R19).** Map
+4. **Route only selected gaps to existing owners (R05/R08–R10/R13/R15/R16/R18–R21).** Map
    each promise across the owner/source/resource/validator chain to an existing
    public check or an exact missing scenario. Before
    any separately approved implementation, search adjacent owners for
@@ -860,15 +913,19 @@ R11.
    resource identities. Install through the route users will follow in a clean
    environment. Check supported public commands from a working directory
    outside the checkout and any checkout-bound `setup` inside it, including
-   controlled refusal and no-write paths using explicit preview where the
-   command offers terminal confirmation. If complete installed operation is
+   controlled refusal, semantic report status, and no-write paths using
+   explicit preview where the command offers terminal confirmation. If
+   complete installed operation is
    promised, add a tiny real local Project-to-Results Run and public report
    preview, publication into empty owned state, and verified reuse. Source
    fixtures, installed-command checks, and real local execution remain
    distinct evidence layers.
-6. **Collect exact-revision assurance (R09/R11/R14/R17).** Test public obsolete-Run
+6. **Collect exact-revision assurance (R09/R11/R14/R17/R21).** Test public obsolete-Run
    refusal for `inspect`, `resume`, and `report` with retained bytes unchanged;
    if Slurm reporting is promised, refuse before a request or `sbatch` call.
+   If Slurm stop is promised, verify current-v4 request preview, execution,
+   refusal, and post-stop Run inspection/recovery eligibility from the selected
+   artifact.
    Record targeted local checks and ordinary CI jobs with their actual
    outcomes and skips. Dispatch selected real-tool hosted profiles at the
    candidate ref if those claims are needed; keep 130-pair direct/Slurm parity
