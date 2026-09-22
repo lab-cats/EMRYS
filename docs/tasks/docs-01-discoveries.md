@@ -94,6 +94,11 @@ the real six-library EV/PUM1 study, and lines 74–75 offers the
 [smoke test](../operations/SMOKE_TEST.md) as optional. A first-time reader is
 sent to the correct link but given the wrong expectation. Correct the root
 description while keeping the smoke path visible and optional.
+The rest of the Quickstart checks a real EV/PUM1 Run and reports at lines
+188–251. The [documentation index](../README.md) lines 8 and 18 also routes
+first-time readers there. A root correction should name this selected real
+study and route synthetic practice to the optional smoke guide, without
+presenting the named EV/PUM1 choices as universal study defaults.
 
 ### F05 — Generic study versus named EV/PUM1 route
 
@@ -105,6 +110,16 @@ lines 31–124 and 144–215 explains generic Project choices. Carrying the
 named study’s choices into unrelated data is a plausible reader risk, not an
 observed misuse. Investigate a concise generic route that points to config
 authority and uses EV/PUM1 only when that is the actual study.
+This handoff occurs in both the standalone-host route at Runbook 280–286 and
+the general “own data” route at 289–301. Quickstart lines 83–115 fixes six
+sample assignments, `reverse` strand, `EV -> PUM1`, `A>G`, thresholds, and
+the primary-contig manifest; its title and opening identify the named study.
+The [configuration guide](../../configs/README.md) lines 62–63 explicitly
+says to replace example paths, conditions, reference, and thresholds, and
+lines 144–215 defines generic sample/partition manifests. A safe reader route
+should state which choices the operator must author and link those contracts
+before borrowing an Init command. No generic scientific defaults or completed
+new-study journey are established by these documents alone.
 
 ### F06 — Existing Project and new Project recovery
 
@@ -114,6 +129,13 @@ or supply `--project`, then describes Init, whose child must be absent. Both
 instructions have valid but different preconditions. Separate the existing
 Project lookup from a failed new-Project preview/creation, preserving the
 no-adoption and no-symlink rules.
+The [selector](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+lines 270–285 reads the current directory or one supplied Project path;
+named Init at lines 1261–1269 instead chooses an absent child beneath the
+saved Projects home or current directory. The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 135–149 says a failed publication preserves a partial root and never
+adopts it. Keep existing-Project lookup and missing-child creation as separate
+diagnoses so “enter the Project” cannot be mistaken for an Init recovery step.
 
 ### F07 — Doctor repair does not always install
 

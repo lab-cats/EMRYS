@@ -258,6 +258,12 @@ boundary. From the Quickstart's repository root, `--project pum1-study` does
 not select its `Projects/pum1-study` child. Explain when a bare name works and
 show `--project Projects/pum1-study` from that root or an exact absolute path.
 This is a guide correction, not a proposed new discovery behavior.
+Saved `EMRYS_PROJECTS_ROOT` affects named Init's destination
+(`onboarding.py:1261–1269`) and the outside-Project picker, but the exact
+Project selector at `onboarding.py:270–285` does not consult it. The
+[Runbook](../operations/RUNBOOK.md) lines 294–301 already gives an absolute
+`project.yaml` example for Project-aware commands. Keep that distinction in
+the root route rather than promising a global name lookup after setup.
 
 ### F49 — Incomplete allocation-recovery command
 
@@ -271,6 +277,12 @@ lines 1800–1868 shows command-specific controls. Give a complete no-write
 example for the intended operation or tell the reader to repeat its exact
 preview command with `--verbose` and no `--execute`. This is an actionability
 gap, not a demonstrated parser failure.
+The [Runbook](../operations/RUNBOOK.md) lines 441–450 supplies a complete
+`emrys run </dev/null` preview. Run, resume, and report each accept
+`--execute` (`control.py:1800–1868`); Doctor accepts it only with `--repair`
+(`doctor.py:1989–1996,2023–2029`). Redirecting stdin to `/dev/null` does not
+undo an explicit `--execute`. Any replacement instruction must name the failed
+operation and omit that flag when it promises no writes.
 
 ### F50 — Submission-request version in the coordinator contract
 
@@ -316,3 +328,19 @@ earlier decision; the [CV-U05 card](cluster_verification_backlog.md) lines
 393–406 and [Quickstart](../../quickstart.md) lines 161–163 carry the later
 5–25-minute user request. Keep chronology dated and route current readers to
 the current notice rather than call the old figure a current contract.
+
+### F52 — Report regeneration wording in the root guide
+
+The [root README](../../README.md) lines 72–75 says reporting can be
+“regenerated” with `emrys report [RUN] --execute`. The
+[reporting owner](../../src/emrys/reporting/README.md) lines 3–16 says
+`--execute` publishes only from empty owned state, while a complete bundle is
+revalidated and reused (lines 102–112). The [Runbook](../operations/RUNBOOK.md)
+lines 477–490 correctly distinguishes generation after skipped reporting,
+reuse of complete bundles, and refusal of partial or blocked bundles.
+[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 74–80 explicitly
+forbids treating `report` as a repair or overwrite route. “Regenerated” could
+lead a reader to expect replacement of an existing or partial bundle; no
+actual misuse is observed. Clarify absent-output generation and complete-bundle
+reuse in the root overview, with recovery routed to the existing operator
+guidance. Preserve create-only publication and retained evidence.

@@ -85,6 +85,10 @@ permission to change or delete the source.
   including which direct tests exercise only v3 stop requests and which
   statements are merely outdated summaries. No product command or cluster
   operation was run.
+- The tenth pass checked root-to-operator reader routes and reporting recovery
+  vocabulary at the same source after audit-only commit `1ce339f2`. It
+  refined F04–F06 and F48–F49 and added F52. It compared source and current
+  owner guidance without running the CLI or changing an operator guide.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -121,9 +125,9 @@ and the boundary for each row.
 | [F01](docs-01-discoveries.md#f01-public-stop-in-the-platform-decision) | Contradiction | Platform decision denies public stop and limits resume to failed/interrupted Runs; exact-request stop and prepared finalization exist. | Reconcile both decision claims and stale v3-only stop wording; preserve CV-18 evidence limits. |
 | [F02](docs-01-discoveries.md#f02-standalone-resource-floor) | Contradiction | Runbook gives a fixed 12-CPU/240-GiB standalone floor; defaults resolve against capacity and reject unmet task minima. | Correct the fixed policy claim while retaining real-study capacity cautions. |
 | [F03](docs-01-discoveries.md#f03-init-02-in-cluster-summaries) | Summary overclaim | Grouped CV summaries call INIT-01–03 source-complete while INIT-02 remains Open; detailed cards describe explicit manifest selection. | Narrow the summary without erasing explicit-manifest proof or dated cards. |
-| [F04](docs-01-discoveries.md#f04-root-quickstart-description) | Reader route | Root README calls Quickstart a synthetic first Run; Quickstart leads with real EV/PUM1. | Align root journey and retain optional smoke link. |
-| [F05](docs-01-discoveries.md#f05-generic-study-versus-named-evpum1-route) | Reader route | “Own study” Runbook route points into fixed EV/PUM1 inputs and choices. | Separate generic study guidance from the named example. |
-| [F06](docs-01-discoveries.md#f06-existing-project-and-new-project-recovery) | Reader route | Troubleshooting combines existing-Project navigation with absent-child Init. | Give each failure its own recovery instruction. |
+| [F04](docs-01-discoveries.md#f04-root-quickstart-description) | Reader route | Root README calls Quickstart a synthetic first Run; Quickstart leads with real EV/PUM1 and makes smoke optional. | Name the selected real-study journey and retain the optional smoke route. |
+| [F05](docs-01-discoveries.md#f05-generic-study-versus-named-evpum1-route) | Reader route | Two “own study” Runbook routes point into fixed EV/PUM1 scientific choices. | Route generic study decisions to configuration authority before borrowing commands. |
+| [F06](docs-01-discoveries.md#f06-existing-project-and-new-project-recovery) | Reader route | Troubleshooting mixes existing-Project lookup with absent-child Init recovery. | Give lookup and new creation distinct preconditions and recovery. |
 | [F07](docs-01-discoveries.md#f07-doctor-repair-does-not-always-install) | Contradiction | Guides imply Doctor always installs and the decision assigns it uv; verified Slurm plans can skip package work while still submitting checks. | Separate managed package work, preview, and confirmed verification effects. |
 | [F08](docs-01-discoveries.md#f08---version-and-local-env) | Behavior question | Runbook promises `--version` from any directory; `.env` is parsed before the version response. | Exercise malformed marked `.env` in a tiny local fixture before changing the promise. |
 | [F09](docs-01-discoveries.md#f09-runbook-entry-order) | Reader route | Advanced request/watch/stop procedures precede Runbook orientation. | Test whether moving the orientation improves entry without hiding recovery commands. |
@@ -165,10 +169,11 @@ and the boundary for each row.
 | [F45](docs-01-discoveries-continued.md#f45-watch-and-stop-in-the-command-audience-map) | Reader route | Functional-owner audience map omits public `watch` and `stop` despite their novice and operator routes. | Add the audiences or mark the examples nonexhaustive. |
 | [F46](docs-01-discoveries-continued.md#f46-artifact-common-schema-description) | Schema description | Public common-schema metadata still says it serves v1 records; current registry reuses it for v4/v8 documents. | Review schema-byte compatibility before any wording correction. |
 | [F47](docs-01-discoveries-continued.md#f47-r-probe-concurrency-candidate-after-cv-26) | Selection context | Optimization candidate still asks for a bounded R-probe concurrency comparison after CV-26 already measured and deferred two workers. | Bind any future proposal to CV-26's disposition and new resource/cancellation authority. |
-| [F48](docs-01-discoveries-continued.md#f48-project-name-lookup-from-the-repository-root) | Reader route | Root guide suggests `--project NAME_OR_PATH` outside a Project, but bare names resolve only beside the current directory. | Give a path from the repository root or an absolute Project path. |
-| [F49](docs-01-discoveries-continued.md#f49-incomplete-allocation-recovery-command) | Recovery instruction | Troubleshooting tells users to preview rejected submissions with only `--verbose </dev/null`, omitting the command and selector. | Give a complete no-write command for the failed operation or a precise instruction to repeat it. |
+| [F48](docs-01-discoveries-continued.md#f48-project-name-lookup-from-the-repository-root) | Reader route | Root guide suggests `--project NAME_OR_PATH` outside a Project, but bare names resolve beside the current directory, not the saved Projects home. | Give a path from the repository root or an absolute Project path. |
+| [F49](docs-01-discoveries-continued.md#f49-incomplete-allocation-recovery-command) | Recovery instruction | Troubleshooting gives only `--verbose </dev/null`; redirection also cannot neutralize `--execute`. | Name the failed operation and a complete preview without `--execute`. |
 | [F50](docs-01-discoveries-continued.md#f50-submission-request-version-in-the-coordinator-contract) | Contract wording | Coordinator inspection prose describes selected requests as v2/v3 and new requests as v3 while current requests are v4. | Name current v4 and preserve exact v2/v3 compatibility rules. |
 | [F51](docs-01-discoveries-continued.md#f51-viking-walkthrough-history-in-the-active-backlog) | Evidence placement | Main backlog retains a long dated Viking walkthrough beside active acceptance; the CV campaign overlaps only part of its exact evidence. | Crosswalk unique IDs, decisions, limits, and inbound links before any lossless transfer. |
+| [F52](docs-01-discoveries-continued.md#f52-report-regeneration-wording-in-the-root-guide) | Recovery wording | Root guide says reports can be “regenerated”; current reporting only creates from empty owned state or reuses a complete bundle. | Clarify generation versus reuse and route partial-bundle recovery to operators. |
 
 ## Discovery notes
 
