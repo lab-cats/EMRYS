@@ -813,6 +813,10 @@ def test_ci_slurm_setup_is_guarded_real_and_diagnostic() -> None:
     assert script.index(
         'sudo install -o root -g root -m 0644 "$config_pending" /etc/slurm/slurm.conf'
     ) < script.index("for command in scancel slurmctld slurmdbd slurmd; do")
+    assert script.index(
+        "sudo install -o slurm -g slurm -m 0600 "
+        '"$config_pending" /etc/slurm/slurmdbd.conf'
+    ) < script.index("for command in scancel slurmctld slurmdbd slurmd; do")
     assert script.index("restart slurmdbd") < script.index("add cluster emrys-ci")
     assert script.index("add cluster emrys-ci") < script.index("restart slurmctld")
 

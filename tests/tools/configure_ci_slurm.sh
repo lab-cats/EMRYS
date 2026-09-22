@@ -119,8 +119,27 @@ sudo install -o root -g root -m 0644 "$config_pending" /etc/slurm/slurm.conf
 rm -f -- "$config_pending"
 config_pending=""
 
-# Slurm clients read slurm.conf even when asked only for their version. Install
-# the disposable configuration before probing them or changing database state.
+# Both Slurm clients and slurmdbd read their configuration when asked only for
+# their version. Install the disposable files before probing them, but do not
+# change database state until every release has passed the version gate.
+db_password="$(openssl rand -hex 32)"
+config_pending="$(mktemp "$RUNNER_TEMP/emrys-slurmdbd-conf.XXXXXX")"
+{
+    printf '%s\n' \
+        'AuthType=auth/munge' \
+        'DbdHost=localhost' \
+        'SlurmUser=slurm' \
+        'StorageType=accounting_storage/mysql' \
+        'StorageHost=localhost' \
+        'StorageLoc=emrys_ci_slurm' \
+        'StorageUser=emrys_ci_slurm' \
+        "StoragePass=$db_password" \
+        'LogFile=/var/log/slurm/slurmdbd.log'
+} > "$config_pending"
+sudo install -o slurm -g slurm -m 0600 "$config_pending" /etc/slurm/slurmdbd.conf
+rm -f -- "$config_pending"
+config_pending=""
+
 # The production stop path needs a version with exact cluster-scoped scancel.
 slurm_release=""
 for command in scancel slurmctld slurmdbd slurmd; do
@@ -143,29 +162,11 @@ sudo systemctl start mysql
 # through socket authentication; no image-default password is embedded here.
 sudo mysql --protocol=socket --batch --skip-column-names -e 'SELECT 1' \
     >/dev/null || die "local MySQL socket administration is unavailable"
-db_password="$(openssl rand -hex 32)"
 sudo mysql --protocol=socket <<SQL
 CREATE DATABASE IF NOT EXISTS emrys_ci_slurm;
 CREATE USER IF NOT EXISTS 'emrys_ci_slurm'@'localhost' IDENTIFIED BY '$db_password';
 GRANT ALL PRIVILEGES ON emrys_ci_slurm.* TO 'emrys_ci_slurm'@'localhost';
 SQL
-
-config_pending="$(mktemp "$RUNNER_TEMP/emrys-slurmdbd-conf.XXXXXX")"
-{
-    printf '%s\n' \
-        'AuthType=auth/munge' \
-        'DbdHost=localhost' \
-        'SlurmUser=slurm' \
-        'StorageType=accounting_storage/mysql' \
-        'StorageHost=localhost' \
-        'StorageLoc=emrys_ci_slurm' \
-        'StorageUser=emrys_ci_slurm' \
-        "StoragePass=$db_password" \
-        'LogFile=/var/log/slurm/slurmdbd.log'
-} > "$config_pending"
-sudo install -o slurm -g slurm -m 0600 "$config_pending" /etc/slurm/slurmdbd.conf
-rm -f -- "$config_pending"
-config_pending=""
 unset db_password
 
 sudo systemctl restart munge
