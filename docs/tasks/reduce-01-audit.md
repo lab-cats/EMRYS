@@ -41,17 +41,43 @@ Evidence here is committed-source review, existing test/contract inspection, and
 | F14 | Scientific and evidence lookalikes | Preserve | Step 08/09 parsers accept different schemas and scientific policies. Step 09 computation and independent validation, Step 10 reference-window re-derivation, and the Snakefile's static owner fence detect distinct failures. | Do not count independent oracles, cross-checks, or different admission boundaries as duplication. Changes require their own scientific/contract review and equal-strength protection. |
 | F15 | Documentation, tests, CI, and formatting | Separate owner review | Documentation structure checks, their failure-injection tests, CI preflight, synthetic E2E, scientific oracles, and retained measurements cover different failures or evidence levels. `SHFMT_BIN` in [`make_quality.mk`](../../scripts/make_quality.mk) has no invocation. | Review gate value under `ASSURANCE-01`, prose under `DOCS-01`, and surviving scripts under `OPS-03`. Removing the unused Make setting would save one tooling line; none of these changes counts as product reduction. |
 
-## Initial discovery notes
+## Source and protection details
 
-**F03 — parser reachability.** A job starts with an empty wildcard string. The wildcard event is the only assignment of a nonempty wildcard string and registers its sample immediately. Completion and final active-job processing read that same value; `samples` is never cleared. This makes the two later initialization blocks unreachable under the current parser, including the event-order permutations probed locally. Before removal, assert sample order and history for malformed and repeated events, and retain the contract's distinction between log observations and verified Run progress.
+### F02 — Shared R validators
 
-**F06 — regex cost.** A query-length cap alone would not solve catastrophic backtracking: a short pattern can be slow against a short allowed log line. The audit has not chosen a dependency or changed the documented regex feature. Exact interactive behavior remains unverified.
+Step 09 and Step 10 each define the same `validate_safe_id` and `validate_hash` bodies. Their entrypoints load the existing `libraries/input_contract.R` before these definitions. Moving the two definitions there would remove about 30 duplicated lines and add about 15 shared lines, for a provisional net saving of 15 product lines. Step 09 validates Step 08 receipt hashes; Step 10 checks six supplied hashes. Step 08's similar safe-ID check lacks the scalar-length guard and is outside this candidate. A caller-complete change needs exact invalid scalar, character, and hash diagnostic parity plus the real-R producer suites. No such change or test has run.
 
-**F07 — Step 10 check order.** The shell does not own locking, final links, or rollback; the runner does. Its receipt check nevertheless occurs before the runner publishes native files. The later Python validator cannot be cited as an equal-timing replacement without a changed execution path and fault tests.
+### F03 — Parser reachability
 
-**F10 — mixed benchmark trials.** The full command reports failure, but `summary.tsv` can still say `recommended=yes` for a partly failed value. Both statements can reach an operator. A focused case needs to assert raw-row retention, nonzero exit, and no recommendation for that value.
+A job starts with an empty wildcard string. The wildcard event is the only assignment of a nonempty wildcard string and registers its sample immediately. Completion and final active-job processing read that same value; `samples` is never cleared. This makes the two later initialization blocks unreachable under the current parser, including the event-order permutations probed locally. Before removal, assert sample order and history for malformed and repeated events, and retain the contract's distinction between log observations and verified Run progress.
 
-**F11 — copied configuration.** The example's instruction leads to a `.env` lacking `EMRYS_ENV_VERSION=1`. The current loader skips an unmarked file, so the example's promised settings do not take effect through EMRYS's saved-setting path. External scripts remain an unverified consumer.
+### F05 — Installed Watch and inspection
+
+At the audited commit, `control.watch_from_args` (lines 3009–3075) fixes a Project Run, associated request, or raw scheduler selection and reuses `inspect_from_args` (2632–2801). All modes enter the single terminal owner in `_inspection_presentation.watch` (1069–1368). Its `WatchSnapshot` (396–417) keeps request, application, Run, scheduler, and trace observations separately dated. Explicit refresh re-admits the selected request/application/Run; timer refresh reads only scheduler and diagnostic streams (538–705, 1172–1194). Raw scheduler mode cannot acquire Project/Run action authority; Run-only mode reports scheduler identity unknown. Static Inspect and Watch both use `project_run`; Watch also uses the live dashboard parser, stream cache, and renderer. Action callbacks carry exact selectors into newly parsed CLI handlers after terminal restoration. Direct tests cover fixed selection, read-free painting, stale-evidence clearing, raw-mode separation, view parity, and action handoff. `DASHBOARD-RETIRE-01` retains this shared dashboard code. No whole-file retirement is established. Any redesign must show parity for static, Project Run, associated-request, raw/offline, interactive, and nonterminal modes before a measured saving is claimed.
+
+### F06 — Regex cost
+
+A query-length cap alone would not solve catastrophic backtracking: a short pattern can be slow against a short allowed log line. The audit has not chosen a dependency or changed the documented regex feature. Exact interactive behavior remains unverified.
+
+### F07 — Step 10 check order
+
+The shell does not own locking, final links, or rollback; the runner does. Its `validate_receipt_payloads` checks hashes and row counts for all four staged outputs before producer success (`scientific_context_projection.sh`, lines 80–139). The runner's prepublication validation set contains only Steps 08 and 09 (`task.py`, 1742–1758); Step 10's grouped validator runs after native publication (2732–2782). The coordinator contract distinguishes producer abort before publication from failed validation after commit (lines 978–988 and 1117–1131). The shell test checks a valid fake receipt and one broken receipt, not each payload mismatch. Retiring the shell requires prepublication parity for all payloads, input hashes, receipt shape, planner/direct callers, and recovery/abort fault paths. No safe 192-line saving is established.
+
+### F10 — Mixed benchmark trials
+
+`_write_summary` groups passing rows only, computes a median for those rows, and can recommend the value (script lines 322–366). `run` retains each failed row and returns 1 if any trial failed (477–510). The full command therefore reports failure while `summary.tsv` may still say `recommended=yes` for a partly failed value. Both statements can reach an operator. Existing tests cover all-pass and all-fail values, not mixed repetitions. A focused case needs to assert raw-row retention, nonzero exit, and no recommendation for that value. This is a separate tooling repair, with no product-code saving.
+
+### F11 — Copied configuration
+
+The example's instruction leads to a `.env` lacking `EMRYS_ENV_VERSION=1`. The current loader skips an unmarked file (`onboarding.py`, 153–170), so the example's promised settings do not take effect through EMRYS's saved-setting path. `emrys setup` then refuses to create new settings if that file exists (215–220). The seven old variable names and `.env.example` path have no other tracked readers or references in the audited source. This is a source-derived operator trap, not a reproduced operator session; external scripts remain unverified consumers. Retirement or replacement belongs to configuration and onboarding review, with zero product-code saving.
+
+### F12 — Resource values and provenance
+
+The Viking profile's resource values match the packaged defaults, and a test checks declaration equality. That test does not compare source provenance. `load_execution_profile` gives explicit resource fields the selected source path and SHA-256 and sets `computational_resources_explicit=True` (416–444). A placement-only profile instead inherits the predecessor's resource policy on resume (`control.py`, 695–704 and 843–858). The raw profile source hash also enters binding. Removing the repeated YAML block could change new-Run and resume identity even if the values remain equal. The 39-line configuration candidate needs a paired identity/provenance/resume comparison; it cannot count as product savings.
+
+### F13 — Small coordinator repeats
+
+Three `y`/`yes` confirmation helpers in `control.py`, `doctor.py`, and `onboarding.py` repeat a small decision, although prompt and diagnostic ownership may differ. `_submission_inspection.py` hardcodes the same token-bound v2–v4 version set represented by `slurm_submission._REQUEST_SCHEMAS[1:]`; the trust and compatibility boundary needs comparison before sharing it. `request.json` has one writer, and scheduler submit/stop already share transcript publication. Directory-sync helpers vary in no-follow, identity, type, and failure semantics; sharing their surface shape could lose protection. These candidates offer only single-digit product-line savings unless a measured prototype proves otherwise.
 
 ## Selection boundary
 
