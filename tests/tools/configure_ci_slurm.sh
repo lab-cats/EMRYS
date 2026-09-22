@@ -30,7 +30,7 @@ collect_diagnostics() {
     trap - EXIT
     set +e
     slurmctld -V > "$evidence_dir/slurmctld-version.txt" 2>&1
-    slurmdbd -V > "$evidence_dir/slurmdbd-version.txt" 2>&1
+    sudo -u slurm -- slurmdbd -V > "$evidence_dir/slurmdbd-version.txt" 2>&1
     slurmd -V > "$evidence_dir/slurmd-version.txt" 2>&1
     scancel -V > "$evidence_dir/scancel-version.txt" 2>&1
     mysql --version > "$evidence_dir/mysql-version.txt" 2>&1
@@ -143,7 +143,11 @@ config_pending=""
 # The production stop path needs a version with exact cluster-scoped scancel.
 slurm_release=""
 for command in scancel slurmctld slurmdbd slurmd; do
-    version="$($command -V)"
+    if [[ "$command" == slurmdbd ]]; then
+        version="$(sudo -u slurm -- "$command" -V)"
+    else
+        version="$("$command" -V)"
+    fi
     [[ "$version" =~ ^slurm(-wlm)?[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+)$ ]] ||
         die "cannot determine $command Slurm release"
     if [[ -z "$slurm_release" ]]; then
