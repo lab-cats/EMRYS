@@ -169,3 +169,41 @@ These are separate package-manager resolutions for Python, native/R base, and R 
 ### RUNBOOK.md, CONTRACT.md, and campaign records
 
 The [Runbook's Project creation section](../operations/RUNBOOK.md#create-a-project-for-your-own-data) includes hashing and filesystem identity internals also explained in the coordinator [publication contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries). DOCS-01 can retain the operator choices, confirmation, and recovery cue while linking exact implementation guarantees to the owner. The [polish campaign's history](polish-campaign.md#existing-capabilities-and-overlapping-work) needs proposal disposition before shortening, and the [cluster backlog](cluster_verification_backlog.md#verified-scope-and-remaining-evidence) owns live CV acceptance until evidence transfer. Both are possible temporary exceptions with explicit retirement triggers, not immediate deletion candidates. Exact evidence deletion requires its own approval and commit.
+
+## Fifth pass: remaining coordinator owners
+
+### materialization.py
+
+[Run and Attempt planning](../../src/emrys/orchestration/run_coordinator/materialization.py#L175) builds immutable identity, step commands, Task records, and create-exclusive publication. Its fixed-step and typed-module planners emit similar record shapes but use different inputs and producers. Artifact expansion already delegates to the inventory owner, and [Run binding is committed last](../../src/emrys/orchestration/run_coordinator/materialization.py#L1664) while incomplete residue is quarantined. [Plan and interruption tests](../../tests/orchestration/run_coordinator/test_materialization.py#L1470) protect direct/Slurm equality and partial publication. Replacing the command switch with another registry needs all-step argv and provenance parity plus a net-line comparison; relocation alone is not reduction.
+
+### normalization.py
+
+The sample manifest is parsed by [_normalize_samples](../../src/emrys/orchestration/run_coordinator/normalization.py#L345), its returned table is discarded by one admission path, and the same bytes are parsed again when projecting a selected subset. Retaining the parsed table could avoid one pass, but adds state and may save little product code. [Normalization tests](../../tests/orchestration/run_coordinator/test_normalization.py#L55) protect prepared input, Project-root, and snapshot bindings. The large-input hashing path is already shared with guided Init; ordinary admission intentionally does not parse FASTQ records. Next proof: compare exact subset bytes and interruption behavior before changing the prepared admission shape.
+
+### inspection.py
+
+[Inspection](../../src/emrys/orchestration/run_coordinator/inspection.py#L24) delegates immutable authority, Attempt-chain, Task, and report evidence to existing owners, then derives integrity, Results, reporting, and recovery states for read-only consumers. Prepared-finalization preview compares ordinary and prospective inspections; processing-source admission requires successful Step 00–06 evidence and subset compatibility. [Lifecycle and materialization tests](../../tests/orchestration/run_coordinator/test_lifecycle.py#L2056) cover receipt drift and source compatibility. No duplicate state authority was established. A path exception remains a proposal until approved.
+
+### reporting_boundary.py
+
+[reporting_kinds](../../src/emrys/orchestration/run_coordinator/reporting_boundary.py#L214) and [inspect_reporting_ledger](../../src/emrys/orchestration/run_coordinator/reporting_boundary.py#L251) scan the ledger roster in sequence. Combining them might remove a small repeated scan, but the second can observe a newly inserted entry and reports a different blocker; publication also calls reporting_kinds. [Unexpected-state tests](../../tests/orchestration/run_coordinator/test_reporting_boundary.py#L383) and [publication re-admission tests](../../tests/orchestration/run_coordinator/test_reporting_boundary.py#L836) protect those decisions. This is a low-confidence reduction candidate, not permission to remove fresh identity checks.
+
+### slurm_submission.py
+
+Submit and Stop already share [descriptor-pinned transcript handling](../../src/emrys/orchestration/run_coordinator/slurm_submission.py#L905), while their mutations, timeout, and at-most-once rules differ. The v4 writer retains v1–v3 request observation because historical records remain readable under the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#run-root-contract). [Submission tests](../../tests/orchestration/run_coordinator/test_slurm_submission.py#L422) cover both operation families. Retiring historical readers needs a separate retained-record decision; SIZE-01 alone does not authorize it.
+
+### _submission_inspection.py
+
+Stable snapshots and candidate Run/Attempt admission are already shared. [Selected-request inspection](../../src/emrys/orchestration/run_coordinator/_submission_inspection.py#L417) rechecks a closed request/response and binds one tokenized log; [historical Run inspection](../../src/emrys/orchestration/run_coordinator/_submission_inspection.py#L543) scans pending and Run scopes and reports incomplete scans. [Change-detection tests](../../tests/orchestration/run_coordinator/test_submission_inspection.py#L577) prevent reuse of an earlier observation as if it were fresh. The nine-line excess does not justify removing that evidence distinction.
+
+### resource_policy.py
+
+[ResourcePlan](../../src/emrys/orchestration/run_coordinator/resource_policy.py#L213) forwards effective numeric fields used by Materialization, Lifecycle, and the Snakefile; its record binds symbolic Run policy, numeric Attempt resolution, allocation, and source digests. Persisted policy is re-resolved and compared on admission, and CLI override fields already drive one parsing table. [Resource tests](../../tests/orchestration/run_coordinator/test_resource_policy.py#L85) pin a stable Run declaration across different allocations. The apparently unused declaration accessor is a narrow cleanup candidate, not a meaningful SIZE-01 reduction or grounds to collapse symbolic and numeric policy.
+
+### synthetic_fixture.py
+
+The [fixture owner](../../src/emrys/orchestration/run_coordinator/synthetic_fixture.py#L62) generates deterministic smoke and production-like inputs, metadata, and checksums for the public synthetic Init command. It already shares Project YAML, validation, and create-absent publication with onboarding. [Onboarding fixtures tests](../../tests/orchestration/run_coordinator/test_onboarding.py#L1957) pin bytes and neutral-pair geometry, while the real-tool E2E selects both profiles. Moving this module under tests would break the installed command; its metadata are expectations, not scientific proof. A profile retirement would require separate public-contract authority.
+
+### dashboard.py
+
+The [dashboard owner](../../src/emrys/orchestration/run_coordinator/dashboard.py#L249) contains descriptor-pinned stream caching, exact scheduler/log selection, diagnostic trace parsing, and terminal layout. Watch consumes all of these; moving sections into new files would improve navigation without reducing maintained behavior. The strongest cross-file candidate remains one admitted stream observation with full-history and bounded-tail projections. [Stream tests](../../tests/orchestration/run_coordinator/test_dashboard.py#L528) protect generation resets, path and UID admission, timeouts, and diagnostics; watch tests protect bounded escaped display. A smaller candidate is the resource fallback text stored in STAGES: for 11 known stage keys, the only production caller passes it to [stage_resource_text](../../src/emrys/orchestration/run_coordinator/dashboard.py#L903), which returns observed text or “not yet reported” without displaying that fallback. Four other known keys can still use it. Removing dormant strings needs a full consumer check and would not bring this file below 600. Scheduler ambiguity and log-derived completion claims remain separate from admitted Run inspection.
