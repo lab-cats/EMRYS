@@ -359,10 +359,18 @@ node/account/resource observations, and the four login-name variables. Lines
 This block is not uniformly historical: lines 207–222 state selected/current
 head-node Doctor, progress, log, and temporary-file behavior; 235–239 says
 the shared capacity observer now applies the approved RAM fallback; 248–251
-states the current four-variable submission export. Before shortening the
-backlog, verify that those rules have current owner and Runbook coverage.
-The 750-line allowance at 184–189 belongs to that earlier slice, not a standing
-exception for future product growth.
+states the current four-variable submission export. The current owners include
+the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 155–178, 225–253, and 752–765, its adjacent README lines 40–66,
+the [Runbook](../operations/RUNBOOK.md) lines 574–639 and 698–722, and
+[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 232–242. Current
+Viking placement requests an exclusive whole node with `memory_mb: 0`
+(`--mem=0`); the older partial-node missing-metadata observation and approved
+process-visible RAM fallback are separate historical and capacity-policy
+facts. The fallback remains in `capacity.py:141–180`, not evidence that the
+older partial-node request is today's Viking default.
+The 750-line allowance at 201–205 is bounded by 184–189 to that earlier
+slice, not a standing exception for future product growth.
 The [history compendium](../history/validation-evidence.md) lines 81–102
 already retains job `605171` as manual NORAD Step 08 evidence at exact
 `64b14a11`; the backlog adds that job's scheduler request and accounting
@@ -379,16 +387,34 @@ fact and both links before any transfer; dated evidence belongs in an
 appropriate qualified home, while the backlog retains concise current
 acceptance. The charter's closure criteria and backlog's procedure are
 complementary, not safely interchangeable.
+The first successful manual setup at 191–199 is distinct from the CV register's
+E01 failed qualification. Source commits for this backlog block
+(`cf9c18ad9`, `4d8c7a059`, `9b439d433`, `1ea21855a`) date documentation
+edits, not operator runs. The [CV register](cluster_verification_campaign.md)
+lines 90–105 says raw logs and artifacts remain with the operator; its
+`f2c0149` is reviewed code, not the exact installed package for each attempt.
+Checked-in summaries do not bind every reported Viking observation to an
+installed package, Run, Attempt, profile, input, and runtime identity. That
+gap prevents a lossless, date-qualified history transfer under the current
+[history rules](../history/README.md#record-rules) without reconstructing
+source evidence. Preserve three destinations separately: current commands and
+policy with owners, historical observations and former approval in dated
+evidence when qualified, and status/acceptance in SITE-PARITY-01,
+CLUSTER-VERIFY-01, and their delegated CV cards.
 The old 5–15-minute setup guidance at backlog lines 217–219 is framed as an
 earlier decision; the [CV-U05 card](cluster_verification_backlog.md) lines
 393–406 and [Quickstart](../../quickstart.md) lines 161–163 carry the later
 5–25-minute user request. Keep chronology dated and route current readers to
 the current notice rather than call the old figure a current contract.
 
-### F52 — Report regeneration wording in the root guide
+### F52 — Report regeneration wording
 
 The [root README](../../README.md) lines 72–75 says reporting can be
-“regenerated” with `emrys report [RUN] --execute`. The
+“regenerated” with `emrys report [RUN] --execute`. The ratified
+[platform decision](../design/decisions/platform-direction.md) lines 183–188
+also calls Report “regenerable” and says it can regenerate independently;
+that may mean generation after an opted-out Run, but does not specify the
+current create-only boundary. The
 [reporting owner](../../src/emrys/reporting/README.md) lines 3–16 says
 `--execute` publishes only from empty owned state, while a complete bundle is
 revalidated and reused (lines 102–112). The [Runbook](../operations/RUNBOOK.md)
@@ -398,8 +424,9 @@ reuse of complete bundles, and refusal of partial or blocked bundles.
 forbids treating `report` as a repair or overwrite route. “Regenerated” could
 lead a reader to expect replacement of an existing or partial bundle; no
 actual misuse is observed. Clarify absent-output generation and complete-bundle
-reuse in the root overview, with recovery routed to the existing operator
-guidance. Preserve create-only publication and retained evidence.
+reuse in both the root overview and decision wording, with partial-bundle
+recovery routed to existing operator guidance. Preserve the decision's
+Run/Attempt identity boundary, create-only publication, and retained evidence.
 
 ### F53 — Dependent Project in shared-runtime replacement
 
@@ -414,7 +441,11 @@ commands can fail or select another current Project for inspection; the
 separate source-selection and admission checks still govern any mutation.
 The [Runbook](../operations/RUNBOOK.md) lines 683–693 already shows the exact
 dependent `--project /absolute/dependent/project.yaml` selector for the same
-replacement. Add it to both recovery commands or state the required working
+replacement. Its preceding lines 683–685 describe source-Project Doctor
+repair with bare `emrys doctor --repair`, immediately after a borrower Doctor
+example. Doctor likewise defaults to the current directory's Project
+(`doctor.py:2041–2046`). Name the source Project explicitly there, and add
+the borrower selector to both recovery commands or state the required working
 directory. Preserve preview before `--execute`, exact-source replacement,
 the old managed generation, seals, claims, and blocked-state evidence. This
 is a static reader-route finding; no runtime replacement was exercised.
@@ -501,3 +532,32 @@ run here, so duplicate execution in a particular CI run is unverified.
 Narrow “non-overlapping” to the distinct lane purposes. Any selection change
 belongs with [ASSURANCE-01](backlog_matrix.md) and needs proof that Python
 coverage, guarded real-R comparison, and separate failure detection survive.
+
+### F59 — Pre-Run submission recovery route
+
+[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 3–4, 12–14, and
+29–33 sends a reader without a Run to Project/runtime checks and says to
+check an exact scheduler ID before resubmitting. A retained submission request
+can exist before any Run, and its job ID may be unknown or unconfirmed. The
+[Runbook](../operations/RUNBOOK.md) lines 9–26 already documents a Project
+request roster with `emrys inspect` and exact `--submission` inspection.
+[Control](../../src/emrys/orchestration/run_coordinator/control.py) lines
+2632–2766 prints that roster before resolving a Run and handles no Runs
+without treating their absence as permission to submit again. Route the
+first response and no-Run paragraph through retained request inspection
+before any new submission; preserve partial, malformed, `UNKNOWN`, and
+scheduler-independent observations. This is a static reader-route gap, not
+a reproduced duplicate submission.
+
+### F60 — Submission request promise for direct execution
+
+The [Runbook](../operations/RUNBOOK.md) lines 9–15 says Run, resume, and
+report print a `Submission request:` directory after approval without naming
+placement. Run and resume schedule a request only for a Slurm profile outside
+an existing job ([control](../../src/emrys/orchestration/run_coordinator/control.py)
+lines 1743–1783); report does likewise at lines 2099–2149. Direct placement
+executes without a Slurm request. The Runbook already distinguishes direct
+from Slurm in its Run plan (lines 441–450) and reporting route (488–493).
+Scope the opening promise to Slurm submissions so direct users do not search
+for a nonexistent request. Keep the exact pre-Run request retention and
+uncertain-job guidance for Slurm. No operation was executed here.

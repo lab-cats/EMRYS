@@ -310,16 +310,38 @@ VM/reporting (27–79), manual Viking Steps 07–09 (81–103), cohort/orientati
 (104–130), local R recovery (132–139), architecture hosted CI (141–151), and
 the Attempt scale probe (153–174). Several sections name exact revisions or
 jobs without an explicit observation date; only the scale probe states a date
-and pinned origin. The local R anecdote lacks date, originating document, and
-commit. Do not infer these identities from the “Dated” title.
+and pinned origin. The local R anecdote does not state its date or source in
+the current file. Do not infer these identities from the “Dated” title.
+Git traces the assembled compendium to the frozen pre-compression tree
+`b9cf4767` and later additions; these commits establish document provenance,
+not the date or exact installed package of a reported observation:
+
+| Current section | Recoverable source or remaining gap |
+| --- | --- |
+| PORT-NC | `8901c61a:docs/history/testing/2026-08-14-port-nc-01-no-clobber-replay.md` is a frozen record dated 2026-08-14 with the integrated candidate, source-branch head, gate timings, and exclusions. It was removed from the live tree by `049dda285` but survives in Git. The compendium retains less detail. |
+| Synthetic VM/report | `b9cf4767:docs/operations/HANDOFF.md` derives from `c728b593` and later report updates; it names source science and renderer revisions but no explicit VM execution date. |
+| Manual Viking Steps 07–09 | The former handoff gained these records at `e69076f1` and names NORAD code `64b14a11` and jobs; its document commit date is not a job date. |
+| Cohort/orientation | Earlier `docs/HANDOFF.md` at `2d5c426b` and `ec4d9d93` retains the first observation and six-value table; the former explicitly says its Step 03 job ID was not recorded. |
+| Local R recovery | Former handoff text at `c239ed023` gives no exact encounter date, command transcript, or retained artifact. |
+| Architecture hosted CI | `b9cf4767:docs/tasks/architecture_backlog_matrix.md` retains the ARCH-CLOSE records. The current summary omits the ARCH-CLOSE-02 CodeQL run `33640595166` and the explicit limit that the 100,000-pair lane was not selected for ARCH-CLOSE-01/02. |
+| Attempt scale probe | `5511a752:docs/tasks/compression_backlog_matrix.md` is the source dated 2026-09-10; that date identifies the record, not independently the probe execution. |
+
+The current file was created at `fe9f99a5d`, then appended with architecture
+CI at `13983b0f` and the scale probe at `550b5402`. This actual append
+history conflicts with the index's unchanged-record rule. Recoverable Git
+sources do not make the compendium a lossless replacement: preserve each
+source's unique limits before any future split or transfer.
 The compendium has file-level inbound links from the docs and history indexes
 and backlog (`docs/README.md:29`, `history/README.md:9`,
 `backlog_matrix.md:145–150`); the coordinator contract 950–955 links the
-scale-probe anchor. Both `scripts/documentation/validate_structure.py:14–34`
-and `tests/documentation/test_validate_structure.py:17–36` name the file.
-Map every inbound link and record origin first. Possible outcomes are a
-documented legacy exception or lossless dated records; neither a rename nor
-evidence deletion is implied by the naming mismatch.
+scale-probe anchor. These four document routes plus
+`scripts/documentation/validate_structure.py:14–34` and
+`tests/documentation/test_validate_structure.py:17–36` are six tracked
+consumers outside this audit. Preserve the path and sole fragment anchor, or
+update every consumer with any authorized transfer.
+Resolve remaining observation dates, artifact identities, and semantic losses
+before choosing a documented legacy exception or lossless dated records;
+neither a rename nor evidence deletion is implied by the naming mismatch.
 The [backlog's CV retirement condition](backlog_matrix.md) lines 145–150
 explicitly names this undated compendium as the future destination for
 E01–E12 and hosted/artifact records. That conflicts with the history index's
