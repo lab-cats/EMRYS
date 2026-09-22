@@ -10,17 +10,17 @@ readiness checklist; move lasting policy to its owner and let Git retain the
 investigation history.
 
 **Current source target:** open [PR #307](https://github.com/lab-cats/EMRYS/pull/307)
-at `ba1fbdd3cc56196fc2ece35b73ddba56b786d223` on 2026-09-22. Most source
-inspection below used its parent `f32260f0408fe1826af401fc1ddce0f2478ae6ce`.
-The only delta between them reformats the selected Doctor timing assertion in
-`tests/tools/real_synthetic_e2e.py`; package and guide sources are byte-identical.
-The parent contains PRs #300, #302, and #304. PRs #303, #305, and #306 form a
+at `5ecc409c123fe34f746a61f7e92397c6978f3cab` on 2026-09-22. Most source
+inspection below used its ancestor `f32260f0408fe1826af401fc1ddce0f2478ae6ce`.
+The intervening commits reformat the selected Doctor timing assertion and
+revise CV-26's documentation status/acceptance; production, package, and guide
+sources are byte-identical.
+The reviewed ancestor contains PRs #300, #302, and #304. PRs #303, #305, and #306 form a
 separate CI stack and are not in the target tree. PR #307 changes the cluster
 backlog and selected synthetic CI evidence over #304. Recheck the live PR head
 and the relevant diff before using these observations for a release candidate.
 No candidate artifact, installed full Run, institutional execution, or release
-publication was performed for
-this investigation.
+publication was performed for this investigation.
 
 ## Intended decisions and evidence
 
@@ -58,7 +58,7 @@ local navigation labels, not new backlog items.
 
 | ID | Release question | Established at the reviewed head | Next check or decision | Existing owner |
 |---|---|---|---|---|
-| `R01` | Exact candidate and included work | PR #307 is at `ba1fbdd3`; the investigated parent `f32260f0` differs only by formatting in one timing check. PRs #303/#305/#306 are a separate CI stack. | Select and freeze the eventual candidate, then bind each check and artifact to that exact head. | `RELEASE-01`; live Git and CI |
+| `R01` | Exact candidate and included work | PR #307 is at `5ecc409c`; the investigated ancestor `f32260f0` differs by timing-check formatting and CV-26 documentation closure. PRs #303/#305/#306 are a separate CI stack. | Select and freeze the eventual candidate, then bind each check and artifact to that exact head. | `RELEASE-01`; live Git and CI |
 | `R02` | Promised operations | Quickstart describes a Viking Project-to-Results path; the Runbook also describes direct-host operation. | Classify each public operation as prerelease/v1 promised, limited, or unsupported, including recovery and report regeneration. | `RELEASE-01`; coordinator and reporting owners |
 | `R03` | Platforms and site | README describes Linux/POSIX, direct one-host or one-node Slurm; managed repair is narrower. | State tested combinations and resource/storage requirements; qualify any named Viking promise at one revision. | `RELEASE-01`, `SITE-PARITY-01`, `CLUSTER-VERIFY-01` |
 | `R04` | Distributed artifact | Quickstart clones the moving default branch and uses `uv sync --locked`; Runbook documents an exact tag/commit checkout; the distribution test builds an sdist and wheel. | Choose a pinned checkout, wheel paired with that checkout, standalone or limited wheel, and which built artifact is distributed and tested. | `RELEASE-01`; package and onboarding owners |
@@ -68,7 +68,7 @@ local navigation labels, not new backlog items.
 | `R08` | Public installed journey | Isolated wheel smoke covers help, Init, and validation outside the checkout; report smoke calls internal APIs. | Exercise selected public commands outside the checkout where supported, with checkout-bound `setup` identified; a full wheel promise requires a tiny complete Run and public report regeneration. | `RELEASE-01`; package, CLI, synthetic-journey owners |
 | `R09` | Record and schema support | Approved policy refuses obsolete Run contracts, while some current-format variants and retained diagnostic contexts remain readable; schema IDs are independent of product versions. | Verify public obsolete-Run refusal preserves retained bytes; decide any schema reset through `SCHEMA-01`, independently of product v1. | `RELEASE-01`, `SCHEMA-01`; contract owners |
 | `R10` | Guides and limitations | README, Quickstart, Runbook, and Troubleshooting divide reader/operator guidance; README already describes installed collaborator modules. | Reconcile install route, supported environment, Results journey, recovery, known limits, and collaborator promise without duplicate status prose. | `RELEASE-01`, `QUICKSTART-01`, `DOCS-01`, conditional `EXTENSION-01` |
-| `R11` | Exact-revision evidence | Ordinary CI contains a wheel lane; selected hosted direct/Slurm and institutional exercise are separate evidence layers. PR #307 strengthens selected Doctor timing instrumentation, pending that lane's run. | Record software, installed-artifact, disposable-Slurm, named-site, visual, scientific-review, and biological claims separately. | `RELEASE-01`, `SITE-PARITY-01`, `CLUSTER-VERIFY-01`, `REPORT-01`–`03`, `SCI-AUDIT-01` |
+| `R11` | Exact-revision evidence | Ordinary CI contains a wheel lane; selected hosted direct/Slurm and institutional exercise are separate evidence layers. PR #307 adds selected Doctor timing assertions; CV-26's structural closure makes no speedup claim. | Record software, installed-artifact, disposable-Slurm, named-site, visual, scientific-review, and biological claims separately. | `RELEASE-01`, `SITE-PARITY-01`, `CLUSTER-VERIFY-01`, `REPORT-01`–`03`, `SCI-AUDIT-01` |
 | `R12` | Release notes and publication | The earlier alpha proposal requests versioning, notes, install guidance, and explicit evidence limits. | Define one release-note format and prerelease/v1 checklist; require separate authority for tag/release publication, package index, or new platform support. | `RELEASE-01`; publication authority remains separate |
 | `R13` | Saved defaults and Projects home | `emrys setup` requires an EMRYS Git checkout and writes `.env` there; its default Projects home is checkout-relative. | Preserve this route for a checkout release, or resolve the existing setup/onboarding owner before promising a wheel-only novice path. | `RELEASE-01`; onboarding owner |
 | `R14` | Performance and capacity claims | Allocation-aware profiles, Doctor timing, scheduler observations, and selected hosted runs describe configuration or dated operation; the optimization campaign audited an older revision. | Decide whether release notes make any quantitative promise; refresh affected candidates against the selected source, and measure comparable whole-operation results only if promised. | `RELEASE-01`; optimization campaign, `SITE-PARITY-01`, conditional `SETUP-02` |
@@ -88,8 +88,8 @@ candidate review must inspect its actual ancestry, tree, artifact, and check
 results rather than inherit this snapshot's conclusions.
 
 This investigation's branch still descends from `f32260f0`; a direct diff to
-the 2026-09-22 live #307 head `ba1fbdd3` found only the formatting change
-above. Separate open
+the 2026-09-22 live #307 head `5ecc409c` found only the timing-check formatting
+and the owner-revised CV-26 documentation closure above. Separate open
 [PR #314](https://github.com/lab-cats/EMRYS/pull/314) audits schemas,
 [PR #316](https://github.com/lab-cats/EMRYS/pull/316) proposes packaged EV/PUM1
 selection, and [PR #320](https://github.com/lab-cats/EMRYS/pull/320) proposes
@@ -511,10 +511,11 @@ includes readiness and possible queue delay; the selected
 not a speed threshold. [Slurm batch usage](../../src/emrys/orchestration/run_coordinator/scheduler_observation.py)
 is not aggregate concurrent Run memory. The [Quickstart](../../quickstart.md)'s
 5–25-minute first-setup guidance includes an explicit queue caveat and needs
-dated site observations if used as a release expectation. Removing a redundant
-Doctor diagnosis under [CV-26](cluster_verification_backlog.md#cv-26-repeated-doctor-input-reads)
-is a structural reduction with no demonstrated
-speedup. None of these observations establishes current whole-Run wall-time,
+dated site observations if used as a release expectation.
+[CV-26](cluster_verification_backlog.md#cv-26-repeated-doctor-input-reads)
+is Completed to its owner-revised structural criterion after removing one
+redundant Doctor diagnosis; it demonstrated no speedup. None of these
+observations establishes current whole-Run wall-time,
 throughput, full-study capacity, or an optimization.
 
 First classify the proposed release claim. A functional-only prerelease needs
