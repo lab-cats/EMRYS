@@ -36,7 +36,7 @@ claim that every possible future subtype is inherently undeletable.
 | F1 | Runs, older Attempts, scientific artifacts; Run coordinator, Task and declared artifact owners | Downstream Runs using processing-source reuse bind the source Run, Attempt, receipt and artifact content; resume reads older Attempt history. | No-go on current evidence. | Is there an exact subtype whose complete inbound Run, report and external references can be enumerated? |
 | F2 | Native outputs, staging, locks and reporting partials; Task and reporting publishers | Their cleanup owns only state captured during the live transaction; ambiguous writers and failed rollback preserve residue. | No-go on current evidence. | Can ownership and writer quiescence be proved after process loss, without discarding recovery evidence? |
 | F3 | Managed runtime generations and caches; Doctor and runtime owner | Borrower Projects and retained Attempts can name older donor seals and generations; cache links complicate ownership. | No-go on current evidence. | What authority enumerates all current and historical borrowers and package links? |
-| F4 | Qualification probes and receipts; storage qualification owner | The owner cleans known probes after durable publication; staged or failed cleanup remains evidence, and receipts are reused. | No-go on current evidence. | Can an exact root cohort, active phase, receipt readers and recovery consequences be closed? |
+| F4 | Qualification probes and receipts; storage qualification owner | The owner cleans known probes after durable publication; a site compute receipt names its probes, while staged or failed cleanup remains evidence. | No-go on current evidence. | Can any exact direct-probe remainder prove ownership, no writer and recovery safety after process loss? |
 | F5 | Inputs, references and sidecars; Project admission and Step 00c | Admission binds content without exclusive ownership; FAI/dictionary files sit beside potentially shared FASTA files. | No-go on current evidence. | Can any generated subtype be separated from external and cross-Run consumers? |
 | F6 | Submission and application records; Control, submission and logging owners | Retained requests feed duplicate protection, inspection, watch, stop and association; application logs supply diagnostic evidence and log discovery. | No-go on current evidence. | Can every record subtype and its historical readers be bounded without losing evidence? |
 
@@ -308,11 +308,17 @@ is deletion eligibility.
 - **Probe directories — transaction cleanup known, retained state unknown.**
   The [qualification owner](../../src/emrys/evidence/storage_inventory/qualification.py)
   checks an exact four-member roster during its cleanup (around lines 582–637).
-  A partial cleanup can leave an incomplete directory with a valid final
-  receipt, as characterized by
+  Its site compute receipt records each probe directory, and the final receipt
+  binds that compute receipt (lines 470–510 and 665–669); a retained site probe
+  therefore has a historical receipt reference. The direct receipt does not
+  name its probes (lines 688–717), but that absence does not prove post-crash
+  ownership or writer quiescence. Both routes publish the final receipt before
+  probe cleanup (lines 681–685 and 718–722). A partial cleanup can leave an
+  incomplete directory with a valid final receipt, as characterized by
   [fault tests](../../tests/evidence/storage_inventory/test_storage_inventory.py)
-  (around lines 513–555). Re-running the current cleanup cannot be presumed
-  to admit every retained partial.
+  (around lines 513–557). Re-running the current cleanup cannot be presumed
+  to admit every retained partial; direct planning refuses occupied probe
+  paths (lines 262–268).
 
 ### F5 path subtypes
 
@@ -392,13 +398,30 @@ is deletion eligibility.
   forbids automatic deletion; `package-output.log` is a separate retained
   maintenance subtype (lines 42–47, 66–70 and 144–169).
 
-Two narrow **questions**, not selected candidates, emerge from this pass:
-whether an exact owner-named reporting stage after completed publication, or
-an exact leftover qualification probe after an admitted final receipt, could
-ever pass post-crash ownership, no-writer, reference and recovery proofs. The
-existing probe cleanup requires a complete roster and cannot simply be rerun
-on every partial directory. Both cases may contain retained evidence; neither
-currently authorizes deletion or a space-saving claim.
+### Narrow candidate triage
+
+- **Reporting stage beside linked outputs — no-go.** A normal publisher return
+  removes its stage and releases its lock after linking the final manifest or
+  receipt. A retained stage beside those outputs instead signals incomplete
+  cleanup, uncertain rollback or foreign state. The retained state is rejected
+  by [transaction validation](../../src/emrys/reporting/transaction_validation.py)
+  (lines 440–476, 507–514 and 642–650), and the live publisher's captured
+  identity cannot certify post-crash ownership.
+- **Site qualification probe after an admitted final receipt — no-go.** The
+  compute receipt retains the probe directory names, and the final receipt
+  binds the compute receipt
+  ([qualification.py](../../src/emrys/evidence/storage_inventory/qualification.py),
+  lines 470–510, 665–669 and 837–847). Final admission need not reread probe
+  bytes, but the historical receipt reference is nonempty under this audit's
+  gate. Failed or active cleanup also remains possible.
+- **Direct qualification probe after an admitted receipt — unknown.** The direct
+  receipt does not name its probe directories (lines 688–717 of the same owner),
+  yet final publication precedes cleanup, and occupied or partial probe paths
+  block the existing planner or roster cleanup (lines 262–268 and 582–637).
+  There is no post-crash owner, no-writer or recovery proof for one exact
+  remainder.
+
+No retained subtype is selected; none has a justified space-saving claim.
 
 ## Next discovery pass and decision gate
 
@@ -427,10 +450,10 @@ currently authorizes deletion or a space-saving claim.
 
 | Surface | Finding from this pass |
 | --- | --- |
-| Product code | The Task, reporting and storage owners already clean temporary state inside their own transactions. Their inputs, writer lifetimes and commit rules differ; no caller-complete shared deletion policy or safe product-code retirement is established. A future preview should first consume existing Run inspection and class-specific ownership admission. |
+| Product code | The reporting publishers already share [stage removal](../../src/emrys/reporting/_files.py) and [lock helpers](../../src/emrys/libraries/exclusive_publication.py), while [transaction validation](../../src/emrys/reporting/transaction_validation.py) centralizes recognized residue names. A future reporting preview should use those seams rather than add a second name scan. Task rollback and storage probe cleanup have different writer and roster rules, so no cross-owner deletion helper or current product-code retirement is justified. Existing Run inspection and submission enumeration should serve their own readers without a second registry. |
 | Tests and protections | The cited reuse, interruption, partial-publication and retained-record cases protect distinct failures. This pass identifies no redundant test or high-risk protection safe to retire. A selected subtype must map each added check against those surviving defenses. |
 | Scripts, schemas and configuration | No separate CLEANUP-01 command, schema, retention registry or configuration is present to retire. Do not add one merely to inventory age or free space. |
-| Documentation | This working audit adds detail to, but does not replace, the CV-23 disposition. After an accepted design, transfer lasting behavior to its owner contract and reduce or retire this working audit while retaining necessary decisions and evidence. |
+| Documentation | CV-23, the main backlog row and this working matrix currently overlap by design during discovery. After an accepted design, keep status in the backlog, move lasting behavior beside the selected owner, and compress or retire repeated working-audit explanations while preserving decisions and evidence. |
 | Mutable state | No cleanup status cache or reverse-reference registry exists. This pass found no mutable state safe to remove; a new persistent registry would require an independently justified authority and maintenance analysis. |
 
 ### Verification if a class is later selected
