@@ -70,6 +70,10 @@ and acceptance.
 | `EXTENSION-01` | Collaborator usability | Open | `4` | `4` | Give collaborators a practical way to add their own analyses. | Build on the existing [provider and reporter entry points](../../src/emrys/analyses/README.md#collaborator-providers), adopting the earlier polish proposal. Demonstrate a minimal independently installable Analysis and reporter through real discovery, configuration admission, planning, execution, independent validation and reporting without substituting the loader. Explain declared inputs/outputs, dependencies, resources and identity/version refusal; retain literal expected results. Establish whether the existing Step 09/optional Step 10 boundary meets the intended analysis before proposing extensions; add no parallel plugin framework. |
 | `RELEASE-01` | Release planning | Open | `4` | `4` | Define a concrete path from prerelease EMRYS to a v1 release. | Turn the prior alpha-release proposal into a concise readiness checklist: promised workflows/platforms, distributed artifact, installation and dependency policy, public/schema support policy, documentation, known limitations and exact-revision software/site evidence. Exercise promised installed operations outside the checkout through documented resources; do not infer compatibility across dependency ranges from locked tests. Assign blockers to existing owners, distinguish prerelease from 1.0 criteria and keep scientific review/biological interpretation separate. Define versioning and release-note requirements without publishing a release or inventing unsupported platform promises. |
 
+The [SCHEMA-01 working audit](schema_01_contract_audit.md) records its
+revision-bound findings and open evidence; this matrix retains status and
+acceptance authority.
+
 ### Novice setup and operational follow-up
 
 These outcomes use the existing onboarding, submission, runtime and
