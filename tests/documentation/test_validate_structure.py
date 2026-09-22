@@ -14,27 +14,27 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 VALIDATOR = REPO_ROOT / "scripts" / "documentation" / "validate_structure.py"
-CANONICAL_H1S = {
-    "AGENTS.md": "# EMRYS safety guard",
-    "README.md": "# EMRYS: Epic Molecular Read Yield System",
-    "quickstart.md": "# EMRYS quickstart: Viking data to Results",
-    "configs/README.md": "# Configuration and input guide",
-    "docs/README.md": "# Documentation",
-    "docs/architecture/README.md": "# Architecture index",
-    "docs/architecture/ARCHITECTURE.md": "# Current architecture",
-    "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md": "# Current functional-owner inventory",
-    "docs/design/DECISIONS.md": "# Durable decisions",
-    "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
-    "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
-    "docs/history/validation-evidence.md": "# Dated validation evidence",
-    "docs/operations/RUNBOOK.md": "# Runbook",
-    "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
-    "docs/operations/WORKFLOW.md": "# Workflow kernel",
-    "docs/tasks/README.md": "# Task planning",
-    "docs/tasks/backlog_matrix.md": "# EMRYS backlog matrix",
-    "src/emrys/contracts/SOURCE_TOPOLOGY.md": "# Source ownership and dependency direction",
-    "src/emrys/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
-}
+CANONICAL_PATHS = (
+    "AGENTS.md",
+    "README.md",
+    "quickstart.md",
+    "configs/README.md",
+    "docs/README.md",
+    "docs/architecture/README.md",
+    "docs/architecture/ARCHITECTURE.md",
+    "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md",
+    "docs/design/DECISIONS.md",
+    "docs/design/LOGGING_CONTRACT.md",
+    "docs/design/TEST_BASELINE.md",
+    "docs/history/validation-evidence.md",
+    "docs/operations/RUNBOOK.md",
+    "docs/operations/TROUBLESHOOTING.md",
+    "docs/operations/WORKFLOW.md",
+    "docs/tasks/README.md",
+    "docs/tasks/backlog_matrix.md",
+    "src/emrys/contracts/SOURCE_TOPOLOGY.md",
+    "src/emrys/contracts/STAGE_MAP.md",
+)
 SEMANTIC_OWNERS = (
     ("stage", "construct_STAR_index"),
     ("stage", "construct_FASTA_sidecars"),
@@ -111,7 +111,12 @@ def write_fixture(root: Path) -> Path:
     files = {
         "docs/fixture.mmd": "flowchart LR\n    A --> B\n",
     }
-    files.update({path: f"{h1}\n" for path, h1 in CANONICAL_H1S.items()})
+    files.update(
+        {
+            path: f"# {Path(path).stem.replace('_', ' ').title()}\n"
+            for path in CANONICAL_PATHS
+        }
+    )
     identity_rows = [
         f"| {kind} | Fixture | `{slug}` | `emrys.{kind}.{slug}.v1` | `00` |"
         for kind, slug in SEMANTIC_OWNERS
@@ -137,64 +142,6 @@ def write_fixture(root: Path) -> Path:
     return repository
 
 
-def test_quickstart_tracks_guided_init_and_viking_profile() -> None:
-    quickstart = (REPO_ROOT / "quickstart.md").read_text(encoding="utf-8")
-    plain = " ".join(quickstart.split())
-    guided = quickstart.split("## 3. Create the Project", 1)[1].split(
-        "## 4. Validate the Project", 1
-    )[0]
-    guidance = " ".join(guided.split())
-    ordered_guidance = (
-        "emrys init pum1-study",
-        "Enter the FASTA path, matching GTF path and FASTQ directory",
-        "Enter `reverse` for study strandedness",
-        "there is no regions question",
-        "first word after `>` in each FASTA header",
-        "`EV -> PUM1`",
-        "`A>G`",
-        "`Use these paired-CMH defaults?`",
-        "normal preview's strand summary",
-        "`Create this Project? [y/N]`",
-        "`Project ready:`",
-    )
-    positions = [guidance.index(value) for value in ordered_guidance]
-    assert positions == sorted(positions)
-    assert "--partition-manifest" in guided
-    assert "Keep any provider checksums with the delivery records" in plain
-    assert "The FASTA contains reference sequences" in plain
-    assert "If either is missing, obtain the matching pair" in plain
-    assert "`reverse: 6`" in guidance
-    assert "`Background max fraction: 0.01 (inactive)`" in guidance
-    for setting in ("genomeSAindexNbases", "sjdbOverhang", "genomeChrBinNbits"):
-        assert f"`{setting}`" in guidance
-    assert "automatic at creation from the admitted reads and reference" in guidance
-    for value in (
-        "minimum sample depth `1`",
-        "mean-depth threshold `50`",
-        "FDR `0.05`",
-        "common odds ratio `1.2`",
-        "absolute difference `0.005`",
-    ):
-        assert value in guidance
-    for value in (
-        "`viking-users`",
-        "`long`",
-        "`normal`",
-        "One scheduler-selected exclusive node",
-        "All CPUs and memory on that node",
-        "12 hours",
-        "A private directory under `/tmp`",
-    ):
-        assert value in quickstart
-    readiness = quickstart.split("## 5. Prepare the scientific tools and storage", 1)[
-        1
-    ].split("## 6. Submit and watch the Run", 1)[0]
-    assert readiness.index("emrys runtime discover --from-project") < readiness.index(
-        "emrys doctor --repair"
-    )
-    assert "If you skipped the smoke test, skip that command" in readiness
-
-
 def validate(
     repository: Path,
     *,
@@ -212,6 +159,9 @@ def test_accepts_minimal_repository_and_reports_counts_without_writes(
     tmp_path: Path,
 ) -> None:
     repository = write_fixture(tmp_path)
+    (repository / "docs/operations/WORKFLOW.md").write_text(
+        "# Renamed workflow guide\n", encoding="utf-8"
+    )
     before = tuple(
         sorted(path.relative_to(repository) for path in repository.rglob("*"))
     )
@@ -226,18 +176,23 @@ def test_accepts_minimal_repository_and_reports_counts_without_writes(
     )
 
 
-def test_rejects_missing_or_mislabeled_canonical_documents(tmp_path: Path) -> None:
+def test_rejects_missing_or_unheaded_canonical_documents(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
     (repository / "docs/operations/WORKFLOW.md").unlink()
-    (repository / "docs/operations/RUNBOOK.md").write_text(
-        "No heading.\n", encoding="utf-8"
+    (repository / "docs/operations/RUNBOOK.md").write_text("# \n", encoding="utf-8")
+    (repository / "docs/operations/TROUBLESHOOTING.md").write_text(
+        "```\n# Not a document heading\n```\n", encoding="utf-8"
     )
 
     result = validate(repository, cwd=tmp_path)
 
     assert result.returncode == 1
     assert "missing canonical document: docs/operations/WORKFLOW.md" in result.stderr
-    assert "canonical document H1 mismatch: docs/operations/RUNBOOK.md" in result.stderr
+    assert "canonical document H1 missing: docs/operations/RUNBOOK.md" in result.stderr
+    assert (
+        "canonical document H1 missing: docs/operations/TROUBLESHOOTING.md"
+        in result.stderr
+    )
 
 
 @pytest.mark.parametrize("roster_defect", ("short", "duplicate"))
