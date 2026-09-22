@@ -300,6 +300,9 @@ whose optional timestamp dependency is absent from the declared lock closure.
 An [earlier local observation](https://github.com/lab-cats/EMRYS/blob/5c99c8159f87341287e2cacf733a58f12186550f/docs/tasks/compression_backlog_matrix.md#L929-L936)
 found that historical v1 and then-current v2 Attempt receipts accepted
 `finished_at: "not-a-time"` without that checker.
+The [September 22 source-bound recheck](polish_finding_disposition_review.md)
+reproduced malformed-string admission through the public v3 validator;
+producer output and later inspection have different, narrower behavior.
 
 **Outcome and acceptance:** Choose the intended timestamp policy and provide
 its checker reproducibly through the established dependency. Test valid
@@ -381,6 +384,10 @@ execution needs its own authorization.
 matching Doctor. The hosted golden-path clone still installs default groups.
 The remaining work is to align that CI bootstrap and verify the documented
 operator environment through the existing golden path.
+The [September 22 group comparison](polish_finding_disposition_review.md)
+confirms extra development dependencies in CI; that job also invokes `pytest`
+after the journey, so its containment check needs a separate development
+environment or later dependency stage if the journey becomes operator-minimal.
 
 **Outcome and acceptance:** Start operators with the same admitted runtime
 groups Doctor selects, retaining development dependencies for repository
@@ -743,6 +750,16 @@ branch-protection endpoint reports no separate configuration. These findings
 do not mean the branch has no protections or that its CI is failing.
 [Required status checks](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-status-checks-to-pass-before-merging)
 are distinct from the other hosted rules.
+
+**September 22 read-only recheck:** GitHub's active rulesets `21180321`
+(`Reviews`) and `21339165` (`no-push-master`) both target the default branch.
+Effective rules returned for `master` include both, still without
+`required_status_checks`; both list an `OrganizationAdmin` always-bypass.
+The effective branch-rules query for PR #312's base
+`codex/pr302-original-intent-corrections` returned no rules. The legacy
+branch-protection endpoint returned 404 for each branch, which does not negate
+the default-branch rulesets. No settings changed or merge-blocking behavior was
+tested; this dated observation does not select a hosted policy change.
 
 **Outcome and acceptance:** Select the ordinary checks that must succeed for
 the intended merge and bind their actual emitted check names to the effective

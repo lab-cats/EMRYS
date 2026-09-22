@@ -23,16 +23,40 @@ verbose detail. Item 8
 direct-storage-plan premise (lines 341–358) is narrowed by Doctor's current
 Slurm branch at lines 835–857; site behavior still needs review. Item 36
 (lines 798–811) describes explicit-memory preflight as missing, while the
-[current `SCHED-01` row](backlog_matrix.md#platform-operation-and-portability) says its source is
-implemented and verification remains.
+[current `SCHED-01` row](backlog_matrix.md#platform-operation-and-portability)
+says its source is implemented and verification remains.
 
-**Still live or undecided:** Item 11's environment-parity question persists:
+Item 6 is locally reproduced at this audit head: the public
+[`validate_record`](../../src/emrys/contracts/orchestration/api.py) path accepts
+both a valid timestamp and `finished_at: "not-a-time"` in a minimal blocked v3
+Attempt receipt when run with the locked `jsonschema` 4.26.0 package. Its
+optional RFC 3339 checker is absent from the lock closure, so `date-time` is
+not registered. The [producer](../../src/emrys/orchestration/run_coordinator/lifecycle.py)
+emits valid UTC timestamps, and [inspection](../../src/emrys/orchestration/run_coordinator/_inspection_attempts.py)
+can later flag the malformed time; neither makes public admission reject it.
+The current [contract test](../../tests/contracts/orchestration/test_orchestration_contracts.py)
+rejects a non-string time but not a malformed string. This is a local contract
+probe, with no hosted or site evidence. Other `FormatChecker` callers remain
+to be reviewed before selecting a correction.
+
+**Confirmed group mismatch:** Item 11 is not yet aligned:
 [Quickstart](../../quickstart.md) line 44 uses
 `--no-default-groups --group workflow`, while the managed golden CI lane in
 [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) lines 632–638
-lacks `--no-default-groups`. Item 12's draft versus admitted FASTQ identity
-question also remains: the draft rejects reused physical files by device and
-inode (`onboarding.py` lines 1441–1457), while Project normalization checks
+lacks `--no-default-groups`. [`pyproject.toml`](../../pyproject.toml) makes both
+`dev` and `workflow` default groups. The locked Linux/Python 3.14 dependency graph
+projects 73 shared names (EMRYS plus 72 dependencies) and 17 CI-only
+development packages,
+including `pytest`, `coverage`, `ruff` and `pre-commit`, with no different
+versions among the shared names. This offline graph comparison is not an
+installed-environment manifest. The [baseline managed golden job](https://github.com/lab-cats/EMRYS/actions/runs/35770811692/job/106891764037)
+passed with that broader environment, not the documented minimal one; its
+later containment step runs `.venv/bin/python -m pytest`, so merely changing
+the sync flags would remove a dependency of that step.
+
+Item 12's draft versus admitted FASTQ identity question remains: the draft
+rejects reused physical files by device and inode (`onboarding.py` lines
+1441–1457), while Project normalization checks
 path equality and caches by path
 ([`normalization.py`](../../src/emrys/orchestration/run_coordinator/normalization.py)
 lines 359–385). This is a policy comparison, not an established defect.
@@ -52,12 +76,12 @@ durable disposition is decided.
 | 3 | Reference-provenance replacement recovery defect remains owner-documented. | Keep recovery evidence with that owner. |
 | 4 | Runtime-report publication proposal is explicitly retired. | Historical rationale only after retention check. |
 | 5 | Current-artifact admission through the public validator is delivered. | Avoid re-presenting it as a missing feature. |
-| 6 | Timestamp checker policy remains uncertain; dependency/source inspection alone does not reproduce malformed admission. | Retain as a question until a focused reproduction or policy decision. |
+| 6 | Public v3 Attempt receipt admission accepted `finished_at: "not-a-time"` in a source-bound local probe under the locked checker closure. | Keep a live correctness proposal: select timestamp policy and maintained checker, then cover valid historical/current and malformed strings plus other format callers. |
 | 7 | Init preview now shows major scientific choices, but detailed paths are verbose and final bytes follow admission. | Replace the old missing-preview premise; verify exact preview/publication agreement before closing acceptance. |
 | 8 | Doctor `--profile` supports default, named, and absolute selections in source and focused tests. | Mark source delivery; keep site acceptance with CV-07. |
 | 9 | Current Slurm repair planning skips the formerly alleged direct-storage plan. | Re-evaluate full placement behavior and site evidence; do not claim the old source-predicted failure persists. |
 | 10 | Novice institutional walkthrough remains accepted under `SITE-PARITY-01`. | Keep its exact site evidence requirement. |
-| 11 | Quickstart and managed-golden CI still select different `uv` groups. | Retain parity question; compare actual installed environments. |
+| 11 | Quickstart excludes default `dev`; managed golden CI includes it. The offline locked graph has 17 CI-only package names, while shared versions agree. | Verify an operator-minimal golden journey separately from the later `pytest` containment check; assert group selection. No install-speed or site claim. |
 | 12 | Draft FASTQ physical-identity check differs from Project normalization's path-based check. | Preserve explicit mate-path proposal and settle admission policy before calling this a defect. |
 | 13 | Ineffective reporting-memory control is retired. | Historical disposition only. |
 | 14 | Standalone dashboard retirement is implemented; ordinary baseline software/docs CI passed, while institutional visual review remains. | Keep `DASHBOARD-RETIRE-01`, legacy readers and the separate evidence-deletion gate. |
@@ -79,7 +103,7 @@ durable disposition is decided.
 | 30 | Release path is accepted as Open `RELEASE-01`. | Date-bound old distribution observations; do not claim release readiness. |
 | 31 | Citation guidance remains an unselected proposal. | Decide authoritative format and owner. |
 | 32 | Release dependency inventory/provenance remains an unselected proposal. | Coordinate with `RELEASE-01` before making a release artifact. |
-| 33 | Merge-rule observations were an audit-time hosted snapshot. | Re-read effective rules before a current claim or settings change. |
+| 33 | September 22 API recheck found the default-branch rulesets still lack required status checks; PR #312's correction-branch base returned no effective rules. | Keep hosted policy unselected; test proposed merge behavior separately before any settings change. |
 | 34 | Complete R dependency closure is accepted as Open `RUNTIME-CLOSURE-01`. | Keep recursive closure and snapshot-off acceptance with the row. |
 | 35 | Installed Snakemake content guarantee remains unresolved. | Trace current package binding before calling an escape or solution proven. |
 | 36 | Explicit Slurm memory preflight is implemented and its ordinary baseline software checks passed; `SCHED-01` remains Verification pending. | Date-bound the old missing-implementation premise; keep CV-11's institutional capacity limit. |
@@ -103,7 +127,9 @@ campaign withdrew its 6,400–9,200-line estimate. Their prerequisites differ:
 | Common reporting transaction | A smaller caller-complete replacement for both publishers despite their different commit/recovery order. |
 | Narrow supported surfaces | Exact consumer inventory, migration/rollback, and separate public-contract approval. |
 
-**Next:** Check ambiguous items 6, 7, 9, 11, 12, 33, and 35 against direct
-tests or live policy before recommending their final disposition. The
-campaign's old PR chronology can be shortened only after unique decisions
-and dated evidence have a verified owner.
+**Next:** Select item 6's timestamp policy and contract checks; verify an
+installed operator-minimal journey for item 11 while retaining its later test
+step. Decide and test any merge policy for item 33 separately. Resolve items 7,
+9, 12 and 35 with direct checks or policy decisions. The campaign's old PR
+chronology can be shortened only after unique decisions and dated evidence
+have a verified owner.

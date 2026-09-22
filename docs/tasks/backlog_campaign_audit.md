@@ -79,8 +79,8 @@ discovery below and names the next evidence needed before changing authority.
 | 10. Polish chronology and overlap | The campaign contains an old audit/PR narrative and merged-PR tables plus proposals already implemented elsewhere. | Classify PR chronology and preserve unique rationale and evidence before compression. |
 | 11. Optimization source drift | The September 7 audit is correctly pinned, but most cited source blobs changed by the baseline. Candidates 8 and 12 have materially changed source premises. | Re-evaluate all 13 candidates against current owners and measurements without converting old proposals into defects. |
 | 12. Time-bound campaign authority | The charter repeats earlier blanket development authority and an active-cluster-job precaution as present-tense guidance. | Date-bound historical instructions; keep current authorization and cluster safety with their authoritative owners. |
-| 13. Polish proposals versus current owners | Several original findings describe capabilities now delivered; others retain a live gap. | The [per-item review](polish_finding_disposition_review.md) maps all 44 findings and five architecture options; resolve seven ambiguous items before proposing any shortening. |
-| 14. `HARNESS-01` status versus source gap | The row is Verification pending, yet its acceptance names a remaining test-simulation admission mismatch also visible in fixtures and production records. | Review the owner boundary and status definition; retain simulation proof without calling it scientific execution. |
+| 13. Polish proposals versus current owners | Several original findings describe capabilities now delivered; others retain a live gap. | The [per-item review](polish_finding_disposition_review.md) maps all 44 findings and five architecture options; item 6 is reproduced locally, item 11 has a confirmed group mismatch, and remaining decisions stay unselected. |
+| 14. `HARNESS-01` status versus source gap | The row is Verification pending, yet its acceptance names a remaining test-simulation admission mismatch also visible in fixtures and production records. | Recommend Open under the matrix vocabulary, subject to fixture and retained-reader review; keep controlled simulation proof distinct from scientific execution. |
 
 ## Initial discoveries
 
@@ -490,16 +490,22 @@ status is changed by this finding.
 **Observed:** The [per-item polish review](polish_finding_disposition_review.md)
 maps all 44 numbered findings and five architecture options to current
 source, accepted owners, and remaining evidence. Several old missing-feature
-premises are superseded, while items 6, 7, 9, 11, 12, 33, and 35 need direct
-checks or a policy decision. Delivered source capability does not by itself
-close a larger backlog outcome or institutional acceptance.
+premises are superseded. Item 6's malformed timestamp admission is locally
+reproduced; item 11's locked dependency graph confirms a CI/operator group
+gap. Items 7, 9, 12 and 35 still need direct checks or policy decisions, while
+item 33's current rules were read but its policy remains unselected. Delivered
+source capability does not by itself close a larger backlog outcome or
+institutional acceptance.
 The companion and source campaign now distinguish baseline CI from the
 remaining visual review for polish item 14, and date item 36's former missing
 Slurm preflight while retaining CV-11's institutional capacity limit.
+Item 33 now includes a dated read-only ruleset check for `master` and this
+PR's distinct correction-branch base, without changing hosted settings.
 
-**Next:** Resolve those ambiguous items against direct tests or live policy.
-Transfer any unique decision and dated evidence before shortening the
-campaign chronology. The companion review proposes no deletion.
+**Next:** Resolve items 7, 9, 12 and 35 against direct tests or policy; select
+separate corrections for 6 and 11 and a hosted decision for 33 if approved.
+Transfer unique decisions and dated evidence before shortening campaign
+chronology. The companion review proposes no deletion.
 
 ### 14. `HARNESS-01` status versus source gap
 
@@ -516,12 +522,14 @@ line 1499. The matrix defines Verification pending as implementation
 appearing complete with evidence outstanding, which does not plainly describe
 this named source/contract mismatch.
 
-**Next:** Trace every production and fixture caller before deciding whether
-the mode is a valid admitted local execution contract or a test-only seam.
-Then reconcile the row's status and acceptance with the existing owner. Keep
-controlled partial-failure/resume tests, but label their simulation level
-without implying real scientific execution. This source review is not itself
-a status change or proof of a weaker/stronger replacement defense.
+**Disposition recommendation:** Under the matrix's stated vocabulary,
+`HARNESS-01` should be Open at this baseline: the fixture still emits the
+production execution mode while bypassing the admission that mode names.
+Before changing the accepted row, trace every fixture and retained-record
+reader. A selected correction must either perform real admission or name the
+injected simulation explicitly while preserving partial-failure/resume tests.
+Do not rename the production mode or remove the schema's `test-double` value
+without a separate compatibility review. This review changes no status.
 
 **Boundary check:** The production [contract](../../src/emrys/contracts/orchestration/api.py)
 lines 483–494 requires Python and storage qualification for local science
