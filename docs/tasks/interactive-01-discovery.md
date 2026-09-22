@@ -38,7 +38,7 @@ creation or completion.
 | No. | Boundary | Source-grounded discovery | Unsettled choice or next evidence |
 | --- | --- | --- | --- |
 | [1](#1-public-entry-and-manual-route) | Public entry | Bare `emrys` currently requires a command. Explicit owner commands already provide manual control. | Select the guided entry, default transition, manual route, and nonterminal behavior. |
-| [2](#2-bootstrap-and-saved-settings) | Setup | Setup is checkout-bound, dry-run-first, and creates one `.env`; the CLI loads saved settings once before dispatch. | Decide same-invocation approval and exact propagation of newly saved values. |
+| [2](#2-bootstrap-and-saved-settings) | Setup | Setup is checkout-bound, defaults to a dry-run, and creates one `.env` only with `--execute`; the CLI loads saved settings once before dispatch. | Decide same-invocation approval and exact propagation of newly saved values. |
 | [3](#3-project-context) | Project | Named Init uses the selected Projects home or current directory; Project-aware commands use an exact Project path. | Define new versus existing selection without newest-Project or partial-root inference. |
 | [4](#4-scientific-input-questions) | Scientific intent | Init already asks for reference, FASTQs, assignments, comparison, regions, target, and disclosed defaults. | Reuse its questions; review a complete prompt transcript and refusal paths. |
 | [5](#5-maintained-study-selection) | Study selection | This branch still needs an explicit EV/PUM1 manifest; sibling PR #316 proposes an explicit packaged selection. | Reconcile that pending implementation and verify installed-package and novice behavior. |
@@ -238,8 +238,11 @@ from Viking readiness or utilization proof.
 
 ### 10. Direct and Slurm Run approval
 
-**Observed.** Direct `run` builds and shows one frozen plan before its execution
-confirmation (`control.py` lines 1766-1789). For Slurm, `_finish_control` calls
+**Observed.** Interactive direct `run` without `--execute` builds and shows one
+frozen plan before its execution confirmation (`control.py` lines 1766-1789).
+The automation option skips that pre-execution display and builds inside the
+execution path; it cannot stand in for a guide's reviewed-plan approval. For
+Slurm, `_finish_control` calls
 `_schedule` *before* building the Run plan (lines 1755-1765); the head node
 shows the Analysis label and admitted allocation request, while the immutable
 Run plan is built on the compute delegate. The retained duplicate-request
@@ -252,6 +255,9 @@ need its own approved design without claiming head-side compute admission.
 Never auto-add the duplicate override, retry, or treat an absent Run as proof
 that a queued job is gone. Preserve the direct and Slurm approval boundaries;
 see `test_materialization.py` lines 3048, 3158, 4692, 4783, and 5027-5218.
+Direct Run's zero exit can include a completed computation with only partial
+scientific output or intentionally disabled reporting; the guide must use the
+existing admitted result and inspection language for any stronger claim.
 
 ### 11. Submission and watch handoff
 
@@ -262,6 +268,11 @@ submission-only statement (`control.py` lines 1172-1225). A numeric
 admission (lines 2656-2724 and 3016-3027). The Project inspection owner can
 watch an exact retained request using `inspect --project PROJECT --submission
 REQUEST --watch`; its later association with a Run is separately re-admitted.
+The public submission output currently advertises the numeric watch shortcut,
+so the composed guide needs its own request-bound handoff. The submission
+selector accepts the exact `submission-<32 hex>` directory name or absolute
+path, not a job ID, prefix, or newest-request guess (`slurm_submission.py`
+lines 248-261 and 477-545).
 
 **To settle.** Return the exact request identity from the submission owner to
 the guide without parsing stdout. Offer watch on that Project request, not a
@@ -278,21 +289,41 @@ request-to-Run association; failed re-verification clears earlier admission.
 Completion and recovery come from admitted Attempt, Results, and reporting
 evidence, not a scheduler success line or file presence
 ([inspection owner](../../src/emrys/orchestration/run_coordinator/README.md)).
+The exact request's context and response are rechecked; one token-bound
+application log with matching Project, profile, and job identity is only a
+candidate until Run and Attempt authority are admitted
+(`_submission_inspection.py` lines 320-530). Periodic watch ticks refresh
+scheduler/log diagnostics; pressing `r` requests association re-verification
+(`_inspection_presentation.py` lines 538-653 and 1170-1194). A noninteractive
+watch snapshot can return zero while association is still unknown.
 
 **To settle.** Re-entry should ask for or show exact Project/request/Run choices
 and then use existing Inspect/Watch and supported recovery action. Do not add
 persistent last-used selection, automatic resume, or auto-reporting. A queued
 submission may have no Run yet. Check reconnect, multiple submissions for one
-Run, unknown scheduler state, and failed re-verification.
+Run, unknown scheduler state, and failed re-verification. Treat a watch exit
+code as command completion, never as Run completion or recovery approval.
 
 ### 13. Owner results and maintenance footprint
 
-**Observed.** Setup, Init, runtime admission, and direct/Slurm Run return zero
-for both a declined no-write preview and an action (`onboarding.py` lines
+**Observed.** Setup's dry-run, Init/runtime/direct/Slurm Run's declined
+no-write previews, and their successful actions can all return zero
+(`onboarding.py` lines
 252-257, 1313-1398, 2341-2356; `control.py` lines 1165-1225 and 1769-1789).
 The CLI already owns dispatch, Init owns scientific admission/publication,
 Doctor owns repair, and Control owns Run/submission. Their yes/no prompts make
 different trust decisions; similar text alone does not justify one policy owner.
+
+The public outcomes that composition must distinguish are:
+
+| Owner path | No-write or stopped result | Approved action and remaining limit |
+| --- | --- | --- |
+| Setup | Omitting `--execute` previews and returns 0; a missing answer or existing `.env` returns 2. | `--execute` publishes absent `.env` and returns 0; Setup itself has no final yes/no prompt. |
+| Init | `--preview`, no/blank/EOF at final confirmation, or nonterminal omission of `--execute` returns 0 without creation; missing interactive answers or EOF during a required question returns 2. | `y`/`yes` or `--execute` hashes and validates inputs before create-absent publication, returning 0 only on success. |
+| Runtime discovery | Not-ready returns 1 before approval; ready but no/blank/EOF or nonterminal omission returns 0 without admission. | `y`/`yes` or `--execute` calls the existing admission plan; success also returns 0, and donor partials must be retained if later admission fails. |
+| Doctor | Read-only diagnosis returns 0 when ready and 1 when not ready. With `--repair`, blocked or declined preview returns 1; interrupted repair returns 130. | Confirmed repair or `--execute` can return 0 after final readiness; an already ready direct profile can return 0 without any repair prompt, while Slurm qualification still has its site path. |
+| Direct Run | No/blank/EOF or nonterminal omission of `--execute` previews a frozen plan and returns 0 without executing. | Confirmation executes that plan; `--execute` bypasses its pre-execution display, and a zero result has the existing limited Run/report meaning. |
+| Slurm Run | No/blank/EOF or nonterminal omission of `--execute` previews a submission request and returns 0 without submission; the duplicate guard can stop with 2. | Confirmation or `--execute` retains a request before `sbatch`; zero means accepted submission, not Run creation or completion. |
 
 **To settle.** Evaluate private structured outcomes at each real owner boundary
 while keeping the public integer adapter and output contract. Compare exact
