@@ -128,6 +128,10 @@ permission to change or delete the source.
   and Step 08/09 owner descriptions with their current source. It narrowed
   F22 and added F65–F66. These are static documentation observations; no
   execution, guide change, or scientific conclusion followed.
+- The nineteenth read-only pass at `c0a6027a` compared source ownership, CI
+  diagnostic capture and test selection, and Init site defaults with their
+  documentation. It added F67–F70. No CI artifact, CLI, runtime, or Slurm
+  execution was inspected; these findings describe source-visible scope.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -227,6 +231,10 @@ and the boundary for each row.
 | [F64](docs-01-discoveries-third.md#f64-star-mechanics-in-a-scientific-decision) | Responsibility overlap | Scientific pipeline decision repeats STAR derivation and compatibility mechanics in config and coordinator owners. | Original-study values, rationale, and cited manual remain distinct decision context. |
 | [F65](docs-01-discoveries-third.md#f65-report-template-owner-description) | Ownership wording | Template README credits Python view builders with title, introduction, sections, and end note; the packaged template defines these elements and Python supplies values. | The discrepancy is in owner description, not observed output. |
 | [F66](docs-01-discoveries-third.md#f66-step-09-qc-summary-input-scope) | Input-scope wording | Step 08/09 guides say CMH does not consume the Step 08 QC summary; producer and validator omit it, but the Run task declares and binds it as an input. | Distinguish computational reads from Run dependency and stability checks. |
+| [F67](docs-01-discoveries-third.md#f67-step-09-producer-language-in-source-topology) | Ownership wording | Source topology calls the Step 09 result producer “Python”; its owner and task planner identify the R script as producer. | No runtime or scientific behavior defect is inferred. |
+| [F68](docs-01-discoveries-third.md#f68-slurm-diagnostic-artifact-bounds) | Evidence-scope overclaim | CI guide calls uploaded Slurm diagnostics bounded and redacted; setup and terminal capture write full status and journals without those transformations. | Private accounting files are excluded; no artifact contents or disclosure were assessed. |
+| [F69](docs-01-discoveries-third.md#f69-python-shard-inventory-scope) | Test-scope overclaim | Test baseline says CI shards the complete Python inventory; two test files are excluded from the shard plan and receipts. | Ordinary CI runs them separately; scheduled Python 3.11 shards do not establish all-test coverage. |
+| [F70](docs-01-discoveries-third.md#f70-omitted-site-does-not-always-mean-direct) | Conditional reader-route error | Runbook says omitting `--site` creates a direct profile; `EMRYS_SITE=viking` from process or saved settings makes both Init parsers select Slurm. | This does not affect the no-default case; no command was run. |
 
 ## Discovery notes
 

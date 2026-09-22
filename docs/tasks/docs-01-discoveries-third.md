@@ -1,9 +1,9 @@
 # DOCS-01 discovery notes, third file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F62 onward. F62–F64 use PR head `b67e0eeb`; F65–F66 use `cf94af08`,
-all read on 2026-09-22. These are documentation observations, not runtime
-results or accepted changes.
+holds F62 onward. F62–F64 use PR head `b67e0eeb`; F65–F66 use `cf94af08`;
+F67–F70 use `c0a6027a`, all read on 2026-09-22. These are documentation
+observations, not runtime results or accepted changes.
 
 ## Discovery notes
 
@@ -80,3 +80,63 @@ lines 1195–1202 requires declared inputs, and the
 [task runner](../../src/emrys/orchestration/run_coordinator/task.py) lines
 2600–2616 and 2788–2790 checks them for stability. The guides omit this Run
 dependency and provenance role. No task or scientific analysis was executed.
+
+### F67 — Step 09 producer language in source topology
+
+The [source topology](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) line 49
+calls the Step 09 contract consumer a “Python producer.” The
+[Step 09 owner](../../src/emrys/analyses/paired_cmh_candidate_ranking/README.md)
+lines 13–18 identifies `step_09_cmh_editing_site_calling.R` as the result
+producer. The [Python module planner](../../src/emrys/analyses/paired_cmh_candidate_ranking/__init__.py)
+lines 179 and 191–237 builds a guarded R command for that script. The topology
+wording misnames the production owner; the Python planner and validator retain
+their own roles. This is static source comparison, not a runtime or scientific
+behavior finding.
+
+### F68 — Slurm diagnostic artifact bounds
+
+The [CI workflow guide](../../.github/workflows/README.md) lines 15–22 says
+only bounded, redacted setup and terminal diagnostics enter the infrastructure
+artifact. The [setup script](../../tests/tools/configure_ci_slurm.sh) lines
+43 and 51–58 copies Slurm configuration, full service status, and service
+journals into that directory with no line limit or redaction step. The
+[workflow](../../.github/workflows/ci.yml) lines 1344–1358 does the same for
+terminal status and journals, then uploads the runtime/Slurm evidence directory
+at 1371–1383. The commands deliberately exclude private accounting
+configuration and database journals. This contradicts the guide's general
+“bounded, redacted” description; no CI artifact contents were inspected, and
+no sensitive-data disclosure is inferred.
+
+### F69 — Python shard inventory scope
+
+The [test baseline](../design/TEST_BASELINE.md) lines 48–51 says CI shards the
+complete Python inventory and requires complete receipts. The
+[shard planner](../../tests/tools/python_test_shards.py) lines 18–23 and 93–98
+excludes `test_package_distribution.py` and `test_python_test_shards.py` from
+collection; receipt verification at 299–355 proves completeness only against
+that filtered set. Ordinary CI runs those tests separately through
+[Make targets](../../scripts/make_quality.mk) lines 83–85 and 211–219 and
+[static/wheel jobs](../../.github/workflows/ci.yml) lines 164–186. Scheduled
+Python 3.11 runs skip those ordinary jobs at workflow lines 164–169 and
+993–997 while running filtered shards at 1023–1097. The baseline's unqualified
+“complete Python inventory” exceeds the shard and nightly evidence scope;
+this does not establish a failed test or broken merge gate.
+
+### F70 — Omitted site does not always mean direct
+
+The [Runbook](../operations/RUNBOOK.md) lines 238–248 says synthetic Init
+without `--site` writes a direct execution profile; lines 280–284 advise
+omitting `--site viking` for a direct-host study. The
+[shared parser](../../src/emrys/orchestration/run_coordinator/execution_profile.py)
+lines 57–62 instead defaults `--site` from `EMRYS_SITE`, and lines 66–82 map
+`viking` to Slurm placement. Both the
+[synthetic](../../src/emrys/orchestration/run_coordinator/synthetic_fixture.py)
+line 705 and [own-study](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+line 685 Init parsers use it; synthetic publication passes the selected site
+into its profile at synthetic-fixture lines 654–666 and 773. The
+[CLI](../../src/emrys/__main__.py) lines 349–358 loads a saved `.env` before
+argument parsing, and [onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+lines 153–189 can populate `EMRYS_SITE=viking`. A
+[source test](../../tests/orchestration/run_coordinator/test_onboarding.py)
+lines 285–298 pins the synthetic default. The mismatch is conditional on an
+inherited or saved site default; no CLI or host command was run.
