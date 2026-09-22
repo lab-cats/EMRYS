@@ -30,6 +30,7 @@ collect_diagnostics() {
     trap - EXIT
     set +e
     slurmctld -V > "$evidence_dir/slurmctld-version.txt" 2>&1
+    # shellcheck disable=SC2024 # Slurm reads its private config; the runner owns the evidence file.
     sudo -u slurm -- slurmdbd -V > "$evidence_dir/slurmdbd-version.txt" 2>&1
     slurmd -V > "$evidence_dir/slurmd-version.txt" 2>&1
     scancel -V > "$evidence_dir/scancel-version.txt" 2>&1

@@ -24,7 +24,11 @@ take priority over speed or convenience.
   production owners for duplicate mechanics and existing abstractions, record
   concrete consolidation or retirement candidates, and replace duplicated logic across
   all affected callers rather than leave parallel implementations.
-- Run quick targeted checks locally and long checks in CI.
+- Before each commit, run the applicable Ruff correctness, Ruff formatting
+  (`--check`), and ShellCheck checks for the files being committed, as defined
+  in `.pre-commit-config.yaml`. Run other quick targeted checks locally and
+  long checks in CI. Do not silently skip an unavailable check or install tools
+  without explicit approval.
 - Before adding owned machinery, evaluate the existing repository authority,
   the standard library, a mature maintained tool/library, and the relevant
   established package manager. Custom code needs a documented capability gap or
