@@ -49,7 +49,7 @@ command, and retained artifact. A green core check alone cannot close an externa
 | --- | --- | --- | --- |
 | `EX-01` | The accepted row requires one independently installable Analysis and reporter through real discovery, configuration, planning, execution, independent validation, and reporting. The prior collaborator test substitutes loaders. | Observed | Trace one public path without loader substitution and preserve the mocked test's distinct checks. |
 | `EX-02` | A Step `08` sites tally would count supported pre-CMH SNV allele rows after Step `07` selection, using exon-derived transcript spans; `NA` and multi-gene rows are possible. Its inclusion and edge-case policy remain open. | Observed / Proposed / Open | Freeze the inclusion policy and literal oracle; exercise a real Step `08` overlap fixture and measure resources. |
-| `EX-03` | Discovery requires one package-level entry point per name and complete distribution ownership of its top-level package tree. Its digest covers owned sibling files but excludes distribution metadata; one versus two example wheels remains a packaging decision. | Observed / Open | Prove real wheel ownership and missing/duplicate refusal; decide whether reporter source changes may couple to Analysis readmission. |
+| `EX-03` | Discovery requires one package-level entry point per name and complete distribution ownership of the package tree named by that entry point. Its digest covers owned sibling files but excludes distribution metadata; one versus two example wheels remains a packaging decision. | Observed / Open | Prove real wheel ownership and missing/duplicate refusal; decide whether reporter source changes may couple to Analysis readmission. |
 | `EX-04` | The planner checks all **declared** inputs and command shape, not worker ownership or the complete read set. A distinct external Step `09` owner publishes native outputs before validation; the runner's built-in owner-key special case is not reserved by descriptor admission. Both validator failure modes leave no verified task. | Observed / Inferred collision | Check installed command imports, exact consumed inputs and roster; use a distinct owner key and exercise both failure states through the public runner. |
 | `EX-05` | New reporting re-admits Analysis and reporter; retained inspection checks old bytes without today's reporter but still re-admits Analysis. Reporter lookup has no module-version negotiation; variable TSV rows require snapshot reads. A late reporter install works only if the original Analysis still readmits. Separate reporting ledgers can leave Results complete and reporting blocked. | Observed / Open | Test version pairing, literal multi-row render, late installation, reporter drift, and pre/post-ledger failures for the chosen layout. |
 | `EX-06` | Analysis ID, provider readmission, and Attempt runtime binding cover different facts. Selected bytes/fields are re-admitted, while descriptor output is not independently fingerprinted. The shared core admission hash includes built-in Step `09` contracts for external Runs. | Observed / Inferred | Test repeated descriptor/profile equivalence, module/byte and target-only drift; decide whether shared-core coupling is intentional. |
@@ -179,10 +179,12 @@ entry-point names. Entry values must be package-level `package:callable`, resolv
 and load distribution-owned callbacks; producer and validator should also run from installed code
 rather than leak imports from the checkout. The digest covers distribution-owned sibling files as
 well as the entry package, but excludes `.dist-info` and `.egg-info`; it is not a hash of all wheel
-metadata. A collaborator wheel should use its own top-level package: adding callbacks under the
-core `emrys` package would fail the complete-package-tree ownership check when its distribution
-does not own core files. Verify the chosen layout from built, non-editable wheels in the selected
-environment. Include missing and duplicate entry-point refusal cases; no new registry, installer,
+metadata. Ownership is checked for the exact package named before `:` in the entry point, including
+a dotted package name. A collaborator entry point rooted at `emrys:callable` would fail if its
+distribution does not own the full core package tree; `emrys.subpackage:callable` has a narrower
+tree and needs its own installed ownership proof. A dedicated example package is the simplest
+candidate. Verify the chosen layout from built, non-editable wheels in the selected environment.
+Include missing and duplicate entry-point refusal cases; no new registry, installer,
 workflow graph, or core entry point is indicated.
 
 **Open packaging decision:** one wheel with both entry points is the smaller initial surface, but
@@ -190,7 +192,7 @@ the Analysis provider digest covers its reporter source too. A reporter source c
 can therefore block old Analysis readmission. Two separately installed wheels would separate those
 content identities while adding setup and maintained-package cost. Record the chosen tradeoff before
 the example layout and compatibility tests are fixed. If two wheels are selected, each entry point
-must live in a package tree fully owned by its own distribution; splitting one package tree across
+must live in a package tree fully owned by its own distribution; splitting the same selected tree across
 the wheels fails [installed ownership admission](../../src/emrys/libraries/installed_package_identity.py).
 Do not change core hashing to hide the tradeoff.
 
@@ -651,7 +653,7 @@ with a short owner link where needed.
 5. **Define the external package boundary.** Choose one shared wheel or two separately installed
     wheels after accounting for reporter-source changes in the Analysis digest and the maintenance
     cost of separation. Specify names, versions, licenses, supported exact EMRYS wheel/commit, and
-    standard-library or explicit Python requirements. Use a distribution-owned top-level package,
+    standard-library or explicit Python requirements. Use a dedicated distribution-owned package tree,
     matching package-level entry points, and distribution-owned callbacks/workers; state that
     installing and admitting the selected package
    executes trusted code and that admission is not a sandbox. Add no core registry or installer.
