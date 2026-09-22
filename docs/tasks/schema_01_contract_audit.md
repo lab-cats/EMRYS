@@ -46,7 +46,7 @@ states, not another task-status registry.
 | S07 — Retained Runs | Partial | Tracked `Projects/` contains only placeholders and Project data is ignored by Git. The [campaign record](backlog_matrix.md#viking-walkthrough-findings) reports actual-data Runs, including an unresolved cancelled Run and replacement at the time of that report. Their present locations, versions, and recovery needs were not inspected. | Obtain owner-identified locations or a bounded inventory. Inspect version and identity metadata read-only without changing or copying scientific data. |
 | S08 — Version-support boundaries | Observed | The [approved policy](../design/decisions/platform-direction.md#version-support) rejects obsolete Run records, preserves retained evidence, and requires full checks for current-format recovery. The Project v1 schema has two current forms, provider v1 metadata remains admissible while v1 execution is not, and a separate submission-request reader accepts v1–v4 retained diagnostics with narrower stop authority. | Treat each as its own contract; do not group current forms, diagnostic readers, and historical fixture names into one obsolete-alias category. |
 | S09 — Existing protection | Observed | Source tests assert exact closed registration and references, strict JSON refusal, profile graph/order/scope rules, independent backend owner mapping, obsolete Attempt refusal, retained Run recovery, content-bound identity, independent artifact goldens, and installed wheel resources. This source pass inspected their assertions; live hosted results belong to an exact PR head. | Map each selected change to a surviving defense at the same trust boundary. Run focused checks on an approved implementation and long lanes in CI. |
-| S10 — Reduction opportunities | Partial | Both registries repeat strict JSON parsing and Draft 2020-12 setup, but differ in exact-ID enforcement, selectors, diagnostics, and semantic admission. Artifact and orchestration common definitions share only two identical small shapes. The field screen found a private generated profile triplet, an always-null Attempt field, and copied per-scope issues as qualified candidates. Raw overlap is not net savings. | Prototype caller-complete savings before sharing machinery or definitions. Inventory tests, scripts, configuration, docs, compatibility, and mutable state separately; retain independent evidence. |
+| S10 — Reduction opportunities | Partial | Both registries repeat strict JSON parsing and Draft 2020-12 setup, but differ in exact-ID enforcement, selectors, diagnostics, and semantic admission. Artifact and orchestration common definitions share only two identical small shapes. The field screen found qualified profile, Attempt, reporting, reference, and placement candidates; several repeated values are independent checks. Raw overlap is not net savings. | Measure caller-complete savings for a selected field transition. Keep the two owner registries unless a complete measured migration demonstrates a net reduction; inventory tests, scripts, configuration, docs, compatibility, and mutable state separately. |
 | S11 — Contract decision | Open | No reset or removal follows from this pass. | Compare keeping current contracts, justified field transitions, and a selected v1 reset with quantified consumer impact and maintenance cost. Record a reasoned disposition for each candidate. |
 
 ### Field candidates
@@ -66,6 +66,10 @@ resources. A family-by-family field screen remains required before S11.
 | `artifact_templates[].scope_selector` | [Inventory expansion](../../src/emrys/contracts/orchestration/artifact_inventory.py) groups templates in first-seen selector order and rejects selector/scope mismatches. | Derivation from `scope_type` must preserve inventory rows, order, grouping, and rejection behavior. The field is used, not dead. |
 | `workflow_attempt.scratch` | The schema requires an absolute path or null; the current [Attempt producer](../../src/emrys/orchestration/run_coordinator/materialization.py) always writes null for execute and resume. A repository search found no direct production read. Slurm `scratch_parent` and Task worker scratch are separate values with different lifetimes. | Decide whether per-Attempt scratch provenance remains needed, then inventory retained Attempts and external readers. Removing its null member saves 15 canonical bytes per currently produced Attempt but changes exact references and a Run-bound schema, not yet measured product code. |
 | `run_summary.expected_scopes[].warnings` and `errors` | The [summary producer](../../src/emrys/reporting/_run_summary/projection.py) copies and stably deduplicates artifact issues into each scope, and the schema requires both arrays. No direct in-repository reader of these nested arrays was found, but a [valid fixture](../../tests/contracts/artifacts/fixtures/artifact_schema_v2/valid/run_summary.json) has a scope warning message different from its sole artifact warning. Semantic admission does not require issue-array equality. | These arrays are not universally derivable from artifacts under the admitted contract. Determine external meaning and retained evidence needs before proposing a semantic change; report-template non-use alone is insufficient. |
+| `report_receipt.scientific_renderer.core_support` and `evidence_renderer` | The [receipt writer](../../src/emrys/reporting/_run_report/receipt.py) copies one core-renderer record to both locations; [semantic admission](../../src/emrys/contracts/artifacts/_artifact_contracts/report_receipt.py) requires equality. Evidence HTML identity reads `evidence_renderer`. | A single-copy shape would change receipt bytes and evidence identity lookup, and retire an equality defense. Establish whether the two positions represent distinct provenance claims and how retained receipts and external readers would be handled. |
+| `report_receipt.errors` | The [schema](../../src/emrys/contracts/schemas/artifacts/v5/report_receipt.schema.json) requires an empty array, and the writer always emits `[]`; no direct production field read was found. | Decide whether the explicit no-error assertion is needed for public receipts. A deletion changes the admitted shape and retained receipt hash even if the current producer value is constant. |
+| `reference.reference_id` | [Normalization](../../src/emrys/orchestration/run_coordinator/normalization.py) generates it from the Analysis reference scope ID. No direct lookup of this JSON reference-contract field was found; Task and artifact-inventory code recompute that scope ID. A [separate TSV reference inventory](../../src/emrys/evidence/reference_provenance/_reference_inventory.py) has its own `reference_id`. The complete JSON contract is still bound in reporting. | Check standalone reference provenance, retained readers, and whether a narrower derivation saves product code before changing this Run-bound record. |
+| `execution_profile.placement.modules.mode` | The [schema](../../src/emrys/contracts/schemas/orchestration/v3/execution_profile.schema.json) closes `none` to empty `init`/`load` and `exact` to a path and nonempty load list. The mode is read into placement, serialized in Attempt requests, and shown in diagnostics. | Derivation from `init`/`load` is only a hypothesis. A syntax change affects user profiles, selected-source hashes, placement bytes, and recovery; prove a net reduction and equivalent refusals first. |
 | Adjacent `workflow_inputs["profile"]` | Source review found a generated private backend projection of profile ID, version, and hash with no production reader found so far. It is not a JSON Schema field. | Check external/API exposure and route any justified removal to its proper reduction owner. Do not infer that the schema's profile ID or version fields are unused. |
 | Adjacent `validate_record(..., profile=...)` | The orchestration API includes this optional parameter and serializes it into the successful-validation cache key, but the called record validator does not read it. Inspection forwards it, while a separate successor-Run check actually validates Run/profile consistency. This is an API/cache candidate, not a schema field. | Inspect external Python callers and error precedence before removing the parameter or cache dimension. Preserve the separate successor-Run admission. |
 
@@ -150,18 +154,34 @@ measure serialized bytes only, not product-code savings, compatible records,
 or surviving defenses.
 
 A family-wide source screen also found repeated values that currently serve
-independent checks. Run-summary `computational_rollup` and per-scope
-`aggregate_state` are recomputed from artifact states by
-[semantic admission](../../src/emrys/contracts/artifacts/_artifact_contracts/run_summary_validation.py)
-and used by reporting; artifact expectation source path is checked against a
-present source and remains meaningful when the source is absent.
+independent checks. Run-summary `computational_rollup` has six counts and
+per-scope `aggregate_state` is also computed from artifacts. Both are
+recomputed by [semantic admission](../../src/emrys/contracts/artifacts/_artifact_contracts/run_summary_validation.py)
+and read by the HTML report; removing either would move that independent
+check and reader. Receipt `schema_versions` repeats two other recorded versions but
+also supplies an otherwise absent artifact-entry version. Receipt
+`interpretation_boundary` and `state_banner` carry the same required text but
+serve distinct TSV and retained-HTML checks. An artifact's expectation source
+path is checked against a present source and remains meaningful when the
+source is absent. Generated metric and issue artifact IDs coincide with their
+parent IDs, but the admitted common schema permits other or multiple IDs;
+summary limitations likewise are not universally derivable from admitted
+artifact records.
+
 `workflow_attempt.cores` is checked against resolved resource policy, and a
 Run lock's Attempt path/hash are checked through the complete projected lock
 even without literal field-by-field reads. Project sample selection, reference
 STAR parameters, provider policy, execution placement, and repeated
 Run/Task/reporting identity fields likewise have source-level producers and
-readers or binding checks. These are bounded negative findings for deadness,
-not a claim that every field's external meaning has been established.
+readers or binding checks. The paired-CMH Project's
+`background_max_fraction` may be inactive for candidate calls without a
+background condition, but still enters Analysis identity and
+[Step 09 output provenance](../../src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R).
+Conditioning it would change a scientific contract. Provider
+`distribution_version` is retained metadata but deliberately excluded from
+the [equal-package-byte re-admission comparator](../../src/emrys/analyses/__init__.py); its implementation hash
+remains the independent byte guard. These are bounded negative findings for
+deadness, not proof of every field's external meaning.
 
 For Attempt `scratch`, [placement](../../src/emrys/orchestration/run_coordinator/execution_profile.py)
 records a Slurm scratch parent, the [submission wrapper](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
@@ -282,6 +302,11 @@ baseline, not a proposed deletion count. The artifact loader's
 and [orchestration registry](../../src/emrys/contracts/orchestration/api.py)
 both use standard-library strict JSON hooks and existing `jsonschema` and
 `referencing` machinery. Their error and selector policies are not identical.
+Their registry-loading loops total 58 physical lines; only 18 nonblank lines
+match verbatim after indentation is ignored, mostly framework setup. That is
+an upper bound on shared syntax, not 18 removable lines. Both loader files
+are explicit Run admission roots, so a refactor changes new Run identity even
+if validation behavior is preserved.
 The artifact loader requires a nonempty `$id` and lets its direct validator
 look up registry keys; its public CLI restricts selection to the three record
 schemas. Orchestration checks each exact registered `$id`, rejects names
@@ -291,7 +316,10 @@ objects before CLI formatting; orchestration returns sorted rendered messages.
 Their `ContractValidationError` base classes and diagnostics differ, and each
 owner applies its own semantic admission after JSON Schema. A shared helper
 would have to preserve those policies, failure precedence, and direct callers
-while reducing total maintained code.
+while reducing total maintained code. The current disposition is to retain the
+two owner registries: a new helper and its policy switches have no demonstrated
+net reduction. Reconsider sharing only for a complete measured migration with
+equivalent inputs and behavior.
 The only structurally identical cross-family common definitions are `safe_id`
 and `sha256`, about eight lines total in artifact common, with 15 local
 references; moving them would not retire either common resource. Other
@@ -517,10 +545,10 @@ advances before deciding; record the changed files and refresh affected rows.
 | P2 — Production closure | Partial | For each record, close writer, direct/Slurm submission, resume/inspection, reporting, public validation, fixture, and reference paths. Mark definition-only resources and non-registry versioned records separately; confirm negative searches. | Do not call a field or resource dead from its absence in one caller family. |
 | P3 — Consumers | Partial | Reconcile source installs, collaborator entry points, private distributions, public artifacts, exported schemas, and known downstream code with the owner. Record an observed reader, a bounded negative, or unknown for each route. | A missing public release does not prove a closed audience. |
 | P4 — Retained state | Open | With owner-supplied Project locations, inventory only record labels, schema IDs, implementation/package/profile hashes, and recovery status; preserve payloads and markers. | No reset choice until affected recovery/evidence classes are bounded, or explicitly recorded unknown. |
-| P5a — Field discovery | Partial | Source-screen artifact, application/Project/reference/policy, execution/resource, Run/Attempt/Task, and reporting families. Record the new Attempt scratch and Run-summary scope-issue candidates alongside protected repeated values; external and retained readers remain uncounted. | Do not equate repeated names or missing literal lookups with redundancy. |
+| P5a — Field discovery | Partial | Source-screen artifact, application/Project/reference/policy, execution/resource, Run/Attempt/Task, and reporting families. Record qualified Attempt, reporting, reference, and module-mode candidates alongside protected repeated values; external and retained readers remain uncounted. | Do not equate repeated names or missing literal lookups with redundancy. |
 | P5b — Field semantics | Partial | For each candidate, identify sole semantic authority, current producer and reader, derived value, independent refusal, ordering, and functional/profile byte effects. Compare tiny representative base and composed profiles without editing retained Runs. | A derivation is accepted only if graph, uniqueness, scope, inventory bytes, backend names, and direct/Slurm behavior survive. |
 | P6 — Identity and recovery | Partial | Trace `$id`, packaged path, Run implementation/Plan identity, Attempt package/profile identity, installed wheel, current-format recovery, report revalidation, and incompatible-record refusal for each proposed change. | Keep old evidence immutable; do not infer recovery from schema validity or a receipt. |
-| P7 — Compression | Partial | Count a proposed migration's product files/lines separately from tests, scripts, config, docs, and evidence. Compare existing owner code, standard library, `jsonschema`/`referencing`, and maintained tools. Audit every duplicate caller and retirement path. | Require meaningful caller-complete net product reduction or a quantified, explicitly approved exception; no evidence deletion as an offset. |
+| P7 — Compression | Partial | Count a proposed migration's product files/lines separately from tests, scripts, config, docs, and evidence. Compare existing owner code, standard library, `jsonschema`/`referencing`, and maintained tools. The current two-registry sharing idea has no demonstrated net saving; audit every selected field's duplicate callers and retirement path. | Require meaningful caller-complete net product reduction or a quantified, explicitly approved exception; no evidence deletion as an offset. |
 | P8 — Decision | Open | Compare retain-current, selected field transition, and selected v1 reset per resource. Record consumer impact, required new IDs/record labels, parity defenses, migration scope, compatibility policy, cost, and rejected options. Keep product 1.0 separate; transfer lasting rules to their owners and condense this finite audit after the decision. | An owner-reviewed selected outcome and separate bounded implementation authority are required before changing schemas or callers. |
 | P9 — Proof for an approved migration | Not started | On the selected implementation revision, run focused source/fixture/wheel checks locally, long checks in CI, then request separately authorized real/site evidence where required. Compare new records and retained current-format recovery at exact identities. | Local, hosted, institutional, scientific-review, and biological claims remain distinct. |
 
@@ -539,7 +567,7 @@ readers.
 | --- | --- | --- | --- |
 | Retain current IDs and record shapes | Preserves current package, Run, reporting, recovery, and potential consumer contracts. | Does not itself reduce code; still permits separately justified source cleanup. | Viable default while P3/P4 remain unbounded. |
 | Transition selected profile fields | Some values can be derived from existing semantic inputs. | Independent backend/scope defenses, ordering, profile bytes, Run IDs, Attempt provenance, retained recovery, and caller-complete product savings need proof. | Open with `PROFILE-CONTRACT-01`; no version bump solely for cleanup. |
-| Transition selected Attempt or artifact fields | Always-null Attempt scratch and producer-copied scope issues have no found repository reader. | Public record shape, external readers, retained evidence, Run-bound workflow-attempt schema, report outputs, and exact bytes remain at risk. A valid summary fixture disproves universal issue-array derivation under current admission. | Qualified candidates, not approved deletions. |
+| Transition selected Attempt, reporting, or input fields | Attempt scratch is always null; current producers copy some issue and renderer data, generate a reference ID, and encode module mode alongside closed alternatives. | Public syntax and record shape, external readers, retained evidence, Run-bound schemas, report outputs, defenses, and exact bytes remain at risk. A valid summary fixture disproves universal issue-array derivation under current admission. | Qualified candidates, not approved deletions. |
 | Reset selected non-v1 IDs to v1 | Could give a cleaner prerelease label if an actual consumer inventory and benefit justify it. | Eleven current IDs span distinct families; seven are Run admission roots. References, installed resources, Python APIs, fixtures, reporting, and recovery require a complete migration. | No reset justified by current evidence. |
 | Retire adjacent private projection or API cache dimension | Source review found bounded unused-input candidates outside JSON Schema. | Exported Python shape/signature, diagnostics, installed package provenance, and real product savings still need measurement. | Route to a separately bounded reduction decision. |
 
