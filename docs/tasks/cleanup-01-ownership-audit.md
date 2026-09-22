@@ -4,8 +4,8 @@ This is a working design audit for the deferred
 [CLEANUP-01 outcome](backlog_matrix.md#deferred-operational-work), based on
 [PR #310](https://github.com/lab-cats/EMRYS/pull/310) at
 1a58d2da8c2d232078c3e86b1be3d0d4241eb41e. Its implementation source
-is inherited from PR #307. This audit records two source
-discovery passes, not an accepted deletion design. The main backlog matrix
+is inherited from PR #307. This working audit records source discovery and
+follow-up findings, not an accepted deletion design. The main backlog matrix
 remains the authority for task status and acceptance; the
 [CV-23 disposition](cluster_verification_backlog.md#cv-23-safe-project-or-artifact-cleanup)
 records the original six classes and the absence of a proven retained
@@ -190,8 +190,14 @@ is deletion eligibility.
   The Run contract and each Attempt's manifest, request, receipts and released
   lock record feed inspection, resume and reporting. A later Run can bind the
   original Attempt. The roster is checked by
-  [Attempt inspection](../../src/emrys/orchestration/run_coordinator/_inspection_attempts.py);
-  it is not a reverse-reference catalog.
+  [Attempt inspection](../../src/emrys/orchestration/run_coordinator/_inspection_attempts.py),
+  which requires one linear execute-to-resume chain, a terminal receipt on
+  every superseded Attempt, and retained predecessor request and lock records
+  (lines 63–106 and 121–336). A downstream processing Run re-admits its bound
+  source from the same Project during
+  [inspection](../../src/emrys/orchestration/run_coordinator/inspection.py)
+  (lines 376–393 and 580–687). These are forward readers, not a
+  reverse-reference catalog.
 - **Task starts, terminal records, streams and verified references — local
   roster known, external use unknown.** They feed Attempt receipts, inspection,
   resume and reporting attribution. Their absence can change the admission
@@ -202,25 +208,39 @@ is deletion eligibility.
   lists their distinct authorities.
 - **Uncommitted Run quarantine — unknown.**
   [Materialization](../../src/emrys/orchestration/run_coordinator/materialization.py)
-  can quarantine a root lacking final Run publication under an
-  uncommitted-Attempt name (around lines 1664–1727). The name alone proves
-  neither its complete contents nor recovery irrelevance.
+  admits only a real root with no `run.json` and at most regular, nonsymlink
+  `contract/analysis.json` and `execution-plan.json` members (lines 1620–1661).
+  It renames this narrow prebinding residue under an attempt-specific
+  `.uncommitted-*` name, refusing a name collision (lines 1664–1727).
+  [Fault tests](../../tests/orchestration/run_coordinator/test_materialization.py)
+  distinguish prebinding quarantine from exact postbinding reuse and blocked
+  postbinding obstruction (lines 2339–2439). Quarantine preserves the bytes;
+  it is not a deletion certificate.
 
 ### F2 path subtypes
 
 - **Native work, scratch, owner locks and partially linked finals — unknown
   after process loss.** The [Task publisher](../../src/emrys/orchestration/run_coordinator/task.py)
-  can clean captured identities while it runs; pre-existing or changed state
-  blocks that authority.
+  captures parent, stage and lock identities with an owner token. It rolls
+  back only finals linked to captured staging snapshots and removes the lock
+  only while its contents still match that owner (lines 1491–1576 and
+  1625–1697). Pre-existing or changed state blocks that live authority.
 - **Artifact-summary stage, lock, recovery marker and partial finals —
   unknown.** The [manifest publisher](../../src/emrys/reporting/_artifact_index/publication.py)
-  retains its anchors on incomplete rollback, while
+  stages two TSVs and JSON together, then links JSON last (lines 94–122 and
+  162–199). It retains control anchors on incomplete rollback (lines 200–282),
+  while
   [transaction validation](../../src/emrys/reporting/transaction_validation.py)
-  refuses residue.
+  refuses recognized owner-control residue (lines 440–476 and 643–650).
 - **HTML-report stage, lock, recovery marker and partial finals — unknown.**
   The [HTML publisher](../../src/emrys/reporting/_run_report/publication.py)
-  has its own publication sequence. Validation recognizes some older backup
-  names; this pass did not establish their current producer.
+  stages two views and a receipt, then links the receipt last (lines 112–180).
+  It preserves control state after uncertain rollback (lines 181–261).
+  Validation recognizes some older `.previous` names, but this pass did not
+  establish their current producer. The shared
+  [stage remover](../../src/emrys/reporting/_files.py) checks a captured
+  directory device/inode and token only during live publication (lines 85–100);
+  neither it nor recognized-name validation certifies post-crash deletion.
 - **Live Run lock and prepared finalization — local roster known, deletion
   blocked.** [Lifecycle](../../src/emrys/orchestration/run_coordinator/lifecycle.py)
   and inspection use these for exact ownership and recovery. Their path names
@@ -236,14 +256,28 @@ is deletion eligibility.
   can use a predecessor selector when the current Project inventory is absent.
 - **Donor seals and managed generations — open across Projects.** Current
   borrower inventories and retained Attempt selectors can point to older
-  seals and fixed tool paths after donor repair. No reverse borrower list
+  seals and fixed tool paths after donor repair. The current
+  [profile parser](../../src/emrys/evidence/runtime_availability/_profile_contract.py)
+  admits `runtime/shared.json` or `runtime/generations/<32-hex>/shared.json`
+  seal paths and records the absolute seal path, hash and borrower Python
+  (lines 81–119). Parsing allows a missing seal for later admission; it does
+  not prove that an absent file had no borrower. No reverse borrower list
   exists in the [runtime owner](../../src/emrys/evidence/runtime_availability/README.md#sealed-managed-runtime-reuse).
 - **Managed caches — unknown.** Doctor scopes Pixi and renv caches within its
-  managed tree, while package-tree links and an interrupted repair may retain
-  dependencies. This pass found no complete cache-object consumer roster.
+  selected generation and uses repair scratch there
+  ([doctor.py](../../src/emrys/orchestration/run_coordinator/doctor.py),
+  lines 1164–1175, 1208–1232 and 1756–1762). Sealed R package trees may link
+  into that managed tree
+  ([_profile_contract.py](../../src/emrys/evidence/runtime_availability/_profile_contract.py),
+  lines 228–244). Neither a generation name nor a cache path is a complete
+  cache-object consumer roster.
 - **Maintenance claim — owner known, quiescence unknown.** A retained claim
   blocks admission and records unresolved repair or selector publication.
-  Its age does not prove package-manager descendants stopped.
+  Runtime reuse checks the donor claim before probing; borrower replacement
+  holds a separate claim while changing only its runtime inventory
+  ([onboarding.py](../../src/emrys/orchestration/run_coordinator/onboarding.py),
+  lines 2148–2251). Claim age does not prove package-manager descendants
+  stopped.
 
 ### F4 path subtypes
 
