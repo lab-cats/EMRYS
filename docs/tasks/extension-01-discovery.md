@@ -52,7 +52,7 @@ command, and retained artifact. A green core check alone cannot close an externa
 | `EX-03` | Discovery requires one package-level entry point per name and distribution-owned callbacks. Its digest covers owned sibling files but excludes distribution metadata; one versus two example wheels remains a packaging decision. | Observed / Open | Prove real wheel ownership and missing/duplicate refusal; decide whether reporter source changes may couple to Analysis readmission. |
 | `EX-04` | The planner checks all **declared** inputs and command shape, not worker ownership or the complete read set. External Step `09` publishes native outputs before validation; both validator failure modes leave no verified task. | Observed | Check installed command imports, exact consumed inputs and roster; exercise both failure states through the public runner. |
 | `EX-05` | New reporting re-admits Analysis and reporter; retained inspection checks old bytes without today's reporter but still re-admits Analysis. Reporter lookup has no module-version negotiation; variable TSV rows require snapshot reads. Separate reporting ledgers can leave Results complete and reporting blocked. | Observed / Open | Test version pairing, literal multi-row render, reporter drift, and pre/post-ledger failures for the chosen layout. |
-| `EX-06` | Analysis ID, provider readmission, and Attempt runtime binding cover different facts. Provider bytes and selected policy fields are re-admitted; distribution-version-only drift, some dependency metadata, and environment-dependent descriptor output are not directly bound. | Observed / Inferred | Test each boundary plus repeated descriptor/profile equivalence, module/byte refusal, and target-only runtime drift. |
+| `EX-06` | Analysis ID, provider readmission, and Attempt runtime binding cover different facts. Selected bytes/fields are re-admitted, while descriptor output is not independently fingerprinted. The shared core admission hash includes built-in Step `09` contracts for external Runs. | Observed / Inferred | Test repeated descriptor/profile equivalence, module/byte and target-only drift; decide whether shared-core coupling is intentional. |
 | `EX-07` | Doctor accepts fixed-check IDs or declared tools/files/R packages and checks reporter lookup, without installing or proving render-time dependencies. Current wheel smoke generates a temporary lock and installs despite prose that tests never do either. | Observed / Open | Resolve disposable lock/install policy and reporter dependency/version proof; choose the reporter or `--no-report` path. |
 | `EX-08` | Core wheel smoke calls private report preparation; Slurm Run preview does not admit the provider, and report preview does not render HTML. Ordinary PR CI and scheduled/manual real-synthetic checks do not prove an external public Run. | Observed | Choose a tiny installed public scenario, distinguish each preview level, and retain exact-commit results. |
 | `EX-09` | Provider, Project YAML, and reporting guidance are split across owners; the YAML sample is hypothetical. Core version `0.1.0.dev0` cannot identify this PR's exact code. | Observed | Write one package-adjacent walkthrough with the tested core commit/wheel identity; link from owner guides after transfer review. |
@@ -307,6 +307,15 @@ declarations without a direct descriptor-to-profile equality check. This is an *
 provider limit**, not a reproduced defect. Keep the example descriptor deterministic and test
 repeat admission/profile equivalence; a general descriptor-binding change needs separate review.
 
+The [Run implementation identity](../../src/emrys/orchestration/run_coordinator/run_implementation.py)
+also hashes a shared artifact-admission closure containing the entire
+`contracts/scientific_evidence` tree, including built-in Step `09` evidence code. The
+[materializer](../../src/emrys/orchestration/run_coordinator/materialization.py) includes that
+shared component in an external module Run as well. A change to the built-in CMH evidence contract
+can therefore change an unrelated external Run's implementation identity. This is source-derived
+coupling, not an observed public failure or grounds for silently narrowing the core hash. Decide
+whether that broad admission authority is intentional before promising module-isolated reuse.
+
 ### EX-07 — dependency and installation authority
 
 The [provider guide](../../src/emrys/analyses/README.md#collaborator-providers) says Doctor checks declared tools and packages and managed repair does not install
@@ -399,6 +408,7 @@ authors. Record the exact tested EMRYS commit and wheel identity alongside inter
 `emrys.analysis-module.v2`; the current core version is `0.1.0.dev0`, so a version pin alone cannot
 distinguish PR heads. Choose the separate example distribution name, version, and license explicitly
 rather than copying the core package's metadata by assumption.
+
 The current [Analysis owner guide](../../src/emrys/analyses/README.md) says core checks the
 producer and independent validator. The source establishes command-shape admission and runner
 supervision but cannot prove validator independence, code origin, or complete reads. Correct that
@@ -420,6 +430,16 @@ test is added. Neither prose consolidation nor test retirement offsets maintaine
 growth. Count core code, example code, tests/protections,
 scripts/gates, schema/configuration, documentation, mutable state, and retained evidence separately
 before implementation approval. Evidence deletion is outside this scope.
+
+| Maintained surface | Reduction or consolidation candidate from this review |
+| --- | --- |
+| Core product code | Reuse the existing provider, reporter, registry, and one artifact-index reconciliation owner. EX-13 needs an owner-local dispatch decision; no safe core-code deletion is yet demonstrated. |
+| Example product code | Keep one bounded package tree if its identity coupling is acceptable; count any second wheel separately. No preexisting example code can be retired. |
+| Tests and protections | Compare the [mocked composition test](../../tests/orchestration/run_coordinator/test_materialization.py) assertion by assertion with the installed proof; retire only exact overlap and preserve its unique planning checks. Preserve built-in Step `09`/`10` reconciliation defenses. |
+| Scripts and CI gates | Reuse an existing static/wheel lane if its measured runtime fits; no duplicate new runner script or safe script retirement has been identified. |
+| Schemas and configuration | Reuse the current provider schema, Project selection, and profile composition. The hypothetical [configuration sample](../../configs/README.md) may become a link to the tested package; no core schema/config retirement has been shown. |
+| Documentation | Keep one runnable package-adjacent walkthrough and link from owner guides, removing only duplicate hypothetical instructions after transfer review. |
+| Mutable state and evidence | Add no plugin registry, store, or recovery state. No existing state retirement has been demonstrated; retained exact evidence is preserved. |
 
 A **proposed one-wheel file floor**, not a measured footprint or approved layout, is one external
 `pyproject.toml` with both entry points; package-level callbacks in `src/<package>/__init__.py`;
@@ -504,14 +524,16 @@ public external Run-summary/report result is necessary to close this row.
 ### EX-14 — installed watch assumes the built-in tail
 
 The installed [dashboard](../../src/emrys/orchestration/run_coordinator/dashboard.py) labels Step
-`09` as paired-CMH ranking and Step `10` as scientific context. Its default owner-key map names the
+`09` as paired-CMH ranking and Step `10` as scientific context, with built-in method descriptions
+and an R-process resource description. Its default owner-key map names the
 built-in providers. Although `parse_workflow` accepts an override, the production
 [_inspection presentation](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py)
 does not supply one. The dashboard also says reporting begins after Step `10`, which is false for
 the proposed Step `09`-only descriptor. The source suggests an external `analysis_owner` may appear
 unmapped while the overview gives a CMH label; no external Run/watch trace was executed here.
 Test the public display with the installed example and select the smallest owner-local correction
-for truthful labels and next action. Scheduler text remains diagnostic, not completion evidence.
+for truthful labels, stage detail, resources, and next action. Scheduler text remains diagnostic,
+not completion evidence.
 
 ## Proposed bounded delivery sequence
 
