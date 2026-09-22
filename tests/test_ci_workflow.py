@@ -171,7 +171,9 @@ def test_synthetic_jobs_use_isolated_real_runtime_and_real_slurm() -> None:
         assert "PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml" in paths["run"]
         assert "${RUNNER_TEMP}" in paths["run"]
         assert "scenario" in paths["run"]
-        assert "${GITHUB_WORKSPACE}" not in job["env"]["E2E_EVIDENCE_ROOT"]
+        assert job["env"]["E2E_EVIDENCE_SUFFIX"]
+        assert "E2E_EVIDENCE_ROOT=%s" in paths["run"]
+        assert "${GITHUB_WORKSPACE}" not in paths["run"]
 
         stage = _named_step(job, "Stage the reviewed runtime lock outside the checkout")
         assert "src/emrys/resources/runtime/pixi.toml" in stage["run"]
@@ -791,7 +793,10 @@ def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:
         assert step["uses"] == (
             "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
         )
-        assert step["with"]["path"] == "${{ env.E2E_EVIDENCE_ROOT }}"
+        assert step["with"]["path"] == (
+            "${{ runner.temp }}/emrys-synthetic-e2e/"
+            "${{ env.E2E_EVIDENCE_SUFFIX }}"
+        )
         assert step["with"]["if-no-files-found"] == "error"
         assert step["with"]["include-hidden-files"] is True
         assert step["with"]["retention-days"] == 14
