@@ -948,6 +948,7 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
     ("execute", "repair", "expected_status"),
     ((False, False, 1), (True, False, 2), (False, True, 1)),
 )
+@pytest.mark.parametrize("site", (None, "viking"))
 @pytest.mark.parametrize(
     ("runtime_state", "operation", "runtime_work"),
     (
@@ -978,15 +979,19 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
     runtime_state: str,
     operation: str,
     runtime_work: str,
+    site: str | None,
 ) -> None:
     project = _project(tmp_path)
     result = _result(project, ready=False)
     plan = _plan(project)
     from emrys.orchestration.run_coordinator.execution_profile import (
         load_execution_profile,
+        project_default_profile_bytes,
     )
 
-    plan = replace(plan, execution=load_execution_profile())
+    execution = tmp_path / "execution.yaml"
+    execution.write_bytes(project_default_profile_bytes(site))
+    plan = replace(plan, execution=load_execution_profile(execution))
     runtime_required = runtime_state != "verified"
     if not runtime_required:
         plan = replace(plan, runtime=None)
@@ -1052,7 +1057,16 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
         assert "Package-manager output records" not in output.err
         assert "Execution placement: Direct" not in output.err
         assert "Workflow CPU ceiling:" not in output.err
+        assert ("Execution placement: Slurm" in output.err) is (site == "viking")
         assert f"Apply this {operation} plan? [y/N]" in output.err
+        if site == "viking":
+            for line in plan.execution.submission_summary():
+                assert output.err.index(line) < output.err.index("Apply this")
+            assert "Exclusive allocation: requested" in output.err
+            assert "all node CPUs (capacity unknown until execution)" in output.err
+            assert "all node memory (unknown until execution)" in output.err
+            assert "maximum runtime 12:00:00" in output.err
+            assert "Stage thread caps:" not in output.err
         assert f"{operation.capitalize()} preview complete" in output.err
         assert "Checks repeat because inputs" not in output.err
         assert "Checking/updating native tools and R" not in output.err
@@ -2942,7 +2956,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     assert "Doctor invocation timing (head/local," in output
     assert "Waiting for Slurm runtime and storage checks" not in output
     assert "EMRYS Doctor verification plan" in output
-    assert all(line in output for line in execution.submission_summary())
+    assert all(line in output for line in execution.submission_summary(verbose=True))
     assert "Checking/updating native tools and R" not in output
     if failure is None:
         assert state["jobs"] == 1

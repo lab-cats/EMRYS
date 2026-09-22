@@ -1094,7 +1094,7 @@ def _schedule(
             console_field(
                 "Finalization", "complete exact prepared Attempt receipt first"
             )
-    for line in _submission_summary(profile, controls.verbose):
+    for line in profile.submission_summary(verbose=controls.verbose):
         console_print(line)
     if controls.verbose:
         console_print(f"Execution profile: {profile.source_path}")
@@ -1568,12 +1568,6 @@ def _execute_plan(
 
 def _reporting_applicable(plan: AttemptPlan) -> bool:
     return execution_plan_boundary(plan.run.execution_plan) == "analysis"
-
-
-def _submission_summary(profile: ExecutionProfile, verbose: bool) -> tuple[str, ...]:
-    lines = profile.submission_summary()
-    allocation = lines[3:4] if isinstance(profile.placement, SlurmPlacement) else ()
-    return lines if verbose else lines[:1] + allocation
 
 
 def _print_plan(
@@ -2121,7 +2115,7 @@ def report_from_args(
                 profile, _job_id = _resolve_execution_profile(
                     arguments, project_path, ResourceOverrides()
                 )
-                for line in _submission_summary(profile, arguments.verbose):
+                for line in profile.submission_summary(verbose=arguments.verbose):
                     console_print(line)
         except (
             *_CONTROL_ERRORS,

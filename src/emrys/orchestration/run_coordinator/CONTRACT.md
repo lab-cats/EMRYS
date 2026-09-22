@@ -352,8 +352,8 @@ noninteractive omission of `--execute` writes nothing, submits nothing, and
 opens no application log. `--execute` is the explicit automation path.
 Normal plan output is limited to Run identity/location, pending/reusable work,
 reporting disposition, and any prepared finalization that resume must complete
-before planning a new Attempt. Slurm planning adds placement and its allocation
-request. `--verbose` restores profile limits, immutable identities, commands,
+before planning a new Attempt. Every Slurm submission adds the compact resource
+summary below before approval. `--verbose` restores detailed limits, identities, commands,
 per-Task detail, and the evidence-boundary explanation.
 
 For Slurm placement, the terminal instead confirms one frozen submission plan
@@ -772,15 +772,18 @@ retained policy. Step `08` consumes its thread allowance through R workers;
 `09`/`10` main algorithms remain serial. Snakemake globally admits the resolved
 CPU, memory and stage-slot requests; it does not enforce per-process RSS.
 
-One pure formatter on the admitted execution profile supplies Doctor and
-Run/resume/report submission summaries. It shows requested nodes and exclusivity,
-allocation CPUs/time/memory and site fields, plus declared workflow and stage
-limits. It performs no allocation query. Omitted memory and host selection stay
-unknown; no exclusivity request leaves sharing to site policy. Numeric ceilings
-are configured limits, not observed RAM or measured demand. Compute admission
-still resolves actual capacity, and direct Run planning retains its separate
-observed-allocation display. The confirmed submission uses the same frozen
-profile; a later separate invocation reads and admits its own selected profile.
+One pure formatter on the admitted execution profile supplies every Slurm
+submission summary, including Doctor repair and Run/resume/report. Before
+approval, normal output shows requested CPUs and memory, maximum runtime, and
+exclusivity. It also shows explicitly selected hosts and numeric workflow
+ceilings that restrict the reservation or whose relation to unknown capacity
+cannot yet be determined. `--verbose` adds site fields, scratch/modules and
+detailed stage limits. The formatter performs no allocation query: whole-node
+capacity and omitted memory remain unknown; no exclusivity request leaves
+sharing to site policy. Limits do not claim measured demand or utilization.
+Compute admission still resolves actual capacity, and direct Run planning
+retains its separate observed-allocation display. Confirmation submits the same
+frozen profile; a separate invocation admits its own selected profile.
 
 There is no site/global registry or profile scan. Packaged defaults apply first,
 the selected profile overrides them, and resource CLI values have highest

@@ -2489,6 +2489,7 @@ def test_profile_creation_previews_exact_settings_without_scientific_reads(
     selected = execution_profile.project_execution_profile_path(project, "reviewed")
     profile = execution_profile.load_execution_profile(selected)
     defaults = execution_profile.load_execution_profile()
+    assert all(line in preview for line in profile.submission_summary(verbose=True))
     assert (
         profile.resource_policy.default_sha256
         == defaults.resource_policy.default_sha256

@@ -429,7 +429,7 @@ def profile_create_from_args(arguments: argparse.Namespace) -> int:
         )
         profile.validate_reservation()
         print(f"Execution profile: {str(destination)!r}")
-        for line in profile.submission_summary():
+        for line in profile.submission_summary(verbose=True):
             print(line)
         print(
             "Computational settings: complete reviewed policy will be saved in this profile."

@@ -127,13 +127,18 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
         "--time=12:00:00",
     }.issubset(submission.argv)
     assert not any(value.startswith("--cpus-per-task=") for value in submission.argv)
-    summary = "\n".join(viking.submission_summary())
+    summary = "\n".join(viking.submission_summary(verbose=True))
     assert (
-        "Workflow CPU ceiling: allocation capacity (unknown until execution); memory ceiling: "
-        "allocation capacity (unknown until execution)" in summary
+        "Workflow CPU ceiling: allocation capacity (unknown until execution)" in summary
     )
-    assert "Stage thread caps: 00a=workflow, 00c=workflow, 01=auto, 02=auto" in summary
-    assert "Repeated-stage concurrency caps: 01=auto" in summary
+    assert (
+        "Workflow memory ceiling: allocation capacity (unknown until execution)" in summary
+    )
+    assert (
+        "Stage thread caps: {'00a': 'workflow', '00c': 'workflow', '01': 'auto'" in summary
+    )
+    assert "Repeated-stage concurrency caps: {'01': 'auto'" in summary
+    assert "'minimum_mb': 40960" in summary
     assert "all node CPUs" in summary
     assert "all node memory (unknown until execution)" in summary
 
@@ -391,27 +396,35 @@ def test_submission_summary_keeps_requests_limits_and_unknown_capacity_distinct(
         "read_bytes",
         lambda *_args: pytest.fail("summary reread the selected profile"),
     )
-    summary = "\n".join(profile.submission_summary())
+    compact = "\n".join(profile.submission_summary())
+    summary = "\n".join(profile.submission_summary(verbose=True))
+    assert set(compact.splitlines()) <= set(summary.splitlines())
     assert (profile.document(), profile.binding_sha256) == before
     assert f"Execution placement: {'Slurm' if scheduled else 'Direct'}" in summary
+    assert "Workflow CPU ceiling: 6" in summary
     assert (
-        "Workflow CPU ceiling: 6; memory ceiling: "
+        "Workflow memory ceiling: "
         + ("8192 MiB" if explicit else "allocation capacity (unknown until execution)")
         in summary
     )
-    assert "Stage thread caps: 00a=2" in summary
-    assert "01=4" in summary
-    assert "Repeated-stage concurrency caps: 01=1" in summary
-    assert (
-        "Stage memory: workflow ceiling; explicit MiB limits/shares: "
-        + ("00a=1024" if explicit else "none")
-        in summary
-    )
+    assert "Stage thread caps: {'00a': 2" in summary
+    assert "'01': 4" in summary
+    assert "Repeated-stage concurrency caps: {'01': 1" in summary
+    assert "Stage memory (MiB or workflow ceiling):" in summary
+    assert ("'00a': 1024" if explicit else "'00a': 'workflow'") in summary
+    for detail in (
+        "Stage thread caps:",
+        "Repeated-stage concurrency caps:",
+        "Stage memory",
+        "Account:",
+    ):
+        assert detail not in compact
     assert "Actual allocation capacity is unknown until execution" in summary
     assert "do not guarantee utilization" in summary
     if not scheduled:
         assert "Allocation request:" not in summary
         assert "Node request:" not in summary
+        assert compact == "Execution placement: Direct"
         return
     submission = slurm_submission.plan_submission(
         profile,
@@ -423,8 +436,12 @@ def test_submission_summary_keeps_requests_limits_and_unknown_capacity_distinct(
     assert "--nodes=1" in submission.argv
     assert "--cpus-per-task=8" in submission.argv
     assert "--time=04:00:00" in submission.argv
+    assert "Workflow CPU ceiling: 6" in compact
+    assert ("Workflow memory ceiling:" in compact) is explicit
+    assert ("Node request:" in compact) is explicit
+    assert "Exclusive allocation:" in compact
     assert (
-        "Allocation request: 8 CPUs, 04:00:00; memory: "
+        "Allocation request: 8 CPUs, maximum runtime 04:00:00; memory: "
         + ("65536 MiB" if explicit else "site default (unknown)")
         in summary
     )
@@ -457,6 +474,49 @@ def test_submission_summary_keeps_requests_limits_and_unknown_capacity_distinct(
     ):
         assert (argument in submission.argv) is explicit
     assert not (tmp_path / "logs").exists()
+
+
+@pytest.mark.parametrize(
+    ("cpus", "memory", "cpu_limit", "memory_limit"),
+    (
+        (6, 8192, False, False),
+        (8, 65536, True, True),
+        (8, 8192, True, False),
+        (6, 65536, False, True),
+        ("node", 0, True, True),
+        ("node", None, True, True),
+    ),
+)
+def test_compact_submission_shows_only_restrictive_or_unknown_workflow_limits(
+    tmp_path: Path,
+    cpus: int | str,
+    memory: int | None,
+    cpu_limit: bool,
+    memory_limit: bool,
+) -> None:
+    placement = _slurm_placement(tmp_path)
+    placement.update(cpus_per_task=cpus, memory_mb=memory, exclusive=True)
+    selected = _write_profile(
+        tmp_path / "profile.yaml",
+        {
+            "schema_version": execution_profile.SCHEMA_VERSION,
+            "resources": {
+                **symbolic_resource_document(),
+                "workflow_cores": 6,
+                "workflow_memory_mb": 8192,
+            },
+            "placement": placement,
+        },
+    )
+    profile = load_execution_profile(config_path=selected)
+    profile.validate_reservation()
+    summary = "\n".join(profile.submission_summary())
+    assert ("Workflow CPU ceiling: 6" in summary) is cpu_limit
+    assert ("Workflow memory ceiling: 8192 MiB" in summary) is memory_limit
+    if memory in (None, 0):
+        assert "unknown" in summary
+    if cpus == "node":
+        assert "all node CPUs (capacity unknown until execution)" in summary
 
 
 def test_attempt_placement_projects_direct_and_slurm_provenance(

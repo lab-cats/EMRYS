@@ -1433,13 +1433,15 @@ def _print_result(result: DoctorResult, verbose: bool) -> None:
 def _print_repair_plan(plan: _RepairPlan, verbose: bool) -> None:
     _stderr(f"EMRYS Doctor {plan.operation} plan", style="bold blue")
     _stderr("First Doctor setup can take 5–25 minutes.", style="yellow")
+    if plan.execution is not None and (
+        verbose or isinstance(plan.execution.placement, SlurmPlacement)
+    ):
+        for line in plan.execution.submission_summary(verbose=verbose):
+            _stderr(f"  {line}")
     if not verbose:
         return
     console_field("Project", plan.project.source_path, indent="  ")
     console_field("Runtime work", plan.runtime_work, indent="  ")
-    if plan.execution is not None:
-        for line in plan.execution.submission_summary():
-            _stderr(f"  {line}")
     actions = []
     if plan.storage is not None:
         _stderr(f"  Direct storage receipt: {plan.storage.receipt_path}")

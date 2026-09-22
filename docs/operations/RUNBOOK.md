@@ -434,8 +434,10 @@ and [configuration guide](../../configs/README.md).
 
 A direct Run asks `Execute this plan? [y/N]`: `y` executes and Enter declines.
 Its normal plan shows the Run name and location, pending/reusable work, and
-reporting disposition. A Slurm submission normally adds only placement and the
-allocation request. Add `--verbose` for profile limits, identities, commands,
+reporting disposition. Every Slurm submission, including Doctor repair, shows
+requested CPUs/memory, maximum runtime and exclusivity before approval. Selected
+hosts and restricting workflow ceilings are also shown; unknown capacity stays
+explicit. Add `--verbose` for detailed limits, site settings, identities, commands,
 Task detail, and the evidence-boundary explanation. Preview without writing
 with `emrys run </dev/null`;
 automation executes with `emrys run --execute`. Full Runs generate reports

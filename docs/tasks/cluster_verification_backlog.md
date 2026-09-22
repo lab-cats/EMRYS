@@ -68,7 +68,7 @@ real-Slurm lane nor an institutional walkthrough.
 
 | Remaining acceptance | Current owner and required work or evidence |
 | --- | --- |
-| Source and documentation follow-ups | CV-U33 has the selected cluster-scope correction and is **Verification pending** under `SCHED-USAGE-01`. CV-22 remains **Open** under `SUBMISSION-PREVIEW-01`; site evidence alone cannot close a source gap. `VIKING-POLICY-01` and `CV-DOCS-01` own the remaining guidance/wording corrections. |
+| Source and documentation follow-ups | CV-U33 has the selected cluster-scope correction and is **Verification pending** under `SCHED-USAGE-01`. CV-22 now has the reconciled compact summary and is **Verification pending** under `SUBMISSION-PREVIEW-01`; exact hosted regression and site acceptance remain. `VIKING-POLICY-01` and `CV-DOCS-01` own the remaining guidance/wording corrections. |
 | Recently implemented outcomes awaiting verification | CV-10's prepared-finalization `resume` path and CV-18's active-native-task stop outcome are **Verification pending**. Their exact hosted checks and institutional cancellation journeys remain unverified; site execution alone cannot substitute for the hosted checks, and neither status claims a reproduced E09 cause. CV-10's equal-byte recycled-inode ownership limit is an accepted residual risk in a trusted operator-controlled workspace, not a proven defense. |
 | Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27 and CV-U28: exercise the maintained RUNBOOK on one exact installed revision; retain selected profile/runtime, resolved allocation-aware policy and report identities. Visual review is separate. |
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
@@ -107,7 +107,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Verification pending | Name verification-only work accurately. |
 | [CV-20](#cv-20-submission-state-before-run-creation) | P1 | Verification pending | Show queued and preparing jobs before a Run exists. |
 | [CV-21](#cv-21-reporting-in-progress-and-visibility) | P1 | Verification pending | Distinguish unfinished report publication from failed reporting. |
-| [CV-22](#cv-22-complete-submission-preview) | P1 | Open | Reconcile compact resource disclosure before approval. |
+| [CV-22](#cv-22-complete-submission-preview) | P1 | Verification pending | Verify compact resource disclosure before approval. |
 | [CV-23](#cv-23-safe-project-or-artifact-cleanup) | P2 | Deferred | Decide and scope safe cleanup of unused owned state. |
 | [CV-24](#cv-24-run-center-actions) | P2 | Completed | Explore a dashboard that invokes supported CLI operations. |
 | [CV-25](#cv-25-log-discovery-and-readable-output) | P2 | Completed | Find the correct logs without memorizing scheduler IDs. |
@@ -240,10 +240,12 @@ remain, so CV-U01 is **Verification pending**.
 
 ### CV-U02 Default CLI verbosity
 
-The outstanding resource-disclosure conflict with CV-22 and CV-U04 is owned by
-`SUBMISSION-PREVIEW-01` in the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up).
-Its policy, affected card wording and presentation tests must agree before
-CV-22 acceptance; concise output does not itself settle that policy.
+The compact resource policy in [CV-22](#cv-22-complete-submission-preview)
+applies to every Slurm approval, including Doctor. Requested resources,
+exclusivity, explicit hosts and material workflow ceilings are critical normal
+output; detailed limits and diagnostics remain verbose. `SUBMISSION-PREVIEW-01`
+in the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up)
+tracks exact hosted and institutional verification of this reconciled policy.
 
 **Operator report:** “Overall cli output is far too verbose by default, there
 should be an option to get all that output but by default it should return only
@@ -274,8 +276,8 @@ Boolean `--verbose` detail switch. Durable evidence and recovery detail remain
 retained even when hidden from normal output. CV-U02 returns to **Open**.
 
 **Implemented refinement:** Run planning now defaults to the Run name/location,
-pending/reusable work and reporting disposition; Slurm adds only placement and
-the allocation request. Inspect defaults to its four authority outcomes,
+pending/reusable work and reporting disposition; Slurm adds the compact
+preapproval resource summary selected in CV-22. Inspect defaults to its four authority outcomes,
 verified completion when applicable, blockers, applicable recovery, next action
 and verified report paths. Runtime discovery defaults to colored readiness and
 its no-write/admission outcome. The existing Boolean `--verbose` restores
@@ -336,9 +338,11 @@ CV-U03 remains **Verification pending** for hosted CI and Viking visual review.
 
 ### CV-U04 Doctor presentation
 
-`SUBMISSION-PREVIEW-01` in the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up)
-owns the outstanding preapproval resource-summary reconciliation with
-CV-U02/CV-22, including Doctor submissions.
+Doctor repair now shows the same compact preapproval Slurm resource summary as
+Run/resume/report, before its normal-output early return. Detailed repair plans
+remain verbose. `SUBMISSION-PREVIEW-01` in the
+[main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up) tracks
+verification of this shared CV-U02/CV-22 policy.
 
 **Operator report:** “Doctor output is also just wall of text; needs to be more
 user friendly.”
@@ -3478,12 +3482,12 @@ is required. CV-21 is **Verification pending**.
 
 **Finding:** Confirmation omitted node selection/exclusivity and obscured the
 distinction between allocated CPUs and workflow/stage limits (E10, E12).
-**Acceptance:** Before approval show selected node/eligibility, exclusive/shared
-placement, allocation CPUs/time, workflow CPU ceiling, and memory policy with
-resolved values where known. Identify unknown capacity and important stage
-caps; do not imply that a larger reservation guarantees utilization. The
-display must describe the frozen plan actually submitted and be clear for
-Doctor verification as well as Run/report submission.
+**Acceptance:** Before every Slurm approval, including Doctor repair, show
+requested CPUs/memory, maximum runtime and exclusivity. Show explicitly selected
+hosts and numeric workflow ceilings when restrictive or capacity is unknown.
+Keep detailed stage limits and site diagnostics behind `--verbose`. Identify
+unknown capacity honestly and do not imply that a larger reservation guarantees
+utilization. The display must describe the frozen profile actually submitted.
 **Owners/dependencies:** Shared submission planning/presentation and profiles;
 CV-03/07/09/11. Preserve ordinary concise output.
 
@@ -3504,11 +3508,14 @@ pass locally; public Control and Doctor execution passed the integrated standard
 CI. These provide software evidence; institutional preview acceptance remains
 pending.
 
-**Current policy disposition:** CV-22 is **Open**. Its conflict with the later
-concise-output behavior is transferred to `SUBMISSION-PREVIEW-01` in the
-[main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up), which
-owns reconciliation with CV-U02/U04. That source/policy follow-up blocks
-acceptance; the existing institutional preview requirement remains here.
+**Current policy disposition:** The shared formatter now owns compact and
+verbose output for Doctor and all Run/resume/report submission routes; profile
+authoring retains the detailed view. CV-22, CV-U02 and CV-U04 use the acceptance
+above. `SUBMISSION-PREVIEW-01` in the
+[main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up) records
+the correction. CV-22 is **Verification pending** for exact hosted regression
+and institutional preview acceptance; source/test changes do not establish
+site behavior.
 
 ## P2 outcomes
 

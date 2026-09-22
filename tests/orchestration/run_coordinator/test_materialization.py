@@ -4439,8 +4439,8 @@ def test_public_slurm_rejects_known_reservation_shortfall_before_submission(
 
 @pytest.mark.parametrize(
     ("workflow_cores", "cpus_per_task", "expected_exit"),
-    ((8, 4, 2), (2, 2, 0)),
-    ids=("inherited-shortfall", "inherited-exact-fit"),
+    ((8, 4, 2), (2, 2, 0), (2, 4, 0)),
+    ids=("inherited-shortfall", "inherited-exact-fit", "inherited-restrictive"),
 )
 @pytest.mark.parametrize(
     "with_prepared_finalization",
@@ -4510,7 +4510,9 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
             selected_profile,
             resource_policy=first.resources.policy,
         )
-        assert f"Workflow CPU ceiling: {workflow_cores};" not in captured.err
+        assert (f"Workflow CPU ceiling: {workflow_cores}" in captured.err) is (
+            workflow_cores < cpus_per_task
+        )
         assert inherited_profile.binding_sha256 != selected_profile.binding_sha256
         assert any(
             f"{control.slurm_submission.PROFILE_SHA256_ENV}="
@@ -4721,16 +4723,17 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     assert "Execution placement: Slurm" in normal
     assert "Analysis: 'primary'" in normal
     assert (
-        "Allocation request: 12 CPUs, 01:00:00; memory: site default (unknown)"
+        "Allocation request: 12 CPUs, maximum runtime 01:00:00; memory: site default (unknown)"
         in normal
     )
+    assert "Exclusive allocation: not requested; site policy applies" in normal
+    assert "Workflow CPU ceiling: 4" in normal
     for hidden in (
         "Node request:",
-        "Exclusive allocation:",
-        "Workflow CPU ceiling:",
+        "Workflow memory ceiling:",
         "Stage thread caps:",
         "Repeated-stage concurrency caps:",
-        "Stage memory:",
+        "Stage memory",
     ):
         assert hidden not in normal
     assert "Dry-run complete; no scheduler or workspace state was written." in normal
@@ -4753,7 +4756,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
         line in verbose
         for line in load_execution_profile(
             config_path=Path(arguments.profile)
-        ).submission_summary()
+        ).submission_summary(verbose=True)
     )
     assert f"Execution profile: {arguments.profile}" in verbose
     assert f"Scheduler stdout: {workspace}/logs/emrys-{token}-%j.out" in verbose
@@ -4872,14 +4875,17 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     assert retained.recorded_job_id == "812345"
     assert retained.context["analysis"] == arguments.analysis
     assert "Execution placement: Slurm" in captured.err
-    assert admitted.submission_summary()[0] in captured.err
-    assert admitted.submission_summary()[3] in captured.err
-    assert all(line not in captured.err for line in admitted.submission_summary()[1:3])
-    assert all(line not in captured.err for line in admitted.submission_summary()[4:])
+    summary = admitted.submission_summary()
+    assert all(line in captured.err for line in summary)
+    assert all(
+        line not in captured.err
+        for line in set(admitted.submission_summary(verbose=True)) - set(summary)
+    )
     if not execute:
-        assert captured.err.index(
-            admitted.submission_summary()[3]
-        ) < captured.err.index("Execute this plan?")
+        assert all(
+            captured.err.index(line) < captured.err.index("Execute this plan?")
+            for line in summary
+        )
     assert ("Execute this plan? [y/N]" in captured.err) is not execute
     assert not arguments.log_root.exists()
 
@@ -6017,13 +6023,17 @@ def test_standalone_report_uses_project_slurm_placement(
     preview = capsys.readouterr().err
     assert "Execution placement: Slurm" in preview
     assert (
-        "Allocation request: all node CPUs, 12:00:00; memory: all node memory (unknown until execution)"
+        "Allocation request: all node CPUs (capacity unknown until execution), maximum runtime 12:00:00; memory: all node memory (unknown until execution)"
         in preview
     )
     assert "Workflow CPU ceiling:" not in preview
+    assert "Exclusive allocation: requested" in preview
 
     assert control.report_from_args(parser.parse_args([*argv, "--execute"])) == 0
     assert calls == [False] and len(submissions) == 1
+    execution = capsys.readouterr().err
+    assert "Exclusive allocation: requested" in execution
+    assert "all node CPUs (capacity unknown until execution)" in execution
     submitted = submissions[0]
     (request_path,) = (tmp_path / "logs").glob("submission-*/request.json")
     request = json.loads(request_path.read_bytes())

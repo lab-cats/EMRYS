@@ -206,72 +206,65 @@ class ExecutionProfile:
             except orchestration_contracts.ContractValidationError as exc:
                 raise ExecutionProfileError(str(exc)) from exc
 
-    def submission_summary(self) -> tuple[str, ...]:
+    def submission_summary(self, *, verbose: bool = False) -> tuple[str, ...]:
         """Describe admitted requests and limits without observing an allocation."""
-
         placement, resources = self.placement, self.resource_policy.declaration
+        slurm = isinstance(placement, SlurmPlacement)
         lines = [f"Execution placement: {placement.kind.capitalize()}"]
-        if isinstance(placement, SlurmPlacement):
+        if slurm:
+            memory = {
+                None: "site default (unknown)",
+                0: "all node memory (unknown until execution)",
+            }.get(placement.memory_mb, f"{placement.memory_mb} MiB")
             lines.extend(
                 (
-                    f"Node request: 1; requested host(s): {placement.nodelist or 'scheduler-selected; exact host unknown'}",
-                    "Exclusive allocation: "
-                    + (
-                        "requested"
-                        if placement.exclusive
-                        else "not requested; site policy applies"
-                    ),
-                    f"Allocation request: {'all node' if placement.cpus_per_task == 'node' else placement.cpus_per_task} CPUs, {placement.time}; memory: "
-                    + (
-                        "site default (unknown)"
-                        if placement.memory_mb is None
-                        else "all node memory (unknown until execution)"
-                        if placement.memory_mb == 0
-                        else f"{placement.memory_mb} MiB"
-                    ),
-                    f"Account: {placement.account or 'site default'}; "
-                    f"partition: {placement.partition or 'site default'}; "
-                    f"QoS: {placement.qos or 'site default'}",
-                    f"Scratch parent: {str(placement.scratch_parent)!r}; modules: {placement.module_mode}; "
-                    f"initialization: {str(placement.module_init) if placement.module_init else 'none'!r}; "
-                    f"load in order: {', '.join(placement.modules) or 'none'}",
+                    f"Allocation request: {'all node CPUs (capacity unknown until execution)' if placement.cpus_per_task == 'node' else f'{placement.cpus_per_task} CPUs'}, maximum runtime {placement.time}; memory: {memory}",
+                    f"Exclusive allocation: {'requested' if placement.exclusive else 'not requested; site policy applies'}",
                 )
             )
-        lines.extend(
+            if placement.nodelist or verbose:
+                lines.append(
+                    f"Node request: 1; requested host(s): {placement.nodelist or 'scheduler-selected; exact host unknown'}"
+                )
+        for label, value, reservation, unit in (
             (
-                "Workflow CPU ceiling: "
-                + (
-                    "allocation capacity (unknown until execution)"
-                    if resources.workflow_cores == "allocation"
-                    else str(resources.workflow_cores)
-                )
-                + "; memory ceiling: "
-                + (
-                    "allocation capacity (unknown until execution)"
-                    if resources.workflow_memory_mb == "allocation"
-                    else f"{resources.workflow_memory_mb} MiB"
-                ),
-                "Stage thread caps: "
-                + ", ".join(f"{step}={count}" for step, count in resources.step_threads)
-                + "; other stages=1",
-                "Repeated-stage concurrency caps: "
-                + ", ".join(
-                    f"{step}={count}" for step, count in resources.stage_concurrency
-                ),
-                "Stage memory: workflow ceiling; explicit MiB limits/shares: "
-                + (
-                    ", ".join(
-                        f"{step}=auto (minimum {memory['minimum_mb']} MiB)"
-                        if isinstance(memory, Mapping)
-                        else f"{step}={memory}"
-                        for step, memory in resources.stage_memory_mb
-                        if memory != "workflow"
-                    )
-                    or "none"
-                ),
-                "Actual allocation capacity is unknown until execution; reservations and limits do not guarantee utilization.",
+                "CPU",
+                resources.workflow_cores,
+                placement.cpus_per_task if slurm else None,
+                "",
+            ),
+            (
+                "memory",
+                resources.workflow_memory_mb,
+                placement.memory_mb if slurm else None,
+                " MiB",
+            ),
+        ):
+            restrictive = isinstance(value, int) and (
+                not isinstance(reservation, int) or not reservation or value < reservation
             )
-        )
+            if verbose or (slurm and restrictive):
+                lines.append(
+                    f"Workflow {label} ceiling: {'allocation capacity (unknown until execution)' if value == 'allocation' else f'{value}{unit}'}"
+                )
+        if verbose:
+            if slurm:
+                lines.extend(
+                    (
+                        f"Account: {placement.account or 'site default'}; partition: {placement.partition or 'site default'}; QoS: {placement.qos or 'site default'}",
+                        f"Scratch parent: {str(placement.scratch_parent)!r}; modules: {placement.module_mode}; "
+                        f"initialization: {str(placement.module_init) if placement.module_init else 'none'!r}; "
+                        f"load in order: {', '.join(placement.modules) or 'none'}",
+                    )
+                )
+            lines.extend(
+                (
+                    f"Stage thread caps: {dict(resources.step_threads)}; other stages=1",
+                    f"Repeated-stage concurrency caps: {dict(resources.stage_concurrency)}",
+                    f"Stage memory (MiB or workflow ceiling): {dict(resources.stage_memory_mb)}",
+                    "Actual allocation capacity is unknown until execution; reservations and limits do not guarantee utilization.",
+                )
+            )
         return tuple(lines)
 
     def document(self) -> dict[str, Any]:
