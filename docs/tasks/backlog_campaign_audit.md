@@ -286,6 +286,32 @@ baselines, checks, and evidence ceilings in a dated record before shortening
 the closeout narrative. The old dashboard statement is now date-bound to its
 September 14 checkpoint; the remaining evidence has not moved.
 
+**Preservation check:** The Closed row records 42 completed CS cards, with
+CS-05 transferred to `REPORT-ROSTER-01`, after PR #169 merged as `2ecf7d44`.
+The agreed `cab77a2610cecbefaaf0fb463fa7ebe1c500767c` campaign baseline
+counts tracked `.py`, `.R`, `.sh`, `.css`, `.j2`, and `Snakefile` product lines,
+including relocations but excluding generated `renv/activate.R` and tooling
+`restore_r_environment.R`. It fell from 69,223 to 55,862 lines: 13,361 fewer,
+or 19.30%, versus a 55,378-line target. The explicit closure was 484 lines
+short. The separate pre-integration-master comparison at
+`446802c06ebceee8328a5cb4b542eea9fb2ed398` found product −13,480
+(19.44%), tests/fixtures −12,699, docs +802, schemas/config −2,243,
+tooling +284, generated/dependency +106, retained evidence 0, and total
+−27,230. These baselines answer different questions and must remain labeled.
+
+The matrix records ordinary hosted CI run `34857271894` and 130-pair synthetic
+E2E run `34857300341` at `fdc7cc79a3cf8637bb1c591c95a82020816fe863`;
+that commit and merge `2ecf7d44` have equal Git trees. Earlier ordinary runs
+`34306975901` at `b491aac5` and `34301289787` on PR #140's integrated tree
+support narrower hosted claims. This audit verified the Git identities/tree
+relationship and arithmetic, not the hosted outcomes independently. None of
+those results establishes institutional execution, scientific review, or
+biological interpretation. Routine sequencing of 93 commits across PR #140,
+PRs #148–168, and merge #169 is held by Git; the user closure, count rules,
+exact checks, and evidence ceiling require a durable evidence home before any
+closeout shortening. The closeout figures entered the matrix in
+`550b5402506730e8605dc96db48aaa86c400e3ed` on 2026-09-14.
+
 ### 9. CV card checkpoint narratives
 
 **Observed:** The [cluster backlog](cluster_verification_backlog.md) is 4,107
@@ -314,9 +340,11 @@ closure or Viking qualification.
 
 | Evidence-bearing region in the [CV backlog](cluster_verification_backlog.md) | Preserve before shortening |
 | --- | --- |
-| CV-10, lines 2928–2979 | Exact CI/artifact hashes, the failed first-suite distinction, prepared recovery boundary, and accepted equal-byte recycled-inode limitation. |
-| CV-26, lines 3785–3808 and 3949–4056 | The bounded 175.681-second hosted setup, four trial measurements, artifact identity/hash, failed prototype-suite distinction, serial-probe decision, and five-to-four structural reduction without a measured whole-operation or Viking speedup. |
+| CV-10, lines 2740–2752, 2789–2803, and 2920–2985 | Strict prepared-finalization acceptance; job `621154` TIMEOUT, lock/no-receipt/no-recovery observation; exact CI/artifact hashes; the failed first-suite distinction; prepared recovery boundary; and accepted equal-byte recycled-inode limitation. |
+| CV-26, lines 3754–3763, 3789–3829, and 3949–4056 | Original complete-operation attribution and comparable-measurement acceptance; bounded 175.681-second hosted setup; four trial measurements and artifact identity/hash; failed prototype-suite distinction; serial-probe decision; and five-to-four structural reduction without a measured whole-operation or Viking speedup. |
 | CV-U06, lines 512–533; CV-U28, lines 1749–1785 and 1847–1861 | Product-growth exception, historical resource provenance, operator-reported eight/four-hour comparison, superseding allocation policy, and explicit lack of utilization proof. |
+| CV-U22, lines 1446–1517 | Original general compatible-donor discovery and reuse-before-install outcome; the September 17 source-gap finding; the narrower known-smoke repair and restored API; and final Open/no-silent-choice boundary. Its earlier implemented/Verification-pending checkpoint does not set current status. |
+| CV-UX-01, lines 2122–2154 | Operator-observed terminal collision on job `621172`, current color/plain/narrow-PTY acceptance, and later Viking visual limit. Preserve the reported observation separately from local terminal-helper checks. |
 | CV-23, lines 3601–3625; CV-21, lines 3537–3545 | No presently provable deletable candidate class, and the decision to stop causal reconstruction of E06 while preserving truthful current reporting. |
 | [Charter](cluster_verification_campaign.md), lines 104–117 | E01–E12 observations and their limits, including unknown E01/E06 causes, E09's missing terminal recovery evidence, and E12's missing terminal actual-data result. |
 
@@ -326,6 +354,17 @@ CV-10 and CV-18 also keep hosted checks and institutional cancellation
 acceptance separate. The older resource coverage map at cluster backlog line
 4103 should identify CV-U06/CV-U28 as the current allocation-policy owners;
 CV-07/11/22 retain selection, fit, and disclosure responsibilities.
+
+**Checkpoint classification sample:** In the six reviewed cards (CV-10,
+CV-26, CV-U06, CV-U22, CV-U28, and CV-UX-01), each final disposition agrees
+with its index. Earlier implementation paragraphs, local pass-count sequences,
+and refinement narration may be condensed only after the evidence and decisions
+above are retained. Specific candidates are CV-U22 lines 1470–1480, CV-U06
+lines 476–504, CV-U28 lines 1805–1840, and CV-UX-01 lines 2150–2154.
+CV-U06's selected hosted follow-up at lines 506–522 and CV-26's trial
+artifacts/counters at lines 3850–3951 contain distinct limits and are not
+covered by a generic passing-CI summary. This sample does not decide the
+remaining 55 cards' retention treatment.
 
 ### 10. Polish chronology and overlap
 
@@ -401,6 +440,25 @@ authorization for new implementation, site work, or evidence deletion.
 **Next:** Keep the reason for the live-installation safety boundary, but
 date-bound the original job and approval so readers do not mistake them for
 current state. Recheck all instructions and links before changing the charter.
+
+**Provenance and proposed wording boundary:** The approval summary at charter
+lines 21–27 was recorded in
+`4d3ba00c41c6b13759d06b691d31cdcee20a1117` on 2026-09-14. The earlier
+charter creation at `1ea21855a4e6db8bc54268e9c6869fa362d424eb` said an
+actual-data Run was continuing and required separately selected bounded
+implementation slices. It does not establish a job running now; E12 gives
+only an active last-supplied observation. The later recorded approval covered
+then-selected slices and stacked PRs, while excluding merge, cluster
+execution, active-installation changes, and evidence deletion. It is a
+repository summary, not the raw approval transcript. Date the grant and
+the running-job precaution in the charter; say neither selects new work or a
+current quantified product-growth exception. Link the enduring fresh-checkout
+and unchanged-existing-installation rule to the
+[Runbook](../operations/RUNBOOK.md#install-a-chosen-release-or-commit), while
+[AGENTS.md](../../AGENTS.md) and the [workflow](../operations/WORKFLOW.md)
+continue to govern current authorization. Charter lines 86–88 also call the
+old tranche present-tense and need the same review. No charter text or card
+status is changed by this finding.
 
 ### 13. Polish proposals versus current owners
 
