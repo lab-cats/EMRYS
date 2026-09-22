@@ -3,7 +3,7 @@
 This is a working design audit for the deferred
 [CLEANUP-01 outcome](backlog_matrix.md#deferred-operational-work), based on
 [PR #310](https://github.com/lab-cats/EMRYS/pull/310) at its checked
-2026-09-22 head 2a7081b539006713ea146042e5c0d09aa4c083bd. Relative to
+2026-09-22 head aff2c91509b33e7d2b166d37ff9e85eb43f0f6b4. Relative to
 the audited implementation commit 1a58d2da8c2d232078c3e86b1be3d0d4241eb41e,
 that head changes only `docs/tasks/release-readiness.md`; implementation source
 is inherited from PR #307. This working audit records source discovery and
@@ -17,6 +17,8 @@ The evidence level here is review of owner contracts, implementation, and
 existing test cases. No product or owner fault tests, Project-data inventory,
 institutional run, or deletion was performed for this audit. A source-described
 protection is not proof that every runtime failure mode has been exercised.
+One isolated `Rscript` check probed top-level `on.exit` behavior without
+running EMRYS R-check or examining operator artifacts.
 
 ## Decision question
 
@@ -49,7 +51,7 @@ This source pass inventoried physical publication/removal calls across
 contracts, callers and distinguishing fault tests. It separately inspected
 `tests/tools` and `.github/workflows` for evidence retention boundaries.
 This is a bounded source inventory, not a dynamic filesystem census or a
-complete reverse-reference graph. S1–S25 refine or bound F1–F6; they do not
+complete reverse-reference graph. S1–S31 refine or bound F1–F6; they do not
 create new accepted cleanup classes. A source search can establish a known
 reader or producer, but cannot close operator, external, cross-Project or
 post-crash writer references.
@@ -63,7 +65,7 @@ post-crash writer references.
 | S5 | Validation harness and hosted CI artifacts; scope boundary | The test runner retains failed or interrupted lane logs; synthetic E2E retains its operator root; CI uploads have configured expiry. | Separate from Project cleanup. Hosted expiry grants no local deletion authority. |
 | S6 | Create-absent Project, manifest-draft and synthetic roots; F5 | One publisher reserves a caller-selected root, writes members and a completion member last, then preserves the whole partial tree on failure. | No-go for a partial root; completion-name presence or absence does not classify the tree or close external references. |
 | S7 | Execution-profile source; F5 | Default, separately created named or absolute external profile paths are re-read; Attempts retain the selected source path and hash. | Open historical and cross-Project references; a create-absent named YAML is not managed-runtime cache residue. |
-| S8 | Retired producer residue; F2 | Owner contracts preserve characterized older anchor, backup and lock failure states even though current workers delegate publication to Task. | Unknown without exact artifact provenance; old path names are neither current producers nor deletion certificates. |
+| S8 | Retired producer residue; F1/F2 | Owner contracts preserve older anchor, backup, lock, mixed-QC and truncated-RSeQC failure states even though current workers delegate publication to Task. | Unknown without exact artifact provenance; old path names and lack of current producers are not deletion certificates. |
 | S9 | Operator resource-benchmark output; scope boundary | An opt-in script retains per-trial streams, timings, hashes and summaries in a caller-selected absent directory, including failed trials. | Preserve under its operator evidence authority even if physically nested beneath a Project. |
 | S10 | External R restoration environment; F3 scope boundary | Explicit `RENV_PROJECT` can own settings, locks, caches and libraries outside a managed Project generation. | External operator ownership and consumers remain open; managed cache inventory is not a universal R cache roster. |
 | S11 | Run-local Snakemake metadata; F1 | The execution backend can mutate `.snakemake/` during retry, while EMRYS inspection does not use it as completion authority. | Opaque backend and possible foreign state; no source-backed retained deletion rule. |
@@ -78,9 +80,15 @@ post-crash writer references.
 | S20 | Bounded application-log association; F6 | Inspection caps application directories and log bytes and reports `unknown` when a scan is incomplete. | A missing or unknown match cannot close the reverse-reference universe for cleanup. |
 | S21 | Direct probe cohort and retry identity; F4 | A canonical Project root and FASTA parent fix two role-specific probe paths across receipt generations; the FASTA-parent probe can lie outside the Project. A complete pair has 192 distinct payload bytes by construction, before filesystem overhead. | A new receipt generation does not make an occupied probe path safe or available; payload bytes are not measured reclaimable space or proof of exclusive ownership. |
 | S22 | Matplotlib renderer import cache; F2 scope boundary | The reporting provider uses a Python temporary directory for controlled renderer import and checks normal removal; it may live under a custom `TMPDIR` outside the Project. | Unknown after abrupt process loss; a name prefix and normal-return test do not close ownership, writer or external references. |
-| S23 | Attempt-specific workflow and reporting projections; F1/F5 | Selected samples and four reporting inputs live under distinct `contract/*-inputs/<Attempt>/` paths; retained Attempt identities bind their exact bytes. | Positive historical readers; these generated small files are not orphaned scratch after an Attempt ends. |
+| S23 | Attempt-specific workflow and reporting projections; F1/F5 | A selected sample projection can remain at a predecessor Attempt path on resume; four reporting inputs are published for each new Attempt. Retained identities bind exact bytes. | Positive historical readers; a latest-Attempt-only scan misses older generated inputs. |
 | S24 | Step 00c external sidecar staging and names; F2/F5 | Task may stage and scratch beside the FASTA, hard-link finals from stage, and use one `.dict` basename for distinct same-stem FASTAs. | An external work directory or shared dictionary path cannot be classified by basename or one FASTA's status. |
 | S25 | Reporting artifact manifest scope; F1 | The private artifact builder projects validated declared inventory rows without discovering every file; a test preserves an undeclared native VCF absent from its manifest. | Absence from the manifest does not prove a Run-root path unreferenced or deletable. |
+| S26 | Saved CLI `.env` selector; F5/F6 scope boundary | `emrys setup` creates one repository-root `.env`; nearest-ancestor loading can select Projects home, site and an external application-log root. | A Project-local roster omits this configuration source and its external destinations; the file is functional configuration, not cleanup residue. |
+| S27 | Attempt runtime-profile snapshot; F1/F3 | Each Attempt writes `contract/runtime-profiles/<Attempt>.tsv`, binds its exact path/hash in `required_tools`, and may use a predecessor snapshot for resume. | Positive historical reader independent of the current Project runtime inventory or latest Attempt. |
+| S28 | Operator R-check PDF scratch; validation scope boundary | `scripts/check_r_environment.R` creates a temporary PDF and registers top-level `on.exit` only after reading it; a tiny local Rscript probe left a file on normal exit. | No automatic Project cleanup authority; full `make r-check` and retained-path ownership were not tested here. |
+| S29 | Retired runtime-report publisher residue; F2/F3 | The runtime owner explicitly preserves existing report TSVs, locks, temporary files and predecessors after publisher retirement. | Publisher retirement gives no deletion authority; extant paths and recovery state have not been inventoried. |
+| S30 | Reference reconciliation same-ID replacement; F2/F5 | One `reference_id` selects an output trio; prior TSV shape is checked, while token backups are not scanned on entry. Complete new finals may coexist with an older backup after cleanup failure by source control flow. | A successful later publication does not close older backup recovery or external references; coexistence is an inference, not a tested fault case. |
+| S31 | Optional renv startup profile; F3 scope boundary | With startup diagnostics enabled, the packaged renv autoloader writes a temporary `.Rprof`, prints its path and does not unlink it. | Retained diagnostic evidence under the selected R temporary root; separate from managed generation cache and the R-check PDF. |
 
 ## First source discovery pass
 
@@ -401,8 +409,15 @@ is deletion eligibility.
   during those moves could strand an incomplete final trio; this is a source
   inference, distinct from the tested restoration failure. Source review
   found only same-invocation backup restoration or removal (lines 109–119),
-  not a post-crash recovery reader. Treat finals, stage, backups and lock as one
-  recovery context, including when the root lies outside the Project.
+  not a post-crash recovery reader. The directory is keyed by `reference_id`,
+  and a replacement validates prior TSV shape rather than equality to the
+  current inventory (reconciler lines 52–65 and 83–89). Entry does not scan
+  token `.previous` files; if backup removal fails after all three new finals
+  are published, a later same-ID run can see a complete trio while an older
+  backup remains (lines 101–126). This coexistence is inferred from source
+  control flow, not the tested failed-restoration case. Treat finals, stage,
+  backups and lock as one recovery context, including when the root lies
+  outside the Project.
 - **Historical worker backups, anchors and locks — provenance unknown.**
   Current scientific workers receive staging destinations from Task; the
   retained [canonical-BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md),
@@ -413,6 +428,15 @@ is deletion eligibility.
   predecessor restoration loss, and a linked final without its old staging
   anchor or lock. Those producers are retired, so the old cases are historical
   recovery evidence, not a claim that current Task produces the same residue.
+  The [canonical-BAM QC contract](../../src/emrys/evidence/canonical_bam_qc/CONTRACT.md)
+  separately records a retired direct route that could mix a new quickcheck
+  with an older flagstat (lines 65–82), and the
+  [RSeQC contract](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md)
+  records a retired route that could truncate a prior report (lines 58–70).
+  Current workers use Task staging; their validators and artifact summaries
+  still read these native evidence files (QC lines 120–127; RSeQC lines
+  114–120). These are contract-described historical risks, not an inventory
+  of surviving files.
   No Project-data census establishes whether any such paths survive; if they
   do, neither current publisher behavior nor absent old locks authorizes
   deleting them.
@@ -445,13 +469,21 @@ is deletion eligibility.
   `runtime/generations/<id>/managed` with a generation seal (around lines
   912–970, 1109–1191 and 1824–1876). Either shape may remain named by current
   or historical selectors; a generations-only scan misses the initial shape.
-- **Retained Attempt runtime selector — open.** Each Attempt freezes an exact
-  runtime profile under its Run contract; lifecycle re-reads it, and resume
-  can use a predecessor selector when the current Project inventory is absent.
-  Its immutable `required_tools` also record selected `path` and
-  `resolved_path` identities
+- **Retained Attempt runtime selector — positive historical reader.** Each
+  Attempt writes its own `contract/runtime-profiles/<attempt>.tsv` snapshot
+  ([materialization.py](../../src/emrys/orchestration/run_coordinator/materialization.py),
+  lines 1411–1420 and 1536–1541). Its immutable `required_tools` binds that
+  exact path and hash, plus selected tool `path` and `resolved_path` identities
   ([doctor.py](../../src/emrys/orchestration/run_coordinator/doctor.py),
-  lines 304–365); searching only profile TSVs misses these retained paths.
+  lines 304–365). [Lifecycle](../../src/emrys/orchestration/run_coordinator/lifecycle.py)
+  rechecks the snapshot before execution (lines 1244–1293), and
+  [resume](../../src/emrys/orchestration/run_coordinator/control.py) can use a
+  predecessor snapshot when the Project inventory is absent (lines 599–646).
+  A [test](../../tests/orchestration/run_coordinator/test_materialization.py)
+  confirms that a successor gets a distinct snapshot while reading its
+  predecessor (lines 2572–2618). A current Project inventory or latest
+  Attempt directory is not a complete historical reference roster; searching
+  only profile TSVs also misses retained tool paths.
 - **Selected analysis-module dependencies — positive external references.**
   [Doctor](../../src/emrys/orchestration/run_coordinator/doctor.py) adds a
   selected module's executable, R namespace, file and package-tree checks to
@@ -512,6 +544,14 @@ is deletion eligibility.
   directories are separate from managed `cache/repair-*` and Slurm batch
   scratch. Abrupt loss or an external `TMPDIR` leaves later ownership and
   writer quiescence unknown.
+- **Retired optional runtime-report files — operator evidence, extent unknown.**
+  The [runtime owner](../../src/emrys/evidence/runtime_availability/README.md)
+  says its standalone TSV publisher is retired while existing reports, locks,
+  temporary and predecessor files remain operator evidence (lines 50–53).
+  The [retirement record](polish-campaign.md) explicitly does not
+  claim its publication defects were repaired (lines 276–282). There is no
+  current producer, and no filesystem census of survivors was done.
+  Absence of a current command does not release old recovery bytes.
 - **External operator R environment — outside the managed-generation roster.**
   The opt-in [renv owner](../../src/emrys/renv/README.md) describes a separate
   explicit `RENV_PROJECT` for bootstrap settings, locks, staging and caches,
@@ -521,6 +561,12 @@ is deletion eligibility.
   `clean = FALSE` (lines 43–80). Managed Project generation inspection cannot
   enumerate or authorize cleanup of these external paths; their operator and
   package-manager references remain open.
+- **Optional renv startup profile — retained diagnostic path.** The packaged
+  [autoloader](../../src/emrys/renv/activate.R) writes a temporary
+  `renv-startup-*.Rprof` when startup diagnostics are enabled, prints its path
+  and does not unlink it (lines 14–26). This is diagnostic evidence under the
+  selected R temporary root, not a managed runtime generation or the
+  operator R-check PDF below. Its external readers and retention are open.
 - **Maintenance claim — owner known, quiescence unknown.** A retained claim
   blocks admission and records unresolved repair or selector publication.
   Runtime reuse checks the donor claim before probing; borrower replacement
@@ -664,6 +710,17 @@ is deletion eligibility.
   Project tree. Later named or absolute selection can create the Attempt and
   cross-Project references above; an apparently unused profile name gives no
   deletion authority.
+- **Repository-root `.env` — saved selection, not a Project artifact.**
+  `emrys setup --execute` creates one mode-`0600` file in the repository root
+  with Projects home, site and optional application-log root
+  ([onboarding.py](../../src/emrys/orchestration/run_coordinator/onboarding.py),
+  lines 214–255). CLI startup reads the nearest marked ancestor `.env`, keeps
+  existing process values and can thereby select paths outside the checkout
+  or Project (lines 153–190). [Tests](../../tests/orchestration/run_coordinator/test_onboarding.py)
+  confirm its create-absent behavior and an external log root (lines 216–264
+  and 301–324). A Project-local path scan cannot enumerate all selected
+  destinations; the file itself is functional operator configuration with
+  no cleanup eligibility inferred from its location.
 - **Slurm module-init file and scratch parent — external path references.**
   A selected [placement](../../src/emrys/orchestration/run_coordinator/execution_profile.py)
   records `scratch_parent` and optional `modules.init` paths in its Attempt
@@ -720,8 +777,12 @@ is deletion eligibility.
   publisher's filename constants, not an automatic reader for its named TSV
   finals. That negative source result does
   not close operator or external readers, nor does it establish that the
-  source reference files are owned by reconciliation. Publication residue has
-  the separate F2 recovery boundary above.
+  source reference files are owned by reconciliation. A `reference_id` selects
+  one output directory across runs, while the current summary records the
+  supplied inventory/profile hash
+  ([_reference_render.py](../../src/emrys/evidence/reference_provenance/_reference_render.py),
+  lines 87–105). Same-ID replacement need not mean identical declared inputs;
+  its publication residue has the separate F2 recovery boundary above.
 
 ### F6 path subtypes
 
@@ -877,6 +938,19 @@ and excludes private configuration (around lines 1344–1358). This runner
 infrastructure and its evidence selection have a different owner from any
 Project or institutional Slurm installation.
 
+The operator [R-check script](../../scripts/check_r_environment.R) creates an
+`emrys-r-device-*.pdf` under R's selected temporary root, renders and reads
+it, then calls `on.exit(unlink(pdf_path))` at script top level (lines
+128–140). [Make](../../scripts/make_quality.mk) invokes it through `r-check`
+and `validation-guarded-r` (lines 101–110 and 195–197). A tiny local
+file-mode `Rscript --vanilla` probe of the same top-level `on.exit` pattern
+exited successfully with its temporary file still present and no warning.
+This tests R cleanup behavior, not the full EMRYS R-check or a particular
+survivor in operator storage. The cleanup registration also follows PDF
+creation and reading, so earlier failures have no such handler. Neither the
+temporary basename nor a successful validation gate authorizes deleting
+retained PDFs.
+
 ### Operator benchmark evidence boundary
 
 The opt-in [resource benchmark](../../scripts/benchmark_stage_resources.py)
@@ -902,6 +976,17 @@ helper retirement. No benchmark output is selected for cleanup here.
   certificate. The tokenized name and visible final do not prove which bytes
   remain needed for recovery; external readers of the caller-supplied output
   root remain open.
+- **Reference-provenance predecessor after same-ID replacement — no-go.**
+  Reconciliation only checks the current three final TSVs for complete
+  membership and shape on entry, without scanning token `.previous` backups
+  ([reconciler.py](../../src/emrys/evidence/reference_provenance/reconciler.py),
+  lines 52–89). Source control flow permits backup cleanup to fail after new
+  finals are published and a later same-ID run to ignore the old backup
+  (lines 101–126); this coexistence remains an inference. The separate
+  [fault test](../../tests/evidence/reference_provenance/test_reference_provenance.py)
+  proves failed restoration can retain three backups with no lock (lines
+  466–518). A complete successor trio does not establish old backup ownership,
+  writer quiescence or absence of external readers.
 - **Reporting stage beside linked outputs — no-go.** A normal publisher return
   removes its stage and releases its lock after linking the final manifest or
   receipt. A retained stage beside those outputs instead signals incomplete
