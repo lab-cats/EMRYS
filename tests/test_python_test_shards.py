@@ -32,7 +32,7 @@ def test_plan_is_deterministic_complete_disjoint_and_duration_aware() -> None:
     assert {plan.worker_count for plan in first} == {2}
 
 
-def test_worker_aware_plan_estimates_skewed_slow_tests_by_makespan() -> None:
+def test_worker_aware_plan_uses_capacity_for_shard_membership() -> None:
     six = "tests/test_example.py::test_six"
     four_a = "tests/test_example.py::test_four_a"
     four_b = "tests/test_example.py::test_four_b"
@@ -47,14 +47,17 @@ def test_worker_aware_plan_estimates_skewed_slow_tests_by_makespan() -> None:
     }
     nodeids = tuple(durations)
 
-    plans = TOOL.plan_shards(nodeids, 2, baseline(durations=durations), 2)
+    worker_aware = TOOL.plan_shards(nodeids, 2, baseline(durations=durations), 2)
+    serial = TOOL.plan_shards(nodeids, 2, baseline(durations=durations), 1)
 
-    # Serial-sum LPT leaves one shard with a seven-second virtual makespan.
-    assert tuple(set(plan.nodeids) for plan in plans) == (
-        {six, four_b},
-        {four_a, three_a, three_b},
+    assert tuple(plan.nodeids for plan in worker_aware) == (
+        (four_b, six),
+        (four_a, three_a, three_b),
     )
-    assert tuple(plan.estimated_seconds for plan in plans) == (6.0, 6.0)
+    assert tuple(plan.nodeids for plan in serial) == (
+        (six, three_a),
+        (four_a, four_b, three_b),
+    )
 
 
 def test_plan_rejects_stale_duration_nodeid() -> None:
@@ -135,12 +138,13 @@ def test_run_writes_receipt_before_selected_pytest_execution(
     assert payload["collected_count"] == 3
     assert payload["worker_count"] == 2
     assert payload["schema_version"] == TOOL.RECEIPT_SCHEMA_VERSION
+    assert "estimated_seconds" not in payload
     assert "--dist=worksteal" in observed[1]
     assert "junit_duration_report=total" in observed[1]
     assert "junit_family=xunit1" in observed[1]
     assert f"--junitxml={timing_report}" in observed[1]
     assert timing_report.is_file()
-    assert set(expected).issubset(observed[1])
+    assert observed[1][-len(expected) :] == expected
 
 
 def test_load_receipt_rejects_pre_worker_schema(tmp_path: Path) -> None:
@@ -223,14 +227,6 @@ def test_receipt_verification_rejects_missing_duplicate_and_stale_plans(
     with pytest.raises(TOOL.ShardError, match="deterministic plan"):
         TOOL.verify_receipts(
             receipts=[receipts[0], (receipts[1][0], stale)],
-            all_nodeids=nodeids,
-            baseline=durations,
-        )
-    stale_estimate = dict(receipts[1][1])
-    stale_estimate["estimated_seconds"] += 1
-    with pytest.raises(TOOL.ShardError, match="estimated makespan"):
-        TOOL.verify_receipts(
-            receipts=[receipts[0], (receipts[1][0], stale_estimate)],
             all_nodeids=nodeids,
             baseline=durations,
         )

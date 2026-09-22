@@ -42,7 +42,6 @@ class ShardPlan:
     """One deterministic complete assignment of node IDs to shards."""
 
     nodeids: tuple[str, ...]
-    estimated_seconds: float
     worker_count: int
 
 
@@ -158,7 +157,6 @@ def plan_shards(
         )
 
     assignments: list[list[str]] = [[] for _ in range(shard_count)]
-    virtual_worker_loads = [[0.0] * worker_count for _ in range(shard_count)]
     # Equal loads cycle across shards before using the next virtual worker.
     queue = [
         (0.0, 0, worker_index, shard_index)
@@ -176,7 +174,6 @@ def plan_shards(
     for seconds, nodeid in weighted:
         load, item_count, worker_index, shard_index = heapq.heappop(queue)
         assignments[shard_index].append(nodeid)
-        virtual_worker_loads[shard_index][worker_index] = load + seconds
         heapq.heappush(
             queue,
             (load + seconds, item_count + 1, worker_index, shard_index),
@@ -185,10 +182,9 @@ def plan_shards(
     return tuple(
         ShardPlan(
             tuple(sorted(selected)),
-            max(virtual_worker_loads[index]),
             worker_count,
         )
-        for index, selected in enumerate(assignments)
+        for selected in assignments
     )
 
 
@@ -209,7 +205,6 @@ def receipt_payload(
         "collected_sha256": nodeids_digest(all_nodeids),
         "selected_count": len(plan.nodeids),
         "selected_sha256": nodeids_digest(plan.nodeids),
-        "estimated_seconds": round(plan.estimated_seconds, 3),
         "nodeids": list(plan.nodeids),
     }
 
@@ -299,8 +294,8 @@ def run_shard(
     )
     print(
         f"SHARD {shard_index + 1}/{shard_count}: "
-        f"{len(selected.nodeids)}/{len(all_nodeids)} tests, "
-        f"estimated {selected.estimated_seconds:.1f}s",
+        f"{len(selected.nodeids)}/{len(all_nodeids)} tests across "
+        f"{selected.worker_count} workers",
         flush=True,
     )
     environment = os.environ.copy()
@@ -395,10 +390,6 @@ def verify_receipts(
         expected = expected_plans[index].nodeids
         if selected != expected:
             raise ShardError(f"shard {index} selection differs from deterministic plan")
-        if payload.get("estimated_seconds") != round(
-            expected_plans[index].estimated_seconds, 3
-        ):
-            raise ShardError(f"shard {index} estimated makespan is inconsistent")
         if payload.get("collected_count") != len(all_nodeids):
             raise ShardError(f"shard {index} collected count is stale")
         if payload.get("collected_sha256") != expected_digest:
