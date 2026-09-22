@@ -3,7 +3,8 @@
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
 holds F62 onward. F62–F64 use PR head `b67e0eeb`; F65–F66 began at
 `cf94af08`, with F66 extended at `9c4fafdc`; F67–F70 use `c0a6027a`;
-F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`, all read on 2026-09-22.
+F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`; F74–F77 use `ab25ea9b`,
+all read on 2026-09-22.
 These are documentation observations, not runtime results or accepted changes.
 
 ## Discovery notes
@@ -193,3 +194,51 @@ lines 285–298 confirms `profile create cluster` selects `viking` without a
 placement flag when `EMRYS_SITE=viking`. The requirement is conditional:
 explicit selection is still required with no site default. This is a parser
 and source-test comparison; no profile was created.
+
+### F74 — Final-check command omits R library prerequisite
+
+The [engineering guide](../operations/ENGINEERING_CONVENTIONS.md) lines
+87–91 presents `RSCRIPT_BIN=/absolute/path/to/Rscript make -s all-checks` as
+the assembled final gate. The [Make target](../../scripts/make_quality.mk)
+lines 238–244 starts `run_validation.py`, whose
+[guarded-R lane](../../tests/tools/run_validation.py) lines 207–215 invokes
+`validation-guarded-r`. That target runs `r-check` and `local-real-r-test`
+at Make lines 195–197; both require `RENV_LIBRARY` to name an existing
+directory at lines 101–124. The validation driver inherits the ambient
+environment rather than supplying the library itself (lines 281–293).
+The displayed command needs an already exported `RENV_LIBRARY` to pass this
+lane; the guide does not state that prerequisite. No gate was run.
+
+### F75 — Validation lane diagnostic bounds
+
+The [test baseline](../design/TEST_BASELINE.md) lines 90–91 says failed,
+interrupted, and peer-cancelled local validation lanes retain bounded
+diagnostics. The [validation driver](../../tests/tools/run_validation.py)
+copies each failed or interrupted lane's entire log at lines 234–240 and
+prints the entire failed log at 243–249 and 444–455. Peer-cancelled logs are
+also retained at 466–485. These paths show no byte or line limit, so the
+unqualified “bounded” claim exceeds the source behavior. This is separate
+from F68's uploaded Slurm diagnostic wording. No lane ran and no log contents
+were inspected.
+
+### F76 — Step 07 dataset-promotion route
+
+The [Step 07 test guide](../../tests/stages/partitioned_cohort_mpileup/README.md)
+lines 9–12 says its linked
+[stage contract](../../src/emrys/stages/partitioned_cohort_mpileup/CONTRACT.md)
+owns “dataset-promotion criteria.” That contract's inputs, output, validation,
+consumer, and evidence-ceiling sections (lines 24–119) state no such criteria;
+a repository documentation search found the phrase only in the test guide.
+The link therefore does not deliver the named authority. This is a reader-route
+finding, not an observed Step 07 execution or scientific defect.
+
+### F77 — Omitted application-model test suite
+
+The [orchestration contract test index](../../tests/contracts/orchestration/README.md)
+lines 3–10 describes `test_orchestration_contracts.py` and
+`test_reporting_ledger_contracts.py` but omits the present
+[`test_application_model_contracts.py`](../../tests/contracts/orchestration/test_application_model_contracts.py).
+That suite's opening identifies immutable Analysis/Plan/Run protections, with
+content identity and canonicalization cases at lines 270–428 and Run authority
+cases at 623–757. The index thus omits a substantial direct contract suite;
+the test file exists, and no test result was inferred.

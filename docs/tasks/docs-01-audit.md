@@ -144,6 +144,12 @@ permission to change or delete the source.
   claims, and checked historical report golden digests against their parent
   revisions. It added F72–F73 and refined F20. The selected stage claims had
   no further high-confidence mismatch; no producer, report, or runtime ran.
+- The twenty-second read-only pass at `ab25ea9b` checked development/CI guide
+  claims and test-index routes against current source. It added F74–F77.
+  GitHub metadata for [ordinary run 34857271894](https://github.com/lab-cats/EMRYS/actions/runs/34857271894)
+  and [selected run 34857300341](https://github.com/lab-cats/EMRYS/actions/runs/34857300341)
+  confirms success at `fdc7cc79`; the selected job's 130-pair step reports
+  success. Artifacts and underlying runtime/scientific results were not read.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -250,6 +256,10 @@ and the boundary for each row.
 | [F71](docs-01-discoveries-third.md#f71-quickstart-projects-home-default-and-later-path) | Conditional reader-route error | Quickstart says later commands use the Projects home accepted during setup, but validation and reconnect hard-code the repository Projects path. | An inherited alternate home changes the saved destination; no command was run. |
 | [F72](docs-01-discoveries-third.md#f72-automatic-reporting-scope-for-processing-only-runs) | Run-scope wording | Reporting owner README says Run/resume report automatically unless disabled; successful processing-only Runs have reporting not applicable. | The owner contract and direct fixture distinguish full from partial Runs. |
 | [F73](docs-01-discoveries-third.md#f73-profile-create-explicit-placement-requirement) | Conditional CLI wording | Coordinator contract says profile creation requires explicit site or placement; the parser accepts inherited `EMRYS_SITE` as the selection. | Explicit selection remains required with no site default. |
+| [F74](docs-01-discoveries-third.md#f74-final-check-command-omits-r-library-prerequisite) | Command prerequisite | Engineering guide's displayed `all-checks` command supplies Rscript but not the existing `RENV_LIBRARY` required by its guarded-R lane. | The command can pass that gate only when the library variable is already supplied. |
+| [F75](docs-01-discoveries-third.md#f75-validation-lane-diagnostic-bounds) | Evidence-scope overclaim | Test baseline calls failed and cancelled lane diagnostics bounded; the validation driver retains complete logs and prints complete failed logs. | No lane or log content was observed; distinct from Slurm artifact F68. |
+| [F76](docs-01-discoveries-third.md#f76-step-07-dataset-promotion-route) | Authority-route overclaim | Step 07 test guide says the linked stage contract owns dataset-promotion criteria, but that contract states no such criteria. | The finding concerns a reader route, not Step 07 behavior. |
+| [F77](docs-01-discoveries-third.md#f77-omitted-application-model-test-suite) | Test-index omission | Orchestration contract test README names two suites but omits the present Analysis/Plan/Run application-model suite. | The tests exist; no result or coverage level is inferred. |
 
 ## Discovery notes
 
