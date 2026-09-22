@@ -80,6 +80,7 @@ local navigation labels, not new backlog items.
 | `R19` | Direct-host capacity wording | The Runbook states a fixed 12-CPU/240-GiB default-workflow minimum, but the current allocation-aware resolver has per-stage fit rules, not that fixed gate. | Reconcile the Runbook with the current admission rule and separately state study-specific resource needs; do not promote configured or suggested capacity to measured support. | `RELEASE-01`; resource-policy and Runbook owners |
 | `R20` | Specialist report success predicate | Owner validators can return zero while publishing failed check rows; reference reconciliation can return zero with `overall_status=fail`. | If a specialist route is promised, assert its semantic result with `validate all-pass` or the reconciliation summary, not process exit or output presence alone. | `RELEASE-01`; validation/reference owners and R02 |
 | `R21` | Current-request stop and watch scope | Stop admits named v3/v4 requests, but its contract says v3 only and focused stop fixtures use v3; selected real-tool E2E includes a production-request stop when dispatched. | If Slurm stop is promised, reconcile the owner contract and retain an exact current-v4 installed-path preview/execute/refusal check; distinguish request/raw-scheduler watch from Run recovery. | `RELEASE-01`; coordinator/Slurm owners and R02/R15 |
+| `R22` | Partial GTF acceptance visibility | Reference admission can pass after skipping malformed GTF rows or whole transcripts; named Init drops the warnings and ordinary Project validation prints only PASS, while `--verbose` shows them. | Decide how the promised journey exposes partial annotation acceptance; check one tiny public partly valid GTF and keep PASS narrower than lossless transcript preservation. | `RELEASE-01`; GTF/onboarding/Quickstart owners and R16 |
 
 ## Discovery record
 
@@ -466,6 +467,13 @@ dispatch and retained commit identity. PR #307 adds complete Doctor timing,
 runtime-probe, and Slurm-accounting checks to that selected lane, but its
 completed selected hosted evidence at the eventual candidate is still required,
 and even a pass would not prove before/after performance or Viking timing. The
+selected E2E steps use `continue-on-error` to retain diagnostics, but the final
+[CI gate](../../.github/workflows/ci.yml) fails when a selected run, evidence
+upload, or clean-checkout check fails. Its golden and selected synthetic
+artifacts have 14-day configured retention; record the exact run, outcome,
+artifact identity, and evidence ceiling in the existing
+[validation history](../history/validation-evidence.md) before relying on a
+temporary download link for release review. The
 cluster campaign records a distinct institutional novice journey and unresolved
 actual-data completion. A readiness review should screen open runtime,
 recovery, report, and site findings for the chosen promise, then cite exact
@@ -651,8 +659,13 @@ cover read-only preview, complete-bundle reuse, processing-only refusal, and
 publication boundaries. The [Runbook](../operations/RUNBOOK.md#retrieve-reports-from-a-terminal)
 defines complete-tree transfer and checksum comparison. These checks still do
 not exercise the public installed `emrys report` command against a complete
-candidate Run or render/review the copied bundle. Keep those as separate proof
-items if the release promises report regeneration or portable visual Results.
+candidate Run or render/review the copied bundle. Existing reporter tests
+check relative links and inline SVGs, but no test relocates a complete Results
+tree. For portable visual Results, copy one candidate's full `results/` tree to
+a new directory, compare checksums, resolve every local link and fragment in
+both HTML reports against the copy, then inspect its figures in a local
+browser. Keep this distinct from `emrys report` reuse, which requires the
+original admitted Run.
 Doctor confirms reporter discovery and ownership, not successful rendering;
 the wheel's reporter fixture uses internal APIs. A custom reporter's lazy
 dependencies also remain outside Doctor's default load check.
@@ -716,7 +729,9 @@ combines guided FASTQs with the checkout-supplied
 Creation streams and hashes each FASTQ and checks individual record structure;
 preview stops before that read. [Project validation](../../src/emrys/orchestration/run_coordinator/normalization.py)
 readmits files and reference compatibility but does not repeat full FASTQ
-record inspection by default. The specialist `validate manifest` has a narrower
+record inspection by default. Doctor and public Run planning use this same
+Project-validation boundary, so their admission does not add full FASTQ record
+or mate concordance proof. The specialist `validate manifest` has a narrower
 contract and its optional file check establishes existence, not record or
 scientific correctness. The separate [pair helper](../../src/emrys/ingestion/sample_manifest_admission/README.md)
 compares total record counts and a selected leading prefix of normalized IDs;
@@ -856,6 +871,26 @@ does not call `inspect_run` without an associated Run. Raw scheduler diagnostics
 have no Project, Run, or action authority. Classify those observation modes
 separately from a verified Run and its recovery choices.
 
+### R22 — Partial GTF acceptance visibility
+
+The [GTF converter](../../src/emrys/stages/gtf_to_bed12/converter.py) can skip
+malformed exon rows or an entire conflicting transcript while retaining other
+models; its [owner fixture](../../tests/stages/gtf_to_bed12/test_gtf_to_bed12.py)
+demonstrates both losses and the emitted warnings. Project reference admission
+rejects a GTF with no usable transcript but can pass a partly valid one. It
+returns normalization warnings, yet named Init discards that result and
+ordinary `emrys validate` prints only `Project validation: PASS`; `--verbose`
+prints the warning count and details. The
+[Quickstart](../../quickstart.md) currently tells users to continue on the
+default PASS. This does not show that the chosen real reference has defects,
+but PASS does not establish lossless annotation admission.
+
+For the selected public journey, decide whether an operator must review
+`emrys validate --verbose` warnings, whether the guide needs an explicit
+limitation, or whether an owner-approved admission change is required. Use one
+tiny partly valid GTF through the public command to retain exact warning and
+no-write behavior; do not duplicate the converter's full warning suite.
+
 ## Conditional owner routing
 
 These are dependencies of a **selected claim**, not a second backlog or a
@@ -885,7 +920,7 @@ R11.
    ancestry, clean-tree state, included PRs, and excluded sibling work. Decide
    whether proposed changes such as PR #316 enter the candidate. If the head
    changes later, identify which artifact and evidence checks it invalidates.
-2. **Write the release promise (R02/R03/R14/R16/R18–R20).** For prerelease and v1 separately,
+2. **Write the release promise (R02/R03/R14/R16/R18–R20/R22).** For prerelease and v1 separately,
    classify each public operation and environment as promised, limited, or
    unsupported. For each selected combination, state required inputs, success
    and refusal behavior, interactive/explicit execution modes, semantic success
@@ -901,7 +936,7 @@ R11.
    version, source, and artifact identities are checked. Record why rejected
    routes do not meet the chosen scope. Decide product numbering independently
    of schema IDs and obsolete-Run policy.
-4. **Route only selected gaps to existing owners (R05/R08–R10/R13/R15/R16/R18–R21).** Map
+4. **Route only selected gaps to existing owners (R05/R08–R10/R13/R15/R16/R18–R22).** Map
    each promise across the owner/source/resource/validator chain to an existing
    public check or an exact missing scenario. Before
    any separately approved implementation, search adjacent owners for
