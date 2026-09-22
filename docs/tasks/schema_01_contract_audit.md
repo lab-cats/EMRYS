@@ -9,10 +9,10 @@ The first source pass reviewed commit
 `f32260f0408fe1826af401fc1ddce0f2478ae6ce` on 2026-09-22. Its schema
 source is unchanged from `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`.
 The latest PR #307 head checked on 2026-09-22 is
-`ba1fbdd3cc56196fc2ece35b73ddba56b786d223`; its only delta from the
-first pass is formatting in `tests/tools/real_synthetic_e2e.py`. No production
-or schema source changed, so the findings below still target that current
-head.
+`5ecc409c123fe34f746a61f7e92397c6978f3cab`. Its delta from the first
+pass is formatting in `tests/tools/real_synthetic_e2e.py` and CV-26 closure
+edits to three task documents. No production or schema source changed, so
+the findings below still target that current head.
 This pass used source, documentation, package metadata, and public distribution
 metadata. No tests were executed locally as part of that source pass; no Run,
 cluster operation, or migration was performed.
@@ -540,7 +540,7 @@ advances before deciding; record the changed files and refresh affected rows.
 
 | Pass | Current state | Bounded work and output | Decision gate |
 | --- | --- | --- | --- |
-| P0 — Revision | Done | Pin PR #307 head at `ba1fbdd3`, compare its formatting-only delta with `f32260f`, and keep the audit PR's own head separate. | Recheck live Git before a final decision. |
+| P0 — Revision | Done | Pin PR #307 head at `5ecc409c`, compare its test-formatting and CV-26 documentation delta with `f32260f`, and keep the audit PR's own head separate. | Recheck live Git before a final decision. |
 | P1 — Resources | Done | Inventory all 20 paths, `$id`s, serialized labels, selectors, common resources, external `$ref` edges, package globs, wheel roster, and direct Run roots. | No path or version reset from directory appearance alone. |
 | P2 — Production closure | Partial | For each record, close writer, direct/Slurm submission, resume/inspection, reporting, public validation, fixture, and reference paths. Mark definition-only resources and non-registry versioned records separately; confirm negative searches. | Do not call a field or resource dead from its absence in one caller family. |
 | P3 — Consumers | Partial | Reconcile source installs, collaborator entry points, private distributions, public artifacts, exported schemas, and known downstream code with the owner. Record an observed reader, a bounded negative, or unknown for each route. | A missing public release does not prove a closed audience. |
