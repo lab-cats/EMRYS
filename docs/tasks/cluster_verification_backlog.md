@@ -53,7 +53,7 @@ real-Slurm lane nor an institutional walkthrough.
 
 | Remaining acceptance | Current owner and required work or evidence |
 | --- | --- |
-| Reopened implementation and acceptance gaps | Every card marked **Open** in the indexes below owns the dated source, journey, documentation or acceptance correction recorded in its detailed entry. Implement and verify that gap or explicitly revise the original acceptance before external evidence can advance the card; in particular, site execution alone cannot close CV-01's missing managed-journey combinations, CV-10's prepared-finalization path and unresolved recycled-inode ownership limit, or CV-18's missing active-native-task stop outcome. |
+| Reopened implementation and acceptance gaps | Every card marked **Open** in the indexes below owns the dated source, journey, documentation or acceptance correction recorded in its detailed entry. Implement and verify that gap or explicitly revise the original acceptance before external evidence can advance the card; in particular, site execution alone cannot close CV-10's prepared-finalization path and unresolved recycled-inode ownership limit or CV-18's missing active-native-task stop outcome. |
 | Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27 and CV-U28: exercise the maintained RUNBOOK on one exact installed revision; retain selected profile/runtime, resolved allocation-aware policy and report identities. Visual review is separate. |
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
 | Historical unexplained failures | CV-12/E01 and CV-21/E06 remain unexplained historical observations whose causal reconstruction is not an acceptance requirement. CV-21 now needs only ordinary institutional execution of current reporting/inspection behavior. CV-10/E09 retains its separate current reconciliation requirement; newer successful checks cannot identify that cause. |
@@ -70,7 +70,7 @@ no supplied terminal scientific/reporting evidence.
 
 | ID | Priority | Status | Outcome |
 | --- | --- | --- | --- |
-| [CV-01](#cv-01-managed-golden-path-coverage) | P0 | Open | Managed golden path covers the cluster-discovered cases. |
+| [CV-01](#cv-01-managed-golden-path-coverage) | P0 | Verification pending | Managed golden path covers the cluster-discovered cases. |
 | [CV-02](#cv-02-individual-qualification-diagnostics) | P0 | Verification pending | Retain and surface each failed qualification check. |
 | [CV-03](#cv-03-scheduler-and-execution-failure-messages) | P0 | Verification pending | Separate submission, queue, execution, and finalization failures. |
 | [CV-04](#cv-04-workflow-startup-readiness) | P0 | Verification pending | Readiness exercises minimal actual Snakemake startup. |
@@ -2194,7 +2194,9 @@ and local stop's scheduler are controlled fixtures, not site memory-policy or
 controller evidence. The selected hosted lane can establish only disposable,
 single-node Slurm behavior. Absent/rejected Viking memory-policy combinations,
 cross-node inspection, and institutional active-native cancellation remain
-separate acceptance work. CV-01 stays **Open**.
+separate acceptance work. CV-01 is **Verification pending** for the selected
+exact-commit hosted run and institutional memory-policy, cross-node, and
+active-native cancellation journeys; none is claimed as passed here.
 
 ### CV-02 Individual qualification diagnostics
 
