@@ -9,8 +9,8 @@ when the bounded outcome is accepted; move lasting behavior to its owner documen
 ## Planning baseline and evidence key
 
 - **Target:** [PR #304](https://github.com/lab-cats/EMRYS/pull/304) head `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`, checked against the
-  open PR list on 2026-09-22. PR #303 is a sibling and is not included in this commit. Recheck the
-  target and affected paths before implementation.
+  open PR list and rechecked after the source audit on 2026-09-22. PR #303 is a sibling and is not
+  included in this commit. Recheck the target and affected paths before implementation.
 - **Authority:** this is a documentation draft and discovery review. Extension implementation,
   package installation, cluster execution, publication, and evidence promotion require separate
   authority under the [workflow](../operations/WORKFLOW.md).
@@ -36,7 +36,7 @@ when the bounded outcome is accepted; move lasting behavior to its owner documen
 | `EX-10` | No `examples/` files are tracked. A separate example adds maintained files, requiring an explicit quantified `AC-GUARD-006` exception before implementation. | Observed / Open | Inventory planned files and net lines by surface; protect unique mock assertions and propose only caller-complete retirements. |
 | `EX-11` | `examples/` would be outside current lint, coverage, and core-wheel selection; its tests could enter default collection without an intentional lane. | Observed / Open | Specify an explicit separate build/lint/test gate and selection, with no core coverage credit. |
 
-## First discovery pass
+## Source discoveries by finding
 
 ### EX-01 — accepted outcome versus existing composition proof
 
@@ -307,7 +307,7 @@ decisions; do not infer them from the core distribution.
     stated evidence level; leave site, scientific, and biological claims open until independently
     established.
 
-## Next review pass
+## Open decisions before implementation
 
 Resolve the selected example method and its expected output, the package metadata and license, the
 allowed disposable-install setup, and the smallest complete CI scenario. For each new discovery,
