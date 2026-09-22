@@ -602,9 +602,10 @@ authorized worktree and branch based on a rechecked target head.
 
 ## Remaining evidence and decisions
 
-The source findings need a target refresh when sibling PRs are integrated.
-Resolve the INIT-02 and CV-U22 sibling dispositions and record exact public
-prompt/exit behavior in an installed environment when one is available. Draft
-the full novice transcript and a bounded implementation slice with quantified
-product-code change. Keep INTERACTIVE-01 status and acceptance in the main
-backlog.
+Refresh the source findings when sibling PRs are integrated. Resolve the
+INIT-02 and CV-U22 sibling dispositions, then recheck the literal prompt and
+exit sequence against that target in an installed environment. Complete the
+novice transcript once the guide-only connective questions are designed. The
+first bounded Init outcome slice above is a proposal; measure its actual
+product-code delta before seeking any growth exception or implementing it.
+Keep INTERACTIVE-01 status and acceptance in the main backlog.
