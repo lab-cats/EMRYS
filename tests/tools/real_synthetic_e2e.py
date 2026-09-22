@@ -674,8 +674,10 @@ def check_doctor_timing(
             for item in events
             if item["event"] == "doctor_scheduler_timing"
         ]
-        if len(submitted) != 1 or len(timing) != 1 or (
-            timing[0].get("scheduler_job_id") != submitted[0]
+        if (
+            len(submitted) != 1
+            or len(timing) != 1
+            or (timing[0].get("scheduler_job_id") != submitted[0])
         ):
             raise DriverError(stage, "Doctor Slurm timing lacks the submitted job ID")
         intervals = timing[0].get("timing") or {}
@@ -692,7 +694,9 @@ def check_doctor_timing(
         if not observed and not (
             intervals.get("diagnostic") or timing[0].get("diagnostic")
         ):
-            raise DriverError(stage, "Doctor Slurm timing lacks intervals or a limitation")
+            raise DriverError(
+                stage, "Doctor Slurm timing lacks intervals or a limitation"
+            )
 
 
 def parse_run_plan(text: str, workspace: Path, *, no_write: bool) -> Path:
