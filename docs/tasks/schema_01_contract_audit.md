@@ -39,8 +39,8 @@ states, not another task-status registry.
 | S06 — Prerelease distribution | Partial | The package declares Alpha and `0.1.0.dev0`. On 2026-09-22, the exact PyPI project lookup returned 404, and GitHub listed no releases or tags. The [Quickstart](../../quickstart.md) documents source installation. A wheel test and public CLI, artifact-validation, provider and reporter interfaces establish supported external surfaces, not observed third-party use. | Inventory known collaborators, source installs, private distributions, and downstream readers. The checked public channels do not prove absence of external consumers. |
 | S07 — Retained Runs | Partial | Tracked `Projects/` contains only placeholders and Project data is ignored by Git. The [campaign record](backlog_matrix.md#viking-walkthrough-findings) reports actual-data Runs, including an unresolved cancelled Run and replacement at the time of that report. Their present locations, versions, and recovery needs were not inspected. | Obtain owner-identified locations or a bounded inventory. Inspect version and identity metadata read-only without changing or copying scientific data. |
 | S08 — Version-support boundaries | Observed | The [approved policy](../design/decisions/platform-direction.md#version-support) rejects obsolete Run records, preserves retained evidence, and requires full checks for current-format recovery. The Project v1 schema has two current forms, provider v1 metadata remains admissible while v1 execution is not, and a separate submission-request reader accepts v1–v4 retained diagnostics with narrower stop authority. | Treat each as its own contract; do not group current forms, diagnostic readers, and historical fixture names into one obsolete-alias category. |
-| S09 — Existing protection | Partial | Source tests cover exact registration, schema contracts, independent artifact goldens, obsolete Attempt refusal, and content-bound recovery. Their presence was inspected; their result at this revision was not. | Map each proposed change to its distinct surviving defense. Run focused checks on a final approved implementation and long lanes in CI. |
-| S10 — Reduction opportunities | Partial | Both registries repeat some strict JSON parsing and Draft 2020-12 setup, but differ in exact-ID enforcement, selectors, diagnostics, and semantic admission. Artifact and orchestration common definitions share identical `safe_id` and `sha256` shapes; other same-named definitions differ. | Measure caller-complete savings before sharing machinery or definitions. Inventory tests, scripts, configuration, docs, compatibility, and mutable state separately; retain independent evidence. |
+| S09 — Existing protection | Observed | Source tests assert exact closed registration and references, strict JSON refusal, profile graph/order/scope rules, independent backend owner mapping, obsolete Attempt refusal, retained Run recovery, content-bound identity, independent artifact goldens, and installed wheel resources. Test presence and assertions were inspected, but results at this revision were not. | Map each selected change to a surviving defense at the same trust boundary. Run focused checks on an approved implementation and long lanes in CI. |
+| S10 — Reduction opportunities | Partial | Both registries repeat strict JSON parsing and Draft 2020-12 setup, but differ in exact-ID enforcement, selectors, diagnostics, and semantic admission. Artifact and orchestration common definitions share only two identical small shapes. A private generated profile triplet has no found production lookup. Raw overlap is not net savings. | Prototype caller-complete savings before sharing machinery or definitions. Inventory tests, scripts, configuration, docs, compatibility, and mutable state separately; retain independent evidence. |
 | S11 — Contract decision | Open | No reset or removal follows from this pass. | Compare keeping current contracts, justified field transitions, and a selected v1 reset with quantified consumer impact and maintenance cost. Record a reasoned disposition for each candidate. |
 
 ### Field candidates
@@ -135,6 +135,56 @@ reference parameter. Older-named fixture directories contain current
 artifact records and explicitly disclaim production evidence. None of these
 observations alone justifies deleting a reader or resetting a schema ID.
 
+### Existing defenses and maintenance surface
+
+These are source-inspected assertions, not test results for this revision.
+The [orchestration contract tests](../../tests/contracts/orchestration/test_orchestration_contracts.py)
+check the closed Draft 2020-12 registry, exact `$id` and path examples, local
+references, unknown selectors, duplicate keys, and nonstandard numeric
+constants. The [artifact contract tests](../../tests/contracts/artifacts/test_artifact_schema_contracts.py)
+check their distinct closed registry, local references, public validation,
+and strict JSON refusals. The profile tests also reject owner-count and
+required-set drift, duplicate rule names, selector mismatches, cycles, and
+reopened artifact groups. The independent stage map and backend swap test
+protect a different boundary from schema validity alone.
+
+The [Task tests](../../tests/orchestration/run_coordinator/test_task.py)
+refuse an obsolete Attempt before mutation. The
+[materialization tests](../../tests/orchestration/run_coordinator/test_materialization.py)
+cover identity changes from schema/admission bytes and a new edge drift
+alongside an unchanged retained Run. The
+[lifecycle tests](../../tests/orchestration/run_coordinator/test_lifecycle.py)
+exercise tree/log tamper refusal in recovery. The
+[wheel tests](../../tests/test_package_distribution.py) check the entire
+packaged schema roster and byte equality, then install and invoke an isolated
+wheel. Independent [artifact goldens](../../tests/contract_integration/independent_contract_goldens/)
+give a separate semantic comparison. No single one of these substitutes for
+the others or for retained-record and institutional evidence.
+
+At the target revision, the schema surface is 20 files, 3,105 physical lines,
+and 90,500 bytes: artifact resources are 4 files/733 lines/21,650 bytes;
+orchestration resources are 16 files/2,372 lines/68,850 bytes. This is a
+baseline, not a proposed deletion count. The artifact loader's
+[schema setup](../../src/emrys/contracts/artifacts/_artifact_contracts/schema.py)
+and [orchestration registry](../../src/emrys/contracts/orchestration/api.py)
+both use standard-library strict JSON hooks and existing `jsonschema` and
+`referencing` machinery. Their error and selector policies are not identical.
+The only structurally identical cross-family common definitions are `safe_id`
+and `sha256`, about eight lines total in artifact common, with 15 local
+references; moving them would not retire either common resource. Other
+same-named definitions differ. Canonical JSON helpers elsewhere differ in
+output bytes or NaN policy and are not yet equivalent-input duplicates.
+
+The source-level candidate `workflow_inputs["profile"]` has roughly seven
+authored construction lines plus one dictionary entry, but the whole input
+map is propagated. A removal needs an API and equality review even if no
+literal production lookup exists. No caller-complete product-code saving is
+established yet. The [schema owner](../../src/emrys/contracts/schemas/README.md)
+already delegates registration to its two owners, and the
+[topology guardrails](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) require
+equivalent behavior before policy sharing. A third registry or custom
+validator framework has no demonstrated capability gap.
+
 ## Resource ledger at the reviewed revision
 
 This snapshot keeps paths, identifiers, and record labels separate. It is an
@@ -228,27 +278,37 @@ resources resolves within their packaged set. Removing or renaming a shared
 resource therefore requires a caller-complete reference and wheel migration,
 even if that resource has no standalone serialized record.
 
-## Next audit passes and decision gate
+## Fine-grained audit plan and decision gate
 
-1. Complete the per-resource writer, reader, fixture, documentation, and
-   installed-package map. Classify versioned JSON records outside the packaged
-   registry separately.
-2. Reconcile the external-consumer premise and retained-Run inventory with
-   explicitly bounded evidence. Report unknowns instead of treating a negative
-   repository search as proof of absence.
-3. For each field candidate, compare current and derived values on tiny
-   representative profiles and enumerate every caller, defense, identity
-   change, and byte change. Preserve graph, uniqueness, scope, inventory
-   ordering, Execution Plan identity, and direct/Slurm behavior.
-4. Report product code and file counts separately from tests, configuration,
-   documentation, and evidence. Evaluate the existing owners, standard library,
-   `jsonschema`/`referencing`, and maintained tools before adding machinery.
-5. Decide whether to retain current identifiers or propose an exact migration.
-   A selected migration requires separate approval and must move every affected
-   current caller together, reject incompatible records without changing
-   retained evidence, and avoid unnecessary aliases or historical readers.
+The states below describe audit progress at the pinned source revision, not
+SCHEMA-01 acceptance. Repeat the revision comparison if the target PR head
+advances before deciding; record the changed files and refresh affected rows.
 
-Stop when a consumer, field meaning, recovery behavior, required defense, or
-maintenance exception cannot be bounded from the available evidence. No
-identifier reset, field deletion, cluster proof, scientific review, or evidence
-promotion is implied by this audit record.
+| Pass | Current state | Bounded work and output | Decision gate |
+| --- | --- | --- | --- |
+| P0 — Revision | Done | Pin PR #307 head, base comparison, and schema-source delta; keep the audit PR's own head separate. | Recheck live Git before a final decision. |
+| P1 — Resources | Done | Inventory all 20 paths, `$id`s, serialized labels, selectors, common resources, external `$ref` edges, package globs, wheel roster, and direct Run roots. | No path or version reset from directory appearance alone. |
+| P2 — Production closure | Partial | For each record, close writer, direct/Slurm submission, resume/inspection, reporting, public validation, fixture, and reference paths. Mark definition-only resources and non-registry versioned records separately; confirm negative searches. | Do not call a field or resource dead from its absence in one caller family. |
+| P3 — Consumers | Partial | Reconcile source installs, collaborator entry points, private distributions, public artifacts, exported schemas, and known downstream code with the owner. Record an observed reader, a bounded negative, or unknown for each route. | A missing public release does not prove a closed audience. |
+| P4 — Retained state | Open | With owner-supplied Project locations, inventory only record labels, schema IDs, implementation/package/profile hashes, and recovery status; preserve payloads and markers. | No reset choice until affected recovery/evidence classes are bounded, or explicitly recorded unknown. |
+| P5 — Field semantics | Partial | For each candidate, identify sole semantic authority, current producer and reader, derived value, independent refusal, ordering, and functional/profile byte effects. Compare tiny representative base and composed profiles without editing retained Runs. | A derivation is accepted only if graph, uniqueness, scope, inventory bytes, backend names, and direct/Slurm behavior survive. |
+| P6 — Identity and recovery | Partial | Trace `$id`, packaged path, Run implementation/Plan identity, Attempt package/profile identity, installed wheel, current-format recovery, report revalidation, and incompatible-record refusal for each proposed change. | Keep old evidence immutable; do not infer recovery from schema validity or a receipt. |
+| P7 — Compression | Partial | Count a proposed migration's product files/lines separately from tests, scripts, config, docs, and evidence. Compare existing owner code, standard library, `jsonschema`/`referencing`, and maintained tools. Audit every duplicate caller and retirement path. | Require meaningful caller-complete net product reduction or a quantified, explicitly approved exception; no evidence deletion as an offset. |
+| P8 — Decision | Open | Compare retain-current, selected field transition, and selected v1 reset per resource. Record consumer impact, required new IDs/record labels, parity defenses, migration scope, compatibility policy, cost, and rejected options. Keep product 1.0 a separate release decision. | An owner-reviewed selected outcome and separate bounded implementation authority are required before changing schemas or callers. |
+| P9 — Proof for an approved migration | Not started | On the selected implementation revision, run focused source/fixture/wheel checks locally, long checks in CI, then request separately authorized real/site evidence where required. Compare new records and retained current-format recovery at exact identities. | Local, hosted, institutional, scientific-review, and biological claims remain distinct. |
+
+Current decision options are intentionally asymmetric. Retaining existing IDs
+may be the correct outcome even if a private projection can be retired under a
+different reduction owner. A targeted profile transition must preserve the
+independent backend and inventory checks and cannot use a compatibility writer
+just for cleanup. A selected v1 reset must name its exact resources, paths,
+serialized labels, readers, writers, and rejection behavior; it cannot be a
+blanket rename of all `v2`/`v3`/`v5` directories. Any implementation must
+move all affected current callers together, reject incompatible records
+without modifying evidence, and avoid unnecessary aliases or historical
+readers.
+
+Stop a decision when a consumer, field meaning, recovery behavior, required
+defense, or maintenance exception cannot be bounded from available evidence.
+No identifier reset, field deletion, cluster proof, scientific review, or
+evidence promotion is implied by this audit record.
