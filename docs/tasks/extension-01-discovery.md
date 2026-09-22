@@ -28,7 +28,7 @@ when the bounded outcome is accepted; move lasting behavior to its owner documen
 | `EX-02` | Step `08` sites permit a descriptive candidate-to-annotated-gene tally from transcript-span assignments, with `NA` and multi-gene rows. A one-task descriptor can use only the sites adapter; method and edge-case policy remain open. | Observed / Proposed / Open | Freeze the oracle, threshold/`NA`/zero-row rules, artifact names/paths, and measured resource floor. |
 | `EX-03` | Discovery requires one package-level entry point per name and distribution-owned callbacks. Its digest covers owned sibling files but excludes distribution metadata; one versus two example wheels remains a packaging decision. | Observed / Open | Prove real wheel ownership and missing/duplicate refusal; decide whether reporter source changes may couple to Analysis readmission. |
 | `EX-04` | The planner checks all **declared** inputs. External Step `09` publishes native outputs before validation; nonzero and nonpassing validators fail without a verified-task, and postpublication continuation is blocked. | Observed | Check exact consumed inputs and check roster; exercise both failure modes and retained state through the public runner. |
-| `EX-05` | New reporting re-admits Analysis and reporter; retained inspection checks old bytes without invoking today's reporter but still re-admits Analysis. In a shared wheel, reporter source changes can alter the Analysis digest. | Observed / Open | Test new publication, retained inspection, metadata-only reporter removal, and shared-wheel source drift separately. |
+| `EX-05` | New reporting re-admits Analysis and reporter; retained inspection checks old bytes without invoking today's reporter but still re-admits Analysis. In a shared wheel, reporter source changes can alter the Analysis digest. | Observed / Open | Test retained behavior under the chosen packaging; distinguish reporter source drift from entry-point metadata removal. |
 | `EX-06` | Analysis ID, provider readmission, and Attempt runtime binding cover different facts. Provider bytes and selected policy fields are re-admitted; distribution-version-only drift and some dependency metadata are excluded. | Observed | Test each boundary separately, including module/byte refusal and target-only runtime drift. |
 | `EX-07` | Doctor accepts fixed-check IDs or declared tools/files/R packages and checks reporter readiness, without installing. Current wheel smoke generates a temporary lock and installs despite prose that tests never do either. | Observed / Open | Resolve disposable lock/install policy and custom dependency rules; choose the reporter or `--no-report` path. |
 | `EX-08` | Core wheel smoke calls private report preparation; ordinary PR CI runs a 20-minute static/wheel lane, while real-synthetic runs only on schedule/manual. Neither proves an external public Run. | Observed | Choose a tiny public execution scenario and CI lane; measure cost and retain exact-commit results. |
@@ -115,7 +115,10 @@ core entry point is indicated.
 the Analysis provider digest covers its reporter source too. A reporter source change in that wheel
 can therefore block old Analysis readmission. Two separately installed wheels would separate those
 content identities while adding setup and maintained-package cost. Record the chosen tradeoff before
-the example layout and compatibility tests are fixed; do not change core hashing to hide it.
+the example layout and compatibility tests are fixed. If two wheels are selected, each entry point
+must live in a package tree fully owned by its own distribution; splitting one package tree across
+the wheels fails [installed ownership admission](../../src/emrys/libraries/installed_package_identity.py).
+Do not change core hashing to hide the tradeoff.
 
 ### EX-04 — planning, validation, and recovery
 
@@ -157,7 +160,7 @@ snapshot and receipt checks ([`context.py`](../../src/emrys/reporting/_run_repor
 
 New publication re-admits the current Analysis and reporter. The [report context](../../src/emrys/reporting/_run_report/context.py) passes only required, present, complete artifacts whose Step, scope, hash, size, and media type match the admitted summary. The [artifact index](../../src/emrys/reporting/_artifact_index/_text_tabular.py) checks declared TSV header and row shape/count, but does not recompute the proposed tally; that remains the independent validator's job. Test malformed or missing artifacts at admission, and test the reporter only with admitted snapshots/projections. Doctor requires a matching reporter for the ordinary through-report Run, while `--no-report` allows execution before reporter installation and later reporting.
 
-[Retained report validation](../../src/emrys/reporting/transaction_validation.py) checks the original receipt, data inputs, and HTML without invoking today's reporter. Upstream Run-summary and artifact validation still re-admits the current **Analysis** provider. If Analysis and reporter share a wheel, changing reporter source bytes changes that wheel's provider digest and can block Analysis readmission even though the renderer is never called. Removing only the reporter entry-point metadata is a different case because `.dist-info` is excluded from the provider digest; whether retained inspection succeeds must be tested with the exact remaining Analysis package and receipt. Test new publication, same-wheel source drift, and metadata-only reporter removal separately.
+[Retained report validation](../../src/emrys/reporting/transaction_validation.py) checks the original receipt, data inputs, and HTML without invoking today's reporter. Upstream Run-summary and artifact validation still re-admits the current **Analysis** provider. If Analysis and reporter share a wheel, changing reporter source bytes changes that wheel's provider digest and can block Analysis readmission even though the renderer is never called. Removing only the reporter entry-point metadata is a different case because `.dist-info` is excluded from the provider digest; whether retained inspection succeeds must be tested with the exact remaining Analysis package and receipt. For the chosen layout, test new publication and retained inspection with reporter source drift; test metadata-only entry-point removal separately.
 
 [Public report admission](../../src/emrys/orchestration/run_coordinator/reporting_operation.py) requires valid Run integrity, a succeeded Attempt and receipt, and complete Results. Blocked reporting or a nonempty unadmitted destination refuses generation rather than adopting present HTML; an admitted complete report is rechecked and reused. Inspect the exact Run before and after reporting, and do not count an HTML file's presence as report completion.
 
@@ -341,7 +344,7 @@ decisions; do not infer them from the core distribution.
 9. **Implement one reporter.** Render only from admitted artifact snapshots/projections and return
    identities for any additional report-only files it opens; core rechecks admitted artifacts.
    Produce a scientific HTML view that satisfies core checks. Verify literal tally content,
-   new-publication refusal, retained reuse, and the shared-wheel versus separate-wheel drift cases.
+   new-publication refusal, retained reuse, and source/metadata drift for the chosen wheel layout.
 10. **Add the package-specific quality lane.** Choose an intentional test selection and package
     lint/format/compile/build checks. Keep the existing core wheel test and Python shard scope
     honest; do not claim core coverage for an unmeasured example or expand local checks into heavy
