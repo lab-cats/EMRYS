@@ -49,20 +49,20 @@ This source pass inventoried physical publication/removal calls across
 contracts, callers and distinguishing fault tests. It separately inspected
 `tests/tools` and `.github/workflows` for evidence retention boundaries.
 This is a bounded source inventory, not a dynamic filesystem census or a
-complete reverse-reference graph. S1–S20 refine or bound F1–F6; they do not
+complete reverse-reference graph. S1–S25 refine or bound F1–F6; they do not
 create new accepted cleanup classes. A source search can establish a known
 reader or producer, but cannot close operator, external, cross-Project or
 post-crash writer references.
 
 | ID | Boundary and relation | Source finding | Disposition or proof gap |
 | --- | --- | --- | --- |
-| S1 | Step-validation report publication; F2 | Each validator can publish `<scope>.validation.tsv` with adjacent `.lock`, token `.tmp` and `.previous`; fault cases retain a predecessor without a lock or recovery marker. | No-go for retained residue; identify the exact caller output root and recovery state before any proposal. |
+| S1 | Step-validation report publication; F2 | Each validator can publish `<scope>.validation.tsv` with adjacent `.lock`, token `.tmp` and `.previous`; fault cases retain a predecessor without a lock, either with the replacement final present or with no final. | No-go for retained residue; identify the exact caller output root and recovery state before any proposal. |
 | S2 | Reference-provenance reconciliation; F2 and F5 | An explicit `--output-root` can hold three TSV finals, adjacent stage, backup and lock paths; failed restoration can strand all three backups without a lock. | No-go for retained residue or finals; operator and external readers of the caller-supplied root remain open. |
 | S3 | Shared exclusive-file publication; F1–F5 | `publish_exclusive` creates `.emrys-stage` and, on replacement, `.displaced` paths for several distinct callers, removing only its live transaction state. | Unknown after process loss; suffix and helper identity do not substitute for the calling owner's proof. |
 | S4 | Slurm batch scratch; F2/F6 execution boundary | The wrapper creates a private `TMPDIR` under configured `scratch_parent` and removes it in an EXIT trap; ordinary exit and TERM have focused tests. | Unknown after abrupt loss; path and scheduler status do not establish owner or writer quiescence. |
 | S5 | Validation harness and hosted CI artifacts; scope boundary | The test runner retains failed or interrupted lane logs; synthetic E2E retains its operator root; CI uploads have configured expiry. | Separate from Project cleanup. Hosted expiry grants no local deletion authority. |
 | S6 | Create-absent Project, manifest-draft and synthetic roots; F5 | One publisher reserves a caller-selected root, writes members and a completion member last, then preserves the whole partial tree on failure. | No-go for a partial root; completion-name presence or absence does not classify the tree or close external references. |
-| S7 | Execution-profile source; F5 | Default, named or absolute external profile paths are re-read; Attempts retain the selected source path and hash. | Open historical and cross-Project references; distinguish these files from managed runtime inventories. |
+| S7 | Execution-profile source; F5 | Default, separately created named or absolute external profile paths are re-read; Attempts retain the selected source path and hash. | Open historical and cross-Project references; a create-absent named YAML is not managed-runtime cache residue. |
 | S8 | Retired producer residue; F2 | Owner contracts preserve characterized older anchor, backup and lock failure states even though current workers delegate publication to Task. | Unknown without exact artifact provenance; old path names are neither current producers nor deletion certificates. |
 | S9 | Operator resource-benchmark output; scope boundary | An opt-in script retains per-trial streams, timings, hashes and summaries in a caller-selected absent directory, including failed trials. | Preserve under its operator evidence authority even if physically nested beneath a Project. |
 | S10 | External R restoration environment; F3 scope boundary | Explicit `RENV_PROJECT` can own settings, locks, caches and libraries outside a managed Project generation. | External operator ownership and consumers remain open; managed cache inventory is not a universal R cache roster. |
@@ -76,6 +76,11 @@ post-crash writer references.
 | S18 | Doctor and stop maintenance streams; F6 | Doctor's batch and sbatch streams and each exact-stop log/raw transcript live beside their maintenance log, possibly at a custom root. | Project request or default log rosters do not enumerate all diagnostic destinations. |
 | S19 | Selected analysis-module dependencies; F3 and F5 | Extra executable, file and package-tree checks become retained Attempt tool identities when selected. | Search all retained check identities, not only standard tools, Project TSVs or donor seals; external ownership remains open. |
 | S20 | Bounded application-log association; F6 | Inspection caps application directories and log bytes and reports `unknown` when a scan is incomplete. | A missing or unknown match cannot close the reverse-reference universe for cleanup. |
+| S21 | Direct probe cohort and retry identity; F4 | A canonical Project root and FASTA parent fix two role-specific probe paths across receipt generations; the FASTA-parent probe can lie outside the Project. A complete pair has 192 distinct payload bytes by construction, before filesystem overhead. | A new receipt generation does not make an occupied probe path safe or available; payload bytes are not measured reclaimable space or proof of exclusive ownership. |
+| S22 | Matplotlib renderer import cache; F2 scope boundary | The reporting provider uses a Python temporary directory for controlled renderer import and checks normal removal; it may live under a custom `TMPDIR` outside the Project. | Unknown after abrupt process loss; a name prefix and normal-return test do not close ownership, writer or external references. |
+| S23 | Attempt-specific workflow and reporting projections; F1/F5 | Selected samples and four reporting inputs live under distinct `contract/*-inputs/<Attempt>/` paths; retained Attempt identities bind their exact bytes. | Positive historical readers; these generated small files are not orphaned scratch after an Attempt ends. |
+| S24 | Step 00c external sidecar staging and names; F2/F5 | Task may stage and scratch beside the FASTA, hard-link finals from stage, and use one `.dict` basename for distinct same-stem FASTAs. | An external work directory or shared dictionary path cannot be classified by basename or one FASTA's status. |
+| S25 | Reporting artifact manifest scope; F1 | The private artifact builder projects validated declared inventory rows without discovering every file; a test preserves an undeclared native VCF absent from its manifest. | Absence from the manifest does not prove a Run-root path unreferenced or deletable. |
 
 ## First source discovery pass
 
@@ -262,6 +267,32 @@ is deletion eligibility.
   Tasks, reused Runs, report validation and scientist-facing transfer read
   these paths. The [Run-root contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#run-root-contract)
   lists their distinct authorities.
+- **Attempt-specific workflow and reporting projections — positive readers.**
+  A selected sample subset produces
+  `contract/workflow-inputs/<attempt>/samples.tsv`
+  ([materialization.py](../../src/emrys/orchestration/run_coordinator/materialization.py),
+  lines 1338–1373 and 1536–1544). The original path and bytes survive
+  Project-manifest changes for resume, as
+  [tested](../../tests/orchestration/run_coordinator/test_materialization.py)
+  (lines 7360–7445). Four reporting inputs are projected under
+  `contract/reporting-inputs/<attempt>/`; every reporting identity admission
+  re-reads their exact Attempt-bound paths and hashes
+  ([reporting boundary](../../src/emrys/orchestration/run_coordinator/reporting_boundary.py),
+  lines 397–435, 447–485 and 650–655). Its
+  [tests](../../tests/orchestration/run_coordinator/test_reporting_boundary.py)
+  reject path or byte drift before start and during verified publication
+  (lines 447–485 and 626–660). These generated contract members are retained
+  inputs, not unused temporary manifests after an Attempt ends.
+- **Artifact manifest — declared scope, not a filesystem census.** The private
+  [artifact builder](../../src/emrys/reporting/_artifact_index/context.py)
+  validates inventory rows and builds records from those rows without file
+  discovery (lines 117–129 and 172–187). A
+  [test](../../tests/reporting/test_artifact_adapters.py) keeps an undeclared
+  native VCF and unrelated output JSON while the builder succeeds, then
+  confirms the VCF is absent from the artifact manifest (lines 638–670).
+  Therefore a missing manifest row is not evidence that a Run-root path has
+  no owner or reader. This characterizes the private reporting builder; it
+  does not establish what every public Run inspection path admits.
 - **Report input paths and publication roots — open.** The private
   [reporting owner](../../src/emrys/reporting/README.md#code-and-artifact-roots)
   admits an explicit artifact source root independently of its output roots;
@@ -327,6 +358,17 @@ is deletion eligibility.
   The shared [stage remover](../../src/emrys/reporting/_files.py) checks a captured
   directory device/inode and token only during live publication (lines 85–100);
   neither it nor recognized-name validation certifies post-crash deletion.
+- **Renderer import cache — process scratch, retained state unknown.** The
+  scientific-figure [renderer](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/figures.py)
+  imports Matplotlib and related libraries inside a Python temporary
+  `emrys-matplotlib-*` directory, temporarily uses it as `MPLCONFIGDIR`,
+  restores the environment, and requires removal before caching the renderer
+  (lines 77–148). The temporary base can follow `TMPDIR` outside the Project.
+  An [isolated-process test](../../tests/reporting/test_figures.py) checks
+  empty private HOME, cache and temporary roots on normal return (lines
+  198–279). No abrupt-loss survivor or post-crash exclusive owner is proved
+  here. This process cache is separate from the reporting publication stages
+  above and from retained scientific figure outputs.
 - **Step-validation report final, lock, stage and predecessor — unknown.** The
   [shared validator runtime](../../src/emrys/libraries/validation/runtime.py)
   sends a caller-supplied output path to the
@@ -338,9 +380,13 @@ is deletion eligibility.
   and [characterization tests](../../tests/libraries/test_validation_report.py)
   document a late foreign final removed on rollback, a predecessor stranded
   as `.previous` after failed restoration without a lock or recovery marker,
-  and retained stage or lock after cleanup failure (tests around lines
-  507–665). These are observed defects, not a recovery procedure. An absent
-  lock, visible final or nominally complete Task is no deletion certificate.
+  and a replacement final coexisting with its predecessor after backup
+  cleanup fails, also without a lock (tests around lines 507–599). Separate
+  failures retain a stage or lock (tests around lines 602–665). The backup
+  name is tokenized, and source review found only same-invocation restoration
+  or removal, not a post-crash recovery reader (publication lines 21–70).
+  These are observed defects, not a recovery procedure. An absent lock,
+  visible final or nominally complete Task is no deletion certificate.
 - **Reference-provenance final trio, stage, predecessor and lock — unknown.**
   [Reconciliation](../../src/emrys/evidence/reference_provenance/reconciler.py)
   publishes three TSVs under caller-supplied `<output-root>/<reference-id>/`
@@ -350,7 +396,12 @@ is deletion eligibility.
   records incomplete backup and restoration behavior. Its
   [fault test](../../tests/evidence/reference_provenance/test_reference_provenance.py)
   leaves three backups after failed restoration with no lock or recovery
-  marker (around lines 462–517). Treat finals, stage, backups and lock as one
+  marker (around lines 466–518). The three predecessor moves happen before
+  the guarded publication rollback (reconciler lines 101–109), so interruption
+  during those moves could strand an incomplete final trio; this is a source
+  inference, distinct from the tested restoration failure. Source review
+  found only same-invocation backup restoration or removal (lines 109–119),
+  not a post-crash recovery reader. Treat finals, stage, backups and lock as one
   recovery context, including when the root lies outside the Project.
 - **Historical worker backups, anchors and locks — provenance unknown.**
   Current scientific workers receive staging destinations from Task; the
@@ -529,6 +580,22 @@ is deletion eligibility.
   (around lines 513–557). Re-running the current cleanup cannot be presumed
   to admit every retained partial; the absence of a probe path in the direct
   receipt proves neither post-crash ownership nor writer quiescence.
+- **Direct probe identity and size — source-derived, not a space estimate.**
+  The direct qualification ID hashes the canonical Project workspace and
+  canonical FASTA parent, not the individual FASTA path (qualification lines
+  174–209). Different FASTAs in the same parent therefore share one direct
+  receipt/probe namespace within that Project; receipt generations change the
+  receipt name but reuse two fixed role-specific probe paths. One probe is in
+  the Project workspace and the other is in the FASTA parent, which may be
+  external or shared by Projects. This is a source inference about paths, not
+  proof that any retained member belongs exclusively to one writer. Each
+  *complete* probe writes a 64-byte source, a hard link to that source, an
+  empty lock file and a 32-byte digest (qualification lines 425–464), so the
+  two roles contain 192 distinct payload bytes by construction. A partial
+  probe may have a different roster; disk blocks, directory metadata and
+  external hard links were not measured. Direct readiness can also be
+  satisfied by a separate site receipt (qualification lines 802–814), leaving
+  the direct route's staged or probe residue unresolved.
 
 ### F5 path subtypes
 
@@ -585,6 +652,18 @@ is deletion eligibility.
   are distinct from F3's managed runtime inventory; an absolute selection
   could be shared across Projects, and a historical Attempt is already a
   positive inbound reference.
+- **Separately created named profile — create-absent source, not a cache.**
+  `emrys profile create NAME --execute` checks the admitted Project and
+  destination absence, then publishes
+  `runtime/profiles/<name>.yaml` through the exclusive-file publisher
+  ([onboarding.py](../../src/emrys/orchestration/run_coordinator/onboarding.py),
+  lines 349–371 and 423–450). A
+  [test](../../tests/orchestration/run_coordinator/test_onboarding.py)
+  confirms the file remains and a repeated create preserves it (lines
+  2639–2689). It is separate from `default.yaml` authored with the initial
+  Project tree. Later named or absolute selection can create the Attempt and
+  cross-Project references above; an apparently unused profile name gives no
+  deletion authority.
 - **Slurm module-init file and scratch parent — external path references.**
   A selected [placement](../../src/emrys/orchestration/run_coordinator/execution_profile.py)
   records `scratch_parent` and optional `modules.init` paths in its Attempt
@@ -608,7 +687,27 @@ is deletion eligibility.
   as EMRYS-created cleanup residue. The lock and forbidden staging patterns
   carry writer and recovery meaning
   ([materialization.py](../../src/emrys/orchestration/run_coordinator/materialization.py),
-  lines 845–859).
+  lines 845–859). The FAI path uses the full FASTA name, whereas the dictionary
+  uses `fasta.stem`, and the lock is parent-wide (task lines 1324–1340;
+  materialization lines 845–859). Two distinct same-stem FASTAs in one parent
+  can therefore name one dictionary; this is a path inference, not a tested
+  collision. The [validator](../../src/emrys/stages/fasta_sidecars/validator.py)
+  checks ordered contig names and lengths, not unique creator provenance
+  (lines 85–101). One FASTA's state cannot assign exclusive ownership of a
+  shared dictionary name.
+- **Step 00c external work and scratch — live Task authority only.**
+  [Materialization](../../src/emrys/orchestration/run_coordinator/materialization.py)
+  directs sidecar workers into a tokenized `.emrys-owner-*.work` directory
+  beside the FASTA (lines 1028–1039). Task creates a `.work.scratch` sibling
+  ([_native_workspaces and prepare](../../src/emrys/orchestration/run_coordinator/task.py),
+  lines 1465–1469 and 1546–1576); the worker places a FASTA symlink and FAI
+  intermediate there
+  ([Step 00c script](../../src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh),
+  lines 161–169). Task hard-links final sidecars from captured staged files
+  before guarded cleanup (task lines 1617–1633 and 1652–1697). An interrupted
+  stage may therefore alias final bytes, and failed close preserves locks or
+  staging. Those external-parent names are not independent space savings or
+  post-crash deletion authority.
 - **Reference-provenance TSVs — external use open.**
   [Reconciliation](../../src/emrys/evidence/reference_provenance/reconciler.py)
   checks one explicit FASTA/FAI/dictionary/GTF/BED12/STAR inventory and
@@ -794,6 +893,15 @@ helper retirement. No benchmark output is selected for cleanup here.
 
 ### Narrow candidate triage
 
+- **Step-validation predecessor after a failed replacement — no-go.** A
+  characterized restoration failure leaves the `.previous` backup with no
+  final or lock; a separate backup-cleanup failure leaves the replacement
+  final and prior `.previous` together without a lock
+  ([fault tests](../../tests/libraries/test_validation_report.py), lines
+  533–599). The current owner has no post-crash backup admission or writer
+  certificate. The tokenized name and visible final do not prove which bytes
+  remain needed for recovery; external readers of the caller-supplied output
+  root remain open.
 - **Reporting stage beside linked outputs — no-go.** A normal publisher return
   removes its stage and releases its lock after linking the final manifest or
   receipt. A retained stage beside those outputs instead signals incomplete
@@ -817,7 +925,7 @@ helper retirement. No benchmark output is selected for cleanup here.
   lines 470–510, 665–669 and 837–847). Final admission need not reread probe
   bytes, but the historical receipt reference is nonempty under this audit's
   gate. Failed or active cleanup also remains possible.
-- **Direct qualification probe after an admitted receipt — unknown.** The direct
+- **Direct qualification probe after an admitted receipt — unknown/no-go.** The direct
   receipt does not name its probe directories (lines 688–717 of the same owner),
   and admission may succeed with a leftover. Yet final publication precedes
   cleanup; a later eligible plan refuses occupied deterministic paths, and a
@@ -826,7 +934,10 @@ helper retirement. No benchmark output is selected for cleanup here.
   no-writer proof for one exact remainder. Storage-only Doctor repair has no
   runtime maintenance claim
   ([doctor.py](../../src/emrys/orchestration/run_coordinator/doctor.py),
-  lines 1722–1735), so that claim cannot supply the missing proof.
+  lines 1722–1735), so that claim cannot supply the missing proof. The 192
+  distinct payload bytes in a complete probe pair are a source-derived
+  logical count, not measured reclaimable storage; a partial pair has no
+  equivalent fixed ceiling from the complete roster alone.
 
 No retained subtype is selected; none has a justified space-saving claim.
 
