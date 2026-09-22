@@ -225,6 +225,18 @@ contains some distinct evidence limits.
 cards. Replace only verified duplicate guidance with links; keep unique
 conditions, evidence ceilings, and card-specific acceptance at their owners.
 
+**Sentence-level map:** The charter's Delivery approach repeats the matrix's
+selected 130-pair final-source lane, stop/native/resume oracles, and ordinary-CI
+limit. Its Completion and handoff bullets repeat the matrix's institutional
+journey, separate review, exact-revision evidence, and retirement sequence; the
+CV backlog repeats the evidence-transfer instruction after its status map.
+Those passages can point to the [operative checklist](backlog_matrix.md#cluster-verification-closure-checklist).
+Keep the charter's explicit accepted/rejected/transferred disposition choices,
+the three named institutional failure combinations, and the rule that new
+failures remain findings. Keep the CV backlog's card-to-owner table and exact
+hosted limits, plus detailed CV-01, CV-10, and CV-26 acceptance. The repeated
+regions are not interchangeable with the unique E01–E12 register.
+
 ### 7. Viking walkthrough chronology
 
 **Observed:** [Main matrix](backlog_matrix.md) lines 182–276 keeps the
@@ -234,11 +246,27 @@ allowance, and reported synthetic/actual-data states. The
 [charter register](cluster_verification_campaign.md) lines 104–117 summarizes
 E01–E12 but does not replace every exact identifier or approval in the matrix.
 
-**Next:** Make an identity-by-identity retention map. Keep current site
-acceptance in `SITE-PARITY-01`/`CLUSTER-VERIFY-01`, lasting policy with its
-owner, and exact dated observations with their source and ceiling in
-[validation history](../history/validation-evidence.md) if a transfer is
-approved. Do not infer actual-data completion from a last-supplied state.
+**Next:** Verify the source commits and identities below, then propose an
+additive dated evidence record before shortening either source. Keep current
+site acceptance in `SITE-PARITY-01`/`CLUSTER-VERIFY-01`, lasting policy with
+its owner, and exact observations with their evidence ceiling. Do not infer
+actual-data completion from a last-supplied state.
+
+**Preservation map:** Before shortening either source, an additive dated record
+must retain these distinct facts and their original source commits:
+
+| Current source | Unique identity, decision, or limit to retain |
+| --- | --- |
+| Matrix walkthrough opening | Selected `7c427f0c`; job `614786`, 71 restored R packages/600 seconds, qualification SHA `cfcf7f788fd9d949f1a23f17793ecf22ba1e05f1023bc3b49065eebc0280186f`, receipt location, and manually submitted setup limit. |
+| Matrix implementation allowance | Earlier 750-net-product-line ceiling, no new product files/receipt formats, Rich selection, and separate surface accounting; this is dated authority, not a current grant. |
+| Matrix memory sequence | Job `605171` request/accounting, observer `c52178d2`, repair job `618134`, diagnostic job `618190` on `node009`, missing Slurm memory fields/cgroup limit, approved process-visible-RAM fallback, and science-pending limit. The existing history entry for job `605171` concerns NORAD manual Step 08 and does not transfer this E02 observation. |
+| Matrix execution sequence | Username-lookup failure and failed Attempt; reported synthetic resume with 151 artifacts/3:52 and deferred HTML review; cancelled actual-data Run without terminal receipt; replacement Run active at last observation. Keep charter E03/E04/E08/E09/E12 distinctions. |
+| Matrix hosted journey | `e25b10c6` and CI `34885186045` cover a disposable-Slurm Doctor preparation path, not Viking qualification; the six-library profile is no requirement for that tiny fixture. |
+| Charter E register | E05 pre-Run/foreign-host observations, E06 unknown report-publication cause, E07 unmeasured hashing cost, E10 heterogeneous capacity figures, E11 unattributed Doctor time, plus E01/E09/E12 unknown or absent outcomes. None is yet in validation history as this walkthrough record. |
+
+Reconcile the [history rules](../history/README.md) for an immutable dated topic
+and the charter's evidence-transfer destination before moving material. This
+map proposes preservation; it does not transfer or delete exact evidence.
 
 ### 8. Compression closeout chronology
 
@@ -250,8 +278,8 @@ measurement definitions remain material; Git already keeps routine PR order.
 
 **Next:** Preserve the user decision in the row and place exact counts,
 baselines, checks, and evidence ceilings in a dated record before shortening
-the closeout narrative. Date-bound the old dashboard statement rather than
-letting it override the current retirement row.
+the closeout narrative. The old dashboard statement is now date-bound to its
+September 14 checkpoint; the remaining evidence has not moved.
 
 ### 9. CV card checkpoint narratives
 
