@@ -146,6 +146,13 @@ assertion at 84–95 checks that fixed map's paths and discovers only legacy
 `scripts/validate_step_*.py`, so a new source-owner validator is not
 automatically found. Name the narrower producer scope and maintenance limit;
 artifact-contract and sample-manifest validators have different contracts.
+The fixed map does cover all 14 currently enumerated validation-report
+producers, and literal ordered rosters remain an independent protection.
+The public CLI catalog (`src/emrys/__main__.py:44–65,318–333`) also exposes
+`all-pass`, artifact-contract, and manifest validation outside those 14.
+Retain owner real-output assertions, including Step 10's direct one-row
+case at `tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_validator.py:80–99`;
+central synthetic roster checks alone cannot establish actual output meaning.
 
 ### F40 — Concurrency in the local workflow profile
 
@@ -178,6 +185,14 @@ lines 4079–4090 records the tiny local copy/comparison observation and its
 limit. Route this historical command-mechanics evidence to the CV record;
 generated-bundle contents, rendering, and institutional transfer remain
 pending rather than proved by a coordinator fixture.
+The CV card at 4086–4090 names no exact run date, source commit, command
+transcript, or retained artifact for that tiny exercise. It is an honest
+current evidence home, not yet a source for a date-qualified history transfer.
+The [test baseline](../design/TEST_BASELINE.md) line 15 links the test guide's
+`#what-the-checks-establish` heading, so keep that section and its real test
+rows; reclassify only the transfer row or route it to CV-27 outside the checks
+table. Preserve the Runbook transfer anchor, which Quickstart and CV-27 also
+use. REPORT-01–03 and CV-27 retain their separate acceptance requirements.
 
 ### F43 — Print behavior in the reporting test guide
 
@@ -188,24 +203,29 @@ The [backlog](backlog_matrix.md) lines 291–294 still keeps REPORT-01–04 visu
 or layout acceptance pending. Name source-level print rules and generated
 structure in the test guide without implying rendered user acceptance.
 
-### F44 — Internal workers described as standalone commands
+### F44 — Internal worker command ownership
 
 The opening of the [STAR contract](../../src/emrys/stages/star_alignment/CONTRACT.md)
-lines 3–6 calls its producer an explicit repository-path command. The
+lines 3–6 calls its producer an explicit repository-path command, which is
+literally how the Run invokes it and does not itself promise standalone support. The
 [RSeQC contract](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md)
-lines 3–8 additionally calls the operation independently runnable. Both
+lines 3–8 additionally calls the operation independently runnable, an ambiguous
+supported-command claim. Both
 contracts later call their shells internal Run workers (STAR lines 65–68;
 RSeQC lines 58–61), as do their adjacent READMEs (STAR lines 12–18; RSeQC
 lines 11–16). The STAR shell requires runner-supplied `EMRYS_TASK_WORK_DIR`
 at lines 3, 22–23, and 51–52; the RSeQC shell does likewise at lines 3,
-18–19, and 43–44. Correct the opening command-ownership claims while
-retaining direct `--help` for these scripts and the public grouped validators.
-No standalone production or recovery route is established by the help tests.
+18–19, and 43–44. Their shell tests supply runner-like paths and assert
+refusal without them (`tests/stages/star_alignment/test_step_01_star_align.sh:11,74`;
+`tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh:11,77`).
+That establishes the internal interface, not supported standalone publication
+or recovery. Clarify the RSeQC opening while retaining explicit script paths,
+direct `--help`, and public grouped validators.
 The coordinator's `TaskBackend` and `CommandResult` docstrings
 ([task source](../../src/emrys/orchestration/run_coordinator/task.py) lines
 100–104 and 146–154) also call delegated producer and validator commands
-“public.” Correct that generic ownership label without exposing internal
-producers or changing Run-owned publication.
+“public.” This is the definite ownership error. Call them delegated/recorded
+commands while retaining exact argv and exit evidence and Run-owned publication.
 
 ### F45 — Watch and stop in the command-audience map
 
@@ -217,8 +237,9 @@ commands are registered in the public parser
 and the [Runbook](../operations/RUNBOOK.md) lines 139–157 teaches exact-request
 `stop` to operators. The inventory says `emrys --help` owns the complete
 roster, so this is an audience-routing gap rather than a false claim about
-command existence. Add those audience examples or explicitly say the table
-is selective; preserve `stop`'s exact-request and evidence ceilings.
+command existence. Its opening at lines 3–4 already says the inventory is
+selective, so a nonexhaustive label adds little. Add these audience examples,
+preserving `stop`'s exact-request and evidence ceilings.
 
 ### F46 — Artifact common-schema description
 
@@ -229,8 +250,15 @@ lines 3–5 says active schemas still use these definitions after record schemas
 moved to later versions. The [registry](../../src/emrys/contracts/artifacts/_artifact_contracts/schema.py)
 lines 68–74 loads this file with current records, whose [index](../../src/emrys/contracts/schemas/artifacts/README.md)
 lines 3–8 names artifact entries v4, Run manifest v8, and report receipt v8.
-Correct only the stale description after checking schema-byte references and
-compatibility; the README calls those bytes a public contract.
+Only the description is stale: the common file's v1 `$id` and title remain
+correct resource identities. Current record schemas still reference that `$id`,
+and [schema rules](../../src/emrys/contracts/schemas/README.md) lines 8–16
+distinguish directory/resource versions from record-format versions. The
+independent golden pins the common `$id` at
+`tests/contract_integration/independent_contract_goldens/schema_contracts.json:17–20`.
+Correct the description only after schema-byte compatibility review; do not
+rename the v1 file, directory, `$id`, or references. The README calls those
+bytes a public contract; this is no evidence of a validator defect.
 
 ### F47 — R-probe concurrency candidate after CV-26
 
@@ -310,11 +338,21 @@ and Rich as the terminal library. Lines 223–256 retain jobs `605171`,
 `618134`, `618190`, commit `c52178d2`,
 node/account/resource observations, and the four login-name variables. Lines
 269–276 retain hosted run `34885186045` and its disposable-Slurm ceiling.
+This block is not uniformly historical: lines 207–222 state selected/current
+head-node Doctor, progress, log, and temporary-file behavior; 235–239 says
+the shared capacity observer now applies the approved RAM fallback; 248–251
+states the current four-variable submission export. Before shortening the
+backlog, verify that those rules have current owner and Runbook coverage.
+The 750-line allowance at 184–189 belongs to that earlier slice, not a standing
+exception for future product growth.
 The [history compendium](../history/validation-evidence.md) lines 81–102
 already retains job `605171` as manual NORAD Step 08 evidence at exact
 `64b14a11`; the backlog adds that job's scheduler request and accounting
 context. Preserve these as distinct aspects and do not turn either into an
-EMRYS whole-Run proof.
+EMRYS whole-Run proof. History's unchanged-record rule does not permit
+appending the later scheduler interpretation to its frozen manual-Step section
+just because the job number matches; a qualified new dated record could
+cross-link it after provenance is reconstructed.
 E04/E09/E12 overlap the synthetic and actual-data observations at 258–267;
 preserve operator-report attribution, the cancelled Run without terminal
 receipt, and deferred visual review. The `#viking-walkthrough-findings` anchor

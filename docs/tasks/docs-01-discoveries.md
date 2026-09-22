@@ -208,10 +208,16 @@ lines 7–8 makes a similar adjacent-file claim. The
 [tests index](../../tests/README.md) lines 3–4 use the broader word
 “contract.” Runtime-availability and reporting owners, among others, express
 current contracts in READMEs; schema owners also use schemas. At the pinned
-revision, 62 source READMEs but only 15 adjacent `CONTRACT.md` files exist;
-47 README directories have no adjacent file. The narrower stage-owner claim
-is valid. Replace only the global filename promise with an accurate route;
-do not create empty contracts merely to satisfy an index sentence.
+revision, 62 source README locations but only 15 adjacent `CONTRACT.md` files
+exist; 47 README directories have no adjacent file. Those 62 directories are
+not all functional owners: some are indexes or schema folders. The narrower
+[stage-owner index](../../src/emrys/stages/README.md) lines 3–5 correctly
+points each of its ten owners to an adjacent contract. Replace the two global
+filename promises with a route to each owner's actual README, contract, or
+schema; do not create empty contracts merely to satisfy an index sentence.
+The owner inventory's later generic “adjacent contract” at lines 31–33 and
+the architecture/test indexes' conceptual use of “contract” do not make the
+same filename promise.
 
 ### F11 — Python hook scope
 
@@ -299,16 +305,21 @@ do not compress distinct acceptance criteria or alter task status.
 [History index](../history/README.md) lines 18–22 requires
 `YYYY-MM-DD-topic.md` and an originating immutable commit. Its only indexed
 record, [validation evidence](../history/validation-evidence.md), has no date
-in its filename and aggregates multiple observations; one local R anecdote at
-lines 132–139 lacks an exact observation date, originating document, and
-commit. Do not invent these identities. The compendium is linked
-from the docs index, backlog, and coordinator contract; both
-`scripts/documentation/validate_structure.py:14–34` and
-`tests/documentation/test_validate_structure.py:29` name it. Map every inbound
-link and each record's origin first; this paragraph's source remains unresolved.
-Possible outcomes are a documented legacy
-exception or lossless dated records; neither a rename nor evidence deletion is
-implied by the naming mismatch.
+in its filename and combines seven topics: PORT-NC replay (10–25), synthetic
+VM/reporting (27–79), manual Viking Steps 07–09 (81–103), cohort/orientation
+(104–130), local R recovery (132–139), architecture hosted CI (141–151), and
+the Attempt scale probe (153–174). Several sections name exact revisions or
+jobs without an explicit observation date; only the scale probe states a date
+and pinned origin. The local R anecdote lacks date, originating document, and
+commit. Do not infer these identities from the “Dated” title.
+The compendium has file-level inbound links from the docs and history indexes
+and backlog (`docs/README.md:29`, `history/README.md:9`,
+`backlog_matrix.md:145–150`); the coordinator contract 950–955 links the
+scale-probe anchor. Both `scripts/documentation/validate_structure.py:14–34`
+and `tests/documentation/test_validate_structure.py:17–36` name the file.
+Map every inbound link and record origin first. Possible outcomes are a
+documented legacy exception or lossless dated records; neither a rename nor
+evidence deletion is implied by the naming mismatch.
 The [backlog's CV retirement condition](backlog_matrix.md) lines 145–150
 explicitly names this undated compendium as the future destination for
 E01–E12 and hosted/artifact records. That conflicts with the history index's
