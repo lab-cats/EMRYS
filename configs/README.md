@@ -9,7 +9,8 @@ This guide defines Project inputs and execution settings. Use the
 | Files | Purpose |
 | --- | --- |
 | `samples.example.tsv` | Five-column fixture for the generic manifest validator; not a complete paired-CMH Project manifest. Use the [Project sample format](#sample-manifest) below. |
-| `step_07_partitions*.tsv` | Example region partitions for cohort processing. |
+| `step_07_partitions.primary_contigs.tsv` | The EV/PUM1 study's whole-sequence selection: `1`–`22`, `X`, `Y`, `MT`. |
+| Other `step_07_partitions*.tsv` | Example region partitions for cohort processing. |
 | `execution_profile*.yaml` | Example local or Slurm execution settings. |
 | Other `.example.*` files | Specialist formats owned by the component that consumes them. |
 
@@ -180,12 +181,21 @@ declares them so. Retain provider checksums: file binding does not prove provena
 | `selector_value` | A FASTA/FAI contig or interval, or a literal regions-file path. |
 
 The [quickstart's guided Project creation](../quickstart.md#3-create-the-project)
-asks for these selectors. Its advanced command form accepts repeated
+reads the retained EV/PUM1 selection from `step_07_partitions.primary_contigs.tsv`
+through `--partition-manifest`, while still guiding sample creation. It copies
+the selected rows in order into the Project and checks the names against the
+reference during creation. Other FASTA sequences are not silently included;
+`--site viking` alone never chooses a scientific selection.
+
+Without a supplied partition manifest, guided creation asks for selectors.
+Its advanced command form accepts repeated
 `--region PARTITION_ID SELECTOR` and
 `--regions-file PARTITION_ID PATH` options. They can be combined; partition IDs
 must be unique across both forms. A selector such as `1` selects that entire
 contig without a regions file. Reference compatibility is checked during
-Project creation.
+Project creation. A supplied partition manifest cannot be combined with
+`--region` or `--regions-file`; a supplied sample manifest still requires a
+partition manifest and cannot be combined with `--fastq` or `--sample`.
 
 Partitions must not overlap. Begin with a small declared region when verifying
 an unfamiliar runtime. Zero candidates and a header-only VCF may be valid when

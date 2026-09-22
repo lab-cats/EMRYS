@@ -132,7 +132,8 @@ The next command starts a questionnaire and previews the Project. It does not
 create the Project on this first pass:
 
 ```bash
-emrys init pum1-study
+emrys init pum1-study \
+  --partition-manifest "$EMRYS_SOURCE_ROOT/configs/step_07_partitions.primary_contigs.tsv"
 ```
 
 Enter the absolute path to the reference FASTA, then the absolute path to its
@@ -143,20 +144,11 @@ enter the values from the table in step 2. For another study, pressing Enter at
 the study-wide question records the conservative `unknown` value, while `mixed`
 opens a separate strandedness question for each sample.
 
-At `optional regions file`, press Enter. This study uses reference sequence
-names directly rather than a separate BED- or VCF-like regions file. At the
-following prompt, whose label includes the FASTA filename, paste this complete
-space-separated list:
-
-```text
-1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y MT
-```
-
-Immediately before the prompt, EMRYS prints the number of accepted FASTA names
-and a bounded list taken from the first words after `>` in its headers. The
-entered names are checked immediately and Project creation rechecks them. If the
-delivery uses different names, stop and confirm the intended selectors rather
-than guessing.
+The command reads this study's supplied sequence selection: `1`–`22`, `X`, `Y`
+and `MT`. You do not enter names or supply a separate regions file. EMRYS copies
+the selection into the Project and checks it against your reference during
+creation; other reference sequences are excluded. If the delivery uses different
+names, stop and confirm the intended selection rather than guessing.
 
 STAR index settings are no longer questionnaire prompts. Preview derives
 `genomeSAindexNbases` from the admitted reference length and should show `14` for

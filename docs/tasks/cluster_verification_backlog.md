@@ -1296,6 +1296,14 @@ as inactive rather than becoming another question. All known values remain in
 the guide; novice Viking acceptance is still required, so CV-U20 remains
 **Verification pending**.
 
+**Maintained study selection:** `INIT-02` now lets the guided sample journey
+read the existing primary-contig manifest selected in Quickstart. The operator
+does not paste sequence names or provide a separate regions file for this
+study. The exact `1`–`22`, `X`, `Y`, `MT` selection is validated against the
+admitted FASTA and retained in the Project; additional contigs are not silently
+included and a missing selected name blocks creation. Site selection still
+controls placement only. Exact hosted and novice verification remain pending.
+
 ### CV-U21 Technical parameter assistance
 
 **Operator instruction:** “There should be a tool for determining sjdb overhang,
@@ -2450,6 +2458,13 @@ placement, exact scientific values, and preserved source bytes after schema
 refusal. Static checks pass locally; application/subprocess cases passed the
 current integrated standard CI. Institutional novice walkthrough remains
 pending.
+
+**Current selected-input correction:** `INIT-02` uses the maintained study
+partition manifest alongside guided sample assignment. Sample and partition
+conflicts are checked separately; copied samples still require a partition
+manifest. Imported rows preserve their order and source-relative paths. The Quickstart no longer asks for a
+25-name paste. `INIT-03` and the focused guide pass still block source completion
+of this card; existing institutional acceptance remains required.
 
 **Original-input manifest follow-up:** The operator's fresh-user walkthrough
 exposed vendor FASTQ mates named `_1`/`_2` and 25 explicit whole-chromosome

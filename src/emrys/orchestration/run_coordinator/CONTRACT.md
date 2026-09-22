@@ -105,9 +105,12 @@ every condition and pairing group. Exactly two conditions with valid identical
 pairing strata produce both numbered control-to-treatment directions, with no
 default; ambiguous, incompatible, multi-condition, or partially explicit
 comparisons retain the separate questions. Existing explicit `--sample` rows
-and copied manifests do not enter these missing-row conveniences. The
+and copied sample manifests do not enter these missing-row conveniences. The
 regions-file and reference-name/region choices are explained as alternatives,
-and the latter prompt names the admitted FASTA.
+and the latter prompt names the admitted FASTA. An explicit
+`--partition-manifest` skips those questions while retaining guided samples.
+The [EV/PUM1 selection](../../../../configs/step_07_partitions.primary_contigs.tsv)
+is a maintained study input, never inferred from the site or FASTA names.
 
 When all five built-in paired-CMH values are omitted interactively, one prompt
 first discloses them and accepts or declines the set; decline restores the
@@ -127,8 +130,13 @@ Projects without `genome_chr_bin_nbits` normalize to the prior STAR value of
 `18` without rewriting their files. That compatibility default applies to new
 admissions; it does not rewrite immutable pre-change Runs or extend resume
 beyond the [version-support policy](../../../../docs/design/decisions/platform-direction.md#version-support).
-Advanced callers may instead supply both existing manifests; their
-validated, path-normalized content is copied into the new Project. It creates
+Callers may supply a partition manifest with guided samples, or both existing
+manifests. Copied content is validated and path-normalized without reordering
+rows. Sample mates resolve from their sample manifest; regions-file paths resolve
+from their partition manifest. A sample manifest requires a partition manifest
+and excludes guided sample options; a partition manifest excludes guided region
+options. Creation checks the selected names against the admitted reference and
+never expands the selection to other contigs. It creates
 `runs/`, `logs/`, `runtime/`, and `runtime/profiles/` with mode `0700`, and
 publishes `project.yaml` last. Failure preserves the partial root and never
 overwrites or adopts it. Publication checks the exact prepared member types,

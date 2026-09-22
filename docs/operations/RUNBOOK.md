@@ -302,9 +302,11 @@ with Project-aware commands when working from another directory.
 
 Interactive named initialization discovers recognized FASTQ pairs in one
 directory, applies one operator-selected strand value to missing rows or expands
-`mixed` into per-sample questions, and still asks for every condition, pairing
-group and study region. For exactly two compatible paired conditions it displays
-both comparison directions and requires a choice with no default. It discloses
+`mixed` into per-sample questions, and still asks for every condition and pairing
+group. A supplied `--partition-manifest` reads the study selection and skips
+region questions; without it, the user chooses the regions. For exactly two
+compatible paired conditions it displays both comparison directions and requires
+a choice with no default. It discloses
 the five built-in paired-CMH values for one acceptance when all five are omitted;
 decline restores the individual questions. Copied manifests retain their
 supplied biological values while their paths are normalized, explicit `--sample`

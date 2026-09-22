@@ -1417,8 +1417,12 @@ def test_manifest_init_is_deterministic_validated_and_dry_run_first(
     assert set(_tree_bytes(sample_only)) == {"samples.tsv"}
 
 
-def test_manifest_init_creates_six_vendor_libraries_and_25_chromosomes(
+@pytest.mark.parametrize("include_mt", (True, False))
+def test_project_init_reads_study_partitions_with_guided_vendor_samples(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    include_mt: bool,
 ) -> None:
     assignments = (
         ("ABE_EV_2", "EV", "replicate_2"),
@@ -1428,24 +1432,57 @@ def test_manifest_init_creates_six_vendor_libraries_and_25_chromosomes(
         ("ABE_EV4", "EV", "replicate_4"),
         ("ABE_PUM1_4", "PUM1", "replicate_4"),
     )
+    output = tmp_path / "study"
+    arguments = _project_arguments(tmp_path, output, execute=False)
     fastqs = _fastqs(
         tmp_path, *(row[0] for row in assignments), mate_marker="", suffix=".fq.gz"
     )
+    for path in fastqs:
+        path.write_bytes(gzip.compress(b"@read\nACGT\n+\nIIII\n"))
     chromosomes = [str(number) for number in range(1, 23)] + ["X", "Y", "MT"]
-    output = tmp_path / "drafts"
-    command = _manifest_command(
-        output,
-        tuple(reversed(fastqs)),
-        samples=tuple((*assignment, "reverse") for assignment in assignments),
-        partitions=tuple(
-            ("--region", chromosome, chromosome) for chromosome in reversed(chromosomes)
-        ),
+    arguments.reference_fasta.write_text(
+        "".join(
+            f">{name}\nACGTACGTACGT\n"
+            for name in [*chromosomes, "chrSynthetic"]
+            if include_mt or name != "MT"
+        )
     )
+    partition_source = (
+        Path(__file__).resolve().parents[3]
+        / "configs/step_07_partitions.primary_contigs.tsv"
+    )
+    selected_manifest = partition_source.relative_to(partition_source.parents[1])
+    command = ["init", output.name, "--partition-manifest", str(selected_manifest)]
+    for name in onboarding._PROJECT_FIELDS:
+        value = getattr(arguments, name)
+        if value is not None:
+            command.extend((f"--{name.replace('_', '-')}", str(value)))
+    command.extend(("--fastq", *(str(path) for path in reversed(fastqs))))
+    for assignment in assignments:
+        command.extend(("--sample", *assignment, "reverse"))
+    monkeypatch.chdir(partition_source.parents[1])
+    monkeypatch.setenv("EMRYS_PROJECTS_ROOT", str(tmp_path))
+    monkeypatch.setattr(onboarding.sys, "stdin", io.StringIO())
     original = _tree_bytes(tmp_path)
+    retained = partition_source.read_bytes()
 
     assert cli.main(command) == 0
     assert _tree_bytes(tmp_path) == original
-    assert cli.main([*command, "--execute"]) == 0
+    preview = capsys.readouterr()
+    replay = shlex.split(
+        next(line for line in preview.out.splitlines() if line.startswith("cd "))
+    )
+    assert replay[:3] == ["cd", str(tmp_path), "&&"]
+    assert replay[replay.index("--partition-manifest") + 1] == str(partition_source)
+    assert "--region" not in replay
+    assert "optional regions file" not in preview.err
+    monkeypatch.chdir(replay[1])
+    assert cli.main(replay[replay.index("emrys") + 1 :]) == (0 if include_mt else 2)
+    assert partition_source.read_bytes() == retained
+    if not include_mt:
+        assert "absent from the reference FASTA" in capsys.readouterr().err
+        assert _tree_bytes(tmp_path) == original
+        return
     table, _, _ = step08.validate_sample_manifest(output / "samples.tsv")
     assert table.rows == [
         {
@@ -1461,11 +1498,66 @@ def test_manifest_init_creates_six_vendor_libraries_and_25_chromosomes(
     partitions = step08.validate_partition_manifest(output / "partitions.tsv")
     assert partitions.rows == [
         dict(partition_id=value, selector_type="region", selector_value=value)
-        for value in sorted(chromosomes)
+        for value in chromosomes
     ]
+    assert onboarding.validate_project(output / "project.yaml").sample_count == 6
     published = _tree_bytes(tmp_path)
-    assert cli.main([*command, "--execute"]) == 2
+    assert cli.main(replay[replay.index("emrys") + 1 :]) == 2
     assert _tree_bytes(tmp_path) == published
+
+
+@pytest.mark.parametrize("guided", (True, False))
+def test_project_partition_copy_resolves_regions_from_manifest_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    guided: bool,
+) -> None:
+    output = tmp_path / "study"
+    arguments = _project_arguments(tmp_path, output, execute=True)
+    partitions = tmp_path / "partition-inputs"
+    partitions.mkdir()
+    regions = partitions / "targets.bed"
+    regions.write_text("chrSynthetic\t0\t12\n")
+    arguments.partition_manifest = partitions / "partitions.tsv"
+    arguments.partition_manifest.write_text(
+        "partition_id\tselector_type\tselector_value\n"
+        "targets\tregions_file\ttargets.bed\n"
+    )
+    if guided:
+        _table, _ids, rows = step08.validate_sample_manifest(arguments.sample_manifest)
+        arguments.sample_manifest = None
+        arguments.fastq = [
+            Path(row[mate]) for row in rows for mate in ("r1_fastq", "r2_fastq")
+        ]
+        arguments.sample = [
+            [row["sample_id"], row["condition"], row["replicate"], row["strandedness"]]
+            for row in rows
+        ]
+    monkeypatch.chdir(tmp_path)
+
+    assert onboarding.init_project_from_args(arguments) == 0
+    actual = step08.validate_partition_manifest(output / "partitions.tsv").rows
+    assert actual[0]["selector_value"] == str(regions)
+
+
+@pytest.mark.parametrize(
+    ("option", "values"),
+    (
+        ("fastq", [Path("unused.fastq")]),
+        ("sample", [["s", "EV", "one", "reverse"]]),
+        ("region", [["one", "chrSynthetic"]]),
+        ("regions_file", [["one", "unused.bed"]]),
+    ),
+)
+def test_project_imported_manifests_reject_competing_inputs(
+    tmp_path: Path,
+    option: str,
+    values: list[object],
+) -> None:
+    arguments = _project_arguments(tmp_path, tmp_path / "study", execute=False)
+    setattr(arguments, option, values)
+    with pytest.raises(onboarding.OnboardingError, match="cannot be combined"):
+        onboarding._project_manifest_members(arguments)
 
 
 @pytest.mark.parametrize(

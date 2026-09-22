@@ -701,7 +701,7 @@ def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
     manifests.add_argument(
         "--partition-manifest",
         type=Path,
-        help="Existing advanced partition manifest to copy into the new Project.",
+        help="Existing partition manifest to copy; may accompany guided samples.",
     )
     manifests.add_argument(
         "--fastq",
@@ -1021,7 +1021,11 @@ def _guided_manifest_members(
 
     regions_files = list(getattr(arguments, "regions_file", ()))
     regions = list(getattr(arguments, "region", ()))
-    if not regions_files and not regions:
+    if (
+        not regions_files
+        and not regions
+        and getattr(arguments, "partition_manifest", None) is None
+    ):
         if not interactive:
             raise OnboardingError(
                 "input-list creation needs --regions-file/--region or an interactive terminal"
@@ -1087,43 +1091,47 @@ def _guided_manifest_members(
     return members
 
 
-def _copied_manifest_members(
+def _project_manifest_members(
     arguments: argparse.Namespace,
-    output: Path,
     *,
     reference_contigs: Sequence[tuple[str, int]] | None = None,
 ) -> dict[str, tuple[bytes, int]]:
     sample_value = getattr(arguments, "sample_manifest", None)
     partition_value = getattr(arguments, "partition_manifest", None)
-    if (sample_value is None) != (partition_value is None):
-        raise OnboardingError(
-            "--sample-manifest and --partition-manifest must be supplied together"
-        )
-    if sample_value is None:
-        return _guided_manifest_members(arguments, reference_contigs=reference_contigs)
-    if any(
-        getattr(arguments, name, ())
-        for name in ("fastq", "sample", "regions_file", "region")
+    if sample_value is not None and partition_value is None:
+        raise OnboardingError("--sample-manifest requires --partition-manifest")
+    if partition_value is not None and (
+        getattr(arguments, "regions_file", ()) or getattr(arguments, "region", ())
     ):
         raise OnboardingError(
-            "existing manifests cannot be combined with guided input-list options"
+            "--partition-manifest cannot be combined with --regions-file or --region"
         )
-
-    sample_path = _admit_supplied_file(sample_value, "sample manifest")
-    sample_data, _ = read_bytes_with_identity(sample_path, "sample manifest")
-    sample_table, _, sample_rows = step08.validate_sample_manifest_bytes(
-        sample_data, sample_path
-    )
-    for row in sample_rows:
-        for mate in ("r1_fastq", "r2_fastq"):
-            value = Path(row[mate])
-            row[mate] = str(
-                _admit_supplied_file(
-                    value if value.is_absolute() else sample_path.parent / value,
-                    f"sample {row['sample_id']} {mate}",
-                )
+    if sample_value is None:
+        members = _guided_manifest_members(
+            arguments, reference_contigs=reference_contigs
+        )
+        if partition_value is None:
+            return members
+    else:
+        if getattr(arguments, "fastq", ()) or getattr(arguments, "sample", ()):
+            raise OnboardingError(
+                "--sample-manifest cannot be combined with --fastq or --sample"
             )
-    copied_samples = tsv_bytes(sample_table.header, sample_rows)
+        sample_path = _admit_supplied_file(sample_value, "sample manifest")
+        sample_data, _ = read_bytes_with_identity(sample_path, "sample manifest")
+        sample_table, _, sample_rows = step08.validate_sample_manifest_bytes(
+            sample_data, sample_path
+        )
+        for row in sample_rows:
+            for mate in ("r1_fastq", "r2_fastq"):
+                value = Path(row[mate])
+                row[mate] = str(
+                    _admit_supplied_file(
+                        value if value.is_absolute() else sample_path.parent / value,
+                        f"sample {row['sample_id']} {mate}",
+                    )
+                )
+        members = {"samples.tsv": (tsv_bytes(sample_table.header, sample_rows), 0o644)}
 
     partition_path = _admit_supplied_file(partition_value, "partition manifest")
     partition_data, _ = read_bytes_with_identity(partition_path, "partition manifest")
@@ -1140,11 +1148,11 @@ def _copied_manifest_members(
                     f"partition {row['partition_id']} regions file",
                 )
             )
-    copied_partitions = tsv_bytes(step08.PARTITION_MANIFEST_HEADER, partition_rows)
-    return {
-        "samples.tsv": (copied_samples, 0o644),
-        "partitions.tsv": (copied_partitions, 0o644),
-    }
+    members["partitions.tsv"] = (
+        tsv_bytes(step08.PARTITION_MANIFEST_HEADER, partition_rows),
+        0o644,
+    )
+    return members
 
 
 def _project_replay_flags(
@@ -1156,19 +1164,29 @@ def _project_replay_flags(
             continue
         if value is not None:
             flags.extend((f"--{name.replace('_', '-')}", str(value)))
-    if getattr(arguments, "sample_manifest", None) is not None:
-        flags.extend(("--sample-manifest", str(arguments.sample_manifest)))
-        flags.extend(("--partition-manifest", str(arguments.partition_manifest)))
-    else:
+    for name in ("sample_manifest", "partition_manifest"):
+        value = getattr(arguments, name, None)
+        if value is not None:
+            flags.extend((f"--{name.replace('_', '-')}", str(Path(value).absolute())))
+    if getattr(arguments, "sample_manifest", None) is None:
         flags.append("--fastq")
-        flags.extend(str(path) for path in getattr(arguments, "fastq", ()))
+        flags.extend(
+            str(Path(path).absolute()) for path in getattr(arguments, "fastq", ())
+        )
         for row in getattr(arguments, "sample", ()):
             flags.append("--sample")
             flags.extend(str(value) for value in row)
         for name in ("regions_file", "region"):
             for row in getattr(arguments, name, ()):
                 flags.append(f"--{name.replace('_', '-')}")
-                flags.extend(str(value) for value in row)
+                flags.extend(
+                    (
+                        str(row[0]),
+                        str(Path(row[1]).absolute())
+                        if name == "regions_file"
+                        else str(row[1]),
+                    )
+                )
     return tuple(flags)
 
 
@@ -1313,8 +1331,8 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             if needs_reference_summary
             else (None, None)
         )
-        manifest_members = _copied_manifest_members(
-            arguments, output, reference_contigs=reference_contigs
+        manifest_members = _project_manifest_members(
+            arguments, reference_contigs=reference_contigs
         )
         answers = _collect_project_answers(
             arguments,
