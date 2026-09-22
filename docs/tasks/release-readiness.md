@@ -63,7 +63,7 @@ local navigation labels, not new backlog items.
 | `R05` | Study-selection resource | Viking Init points to `configs/step_07_partitions.primary_contigs.tsv` in the checkout. | Settle its installed-package route before promising checkout-free EV/PUM1 Init. | `INIT-02`; onboarding/package owners |
 | `R06` | Dependency support | Wheel smoke creates a separate installer lock under constraints derived from checkout `uv.lock`; wheel metadata permits broader `jsonschema` and `referencing` ranges. | Choose lock-required or independently resolved metadata support; if lock-required, specify how the exact lock reaches users of the selected artifact. State Pixi/native/R policy separately. | `RELEASE-01`, `RUNTIME-CLOSURE-01`; package/runtime owners |
 | `R07` | Version and artifact provenance | Package version is `0.1.0.dev0`; build metadata can record Git origin and Python-lock hash; installed admission hashes code and build fields. | Define prerelease/v1 numbering and independently compare the candidate artifact, embedded origin, lock, metadata, and installed bytes with reviewed source. | `RELEASE-01`; package/source-authority owners |
-| `R08` | Public installed journey | Isolated wheel smoke covers help, Init, and validation outside the checkout; report smoke calls internal APIs. | Exercise every selected operation through the public installed command, from an arbitrary directory; a full wheel promise requires a tiny complete Run and public report regeneration. | `RELEASE-01`; package, CLI, synthetic-journey owners |
+| `R08` | Public installed journey | Isolated wheel smoke covers help, Init, and validation outside the checkout; report smoke calls internal APIs. | Exercise selected public commands outside the checkout where supported, with checkout-bound `setup` identified; a full wheel promise requires a tiny complete Run and public report regeneration. | `RELEASE-01`; package, CLI, synthetic-journey owners |
 | `R09` | Record and schema support | Approved policy refuses obsolete Run contracts, while some current-format variants and retained diagnostic contexts remain readable; schema IDs are independent of product versions. | Verify public obsolete-Run refusal preserves retained bytes; decide any schema reset through `SCHEMA-01`, independently of product v1. | `RELEASE-01`, `SCHEMA-01`; contract owners |
 | `R10` | Guides and limitations | README, Quickstart, Runbook, and Troubleshooting divide reader/operator guidance; README already describes installed collaborator modules. | Reconcile install route, supported environment, Results journey, recovery, known limits, and collaborator promise without duplicate status prose. | `RELEASE-01`, `QUICKSTART-01`, `DOCS-01`, conditional `EXTENSION-01` |
 | `R11` | Exact-revision evidence | Ordinary CI contains a wheel lane; selected hosted direct/Slurm and institutional exercise are separate evidence layers. PR #307 strengthens selected Doctor timing instrumentation, pending that lane's run. | Record software, installed-artifact, disposable-Slurm, named-site, visual, scientific-review, and biological claims separately. | `RELEASE-01`, `SITE-PARITY-01`, `CLUSTER-VERIFY-01`, `REPORT-01`–`03`, `SCI-AUDIT-01` |
@@ -162,6 +162,16 @@ its digest and the resulting wheel digest, and exercise its promised assets,
 provenance, and public commands. `emrys setup` adds a separate checkout
 dependency under R13.
 
+The distribution choice remains **OPEN / DEFERRED**. These are the current
+route-specific acceptance questions, not four simultaneous release promises:
+
+| Candidate route | Current boundary | Minimum additional proof if selected |
+|---|---|---|
+| Pinned checkout | Supplies Git root, `uv.lock`, `configs/` selection, and `Projects/`; `setup` writes checkout-root settings and direct-host operation uses a separate route. | Freeze a clean commit and lock; install with the documented locked command; resolve the installed command's source; exercise each promised public operation with explicit settings when outside the checkout. |
+| Source archive | The test builds an sdist but installs only its derived wheel; an extracted archive is not the Git checkout required by `setup`. | Hash the distributed sdist, inspect its resources and metadata, build and install from that exact archive, hash the derived wheel, and verify the selected commands and dependency policy. |
+| Wheel paired with checkout | The checkout can supply data and defaults missing from the wheel, but ordinary checkout `uv sync` installs editable checkout code rather than proving use of the wheel. | Pin and hash both units; document an installer route that actually selects the wheel; prove installed code and assets come from it while only declared data/defaults come from the matching checkout. |
+| Standalone wheel | Installed smoke covers selected Init and validation; the reviewed wheel lacks the study selection and checkout-free `setup`, and distributes a lock hash rather than `uv.lock`. | Choose limited or complete scope. For a complete novice promise, resolve R05/R06/R13 and exercise the full public installed path with documented resources and no checkout leakage. |
+
 ### R05 — Study-selection resource
 
 The guided PUM1 command still reads the maintained selection manifest under
@@ -232,9 +242,10 @@ than create a second release harness.
 
 The proposed candidate exercise is: build once from a clean frozen revision;
 record the artifact digest and embedded build identity; install it in an
-isolated environment; run public commands from a directory outside the
-checkout with source-path leakage checked; use only resources documented for
-that artifact; and retain success, refusal, and no-write evidence. Run the
+isolated environment; run supported public commands from a directory outside
+the checkout with source-path leakage checked; exercise any checkout-bound
+`setup` in the checkout; use only resources documented for that artifact; and
+retain success, refusal, and no-write evidence. Run the
 tiny complete Project only when that full installed operation is selected. A
 public report exercise can finish a Run with `--no-report`, then check
 `emrys report [RUN]` preview and `--execute` publication into empty owned
@@ -339,17 +350,60 @@ saved-defaults setup, not all installed Init. The wheel smoke does not call
 or approve a bounded onboarding change with public-command, no-write, and
 resource tests before claiming standalone setup.
 
-## Next investigation cycle
+## Proposed readiness sequence
 
-1. Turn R02/R03 into a literal operation-by-environment promise table, marking
-   prerelease and v1 separately and tracing each claim to current guide text.
-2. Decide the R04/R06 artifact and dependency questions before specifying
-   artifact-level tests. Record alternatives rejected and the capability gap
-   before adding release machinery.
-3. Map each promised operation to an existing public test or a concrete missing
-   scenario, then route a bounded implementation to its owner. Quantify product,
-   tests, documentation, configuration, and evidence changes separately.
-4. Assemble a candidate checklist with exact revision, artifact digest,
-   evidence link, limitation, and owner for each selected claim. Run applicable
-   checks only under their separate implementation, environment, and site
-   authorities.
+These steps are a decision and evidence plan. They do not authorize code
+changes, dependency installation, cluster work, evidence promotion, or release
+publication. Keep status and acceptance in the `RELEASE-01` backlog row; retain
+one exact-revision evidence record for each selected claim, as specified in
+R11.
+
+1. **Freeze the candidate boundary (R01).** Record the exact source commit,
+   ancestry, clean-tree state, included PRs, and excluded sibling work. Decide
+   whether proposed changes such as PR #316 enter the candidate. If the head
+   changes later, identify which artifact and evidence checks it invalidates.
+2. **Write the release promise (R02/R03).** For prerelease and v1 separately,
+   classify each public operation and environment as promised, limited, or
+   unsupported. For each selected combination, state required inputs, success
+   and refusal behavior, platform/resource bounds, and the owner of its proof.
+   Resolve whether Viking is a named support claim; hosted Slurm alone cannot
+   make that decision.
+3. **Choose one distribution and dependency contract (R04–R07/R13).** Compare
+   the four routes above against the selected promise. Decide whether a
+   checkout is required, how the exact Python lock reaches users or which
+   metadata-resolved range is supported, how native/R locks apply, and how
+   version, source, and artifact identities are checked. Record why rejected
+   routes do not meet the chosen scope. Decide product numbering independently
+   of schema IDs and obsolete-Run policy.
+4. **Route only selected gaps to existing owners (R05/R08–R10/R13).** Map each
+   promise to an existing public check or an exact missing scenario. Before
+   any separately approved implementation, search adjacent owners for
+   duplicate mechanics and record retirement candidates, package-manager or
+   library alternatives, and separate product, test, script, configuration,
+   documentation, and evidence deltas. Do not add parallel release machinery.
+5. **Verify the selected artifact (R04/R06–R08).** Build once from clean frozen
+   source and retain source, lock, archive/wheel, installed-code, metadata, and
+   resource identities. Install through the route users will follow in a clean
+   environment. Check supported public commands from a working directory
+   outside the checkout and any checkout-bound `setup` inside it, including
+   controlled refusal and no-write paths. If complete installed operation is
+   promised, add a tiny real local Project-to-Results Run and public report
+   preview, publication into empty owned state, and verified reuse. Source
+   fixtures, installed-command checks,
+   and real local execution remain distinct evidence layers.
+6. **Collect exact-revision assurance (R09/R11).** Test public obsolete-Run
+   refusal for `inspect`, `resume`, and `report` with retained bytes unchanged.
+   Record targeted local checks and ordinary CI jobs with their actual
+   outcomes and skips. Dispatch selected real-tool hosted profiles at the
+   candidate ref if those claims are needed; keep 130-pair direct/Slurm parity
+   separate from the 100,000-pair Slurm profile. Route any named-site claim
+   through `SITE-PARITY-01` and `CLUSTER-VERIFY-01`, and visual or scientific
+   review through their existing owners. Do not infer one layer from another.
+7. **Reconcile guides, notes, and disposition (R10/R12).** Make README,
+   Quickstart, Runbook, Troubleshooting, package metadata, and one durable
+   release note agree on the actual install route, supported scope, current
+   formats, older-Run limits, known issues, exact evidence, and prerelease/v1
+   differences. Mark each unproved claim as limited, excluded, or blocked by
+   its existing owner. Review the resulting concise readiness checklist
+   against `RELEASE-01` acceptance. Tagging, package-index publication, and
+   added platform support remain separate decisions.
