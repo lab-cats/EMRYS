@@ -1119,25 +1119,25 @@ jobs:
       E2E_DATASET_PROFILE: smoke-v1
       E2E_SCENARIO: ${{ matrix.scenario }}
       E2E_CACHE_WRITER: ${{ matrix.cache_writer }}
-      E2E_EVIDENCE_ROOT: >-
-        ${{ runner.temp }}/emrys-synthetic-e2e/130-${{ matrix.scenario }}
     steps:
       - &synthetic_select_paths
         name: Select isolated runtime and evidence paths
         run: |
           set -euo pipefail
+          evidence_root="${RUNNER_TEMP}/emrys-synthetic-e2e/${E2E_PROFILE}-${E2E_SCENARIO}"
+          printf 'E2E_EVIDENCE_ROOT=%s\n' "${evidence_root}" >> "${GITHUB_ENV}"
           printf 'PIXI_WORKSPACE=%s/emrys-managed-runtime\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
           printf 'PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
           install -d -m 0700 \
-            "${E2E_EVIDENCE_ROOT}" \
-            "${E2E_EVIDENCE_ROOT}/operator" \
-            "${E2E_EVIDENCE_ROOT}/runtime" \
-            "${E2E_EVIDENCE_ROOT}/slurm" \
+            "${evidence_root}" \
+            "${evidence_root}/operator" \
+            "${evidence_root}/runtime" \
+            "${evidence_root}/slurm" \
             "${RUNNER_TEMP}/emrys-renv"
           printf 'profile\tdataset_profile\tscenario\ttrigger\tcommit\n%s\t%s\t%s\t%s\t%s\n' \
             "${E2E_PROFILE}" "${E2E_DATASET_PROFILE}" "${E2E_SCENARIO}" \
             "${GITHUB_EVENT_NAME}" "${GITHUB_SHA}" \
-            > "${E2E_EVIDENCE_ROOT}/selection.tsv"
+            > "${evidence_root}/selection.tsv"
           {
             printf 'RENV_PROJECT=%s/emrys-renv\n' "${RUNNER_TEMP}"
             printf 'RENV_PATHS_CACHE=%s/emrys-renv/cache\n' "${RUNNER_TEMP}"
@@ -1388,8 +1388,6 @@ jobs:
       E2E_CACHE_WRITER: >-
         ${{ github.event_name == 'workflow_dispatch' &&
         inputs.synthetic_100000 && !inputs.synthetic_130 }}
-      E2E_EVIDENCE_ROOT: >-
-        ${{ runner.temp }}/emrys-synthetic-e2e/100000-production-like
     steps:
       - *synthetic_select_paths
       - *synthetic_checkout

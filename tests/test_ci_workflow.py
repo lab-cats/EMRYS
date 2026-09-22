@@ -171,7 +171,12 @@ def test_synthetic_jobs_use_isolated_real_runtime_and_real_slurm() -> None:
         assert "PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml" in paths["run"]
         assert "${RUNNER_TEMP}" in paths["run"]
         assert "scenario" in paths["run"]
-        assert "${GITHUB_WORKSPACE}" not in job["env"]["E2E_EVIDENCE_ROOT"]
+        assert "E2E_EVIDENCE_ROOT" not in job["env"]
+        assert (
+            'evidence_root="${RUNNER_TEMP}/emrys-synthetic-e2e/'
+            '${E2E_PROFILE}-${E2E_SCENARIO}"' in paths["run"]
+        )
+        assert "E2E_EVIDENCE_ROOT=%s" in paths["run"]
 
         stage = _named_step(job, "Stage the reviewed runtime lock outside the checkout")
         assert "src/emrys/resources/runtime/pixi.toml" in stage["run"]
