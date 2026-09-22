@@ -315,17 +315,17 @@ closeout shortening. The closeout figures entered the matrix in
 
 ### 9. CV card checkpoint narratives
 
-**Observed:** The [cluster backlog](cluster_verification_backlog.md) is 4,107
-lines. CV-U06, CV-U22, CV-U28, CV-10, and CV-26 include dated implementation,
+**Observed:** The [cluster backlog](cluster_verification_backlog.md) held 4,107
+lines at the named baseline. CV-U06, CV-U22, CV-U28, CV-10, and CV-26 include dated implementation,
 adversarial-review, and verification checkpoints before their current
 disposition. The CV-26 record after line 3785 and CV-U28 historical resource
 reconstruction after line 1760 contain unique evidence or decisions. A simple
 deletion by age would lose that support.
 
-**Next:** For every CV-01–27, CV-U01–33, and CV-UX-01 card, record the
-original outcome, current status, current behavior, remaining acceptance,
-owner, and exact evidence that must survive. Remove or link only superseded
-non-evidence narration after this comparison; keep unknown causes unknown.
+**Next:** Review the [61-card retention ledger](cv_card_retention_review.md)
+against exact source and hosted evidence before proposing specific reductions.
+Keep current acceptance with each card, exact observations with their limits,
+and unknown causes unknown. This first pass authorizes no removal.
 
 **Index sweep:** All 61 card IDs occur once in both indexes and once as a
 detailed heading. The current index labels are 52 Verification pending, four
@@ -364,8 +364,9 @@ above are retained. Specific candidates are CV-U22 lines 1470–1480, CV-U06
 lines 476–504, CV-U28 lines 1805–1840, and CV-UX-01 lines 2150–2154.
 CV-U06's selected hosted follow-up at lines 506–522 and CV-26's trial
 artifacts/counters at lines 3850–3951 contain distinct limits and are not
-covered by a generic passing-CI summary. This sample does not decide the
-remaining 55 cards' retention treatment.
+covered by a generic passing-CI summary. The linked ledger extends this
+first-pass classification to the remaining 55 cards; none is approved for
+shortening by that classification.
 
 ### 10. Polish chronology and overlap
 
