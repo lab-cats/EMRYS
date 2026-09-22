@@ -3082,6 +3082,29 @@ def test_public_run_dry_run_is_no_write(
         assert not (workspace / "logs").exists()
 
     assert planned_roots["normal"] == planned_roots["verbose"]
+    delegate_stderr = tmp_path / "bound-slurm-delegate.err"
+    delegate_stderr.write_text(projections["verbose"], encoding="utf-8")
+    monkeypatch.setattr(
+        e2e_driver,
+        "_scheduler",
+        lambda *_args, **_kwargs: pytest.fail(
+            "complete bound delegate output queried the scheduler"
+        ),
+    )
+    assert (
+        e2e_driver.await_run_plan(
+            e2e_driver.Job(
+                "812345",
+                tmp_path / "bound-slurm-delegate.out",
+                delegate_stderr,
+            ),
+            workspace,
+            scontrol=Path("scontrol"),
+            cwd=tmp_path,
+            poll_seconds=0.01,
+        )
+        == planned_roots["verbose"]
+    )
     normal = projections["normal"]
     assert "Run: " in normal
     assert f"Location: {workspace}/runs/" in normal
@@ -4737,6 +4760,11 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     normal = normal_output.plain
     assert "Execution placement: Slurm" in normal
     assert "Analysis: 'primary'" in normal
+    assert "Location:" not in normal
+    assert "Run root:" not in normal
+    assert "Reporting:" not in normal
+    with pytest.raises(e2e_driver.DriverError, match="expected one run root"):
+        e2e_driver.parse_run_plan(normal, workspace, no_write=True)
     assert (
         "Allocation request: 12 CPUs, maximum runtime 01:00:00; memory: site default (unknown)"
         in normal
@@ -4878,6 +4906,25 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     request_roots = list((workspace / "logs").iterdir())
     assert len(request_roots) == 1
     assert request_roots[0].name.startswith("submission-")
+    completed = subprocess.CompletedProcess(
+        ("emrys", "run"), 0, captured.out, captured.err
+    )
+    submitted_job = e2e_driver.parse_submission(captured.out, workspace / "logs")
+    assert (
+        e2e_driver.admit_submission_request(
+            completed,
+            arguments.project,
+            submitted_job,
+            command="run",
+            requested_run=None,
+        )
+        == request_roots[0]
+    )
+    with pytest.raises(e2e_driver.DriverError, match="observed 0"):
+        e2e_driver.parse_submission_request(
+            subprocess.CompletedProcess(("emrys", "run"), 0, captured.out, ""),
+            workspace,
+        )
     assert request_roots[0].stat().st_mode & 0o777 == 0o700
     assert (request_roots[0] / "request.json").stat().st_mode & 0o777 == 0o600
     assert sorted(path.name for path in request_roots[0].iterdir()) == [
@@ -4907,7 +4954,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
 
 @pytest.mark.parametrize("command", ("run", "resume", "report"))
 def test_repeated_scheduled_commands_keep_distinct_frozen_streams(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, command: str
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=True)
     arguments.allow_duplicate_submission = True
@@ -4924,12 +4971,19 @@ def test_repeated_scheduled_commands_keep_distinct_frozen_streams(
         return "812345"
 
     monkeypatch.setattr(control.slurm_submission, "submit", submit)
+    outputs = []
     for _ in range(2):
         assert (
             control._schedule(
                 command, arguments, profile, controls, ResourceOverrides(), workspace
             )
             == 0
+        )
+        captured = capsys.readouterr()
+        outputs.append(
+            subprocess.CompletedProcess(
+                ("emrys", command), 0, captured.out, captured.err
+            )
         )
     records = control.slurm_submission.submission_requests(arguments.project)
     assert len(records) == len(plans) == 2
@@ -4940,6 +4994,63 @@ def test_repeated_scheduled_commands_keep_distinct_frozen_streams(
     }
     assert all(record.context["command"] == command for record in records)
     assert all(record.recorded_job_id == "812345" for record in records)
+    mixed = subprocess.CompletedProcess(
+        ("emrys", command), 0, outputs[1].stdout, outputs[0].stderr
+    )
+    with pytest.raises(e2e_driver.DriverError, match="does not bind"):
+        e2e_driver.admit_submission_request(
+            mixed,
+            arguments.project,
+            e2e_driver.parse_submission(mixed.stdout, workspace / "logs"),
+            command=command,
+            requested_run=None if command == "run" else arguments.run,
+        )
+    scheduler_calls = []
+
+    def scheduler(argv, _cwd):
+        scheduler_calls.append(argv)
+        if argv[0] == "scancel":
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        return subprocess.CompletedProcess(
+            argv, 0, "JobState=CANCELLED ExitCode=0:15", ""
+        )
+
+    monkeypatch.setattr(e2e_driver, "_scheduler", scheduler)
+    with pytest.raises(e2e_driver.DriverError, match="does not bind"):
+        e2e_driver.admit_active_submission(
+            mixed,
+            arguments.project,
+            command=command,
+            requested_run=None if command == "run" else arguments.run,
+            scontrol=Path("scontrol"),
+            scancel=Path("scancel"),
+            cwd=tmp_path,
+            poll_seconds=0.01,
+        )
+    assert scheduler_calls == [
+        ("scancel", "--signal=TERM", "812345"),
+        ("scontrol", "show", "job", "-o", "812345"),
+    ]
+
+    ambiguous = subprocess.CompletedProcess(
+        ("emrys", command),
+        0,
+        mixed.stdout + "JOB_ID=812346\n",
+        mixed.stderr,
+    )
+    scheduler_calls.clear()
+    with pytest.raises(e2e_driver.DriverError, match="observed 2"):
+        e2e_driver.admit_active_submission(
+            ambiguous,
+            arguments.project,
+            command=command,
+            requested_run=None if command == "run" else arguments.run,
+            scontrol=Path("scontrol"),
+            scancel=Path("scancel"),
+            cwd=tmp_path,
+            poll_seconds=0.01,
+        )
+    assert scheduler_calls == []
 
 
 def _record_scheduled_submissions(monkeypatch: pytest.MonkeyPatch) -> list[object]:
@@ -7199,6 +7310,8 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert failed.latest_attempt["workflow_attempt_id"] in verbose_output
     assert completed.latest_attempt["workflow_attempt_id"] in verbose_output
     assert f"Run root: {run_root}" in verbose_output
+    with pytest.raises(e2e_driver.DriverError, match="expected one run root"):
+        e2e_driver.parse_run_plan(verbose_output, workspace, no_write=False)
     assert (
         f"Analysis ID: {completed.authority.analysis_revision.analysis_revision_id}"
         in verbose_output

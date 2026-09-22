@@ -73,7 +73,8 @@ and acceptance.
 ### Novice setup and operational follow-up
 
 These outcomes use the existing onboarding, submission, runtime and
-documentation owners. The [approved pre-closure tranche](cluster_verification_campaign.md#remaining-delivery-scope)
+documentation owners. The
+[approved source-closure tranche](cluster_verification_campaign.md#source-closure-and-remaining-verification)
 includes all nine outcomes below, including `INIT-01` through `INIT-03`.
 Its stopping point is source/documentation completion with required hosted
 and institutional verification still explicit.
@@ -93,7 +94,7 @@ and institutional verification still explicit.
 ### Deferred operational work
 
 These accepted outcomes have enduring owners after the temporary CV records retire.
-They are outside the selected pre-closure implementation tranche.
+They are outside the closed cluster source-development sequence.
 
 | ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
 |---|---|---|---:|---:|---|---|
@@ -104,6 +105,12 @@ They are outside the selected pre-closure implementation tranche.
 
 `CLUSTER-VERIFY-01` is **Verification pending**. The selected source and guide
 corrections are implemented; CV-U06's one-line accounting exception is approved.
+On **2026-09-22**, the owner closed the approved implementation and stacked-PR
+sequence. No further `CV`, `CV-U`, or `CV-UX` source tranche is selected. After the exact
+closure head retains the hosted evidence below, one coordinated Viking campaign
+is the final external acceptance layer, including its operator, report visual/link,
+scientific-review, and evidence-handoff records. A defect found during verification
+returns to its functional owner without reopening the sequence wholesale.
 CV-10's accepted trust boundary remains in the
 [recovery contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
 and [operator guidance](../operations/TROUBLESHOOTING.md#run-and-reporting-state).
@@ -115,7 +122,8 @@ workflow CPU/memory and automatic repeatable-stage sharing, with a fixture-only
 2048 MiB repeatable minimum; disposable Slurm requests node CPU, all scheduler-
 available memory and exclusivity. Safely parallelizable lanes use all process-
 visible CPUs, while ordered recovery and end-to-end boundaries remain serial.
-This is still pending hosted verification and can establish mechanics on the
+The final closure head must retain hosted verification; that evidence can
+establish mechanics on the
 free-tier runner, not utilization, performance, Viking memory safety or
 institutional qualification. Required verification is:
 
@@ -327,7 +335,9 @@ That integration baseline gives a 19.44% product reduction; it does not replace
 the agreed campaign baseline above. Git and the linked PRs retain the card
 history, individual changes and review decisions. Scientific computation,
 data, provenance, current Run recovery, both reports, figures and the dashboard
-remain. Dashboard retirement still requires a validated replacement.
+remain. At this September 14 integration checkpoint, dashboard retirement still
+required a validated replacement; `DASHBOARD-RETIRE-01` later completed the
+caller-complete transition to installed watch with legacy read compatibility.
 
 [Ordinary hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34857271894)
 and [130-pair synthetic E2E](https://github.com/lab-cats/EMRYS/actions/runs/34857300341)

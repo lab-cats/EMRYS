@@ -21,7 +21,8 @@ referenced below; CV-U33 and CV-22 keep their campaign status and institutional
 acceptance here. The [closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
 records required dispositions before this temporary document can retire.
 
-The approved [remaining delivery scope](cluster_verification_campaign.md#remaining-delivery-scope)
+The approved
+[source closure and remaining verification](cluster_verification_campaign.md#source-closure-and-remaining-verification)
 includes `INIT-01` through `INIT-03` and the focused Quickstart corrections.
 The `INIT-01`–`INIT-03` source outcomes and focused guide corrections are
 implemented. CV-06, CV-U07, CV-U08 and CV-U18 are **Verification pending** for
@@ -76,11 +77,11 @@ real-Slurm lane nor an institutional walkthrough.
 | Historical unexplained failures | CV-12/E01 and CV-21/E06 remain unexplained historical observations whose causal reconstruction is not an acceptance requirement. CV-21 now needs only ordinary institutional execution of current reporting/inspection behavior. CV-10 retains verification of the implemented prepared-finalization recovery path. E09 remains unexplained, and missing prepared evidence still cannot authorize recovery. |
 | Postentry Task retry and finalization | CV-10: current-version closed-abort retry has hosted acceptance evidence. The prepared-finalization path through `resume` is implemented and **Verification pending** for its exact hosted CI and institutional cancellation journey. The owner accepted the equal-byte recycled-inode residual limitation for a trusted operator-controlled workspace; existing blocked receipts and missing prepared evidence remain ineligible. |
 | Doctor operation | CV-26 is Completed for exact pre-storage readmission, storage finalization and one final full diagnosis after removing the redundant intervening head diagnosis. Exact implementation CI passed; no Viking timing or speedup claim is required. Future measured tuning remains independently owned by the optimization campaign. |
-| Optional interface and retirement | CV-23 and CV-U19 transfer their Deferred acceptance to `CLEANUP-01` and `INTERACTIVE-01` in the [main backlog](backlog_matrix.md#deferred-operational-work); CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns institutional replacement validation and coordinated standalone entry-point/caller/name retirement. |
+| Optional interface and retirement | CV-23 and CV-U19 transfer their Deferred acceptance to `CLEANUP-01` and `INTERACTIVE-01` in the [main backlog](backlog_matrix.md#deferred-operational-work); CV-24 retains explicit new-analysis selection in the CLI. `DASHBOARD-RETIRE-01` records the completed standalone entry-point/caller/name retirement and retained legacy-read compatibility; standard and institutional visual verification remain. |
 
 The [enduring verification checklist](backlog_matrix.md#cluster-verification-closure-checklist)
-owns the remaining sequence. Before this backlog retires, transfer its exact
-evidence-bearing records to validation history and lasting optimization
+owns the final verification and handoff record. Before this backlog retires,
+transfer its exact evidence-bearing records to validation history and lasting optimization
 decisions to their owner; retain revision, artifact, hash and evidence limits.
 
 All card acceptance below remains authoritative. No institutional execution,
@@ -3164,8 +3165,10 @@ Legacy and installed public fixtures cover discovery/accounting/ownership,
 full-trace reconnect, changed streams, resource identity/usage, layouts,
 plain/color output, navigation and fresh action handoff. These software checks
 passed the final combined standard CI above. CV-16 is Verification pending for
-institutional terminal/NFS and operator walkthrough evidence. The original entry
-point and generated legacy names remain under `DASHBOARD-RETIRE-01`.
+institutional terminal/NFS and operator walkthrough evidence. At that checkpoint,
+the original entry point and generated legacy names remained under
+`DASHBOARD-RETIRE-01`; its later implementation retired them with exact legacy
+read compatibility.
 
 **Legacy offline correction:** The existing `--offline` selector already avoided
 scheduler discovery, but snapshot and interactive refresh still queried Slurm.
@@ -3175,7 +3178,8 @@ regular-file/ownership admission and sanitized stream display remain in use.
 The full standalone suite passes 182 local tests, including both public offline
 modes and unchanged online refresh queries. This preserves the supported legacy
 surface without establishing institutional acceptance or retiring the standalone
-entry point.
+entry point at that checkpoint. `DASHBOARD-RETIRE-01` records its later
+caller-complete retirement.
 
 **September 16 Viking acceptance failures:** Plain `emrys watch` failed to
 select the intended current target or offer a selector, forcing manual numeric
@@ -3652,7 +3656,8 @@ previews. Terminal cases preserve teardown before one callback under stalled
 reads and restoration failure. Presentation, application and PTY cases passed
 the final combined standard CI above. CV-24 is Completed for the selected hosted
 software interface. Institutional monitoring/action use remains under CV-16;
-standalone retirement remains under `DASHBOARD-RETIRE-01`.
+`DASHBOARD-RETIRE-01` later completed standalone retirement while preserving
+the installed watch behavior and legacy reads.
 
 **New-analysis interface disposition:** Keep launch in
 `emrys run --project PROJECT --analysis NAME`. Project admission selects an
@@ -3715,8 +3720,8 @@ existence nor liveness. Current tail bytes remain unverified diagnostics under
 the existing ownership/stability checks. Missing or damaged starts supply no
 derived path. Presentation, lifecycle and public fixtures passed the final
 combined standard CI above. Institutional discovery and interpretation of native
-liveness remain under CV-16/15; coordinated standalone retirement remains under
-`DASHBOARD-RETIRE-01`.
+liveness remain under CV-16/15; `DASHBOARD-RETIRE-01` records the later
+coordinated standalone retirement.
 
 **Run-selected application discovery:** Explicit Run inspection and watch now
 share a bounded search of one default, environment-selected or explicit
@@ -3736,8 +3741,8 @@ refresh never repeats discovery. Associations do not establish unique ownership,
 native liveness, completion or recovery. Reader, presentation, real writer/public
 handler and historical resume/report cases passed the final combined standard CI
 above. CV-25 is Completed for hosted software log discovery and presentation.
-Institutional monitoring remains under CV-16; legacy entry-point/name retirement
-remains under `DASHBOARD-RETIRE-01`.
+Institutional monitoring remains under CV-16; `DASHBOARD-RETIRE-01` records the
+completed legacy entry-point/name retirement and retained read compatibility.
 
 ### CV-26 Repeated Doctor input reads
 

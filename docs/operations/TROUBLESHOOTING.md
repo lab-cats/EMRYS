@@ -98,10 +98,13 @@ Python packages. Return to the Project for Project commands. Do not add
 its build metadata, independently of the working directory and Git checkout.
 
 **Project initialization or input rejected.** Enter the directory containing
-`project.yaml`, or supply its full path with `--project`. Preview-only `init`
-creates nothing: execute the reviewed command. Initialization needs an existing,
-real writable parent and an absent child, without symlink aliases; do not create
-the child yourself. Inspect an existing EMRYS Project or choose another path.
+`project.yaml`, or supply its full path with `--project`. Interactive named
+`init` previews the Project, asks for confirmation, and creates it in the same
+invocation after `y`. `--preview`, refusal, EOF, or a missing answer writes
+nothing; after `--preview`, rerun named `init` to receive the approval prompt.
+Initialization needs an existing, real writable parent and an absent child,
+without symlink aliases; do not create the child yourself. Inspect an existing
+EMRYS Project or choose another path.
 Supply supported YAML fields once and stable regular input files: no duplicate
 keys, merges/anchors, templates, `~`, environment interpolation, globs, or
 traversal. Pairing needs at least two explicit matching control/treatment

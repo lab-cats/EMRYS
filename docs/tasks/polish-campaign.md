@@ -30,7 +30,8 @@ dispositions, the 25% reduction target, broad code/test/protection/gate and
 documentation/contract audits, schema review, collaborator guidance and release
 planning. These outcomes remain accepted; none is a cluster-campaign closure
 gate. The focused novice-guide corrections and `INIT-01` through `INIT-03`
-remain in the cluster campaign's approved pre-closure tranche.
+were delivered through the cluster campaign's source-development sequence,
+which is now closed pending final verification.
 
 ## Evidence and selection
 
@@ -439,8 +440,8 @@ defines rejection in new profiles and current-version resume behavior. The broad
 **Disposition and acceptance:** On 2026-09-17 the institutional owner accepted
 the installed watch as the replacement and approved a caller-complete compression
 that preserves watch behavior. The standalone curses/CLI wrapper, duplicate
-scheduler query, Make target, dedicated protections, and stale guidance retire
-together. Project-local inspection, strict scheduler accounting, sanitized
+scheduler query, Make target, dedicated protections, and stale guidance were
+retired together. Project-local inspection, strict scheduler accounting, sanitized
 streams, exact historical reads, and the shared watch parser/renderer remain.
 `DASHBOARD-RETIRE-01` has implemented the new-name transition with historical
 read compatibility; institutional verification and evidence deletion remain.
