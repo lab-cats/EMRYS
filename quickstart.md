@@ -125,11 +125,8 @@ locations depend on your delivery.
 
 ## 3. Create the Project
 
-Enter the Projects directory supplied by the repository:
-
-```bash
-cd "$EMRYS_SOURCE_ROOT/Projects"
-```
+Stay in the repository root. EMRYS uses the Projects home saved during setup and
+shows the new Project's destination in the preview.
 
 The next command starts a questionnaire and previews the Project. It does not
 create the Project on this first pass:

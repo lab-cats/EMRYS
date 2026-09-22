@@ -1289,7 +1289,9 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
 
     try:
         output = _require_external_absent_output(
-            Path.cwd() / arguments.project_name, source_root()
+            Path(os.environ.get("EMRYS_PROJECTS_ROOT") or Path.cwd())
+            / arguments.project_name,
+            source_root(),
         )
         reference_answers = _collect_project_answers(
             arguments, fields=("reference_fasta", "reference_gtf")

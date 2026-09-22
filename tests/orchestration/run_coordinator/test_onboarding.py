@@ -325,15 +325,28 @@ def test_setup_is_dry_run_first_and_preserves_an_existing_file(
     assert (root / ".env").read_bytes() == before
 
 
+@pytest.mark.parametrize("location", ("checkout", "unrelated", "current"))
 def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
+    location: str,
 ) -> None:
+    checkout, _default_projects = _setup_checkout(tmp_path, monkeypatch)
     projects = tmp_path / "projects"
     projects.mkdir()
     output = projects / "my-study"
-    monkeypatch.chdir(projects)
+    if location == "checkout":
+        monkeypatch.chdir(checkout)
+        assert cli.main(["setup", "--projects-root", str(projects), "--execute"]) == 0
+        capsys.readouterr()
+    elif location == "unrelated":
+        unrelated = tmp_path / "unrelated"
+        unrelated.mkdir()
+        monkeypatch.chdir(unrelated)
+        monkeypatch.setenv("EMRYS_PROJECTS_ROOT", str(projects))
+    else:
+        monkeypatch.chdir(projects)
     arguments = _project_arguments(tmp_path, output, execute=False)
     arguments.sjdb_overhang = 17
     arguments.sample_manifest = tmp_path / "source/samples.tsv"

@@ -23,8 +23,9 @@ records required dispositions before this temporary document can retire.
 
 The approved [remaining delivery scope](cluster_verification_campaign.md#remaining-delivery-scope)
 includes `INIT-01` through `INIT-03` and the focused Quickstart corrections.
-CV-06, CV-U07, CV-U08 and CV-U18 are **Open** for those source/documentation
-prerequisites before their remaining novice acceptance can run. Their new
+CV-U07 is **Verification pending** after `INIT-01`; CV-06, CV-U08 and CV-U18
+remain **Open** for the selected input/confirmation and guide prerequisites
+before their remaining novice acceptance can run. Their new
 implementation acceptance lives in the main backlog; prior selected replay and
 manual-selector behavior does not complete the newly approved requirements.
 CV-U06's accounting exception is approved independently of its pending site proof.
@@ -139,7 +140,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U04](#cv-u04-doctor-presentation) | Doctor categories and progress | Verification pending |
 | [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Verification pending |
 | [CV-U06](#cv-u06-available-resources) | Use all allocated workflow CPUs and memory | Verification pending |
-| [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Open |
+| [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Verification pending |
 | [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Open |
 | [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Verification pending |
 | [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Completed |
@@ -523,10 +524,12 @@ recording it here does not change the existing CV-14 card's status. Each Project
 own manifests must also be inside that Project, as detailed in CV-U26.
 
 **Selected implementation:** Track `Projects/README.md` and `.gitkeep` in the
-repository and ignore all Project children. Quickstart, Runbook and reconnect
-instructions enter this supplied parent; no `mkdir` step remains. Existing
-Projects are neither moved nor rewritten, and the existing absent-child,
-canonical-parent and symlink refusals remain the creation authority.
+repository and ignore all Project children. Named Init now uses the saved
+`EMRYS_PROJECTS_ROOT`, so the normal repository-root journey does not require
+entering that parent. Without a selected home it retains the current-directory
+fallback. Quickstart, Runbook and reconnect guidance reflect those choices; no
+`mkdir` step remains. Existing Projects are neither moved nor rewritten, and
+absent-child, canonical-parent and symlink refusals remain the creation authority.
 
 **Verification limit:** Repository-ignore, documentation-link and onboarding
 checks cover the hosted layout. A fresh Viking clone and operator walkthrough
@@ -1998,6 +2001,11 @@ creates no registry or current pointer, and performs no scheduler query while
 enumerating candidates. Exact `--project` remains available. Focused local
 selection checks pass; standard CI and institutional filesystem/terminal use
 remain pending, so CV-U32 is **Verification pending**.
+
+`INIT-01` now uses that same selected Projects home for named creation. This
+does not expand discovery beyond the declared home or let an unrelated working
+directory discover another checkout's saved settings; use an explicit process
+setting there.
 
 ### CV-U33 Dashboard resource usage
 

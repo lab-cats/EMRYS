@@ -291,8 +291,10 @@ for incomplete Runs rather than deleting their files.
 Follow the [Quickstart's real-data path](../../quickstart.md#3-create-the-project)
 for the complete Viking sequence: prepare study inputs, create the Project,
 run Doctor, submit the study, inspect it and open the reports.
-The ordinary `emrys init NAME` creates beneath the current directory, so first
-enter the repository-supplied `Projects/` parent. Synthetic `--output-dir` may
+The ordinary `emrys init NAME` creates beneath the selected `EMRYS_PROJECTS_ROOT`,
+including the home saved by setup when invoked from the repository root. Without
+a selected home, it uses the current directory. The preview shows the destination.
+Synthetic `--output-dir` may
 select an external absolute destination when an advanced workflow requires it.
 These routes share the same absent-child and canonical-parent checks; neither
 moves or adopts an existing Project. Use `--project /absolute/Project/project.yaml`

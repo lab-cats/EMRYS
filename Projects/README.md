@@ -1,8 +1,9 @@
 # EMRYS Projects
 
 This directory is the home for Projects created from this EMRYS checkout.
-Follow the Quickstart to enter this directory; EMRYS creates each new Project
-as one absent child here. Do not create the Project child yourself.
+The Quickstart saves this Projects home during setup. Run named initialization
+from the repository root; EMRYS creates each new Project as one absent child
+here. Do not create the Project child yourself.
 
 Each Project contains its own `project.yaml`, `samples.tsv`, `partitions.tsv`,
 runtime preparation, logs, Runs, and Results. FASTQs and references remain in

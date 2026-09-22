@@ -14,6 +14,8 @@ import zipfile
 from email.parser import Parser
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_DEPENDENCIES = {
     "coolname",
@@ -336,7 +338,9 @@ def installed_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
     return json.loads(probe.stdout)
 
 
-def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -> None:
+def test_isolated_wheel_installs_resources_and_public_commands(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     wheel = build_wheel(tmp_path)
     inspect_wheel(wheel)
     environment_python, console = install_locked_wheel(wheel, tmp_path)
@@ -414,6 +418,46 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     assert console_control.returncode == 2
     assert "Controlled EMRYS Python children require" not in console_control.stderr
     assert "missing.yaml" in console_control.stderr
+    from tests.orchestration.run_coordinator.fixture import build
+
+    study = build(tmp_path / "study").parent
+    projects = tmp_path / "selected-projects"
+    projects.mkdir()
+    monkeypatch.setenv("EMRYS_PROJECTS_ROOT", str(projects))
+    init_options = {
+        "sample-manifest": study / "samples.tsv",
+        "partition-manifest": study / "partitions.tsv",
+        "reference-fasta": study / "reference/genome.fa",
+        "reference-gtf": study / "reference/genome.gtf",
+        "control-condition": "EV",
+        "treatment-condition": "PUM1",
+        "target-change": "A>G",
+        "min-sample-dp": 1,
+        "mean-dp-threshold": 50,
+        "fdr-threshold": 0.05,
+        "common-or-threshold": 1.2,
+        "absolute-difference-threshold": 0.005,
+        "background-max-fraction": 0.01,
+    }
+    for index, cwd in enumerate((REPO_ROOT, arbitrary_cwd)):
+        name = f"installed-study-{index}"
+        command = [str(console), "init", name]
+        for option, value in init_options.items():
+            command.extend((f"--{option}", str(value)))
+        preview = run_command(command, cwd=cwd, hostile_pythonpath=True)
+        require_success(preview)
+        assert f"Output directory: {projects / name}" in preview.stdout
+        assert not (projects / name).exists()
+        created = run_command([*command, "--execute"], cwd=cwd)
+        require_success(created)
+        assert (projects / name / "project.yaml").is_file()
+        assert not (cwd / name).exists()
+        require_success(
+            run_command(
+                [str(console), "validate", "--project", str(projects / name)],
+                cwd=cwd,
+            )
+        )
     manifest = arbitrary_cwd / "samples.tsv"
     manifest.write_text(
         "sample_id\tr1_fastq\tr2_fastq\tstrandedness\tcondition\n"

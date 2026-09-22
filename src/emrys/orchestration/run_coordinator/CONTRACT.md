@@ -73,10 +73,10 @@ the nearest ancestor `.env` carrying that marker, rejects unknown, duplicate,
 incomplete, non-printable, relative-path, or unsupported values, and ignores an
 unmarked `.env`. Resolution is command line, existing process environment,
 saved `.env`, then the built-in default; loading never replaces a process value.
-The saved site defaults existing `--site` inputs, Projects home retains its
-bounded discovery role, and log root retains the application-log owner's
-existing scope. Selected Project, profile, runtime, and scientific values are
-not global defaults.
+The saved site defaults existing `--site` inputs, Projects home selects named
+initialization destinations and bounded discovery, and log root retains the
+application-log owner's existing scope. Selected Project, profile, runtime, and
+scientific values are not global defaults.
 
 Doctor also checks the saved site when the Project's default profile is selected
 implicitly. A saved `viking` site does not admit a direct default profile: Doctor
@@ -87,7 +87,11 @@ be selected consistently for Doctor and Run.
 ## No-write and publication boundaries
 
 `emrys init PROJECT_NAME` is dry-run-first and publishes only with `--execute`
-into an absent child of the current canonical writable/searchable directory.
+into an absent child of `EMRYS_PROJECTS_ROOT`, or the current directory when no
+Projects home is selected. The selected parent must be canonical, writable and
+searchable; the preview shows the complete destination. Saved defaults load only
+from the current directory or its ancestors; outside that tree, a process
+`EMRYS_PROJECTS_ROOT` selects the same home.
 Both Project initialization routes accept `--site viking`; saved `EMRYS_SITE`
 supplies the same value when the flag is omitted. The resulting default profile
 then contains the built-in Viking placement rather than direct placement.
