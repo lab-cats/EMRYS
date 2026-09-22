@@ -181,7 +181,8 @@ declares them so. Retain provider checksums: file binding does not prove provena
 | `selector_value` | A FASTA/FAI contig or interval, or a literal regions-file path. |
 
 The [quickstart's guided Project creation](../quickstart.md#3-create-the-project)
-reads the retained EV/PUM1 selection from `step_07_partitions.primary_contigs.tsv`
+reads the retained EV/PUM1 selection from
+[`step_07_partitions.primary_contigs.tsv`](step_07_partitions.primary_contigs.tsv)
 through `--partition-manifest`, while still guiding sample creation. It copies
 the selected rows in order into the Project and checks the names against the
 reference during creation. Other FASTA sequences are not silently included;

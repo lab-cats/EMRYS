@@ -1,47 +1,29 @@
 # EMRYS quickstart: Viking data to Results
 
-This guide takes a first-time CSU Viking user from installation to one complete
-EV/PUM1 analysis. **Run every command on the Viking head node.** EMRYS supplies
-the Viking settings, prepares the scientific tools and submits compute work
-through Slurm.
-
-A **Project** is the folder for one study's inputs, software environment and
-results. An **Analysis** selects its samples and scientific settings; this guide
-uses the name `primary`. A **Run** is the fixed plan EMRYS executes. Its
-**Results** contain the generated data and two HTML reports.
-
-The fastest route is the numbered path below. A separate
-[optional smoke test](#optional-smoke-test) can check the installation and
-Viking execution with tiny made-up data first, but it is not required.
+Run this EV/PUM1 study from the **Viking head node**. EMRYS prepares the tools
+and submits the analysis to Slurm. A **Project** holds the study; each **Run**
+keeps its fixed analysis plan, results and execution records.
 
 ## Before you begin
 
-Log in to Viking using your usual CSU connection. A terminal on your laptop
-alone is not a Viking terminal. Keep the Viking terminal open during setup.
+You need a writable Viking home, permission to download software, and:
 
-You need:
-
-- your normal writable Viking home directory and permission to download software;
-- the delivered six paired EV/PUM1 FASTQs;
+- the six paired EV/PUM1 FASTQ libraries listed below;
 - the delivered reference FASTA and its matching GTF annotation.
 
-The FASTA contains the reference sequences. The GTF describes features on those
-same sequences. EMRYS does not generate or download either file for real data.
-If one is missing, stop and obtain the matching pair from the data provider or
-the reference source. Do not substitute an unrelated FASTA or GTF. The FASTA
-directory must be writable so EMRYS can create or verify its `.fai` and `.dict`
-sidecars.
+The FASTA contains reference sequences; the GTF describes their features.
+EMRYS does not supply these real-study files. If either is missing, obtain the
+matching pair before continuing. The FASTA directory must be writable for
+reference sidecars. Keep any provider checksums with the delivery records.
 
-Stop at an error and retain its output and any printed log path. Do not delete
-partial setup, locks, logs or results to retry. `$HOME` below means your Viking
-home directory. A backslash (`\`) continues the same shell command on the next
-line; keep it as the final character when pasting a block.
+Stop at an error and keep its output and log path. Do not delete partial setup,
+locks or results to retry. `$HOME` means your Viking home; a final backslash
+continues a command on the next line.
 
 ## 1. Install EMRYS
 
-uv manages Python; Pixi supplies the scientific tools and R; Doctor uses renv
-for the required R packages. These installer commands belong together and may
-update your shell startup files:
+Install the tools that manage Python and the scientific software. These commands
+may update your shell startup files:
 
 ```bash
 set -o pipefail &&
@@ -52,7 +34,7 @@ uv --version &&
 pixi --version
 ```
 
-Download EMRYS and install its locked Python environment:
+Download EMRYS and activate its locked Python environment:
 
 ```bash
 cd "$HOME" &&
@@ -63,129 +45,81 @@ uv sync --locked --no-default-groups --group workflow --python 3.14 &&
 source "$EMRYS_SOURCE_ROOT/.venv/bin/activate"
 ```
 
-Confirm that the command is available:
+Check that EMRYS prints its version:
 
 ```bash
 emrys --version
 ```
 
-Continue only after it prints an EMRYS version. Leave this checkout unchanged;
-EMRYS records the implementation used for a Run.
-
-Save the repeated Viking choices:
+Keep this checkout unchanged while a Run uses it. Save the Viking choices:
 
 ```bash
 emrys setup --execute
 ```
 
-Press Enter for the displayed `Projects` home and `viking` site. Leave the
-optional log root empty so each Project keeps its own application logs. Success
-creates a repository-root `.env`. If setup reports an error, stop there.
+Press Enter for the default `Projects` home and `viking` site; leave the optional
+log root empty. The commands below use those defaults. EMRYS supplies:
 
-New Projects created with the saved `viking` site use these supplied placement
-values; you do not enter them during guided initialization:
-
-| Setting | Supplied value |
+| Setting | Requested value |
 | --- | --- |
-| Account | `viking-users` |
-| Partition | `long` |
-| QoS | `normal` |
+| Account / partition / QoS | `viking-users` / `long` / `normal` |
 | Node | One scheduler-selected exclusive node |
-| CPU and memory | All CPUs and all memory on that node |
-| Time limit | 12 hours |
-| Scratch space | A private directory under `/tmp` |
+| CPU and memory | All CPUs and memory on that node |
+| Maximum runtime | 12 hours |
+| Batch temporary files | A private directory under `/tmp` |
 
-These are requested limits, not a performance measurement or a promise that a
-particular Run will finish within them.
+These requests do not guarantee a completion time. Other temporary files follow
+[their operation's storage rules](docs/operations/RUNBOOK.md#temporary-files).
+
+You can now try the [optional smoke test](docs/operations/SMOKE_TEST.md) with
+tiny made-up data. It adds setup and queue time; skip it to start the real study.
 
 ## 2. Gather the study inputs and scientific choices
 
-Keep the delivered FASTQs, FASTA and GTF at their existing absolute Viking
-paths. FASTQ names must end in `_R1`/`_R2` or `_1`/`_2`, followed by `.fastq`,
-`.fq`, or either extension plus `.gz`.
+Keep the FASTQs, FASTA and GTF at their existing absolute Viking paths.
+FASTQ mate names must end in `_R1`/`_R2` or `_1`/`_2`, followed by `.fastq`,
+`.fq`, or either extension plus `.gz`. Use these sample assignments:
 
-If the data provider supplied checksums, retain them with the delivery records.
-This guided path does not ask you to enter them. Project creation records its
-own hashes of the FASTQ bytes it admits; those hashes do not establish the
-files' external provenance.
-
-This guide uses the following delivered EV/PUM1 assignments:
-
-| Sample | Condition | Pairing group | Strandedness |
-| --- | --- | --- | --- |
-| `ABE_EV_2` | `EV` | `2` | `reverse` |
-| `ABE_PUM1_2` | `PUM1` | `2` | `reverse` |
-| `ABE_EV_3` | `EV` | `3` | `reverse` |
-| `ABE_PUM1_3` | `PUM1` | `3` | `reverse` |
-| `ABE_EV4` | `EV` | `4` | `reverse` |
-| `ABE_PUM1_4` | `PUM1` | `4` | `reverse` |
-
-The known analysis values are supplied in the next step. Only the filesystem
-locations depend on your delivery.
+| Sample | Condition | Pairing group |
+| --- | --- | --- |
+| `ABE_EV_2` | `EV` | `2` |
+| `ABE_PUM1_2` | `PUM1` | `2` |
+| `ABE_EV_3` | `EV` | `3` |
+| `ABE_PUM1_3` | `PUM1` | `3` |
+| `ABE_EV4` | `EV` | `4` |
+| `ABE_PUM1_4` | `PUM1` | `4` |
 
 ## 3. Create the Project
 
-Stay in the repository root. EMRYS uses the Projects home saved during setup and
-shows the new Project's destination in the preview.
-
-The next command starts a questionnaire, previews the Project, and asks whether
-to create it:
+From the repository root, start guided creation. EMRYS uses the Projects home
+saved during setup:
 
 ```bash
 emrys init pum1-study \
   --partition-manifest "$EMRYS_SOURCE_ROOT/configs/step_07_partitions.primary_contigs.tsv"
 ```
 
-Enter the absolute path to the reference FASTA, then the absolute path to its
-matching GTF. EMRYS next asks for the absolute FASTQ directory. Confirm that all
-six pairs were detected. At `study strandedness`, enter `reverse` once for this
-delivery. EMRYS then asks for the condition and pairing group for each sample;
-enter the values from the table in step 2. For another study, pressing Enter at
-the study-wide question records the conservative `unknown` value, while `mixed`
-opens a separate strandedness question for each sample.
+Enter the FASTA path, matching GTF path and FASTQ directory. Check that all six
+pairs were found. Enter `reverse` for study strandedness, then enter each
+sample's condition and pairing group from the table above.
 
-The command reads this study's supplied sequence selection: `1`–`22`, `X`, `Y`
-and `MT`. You do not enter names or supply a separate regions file. EMRYS copies
-the selection into the Project and checks it against your reference during
-creation; other reference sequences are excluded. If the delivery uses different
-names, stop and confirm the intended selection rather than guessing.
+The supplied selection covers `1`–`22`, `X`, `Y` and `MT`; there is no regions
+question. EMRYS checks those names against your reference and saves the selection
+inside the Project. If the names differ, stop and confirm the intended selection.
 
-STAR index settings are no longer questionnaire prompts. Preview derives
-`genomeSAindexNbases` from the admitted reference length and should show `14` for
-this delivery. It labels `sjdbOverhang` and `genomeChrBinNbits` automatic until
-creation, when EMRYS validates every FASTQ record during the one hashing pass and
-uses the maximum read length with the admitted reference summary. For this known
-150-base delivery, the creation report should show `sjdbOverhang=149`,
-`genomeSAindexNbases=14`, and `genomeChrBinNbits=18`.
-After the partitions are selected, EMRYS shows both numbered comparison
-directions. Choose the number beside `EV -> PUM1`; this question deliberately has
-no default. At `target change`, enter `A>G`.
-
-EMRYS then discloses the five built-in paired-CMH settings: minimum sample depth
-`1`, mean-depth threshold `50`, FDR threshold `0.05`, common-odds-ratio threshold
-`1.2`, and absolute-difference threshold `0.005`. Review the list and press Enter
-at `Use these paired-CMH defaults?` to accept it once. Entering `no` asks for the
-five values separately. They are computational ranking choices, not biological
-conclusions.
-
-This study has no background cohort, so there is no active background-limit
-question. The preview and saved closed configuration still show
-`background max fraction: 0.01 (inactive)`. Before confirmation, the
-normal preview also shows the strand summary, selected comparison and target,
-all five thresholds, background state, and all three STAR settings.
+Choose the number beside `EV -> PUM1`, and enter `A>G` for target change.
+At `Use these paired-CMH defaults?`, review and accept minimum sample depth `1`,
+mean-depth threshold `50`, FDR `0.05`, common odds ratio `1.2` and absolute
+difference `0.005`. This study has no background cohort.
 
 Review the destination and scientific choices, then answer `y` at
-`Create this Project? [y/N]`. Press Enter or answer `n` to leave everything
-unchanged. Creation uses your reviewed answers without another questionnaire.
-Add `--preview` to the command if you only want a preview.
-
-Wait for `Project ready:` and the path to `project.yaml` before continuing.
-If creation stops instead, keep
-the partial Project and the printed diagnostic.
+`Create this Project? [y/N]`. Enter or `n` leaves the Project uncreated;
+`--preview` offers review only. Creation may take several minutes. Continue only
+after `Project ready:` prints the path to `project.yaml`.
 
 ## 4. Validate the Project
 
-Enter the newly created Project:
+Enter the Project:
 
 ```bash
 cd "$EMRYS_SOURCE_ROOT/Projects/pum1-study"
@@ -197,86 +131,62 @@ Check its inputs and definitions:
 emrys validate
 ```
 
-Continue only after `Project validation: PASS`. Validation does not run the
-analysis or modify the Project.
+Continue only after `Project validation: PASS`.
 
 ## 5. Prepare the scientific tools and storage
 
-If you skipped the [optional smoke test](#optional-smoke-test), continue to
-Doctor below. If you completed it, do not run Doctor yet: first preview the
-prepared tools for reuse in this Project:
+**If you completed the [smoke test](docs/operations/SMOKE_TEST.md), reuse its
+tools before running Doctor:**
 
 ```bash
 emrys runtime discover --from-project "$EMRYS_SOURCE_ROOT/Projects/emrys-smoke"
 ```
 
-`Runtime discovery: READY` means the source generation is compatible. Review
-the preview, then answer `y` at `Admit this runtime inventory? [y/N]`. EMRYS
-reuses that in-memory inspection and performs focused freshness checks before
-writing. Press Enter or answer `n` to leave the Project unchanged. Advanced
-noninteractive automation may add `--execute` to the same command.
+Continue only if it reports `Runtime discovery: READY`. Review the source and
+answer `y` at `Admit this runtime inventory? [y/N]`; wait for
+`Runtime inventory admitted:`. If you skipped the smoke test, skip that command.
 
-Continue after `Runtime inventory admitted:`. The reuse command installs
-nothing. If you skipped the smoke test, there is no source Project to select
-and no runtime-discovery command to run.
-
-Now let Doctor prepare or verify this Project, its storage and the intended
-compute placement:
+Prepare or verify this Project:
 
 ```bash
 emrys doctor --repair
 ```
 
-Doctor first shows a no-write plan. Answer `y` once to approve it. First setup
-normally takes 5–25 minutes; Slurm queue time is separate and may extend the
-wait. A selected smoke runtime does not reinstall passing packages. Doctor
-creates a new generation if the shared owner later needs repair; it never
-changes the sealed generation already selected here.
-
-Continue only after the distinct `EMRYS is ready.` message. If Doctor reports a
-blocker, including a saved-site/profile mismatch, stop and follow its exact
-remediation before running or submitting the Project.
+Review the plan and resource request, then answer `y`. First setup can take
+5–25 minutes; Slurm queue time can extend the wait. Continue only after
+`EMRYS is ready.`. A blocker must be resolved before submitting.
 
 ## 6. Submit and watch the Run
 
-Preview the Run and its Slurm submission:
+Preview the Run:
 
 ```bash
 emrys run
 ```
 
-Review the short summary and answer `y` once. EMRYS prints `JOB_ID`, `JOB_NAME`
-and log paths, then says the job was submitted and completion is not yet
-verified. The head-node prompt returns while Slurm runs. Submit once.
+Review its resource request and answer `y` once. Keep the printed job and log
+paths. Submission returns your prompt while Slurm runs; it is not completion.
 
-Open the dashboard from the Project:
+Watch the submitted work:
 
 ```bash
 emrys watch
 ```
 
-EMRYS automatically selects a sole retained submission or Run. If several are
-plausible, choose the intended one from the picker. Press `r` to recheck the
-fixed selection and its evidence; press `q` to leave. Leaving the dashboard
-does not stop the job.
+If a picker appears, choose the intended submission or Run. Press `r` to
+recheck and `q` to leave; leaving does not stop the job. Use Up to scroll back
+and `G` to follow the newest log lines. The
+[watch guide](docs/operations/RUNBOOK.md#watch-one-fixed-selection)
+has the other controls.
 
-The evidence/log view starts at the newest retained line and follows new text.
-Use `k` or Up to move back, which visibly pauses following; press `G` to return
-to the bottom. Counts such as `99k`/`99j` move several lines. Type `/pattern`
-and Enter to search the retained tail, then `n`/`N` for the next/previous match.
-Its line numbers are relative to the retained tail rather than the whole file.
-
-A queued job may not have created its Run yet. **No Run shown is not a reason to
-submit again.** Keep the job number and request record, wait and watch again.
-
-After the dashboard announces `Run complete`, leave it and inspect the admitted
-Run evidence:
+**A queued job may not show a Run yet. Do not submit it again.**
+After the dashboard announces `Run complete`, leave it and check:
 
 ```bash
 emrys inspect
 ```
 
-Completion requires the distinct `Run complete` message and these four values:
+Continue only when inspection shows `Run complete` and:
 
 ```text
 Run admission: valid
@@ -285,124 +195,65 @@ Scientific Results: complete
 Reporting admission: complete
 ```
 
-If inspection prints a blocker or a different state, follow its `Next supported
-action` rather than submitting again.
+Otherwise follow its `Next supported action` and the
+[recovery guide](docs/operations/TROUBLESHOOTING.md#run-and-reporting-state).
 
 ## 7. Copy and open the reports
 
-`emrys inspect` prints the verified report paths. In your usual CSU file-transfer
-application, copy the Run's complete `results` directory to your computer. Keep
-its folders together so report links continue to work. Open:
+`emrys inspect` prints the verified report paths. Use your CSU file-transfer
+application to copy the Run's **complete `results/` directory** to your computer,
+keeping its folders together. The
+[terminal transfer procedure](docs/operations/RUNBOOK.md#retrieve-reports-from-a-terminal)
+also explains how to compare the copy with the original.
 
-```text
-reports/<RUN_ID>/<RUN_ID>.scientific_report.html
-reports/<RUN_ID>/<RUN_ID>.evidence_report.html
-```
+Open `reports/<RUN_ID>/<RUN_ID>.scientific_report.html`, then its Evidence report
+link. The Scientific report presents CMH-ranked candidates; the Evidence report
+explains inputs, checks and execution. These are computational candidates,
+not validated editing sites. `FWD_like` and `REV_like` are mechanical labels,
+not biological strand assignments.
 
-The Scientific report presents CMH-ranked candidates. The Evidence report
-explains how the data was generated and which checks passed. `FWD_like` and
-`REV_like` are mechanical alignment labels, not biological strand claims. The
-Results are computational candidates, not validated editing sites.
+### Where the data is
 
-Keep the original Project, inputs, runtime, logs and complete Run on Viking so
-the computation remains inspectable and recoverable.
+Inside the copied `results/`, use the generated IDs already present in the
+folder names. Scientific filenames start with `<ANALYSIS_ID>.`; report filenames
+start with `<RUN_ID>.`.
+
+| Folder | Filename suffix | Contents |
+| --- | --- | --- |
+| `editing/<ANALYSIS_ID>/` | `cmh_all_sites.tsv` | All candidates, counts, test outcomes, FDR and effect estimates. |
+| `editing/<ANALYSIS_ID>/` | `cmh_significant_sites.tsv` | The subset passing the configured thresholds. |
+| `editing/<ANALYSIS_ID>/` | `cmh_summary.tsv` | Analysis settings, counts and input hashes. |
+| `editing/<ANALYSIS_ID>/` | `mutation_spectrum.tsv`, `mutation_spectrum.pdf` | Counts by RNA-change type and their plot. |
+| `editing/<ANALYSIS_ID>/` | `depth_delta.pdf` | Read-depth and between-condition difference plots. |
+| `scientific_context/<ANALYSIS_ID>/` | `candidate_context.tsv` | Candidate sequences, positions and context availability. |
+| `scientific_context/<ANALYSIS_ID>/` | `motif_hits.tsv` | Individual motif matches and their positions. |
+| `scientific_context/<ANALYSIS_ID>/` | `sequence_logo.tsv` | Base counts and fractions used for sequence logos. |
+| `scientific_context/<ANALYSIS_ID>/` | `motif_statistics.tsv` | Motif summaries and enrichment calculations. |
+| `scientific_context/<ANALYSIS_ID>/` | `context_receipt.tsv` | Context inputs, settings, file hashes and software provenance. |
+| `reports/<RUN_ID>/` | `scientific_report.html` | Candidate findings, figures and interpretation limits. |
+| `reports/<RUN_ID>/` | `evidence_report.html` | Provenance, checks and execution history. |
+| `reports/<RUN_ID>/` | `report_outputs.tsv` | Report publication record. |
+
+TSV files are tab-separated tables. The
+[analysis contract](src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md#inputs-and-six-output-transaction)
+and [context contract](src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/CONTRACT.md#inputs-and-scientific-outputs)
+explain their detailed meaning.
+
+Keep the original Project, inputs, runtime, logs and **complete Run** on Viking.
+Its `contract/`, `attempts/` and `products/artifact-summary/` retain the full
+[execution and recovery evidence](src/emrys/orchestration/run_coordinator/CONTRACT.md#run-root-contract).
+Copying reports does not replace that evidence or complete scientific review.
 
 ## If execution or reporting did not complete
 
-Read the static state again:
-
-```bash
-emrys inspect
-```
-
-If work may still be running or another host's ownership is unverified, wait and
-inspect again. If inspection offers recovery, preview it:
-
-```bash
-emrys resume
-```
-
-Review the plan and answer `y` only for the selected Run. If Scientific Results
-are complete and reporting is the only remaining work, preview reporting:
-
-```bash
-emrys report
-```
-
-When the preview is correct, execute it:
-
-```bash
-emrys report --execute
-```
-
-If inspection remains blocked, preserve its output, logs, locks, partial files
-and backups. The [recovery guide](docs/operations/TROUBLESHOOTING.md#run-and-reporting-state)
-explains each supported state.
-
-## Optional smoke test
-
-The smoke test uses tiny made-up reads, its own reference and supplied settings.
-It can catch installation, tool-preparation and Viking execution problems before
-you use the real study. It adds Doctor setup, queue and execution time and does
-not prove that the real dataset will fit the same resources or that its
-scientific choices are correct. Skip this section for the fastest route.
-
-From the supplied Projects directory, create the example Project:
-
-```bash
-cd "$EMRYS_SOURCE_ROOT/Projects"
-```
-
-```bash
-emrys init synthetic --output-dir "$EMRYS_SOURCE_ROOT/Projects/emrys-smoke" --execute
-```
-
-Success prints `Synthetic Project: ready` followed by `Project:` and its path.
-Enter it:
-
-```bash
-cd "$EMRYS_SOURCE_ROOT/Projects/emrys-smoke"
-```
-
-Validate the supplied smoke inputs. Continue only after `Project validation:
-PASS`:
-
-```bash
-emrys validate
-```
-
-Prepare and verify its scientific tools. Continue only after `EMRYS is ready.`:
-
-```bash
-emrys doctor --repair
-```
-
-Preview and submit the smoke Run once:
-
-```bash
-emrys run
-```
-
-Watch that submitted Run; leaving with `q` does not stop it:
-
-```bash
-emrys watch
-```
-
-After the dashboard announces completion, verify the admitted outcome:
-
-```bash
-emrys inspect
-```
-
-The supplied smoke study should produce three Step 09 candidate rows, with one
-significant row. Its successful completion is an environment/site confidence
-check, not biological validation. Return to step 2 for the EV/PUM1 Project; step
-5 explains how to reuse the smoke Project's prepared tools.
+Use `emrys inspect` and follow its supported action. The
+[recovery guide](docs/operations/TROUBLESHOOTING.md#run-and-reporting-state)
+explains when to wait, resume or generate reports. Preserve blocked state and
+logs; do not create another Run to bypass a failure.
 
 ## Returning to the Project in a new terminal
 
-Reconnect to the Viking head node and restore the installed command:
+Reconnect to the Viking head node and activate the installed command:
 
 ```bash
 export PATH="$HOME/.local/bin:$HOME/.pixi/bin:$PATH"
@@ -412,19 +263,12 @@ source "$EMRYS_SOURCE_ROOT/.venv/bin/activate" &&
 cd "$EMRYS_SOURCE_ROOT/Projects/pum1-study"
 ```
 
-Then inspect the existing Project:
+For the smoke Project, replace the last path with
+`"$EMRYS_SOURCE_ROOT/Projects/emrys-smoke"`. Then inspect existing work:
 
 ```bash
 emrys inspect
 ```
 
-For the optional smoke Project, use
-`cd "$EMRYS_SOURCE_ROOT/Projects/emrys-smoke"` instead. Reconnecting does not
-require reinstalling EMRYS, recreating the Project or resubmitting work.
-
-## Further help
-
-If a step fails, [troubleshooting](docs/operations/TROUBLESHOOTING.md) explains
-common errors and supported recovery. The
-[runbook](docs/operations/RUNBOOK.md) covers advanced installation, existing
-Projects, runtime repair and execution options.
+Reconnecting does not require installation, Project creation or resubmission.
+The [Runbook](docs/operations/RUNBOOK.md) covers advanced operation.

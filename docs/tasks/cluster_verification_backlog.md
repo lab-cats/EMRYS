@@ -23,12 +23,11 @@ records required dispositions before this temporary document can retire.
 
 The approved [remaining delivery scope](cluster_verification_campaign.md#remaining-delivery-scope)
 includes `INIT-01` through `INIT-03` and the focused Quickstart corrections.
-The `INIT-01`–`INIT-03` source outcomes are implemented and **Verification
-pending**. CV-U07 is likewise **Verification pending**; CV-06, CV-U08 and CV-U18
-remain **Open** until the final focused Quickstart reconciliation, followed by
-their required hosted and novice acceptance. Their new
-implementation acceptance lives in the main backlog; prior selected replay and
-manual-selector behavior does not complete the newly approved requirements.
+The `INIT-01`–`INIT-03` source outcomes and focused guide corrections are
+implemented. CV-06, CV-U07, CV-U08 and CV-U18 are **Verification pending** for
+exact hosted checks and fresh novice acceptance. Their enduring implementation
+acceptance lives in the main backlog; the current guide uses the maintained
+study selection and same-invocation confirmation.
 CV-U06's accounting exception is approved independently of its pending site proof.
 
 ## Verified scope and remaining evidence
@@ -93,13 +92,13 @@ no supplied terminal scientific/reporting evidence.
 | [CV-03](#cv-03-scheduler-and-execution-failure-messages) | P0 | Verification pending | Separate submission, queue, execution, and finalization failures. |
 | [CV-04](#cv-04-workflow-startup-readiness) | P0 | Verification pending | Readiness exercises minimal actual Snakemake startup. |
 | [CV-05](#cv-05-reuse-versus-repeated-repair-work) | P0 | Completed | Explain reused state, repeated checks, and new repair work. |
-| [CV-06](#cv-06-actual-data-onboarding) | P0 | Open | Provide a novice actual-data setup path. |
+| [CV-06](#cv-06-actual-data-onboarding) | P0 | Verification pending | Provide a novice actual-data setup path. |
 | [CV-07](#cv-07-site-and-workload-profile-selection) | P0 | Verification pending | Replace manual Viking resource-profile construction. |
 | [CV-08](#cv-08-compatible-runtime-reuse) | P0 | Verification pending | Reuse an existing compatible managed runtime across Projects. |
 | [CV-09](#cv-09-qualification-scope-and-placement) | P0 | Verification pending | Explain and enforce the qualified execution environment. |
 | [CV-10](#cv-10-external-cancellation-and-recovery) | P0 | Verification pending | Recover safely from externally cancelled jobs when possible. |
 | [CV-11](#cv-11-resource-profile-compatibility) | P0 | Verification pending | Detect and explain resource profiles that cannot fit a node. |
-| [CV-12](#cv-12-unexplained-initial-runtime-qualification-failure) | P0 | Discard | Establish the original runtime-qualification failure's cause. |
+| [CV-12](#cv-12-unexplained-initial-runtime-qualification-failure) | P0 | Discard | Preserve the unknown original cause; causal reconstruction is discarded. |
 | [CV-13](#cv-13-expected-setup-versus-blockers) | P1 | Verification pending | Distinguish expected initial setup needs from failures. |
 | [CV-14](#cv-14-project-directory-layout) | P1 | Verification pending | Supply the tracked Projects home inside the source checkout. |
 | [CV-15](#cv-15-cross-node-active-run-status) | P1 | Verification pending | Show remote active state without implying proven corruption. |
@@ -142,7 +141,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U05](#cv-u05-doctor-first-run-expectations) | Doctor setup notice: 5–25 minutes | Verification pending |
 | [CV-U06](#cv-u06-available-resources) | Use all allocated workflow CPUs and memory | Verification pending |
 | [CV-U07](#cv-u07-projects-directory) | Automatic Projects-directory creation inside the repository | Verification pending |
-| [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Open |
+| [CV-U08](#cv-u08-quickstart-scope-and-language) | One complete, plain-English Viking/PUM1 Quickstart | Verification pending |
 | [CV-U09](#cv-u09-synthetic-project-explanation) | Explain the synthetic-project step | Verification pending |
 | [CV-U10](#cv-u10-unnecessary-quickstart-command) | Remove unnecessary Git command | Completed |
 | [CV-U11](#cv-u11-paste-ready-quickstart-commands) | Clarify paste-ready commands and supplied values | Verification pending |
@@ -152,7 +151,7 @@ discussion. Open questions are not filled with inferred implementation decisions
 | [CV-U15](#cv-u15-dashboard-action-language) | Unclear “Verify/associate again” action | Verification pending |
 | [CV-U16](#cv-u16-dashboard-scrolling) | Keyboard scrolling, no mouse scrolling | Verification pending |
 | [CV-U17](#cv-u17-completion-communication) | Announce completion and correct stale pending steps | Verification pending |
-| [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Open |
+| [CV-U18](#cv-u18-interactive-input-list-creation) | Guided creation of input lists | Verification pending |
 | [CV-U19](#cv-u19-long-term-interactive-cli) | Interactive setup and Run by default | Deferred |
 | [CV-U20](#cv-u20-complete-viking-values-in-quickstart) | Supply expected Viking values inline | Verification pending |
 | [CV-U21](#cv-u21-technical-parameter-assistance) | Determine technical parameters for users | Verification pending |
@@ -580,37 +579,29 @@ Distinct `emrys` commands should be separate copyable blocks so each can explain
 its purpose, expected output, success condition and stop/recovery condition.
 Environment setup may stay grouped only where its commands must execute together.
 
-**Delivered implementation and documentation:** Quickstart now gives one
-paste-ready synthetic path followed by one guided six-library EV/PUM1 path. The
-guided initializer discovers paired FASTQs, records the six explicit biological
-assignments, creates both manifests inside the Project, checks preview inputs
-without full FASTQ hashing, and prints one replay command that hashes each FASTQ
-once during creation. New Viking Projects inherit the current allocation-aware
-placement, workflow, memory, concurrency and native-tool policy; the operator
-does not author a resource profile. Quickstart supplies the sample assignments,
-regions, STAR parameters, analysis thresholds and resource values inline while
-moving detailed Doctor, recovery and format material to their existing owners.
-The real-study path now previews and selects the compatible tools prepared by
-the smoke Project before Doctor, without installing packages or detouring into
-the Runbook. If the shared owner later needs repair, Doctor creates a new
-generation rather than changing the generation retained by another Project.
+**Current delivered path:** The concise Quickstart leads one guided six-library
+EV/PUM1 study from repository-root Init through validation, Doctor, Run and
+Results. It reads the maintained study selection, preserves explicit biological
+assignments and scientific choices, and confirms creation in the same invocation.
+Known Viking requests remain inline. The optional synthetic exercise lives in
+its own guide linked after setup; completing it enables runtime reuse before
+Doctor. Skipping it does not waive readiness or campaign acceptance requirements.
+The output map explains generated tables, plots, reports and retained provenance;
+one terminal-transfer procedure owns copying and local viewing.
 
-**Verification limit:** The Quickstart still spells out `--site viking` at each
-Project-creation boundary. CV-U24 owns the separate persistent-default
-convenience; the current commands remain complete and require no site decision
-from the operator. The integrated standard CI recorded above passed. A fresh
-Viking installation and a novice smoke-to-EV/PUM1 walkthrough remain pending,
-so CV-U08 is **Verification pending**. Historical values remain provenance for
-the configurable per-task minima; they are not the current fixed workflow policy,
-a new whole-Run cluster execution or a performance measurement.
+**Verification limit:** Prior hosted results above describe their identified
+revisions. The current guide and INIT-01–03 changes require exact-source hosted
+checks and a fresh novice Viking walkthrough, so CV-U08 is **Verification
+pending**. Neither source review nor shorter documentation is a site or
+performance result.
 
 The September 16 walkthrough rejected the mandatory smoke-to-real structure,
 command grouping, region/reference language and preview-to-creation handoff.
-Those are negative novice-acceptance results, so CV-U08 is **Open** rather than
-Verification pending. The reported full-hour experience is not yet attributed
+Those negative novice-acceptance results returned CV-U08 to **Open** at that
+checkpoint. The reported full-hour experience is not yet attributed
 to setup, queueing, smoke execution, runtime checks or real analysis.
 
-**Approved direct-to-data revision:** The real six-library EV/PUM1 journey is
+**Earlier direct-to-data revision:** The real six-library EV/PUM1 journey is
 now the numbered default. The synthetic exercise is a clearly optional site
 confidence check with its time tradeoff stated before its commands. Every
 `emrys` command has its own copyable block and adjacent purpose, expected result
@@ -1191,9 +1182,9 @@ new routing; novice Viking/PTY acceptance remains, so CV-U18 stays
 command with a yes/no prompt after the complete review. Approval uses the same
 collected answers and existing creation checks; decline, EOF and explicit
 `--preview` leave the Project absent. Automation retains `--execute`. The
-remaining focused guide reconciliation and exact hosted/novice verification
-remain explicit; earlier replay fixtures are historical evidence for the
-superseded interface.
+guide now follows that delivered interaction. CV-U18 is **Verification pending**
+for exact hosted and novice verification; earlier replay fixtures are historical
+evidence for the superseded interface.
 
 ### CV-U19 Long-term interactive CLI
 
@@ -2472,9 +2463,9 @@ pending.
 partition manifest alongside guided sample assignment. Sample and partition
 conflicts are checked separately; copied samples still require a partition
 manifest. Imported rows preserve their order and source-relative paths. The Quickstart no longer asks for a
-25-name paste. `INIT-03` now also provides in-process confirmation; the final
-focused guide pass still blocks source completion of this card. Current hosted
-regression and institutional acceptance remain required.
+25-name paste. `INIT-03` provides in-process confirmation and the focused guide
+pass now follows that delivered path. CV-06 is **Verification pending** for
+current hosted regression and institutional acceptance.
 
 **Original-input manifest follow-up:** The operator's fresh-user walkthrough
 exposed vendor FASTQ mates named `_1`/`_2` and 25 explicit whole-chromosome
@@ -2990,20 +2981,16 @@ institutional heterogeneous-node acceptance.
 
 ### CV-12 Unexplained initial runtime qualification failure
 
-`CV-DOCS-01` in the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up)
-owns reconciliation of the older acceptance wording below with the current
-**Discard** disposition. Recording that wording defect does not reopen causal
-reconstruction or establish an explanation for E01.
-
 **Finding:** The first repaired runtime failed qualification after successful
-package installation; the failing individual check is still unknown (E01).
-**Acceptance:** Recover sufficient retained diagnostics or reproduce the
-failure at the identified revision/environment, establish its cause, and link
-the correction and a discriminating regression. If evidence cannot establish
-a cause, keep the limitation explicit for a separate disposition; do not close
-it by attributing it to later memory-policy or username defects.
-**Owners/dependencies:** Doctor/runtime owner; CV-02 and CV-01. No new repair
-or root-cause claim is authorized by this record.
+package installation; the failing individual check and original cause remain
+unknown (E01).
+
+**Disposition: Discard.** Causal reconstruction is not a remaining campaign
+acceptance requirement. Do not attribute E01 to later memory-policy or username
+defects without evidence. Ordinary exact-revision runtime/Doctor verification
+remains with CV-01/CV-02; it does not need to reproduce or explain E01.
+`CV-DOCS-01` in the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up)
+records this wording reconciliation, with no new repair or causal claim.
 
 ## P1 outcomes
 
@@ -3043,18 +3030,20 @@ Cover invocation from the checkout and from the Projects parent.
 
 **Selected implementation:** The repository tracks `Projects/README.md` and a
 `.gitkeep`, while ignore rules exclude Project children. Quickstart and Runbook
-enter that parent for synthetic and own-data setup and reconnection; no manual
-directory creation is required. Existing `init NAME` still selects its parent
-through the current directory, and synthetic initialization retains absolute
-`--output-dir` selection. Both reuse canonical-parent/absent-child admission.
+use that supplied home without a manual directory-creation step. Named
+`init NAME` now honors the saved Projects home from the repository root, with
+current-directory fallback when no home is selected. Synthetic initialization
+retains absolute `--output-dir` selection. Both reuse canonical-parent/absent-child admission.
 Existing Projects remain at their original paths; no Project registry or move
 operation is added.
 
-**Verification:** Public onboarding tests exercise synthetic and own-data
+**Earlier verification:** Public onboarding tests exercise synthetic and own-data
 creation beneath the tracked Projects parent. They preserve no-write preview,
 external input references and bytes, ignored Project children, and
 existing-destination refusal. Focused execution and documentation checks passed
-in the locked integrated CI environment; operator walkthrough remains pending.
+in the locked integrated CI environment. The selected-home correction now
+requires the exact hosted and novice evidence recorded by `INIT-01`; earlier
+results do not establish that new behavior.
 
 ### CV-15 Cross-node active Run status
 
@@ -4020,9 +4009,10 @@ data; future measured Doctor tuning remains independently selectable.
 ### CV-27 Terminal-only report access
 
 `CV-DOCS-01` in the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up)
-owns the missing direct Quickstart link claimed below. Generated-report
-portability, links, rendering and institutional transfer remain unverified by
-the tiny-directory fixture; their existing acceptance is preserved.
+records the completed direct Quickstart link to the terminal-transfer
+procedure. Generated-report portability, links, rendering and institutional
+transfer remain unverified by the tiny-directory fixture; their existing
+acceptance is preserved.
 
 **Finding:** The terminal operator declined a suggested web-server/SSH-tunnel
 workflow; visual review was deferred (E04).

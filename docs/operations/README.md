@@ -2,6 +2,8 @@
 
 Choose the guide for the job:
 
+- [Optional Viking smoke test](SMOKE_TEST.md): try the installed workflow with
+  supplied example data before starting your study.
 - [Runbook](RUNBOOK.md): prepare a runtime, execute a Project, submit to Slurm,
   inspect results, or maintain dependencies.
 - [Troubleshooting](TROUBLESHOOTING.md): diagnose a failed or blocked operation

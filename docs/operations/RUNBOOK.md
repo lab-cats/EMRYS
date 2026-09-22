@@ -161,8 +161,8 @@ all stop records if the transport or Run result is uncertain. The
 [stop contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries)
 owns the exact identity, mutation, and evidence rules.
 
-Use the [quickstart](../../quickstart.md) for Viking installation, a first
-synthetic Project and your own study. For other setup needs, start with
+Use the [quickstart](../../quickstart.md) for Viking installation and your study;
+the [smoke test](SMOKE_TEST.md) is optional. For other setup needs, start with
 [a chosen release or commit](#install-a-chosen-release-or-commit) or
 [a standalone compute host](#standalone-compute-host-with-a-managed-runtime).
 This guide also covers institutional runtimes, advanced operation, and Slurm.
@@ -218,7 +218,7 @@ Record the printed full commit ID, including when you selected a tag. Leave
 the checkout and installed environment unchanged for the Project's Runs.
 Choosing a revision identifies the installation; it does not establish that
 it is qualified for your institution or scientific study. Viking users can
-continue with the [optional smoke test](../../quickstart.md#optional-smoke-test).
+continue with the [optional smoke test](SMOKE_TEST.md).
 
 ## Standalone compute host with a managed runtime
 
