@@ -208,11 +208,21 @@ and the CV backlog's current status authority.
 ### F16 — Polish merged-PR tables
 
 [Polish campaign](polish-campaign.md) lines 991–1025 carries two detailed
-tables of merged PRs #116–147. Its live purpose is to avoid reselecting
-finished work; Git already retains routine chronology. Check each row for a
-unique safety rule, decision, or evidence limitation, then keep that fact in
-the appropriate backlog, owner, decision, or evidence home. Removing a PR table
-without that comparison could lose why a proposal was superseded.
+tables of merged PRs #116–147: 15 rows and seven rows, about 35 lines. Its
+live purpose is to avoid reselecting finished work; Git already retains
+routine chronology. The first table is not ready for wholesale replacement:
+lines 1008–1009 uniquely map PR #128/#134 and #129/#132/#133 to their slices,
+and the latter trio has no other current Markdown mapping. Crosswalk those
+facts to owners and evidence before removing any row. The second table is
+more redundant: item decisions at lines 450–457, 469–477, and 514–535 cover
+PR #140–143; decision and reporting-owner text cover #144–145 and #147;
+the canonical BAM contract records the current create-exclusive rule and
+retired loss characterization behind #146. A shorter merged-work route may
+be viable after the first-table crosswalk. Preserve the CodeQL ruleset caveat
+at 984–989, recovery and CS-18 distinctions at 1027–1032, excluded PR #44/#45
+experiments at 1034–1039, and the campaign's evidence ceiling at 35–85. The
+same-file link at line 76 targets the enclosing heading and needs a valid
+destination if that section is reshaped.
 
 ### F17 — Main backlog chronology and run repetition
 
@@ -279,6 +289,15 @@ tests. Before migrating a comparison into dated history, trace Git, tests,
 exact predecessor/current revisions, and oracle values. The prose alone is
 not sufficient retained proof; golden presence is not runtime or biological
 validation.
+The current [golden test](../../tests/contract_integration/independent_contract_goldens/test_independent_contract_goldens.py)
+lines 178–273 consumes the literal schema, header, canonical JSON, receipt,
+and two HTML-digest oracles; those active checks stay beside the tests.
+`git blame` at the pinned source identifies the introduction commits for the
+dated prose blocks: `2fc9e68e` (lines 12–17), `ef321aa1` (19–27),
+`8499b75e` (29–32), `8a75f588` (34–41), `f4435527` (43–49), and
+`4c67b371` (51–57). An introduction commit is not itself the predecessor
+oracle or proof of a byte comparison; recover the old and new literal values
+and retained check result before a history transfer.
 
 ### F21 — Coordinator contract's no-write section
 
@@ -339,12 +358,24 @@ remain with configuration. No relocation is selected yet.
 
 [Execution, evidence, and reporting decision](../design/decisions/execution-evidence-and-reporting.md)
 lines 119–159 gives lasting scientific-fingerprint and reporting-provenance
-rationale; lines 201–209 explain create-only publication. The
-[reporting owner](../../src/emrys/reporting/README.md) owns current mechanics.
-The clearest chronology candidate is the PR #146 and retired callback inventory
-at decision lines 210–225, plus the one-time transition at 253–257. Compare
-the rest with the owner before shortening; preserve the failure/recovery limit
-at 227–232 and old-Run compatibility meaning at 253–257.
+rationale; 161–199 declares independent expectations; 201–209 explains
+create-only publication; 227–251 describes recovery and artifact meaning; and
+253–257 states the old-Run compatibility consequence. These remain decision
+content. The [reporting owner](../../src/emrys/reporting/README.md) owns
+current mechanics. The exact predecessor
+`0ece377ca2b285d6ec2a46f7d2441c78f16409e1` and PR #146 at decision
+lines 210–212 support the retired overwrite and replacement-failure account,
+not merely routine genealogy. Retain them here or transfer them losslessly
+under [history's](../history/README.md) date and origin rules; preserve the
+nondeletion limit at 212–214. A narrower compression candidate is the retired
+symbol enumeration at 216–218 and 223–225 after checking current owners.
+The logical `emrys.reporting.report` producer at line 220 still has current
+compatibility meaning in `_run_report/README.md:31–36` and `models.py:19`;
+surviving callbacks are described in reporting README 114–119 and its tests
+README 13–24. The combined index/summary rule is described in the
+`_run_summary` and `_artifact_index` owner READMEs. No inbound link targets
+the decision's `reporting-lifecycle-compression` heading directly, but retain
+or retarget it deliberately if this section changes.
 
 ### F26 — Alpha carrier note in reporting README
 
@@ -371,18 +402,25 @@ measured utilization or speedup.
 
 ### F28 — Repeated owner boilerplate
 
-Six shell-stage test READMEs, including
-[STAR-index tests](../../tests/stages/star_index/README.md) and
-[alignment tests](../../tests/stages/star_alignment/README.md), repeat the
-same five-line runner/evidence paragraph. Their first paragraphs state
-owner-specific claims. Six corresponding stage owner READMEs, including
-[STAR index](../../src/emrys/stages/star_index/README.md) and
-[alignment](../../src/emrys/stages/star_alignment/README.md), repeat a generic
-execution paragraph. Compare owner-specific exceptions before proposing one
-shared explanation from [tests index](../../tests/README.md) or
-[stage map](../../src/emrys/contracts/STAGE_MAP.md). Each owner must retain its
-distinct command, contract, oracle, and evidence limit. The possible saving
-has not been measured or approved.
+Six shell-stage test READMEs (`canonical_bam`, `duplicate_marking`,
+`fasta_sidecars`, `split_n_cigar`, `star_alignment`, and `star_index`) repeat
+the same five-line runner/evidence paragraph at lines 5–9: 30 lines total.
+Their first paragraphs state owner-specific coverage and evidence limits.
+Six corresponding production READMEs repeat the same three-line execution
+paragraph: `duplicate_marking` 10–12, `split_n_cigar` 11–13, and the other
+four 12–14, or 18 lines total. The shared Run, worker, and grouped-validator
+rules already live in the [stage index](../../src/emrys/stages/README.md)
+lines 28–40; [stage test index](../../tests/stages/README.md) lines 13–16
+already owns common evidence limits and could route to the common task runner.
+Replacing each production paragraph with a one-line link while retaining its
+two exact help commands saves about 12 lines; replacing each test paragraph
+with a one-line parent link and adding four or five shared lines saves about
+19–20 lines. The combined candidate is roughly 31–32 net documentation lines
+across 12 files, before a diff verifies the exact count. Preserve local
+commands, coverage, oracle, recovery, and evidence limits. The ten stage
+contracts repeat some map/evidence links, but their local aliases, validators,
+publication, and recovery rules do not justify contract deletion. Step 09 is
+an analysis owner outside this candidate. No reduction is approved or made.
 
 ### F29 — Library subowner navigation
 

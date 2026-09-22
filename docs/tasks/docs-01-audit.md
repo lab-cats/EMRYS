@@ -74,6 +74,11 @@ permission to change or delete the source.
   F21. A tiny source-bound `--version` fixture could not reach the CLI because
   the available Python lacks `jsonschema`; it supplies no behavioral result
   for F08. No dependency was installed and no product behavior was verified.
+- The eighth source-comparison pass checked maintenance-surface candidates
+  against current tests, owner documents, and Git provenance at the same source
+  after audit-only commit `b4356f48`. It refined F16, F20, F25, and F28. The
+  quantified F28 reduction remains a proposal, and no source, test, or
+  retained evidence was changed.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -122,7 +127,7 @@ and the boundary for each row.
 | [F13](docs-01-discoveries.md#f13-doctor-profile-proposal) | Prior-revision proposal | Polish campaign's dated audit says Doctor has no `--profile`; the public option now exists. | Reconcile proposal with accepted work and tests. |
 | [F14](docs-01-discoveries.md#f14-old-source-attestation-cost-candidate) | Recheck candidate | Old optimization Git-call finding counts a prior revision's source calls, not necessarily current execution. | Re-evaluate the current source before selecting optimization work. |
 | [F15](docs-01-discoveries.md#f15-cv-u22-interim-status-prose) | Preserve chronology | CV-U22's dated checkpoints explain why the card returned to Open; compression has no demonstrated benefit yet. | Keep the causal record unless a concrete reader conflict is found. |
-| [F16](docs-01-discoveries.md#f16-polish-merged-pr-tables) | Compression candidate | Polish campaign repeats merged-PR chronology in two long tables. | Check unique decisions before leaving routine genealogy to Git. |
+| [F16](docs-01-discoveries.md#f16-polish-merged-pr-tables) | Compression candidate | Polish campaign repeats merged-PR chronology in two tables; the first retains unique slice mappings. | Crosswalk unique mappings before compressing routine genealogy. |
 | [F17](docs-01-discoveries.md#f17-main-backlog-chronology-and-run-repetition) | Preserve row evidence | One hosted run supports three distinct backlog rows; repeated row-local citations may be warranted. | Check only routine genealogy for safe compression. |
 | [F18](docs-01-discoveries.md#f18-history-filing-rule-and-existing-compendium) | Evidence placement | History requires dated topic files, yet its compendium is undated and backlog names it as the CV evidence transfer destination. | Decide legacy exception versus dated records after mapping links and origins. |
 | [F19](docs-01-discoveries.md#f19-doctor-experiment-evidence-in-workflow-readme) | Evidence placement | CI workflow README repeats a shorter Doctor experiment summary already detailed in the CV backlog. | Use the CV card as evidence source before considering a history transfer. |
@@ -131,10 +136,10 @@ and the boundary for each row.
 | [F22](docs-01-discoveries.md#f22-coordinator-cross-owner-detail) | Ownership question | Coordinator, logging, runtime, and Runbook descriptions overlap but have different trust boundaries. | Preserve each owner's guarantee and useful cross-links. |
 | [F23](docs-01-discoveries.md#f23-init-details-in-the-runbook) | Compression candidate | Runbook Init guidance mixes operator choices with hashing and file-identity internals. | Retain actionable warnings; place exact mechanics beside coordinator/config owners. |
 | [F24](docs-01-discoveries.md#f24-named-profile-procedure-placement) | Audience question | Config guide holds a long named-profile operator procedure while Runbook routes there. | Decide whether Runbook needs a concise command path and config guide the format. |
-| [F25](docs-01-discoveries.md#f25-reporting-decision-versus-migration-history) | Compression candidate | Reporting decision record includes implementation and PR migration detail beside lasting rationale. | Check unique rationale, then rely on reporting owner/Git for mechanics. |
+| [F25](docs-01-discoveries.md#f25-reporting-decision-versus-migration-history) | Compression candidate | Reporting decision retains predecessor failure provenance and some retired-symbol inventory. | Preserve predecessor and recovery limits; compare narrow symbol inventory with current owners. |
 | [F26](docs-01-discoveries.md#f26-alpha-carrier-note-in-reporting-readme) | Preserve API guidance | Reporting README's five-line carrier note mixes a brief migration phrase with current collaborator API guidance. | Retain current types and positional guidance; isolated trimming has negligible value. |
 | [F27](docs-01-discoveries.md#f27-old-fixed-resource-provenance) | Compression candidate | Resource-profile README repeats old 12-core provenance. | Retain current resource contract and historical evidence at their owners. |
-| [F28](docs-01-discoveries.md#f28-repeated-owner-boilerplate) | Compression candidate | Owner test and stage READMEs repeat near-identical generic paragraphs. | Compare exceptions, then use one shared explanation and local differences. |
+| [F28](docs-01-discoveries.md#f28-repeated-owner-boilerplate) | Compression candidate | Six stage owners and their tests repeat 48 generic lines. | Evaluate a roughly 31–32-line net reduction while retaining commands and owner-specific limits. |
 | [F29](docs-01-discoveries.md#f29-library-subowner-navigation) | Navigation mismatch | Tests point to a library index that does not route readers to six documented Python subowners. | Add a concise subowner route without copying contracts. |
 | [F30](docs-01-discoveries-continued.md#f30-dashboard-reporting-stage-text) | Product-facing text | Dashboard still describes three reporting transactions and a final workflow target after reporting. | Check current workflow/reporting owners and historical log aliases before selecting a product correction. |
 | [F31](docs-01-discoveries-continued.md#f31-historical-slurm-username-recovery-advice) | Recovery wording | Troubleshooting gives an undated upgrade instruction for a Slurm username incident whose submission fix is already present. | Preserve incident evidence and give current-version diagnosis. |
