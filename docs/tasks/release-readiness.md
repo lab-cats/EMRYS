@@ -73,6 +73,7 @@ local navigation labels, not new backlog items.
 | `R13` | Saved defaults and Projects home | `emrys setup` requires an EMRYS Git checkout and writes `.env` there; its default Projects home is checkout-relative. | Preserve this route for a checkout release, or resolve the existing setup/onboarding owner before promising a wheel-only novice path. | `RELEASE-01`; onboarding owner |
 | `R14` | Performance and capacity claims | Allocation-aware profiles, Doctor timing, scheduler observations, and selected hosted runs describe configuration or dated operation; the optimization campaign audited an older revision. | Decide whether release notes make any quantitative promise; refresh affected candidates against the selected source, and measure comparable whole-operation results only if promised. | `RELEASE-01`; optimization campaign, `SITE-PARITY-01`, conditional `SETUP-02` |
 | `R15` | Cross-owner release coverage | The architecture index maps ingestion, stages, evidence, Analysis, workflow, reporting, contracts, and tests; all 61 tracked package assets in scope match static patterns, but the wheel test samples 43 and no complete installed Run has been exercised. | Trace the selected public journey through each relevant owner and its packaged assets, callers, validators, contracts, and tests; record what remains unexamined. | `RELEASE-01`; functional-owner inventory and existing owners |
+| `R16` | Input-admission claim | Named Init checks individual FASTQ records on creation, but not R1/R2 ID or count concordance; Project validation and specialist manifest validation are narrower, and the optional pair helper checks only a prefix of IDs. | State exactly which input checks a release promises; trace the selected checkout study through public Init, validation, and first Run preview, and route any stronger pairing claim to the ingestion owner. | `RELEASE-01`; ingestion/onboarding owners |
 
 ## Discovery record
 
@@ -460,6 +461,32 @@ analysis, evidence, and reporting paths relevant to those candidates have
 changed since then. Refresh affected source/caller conclusions at the selected
 release revision before relying on them; keep the detailed candidate record in
 its existing owner rather than create a release performance backlog.
+One material delta is already visible: the campaign's Step 07 estimate of
+`3 * P * B` logical wrapper reads for `P` partitions and `B` common input bytes
+is stale. Current [task execution](../../src/emrys/orchestration/run_coordinator/task.py)
+snapshots declared inputs at initial binding, entry, before and after native
+publication, and final validation on a successful Step 07 path. The
+[materializer](../../src/emrys/orchestration/run_coordinator/materialization.py)
+still binds all samples' orientation BAMs and indexes to each partition. This
+implies at least `5 * P * B` requested logical common-input bytes in that path
+(125 traversals when `P = 25`), before producer, validator, inspection, and
+branch-dependent reads. It is not a physical I/O or elapsed-time measurement;
+recheck exact caller and mutation-boundary guarantees in the campaign owner
+before proposing consolidation.
+
+Other high-value source candidates still need measurement: Step 06 retains
+separate input count and extraction passes; Step 08 still materializes complete
+VCF and candidate tables, while its Python validator also loads sites rows.
+The inspection-hashing candidate extends beyond `inspect`, `resume`, and
+`report`: [watch](../../src/emrys/orchestration/run_coordinator/control.py)
+invokes Run inspection on each refresh. These are current source mechanisms,
+not evidence of a material speedup from any proposed change. Keep any
+caller-complete design and paired trials in the optimization campaign.
+
+The optional [FASTQ pair helper](../../src/emrys/ingestion/sample_manifest_admission/README.md#fastq-byte-and-diagnostic-boundary)
+makes 21 logical passes per mate at its default prefix setting, but sits outside
+the normal DAG. Its cost belongs to an operator-command measurement only if
+that specialist interface is promised; it cannot be counted as pipeline savings.
 
 Current [allocation-aware policy](../../src/emrys/orchestration/run_coordinator/resources/default_execution.yaml)
 and Viking's exclusive-node request are resource plans, not utilization or
@@ -516,9 +543,20 @@ sources; preserve that authority while extending only a missing installed
 operation check. Do not create a second exhaustive asset roster merely because
 the wheel test samples assets.
 
+For reporting, the package patterns and wheel test include the single HTML
+template and stylesheet. The [reporting owner](../../src/emrys/reporting/README.md)
+binds them to report preparation and receipts; its
+[coordinator tests](../../tests/orchestration/run_coordinator/test_reporting_operation.py)
+cover read-only preview, complete-bundle reuse, processing-only refusal, and
+publication boundaries. The [Runbook](../operations/RUNBOOK.md#retrieve-reports-from-a-terminal)
+defines complete-tree transfer and checksum comparison. These checks still do
+not exercise the public installed `emrys report` command against a complete
+candidate Run or render/review the copied bundle. Keep those as separate proof
+items if the release promises report regeneration or portable visual Results.
+
 | Owner boundary | Next targeted release check if its operation is promised |
 |---|---|
-| Ingestion and reference admission | Trace manifests, FASTQ/reference identities, no-write refusal, and packaged resources from Init through the first Run plan. Keep the limited `validate manifest` and `init manifests` contracts distinct. |
+| Ingestion and reference admission | Trace manifests, FASTQ/reference identities, preview no-write behavior, publication-time incomplete-state recovery, and checkout/package resources from Init through the first Run plan. Keep the limited `validate manifest` and `init manifests` contracts distinct (R16). |
 | Workflow, processing Stages `00`–`08`, and Evidence `02b`/`03` | For each selected DAG node, map packaged producer/validator assets, native/R tools, declared inputs, outputs/receipts, independent checks, and smallest real installed exercise. Preserve evidence branches as distinct from scientific completion. |
 | Analysis `09`/optional `10` and external providers | Check selected module ID/version, entry points, dependencies, output/validator boundary and reporter pairing; leave method review with `SCI-AUDIT-01` and collaborator proof with `EXTENSION-01`. |
 | Reporting and copied Results | Trace template, stylesheet, figure and data-input resource closure, exact receipt and public `emrys report` behavior; verify complete-tree transfer and relative links independently of rendered visual review. |
@@ -544,6 +582,36 @@ paths changed. Record an observed fact, exact source revision, remaining gap,
 owner, and proposed proof for each finding. Unselected operations receive an
 explicit limited or unsupported disposition rather than a full execution
 campaign.
+
+### R16 — Input-admission claim
+
+The [onboarding owner](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+combines guided FASTQs with the checkout-supplied
+[study selection](../../configs/step_07_partitions.primary_contigs.tsv).
+Creation streams and hashes each FASTQ and checks individual record structure;
+preview stops before that read. [Project validation](../../src/emrys/orchestration/run_coordinator/normalization.py)
+readmits files and reference compatibility but does not repeat full FASTQ
+record inspection by default. The specialist `validate manifest` has a narrower
+contract and its optional file check establishes existence, not record or
+scientific correctness. The separate [pair helper](../../src/emrys/ingestion/sample_manifest_admission/README.md)
+compares total record counts and a selected leading prefix of normalized IDs;
+it is outside the normal Run path and does not prove complete mate concordance.
+Init itself does not compare R1/R2 IDs or total record counts; an
+[owner test](../../tests/orchestration/run_coordinator/test_onboarding.py)
+deliberately admits different mates. File hashes also do not prove provider
+provenance. Keep these evidence layers explicit in the release promise.
+
+Existing source tests cover preview, source-study selection, changed-input
+refusal, and reference bounds. A publication-time freshness failure may retain
+an incomplete create-absent Project directory without `project.yaml` for
+recovery; do not describe every refusal as leaving no files. The isolated-wheel
+smoke uses explicit fixture manifests and ends at Init/validation. For the
+proposed pinned-checkout route, one tiny public candidate check can use the
+maintained study selection through Init preview, creation, validation, and
+first Run preview, comparing the tree only for the operations documented as
+read-only. If full mate concordance is promised, decide its explicit admission
+or operator evidence contract with the ingestion owner; do not silently merge
+the helper's limited prefix policy with strict Run input admission.
 
 ## Conditional owner routing
 
@@ -574,7 +642,7 @@ R11.
    ancestry, clean-tree state, included PRs, and excluded sibling work. Decide
    whether proposed changes such as PR #316 enter the candidate. If the head
    changes later, identify which artifact and evidence checks it invalidates.
-2. **Write the release promise (R02/R03/R14).** For prerelease and v1 separately,
+2. **Write the release promise (R02/R03/R14/R16).** For prerelease and v1 separately,
    classify each public operation and environment as promised, limited, or
    unsupported. For each selected combination, state required inputs, success
    and refusal behavior, platform/resource bounds, and the owner of its proof.
@@ -587,7 +655,7 @@ R11.
    version, source, and artifact identities are checked. Record why rejected
    routes do not meet the chosen scope. Decide product numbering independently
    of schema IDs and obsolete-Run policy.
-4. **Route only selected gaps to existing owners (R05/R08–R10/R13/R15).** Map
+4. **Route only selected gaps to existing owners (R05/R08–R10/R13/R15/R16).** Map
    each promise across the owner/source/resource/validator chain to an existing
    public check or an exact missing scenario. Before
    any separately approved implementation, search adjacent owners for
