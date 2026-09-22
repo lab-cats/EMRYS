@@ -301,7 +301,9 @@ def _projects_home_children(selected: str) -> tuple[Path, ...]:
             )
         children = tuple(sorted(home.iterdir(), key=lambda path: path.name))
     except OSError as exc:
-        raise OnboardingError(f"Could not inspect EMRYS_PROJECTS_ROOT {home}: {exc}") from exc
+        raise OnboardingError(
+            f"Could not inspect EMRYS_PROJECTS_ROOT {home}: {exc}"
+        ) from exc
     if len(children) > 256:
         raise OnboardingError(f"EMRYS_PROJECTS_ROOT has more than 256 entries: {home}")
     return children
@@ -2345,10 +2347,14 @@ def _confirm_admission(question: str) -> bool:
 
 def _browse_runtime_donor(borrower: Path) -> Path | None:
     if not _interactive_terminal():
-        raise OnboardingError("--from-project without SOURCE needs an interactive terminal")
+        raise OnboardingError(
+            "--from-project without SOURCE needs an interactive terminal"
+        )
     selected = os.environ.get("EMRYS_PROJECTS_ROOT", "").strip()
     if not selected:
-        raise OnboardingError("Choose EMRYS_PROJECTS_ROOT before browsing prepared Projects")
+        raise OnboardingError(
+            "Choose EMRYS_PROJECTS_ROOT before browsing prepared Projects"
+        )
     donors = tuple(
         project
         for child in _projects_home_children(selected)
@@ -2383,7 +2389,9 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
             raise OnboardingError("--replace requires --from-project")
         if donor == "":
             if arguments.execute or replace_existing:
-                raise OnboardingError("--execute and --replace require a named source Project")
+                raise OnboardingError(
+                    "--execute and --replace require a named source Project"
+                )
             donor = _browse_runtime_donor(project_definition_path(arguments.project))
             if donor is None:
                 print("No source Project selected; no files were written.")

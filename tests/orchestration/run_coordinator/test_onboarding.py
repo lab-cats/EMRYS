@@ -3275,15 +3275,18 @@ def test_runtime_reuse_browse_with_no_donor_continues_without_publication(
     monkeypatch.setattr(onboarding.sys, "stderr", errors)
     before = _tree_bytes(tmp_path)
 
-    assert onboarding.discover_runtime_from_args(
-        argparse.Namespace(
-            project=borrower,
-            from_project="",
-            execute=False,
-            replace=False,
-            verbose=False,
+    assert (
+        onboarding.discover_runtime_from_args(
+            argparse.Namespace(
+                project=borrower,
+                from_project="",
+                execute=False,
+                replace=False,
+                verbose=False,
+            )
         )
-    ) == 0
+        == 0
+    )
     assert "No other Project with a runtime inventory" in errors.getvalue()
     assert "no files were written" in output.getvalue()
     assert _tree_bytes(tmp_path) == before
