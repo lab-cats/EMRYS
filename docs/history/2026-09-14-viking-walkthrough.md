@@ -26,7 +26,7 @@ completion dates.
 | Source contribution | Commit | Recorded |
 | --- | --- | --- |
 | Initial matrix walkthrough, manual setup, bounded approval, and first memory observation | `cf9c18ad98ed64ea78534ccd6bdc93e57d03ec2b` | 2026-09-14 14:45 |
-| Hosted disposable-Slurm result and its limit | `bc277e270f1caa7cf47a0b8fdd1e464d62ba2a53` | 2026-09-14 15:46 |
+| Hosted disposable-Slurm result and limit; Quickstart own-data and reconnect/recovery guidance | `bc277e270f1caa7cf47a0b8fdd1e464d62ba2a53` | 2026-09-14 15:46 |
 | Further memory diagnostics and operator-approved fallback | `4d8c7a05976898b9bb40a860b69c1e6ae2c2f416` | 2026-09-14 17:27 |
 | Username startup failure and source correction | `9b439d433ebb9a5aa4db21e8484dce2ba4361a2c` | 2026-09-14 18:08 |
 | Campaign E01–E12 register, synthetic resume, and actual-data continuation | `1ea21855a4e6db8bc54268e9c6869fa362d424eb` | 2026-09-14 20:03 |
@@ -149,7 +149,9 @@ This interpretation supplies no terminal scientific or reporting result.
 ## Additional identities and dated decisions
 
 - The initial selected revision was
-  `7c427f0ca50de17bbcc9983571fa49acf167f187`. Manual setup job `614786`
+  `7c427f0ca50de17bbcc9983571fa49acf167f187`. The operator separately
+  reported successful fresh installation and synthetic Project validation
+  before the later execution observations. Manual setup job `614786`
   reported 71 R packages restored in 600 seconds. The operator later supplied
   successful head-node finalization for qualification identity
   `cfcf7f788fd9d949f1a23f17793ecf22ba1e05f1023bc3b49065eebc0280186f`;
@@ -174,15 +176,25 @@ This interpretation supplies no terminal scientific or reporting result.
 - At observer revision `c52178d2ba48c0a39f061e20f016b4f54a471ab3`,
   missing Slurm memory metadata blocked partial-node admission. Automated
   repair job `618134` passed runtime inspection and stopped at that check.
+  The source forbade forging scheduler memory variables or enlarging the
+  allocation to bypass admission. Its initial direction requested the first
+  actual Run diagnostic before selecting a correction; the later approved
+  fallback below followed Doctor diagnostics and does not establish that an
+  actual Run diagnostic occurred.
   Diagnostic job `618190` on `node009` exposed four CPUs, neither Slurm memory
   variable, and effectively unlimited visible cgroup-v1 memory. The operator
   then approved using process-visible RAM without a separate workflow budget
   or complete-node CPU requirement while preserving observed cgroup/scheduler
   limits and source attribution. Doctor was later reported `READY`; science
   remained pending at that point, and earlier generic failures stayed unknown.
-- The selected interface decisions included `--site viking` for the head-node
-  Project journey, Doctor-managed qualification, `--compute` as an advanced
-  route, and a rough 5–15-minute first-setup allowance. Repair avoided the
+- The selected interface decisions included `--site viking` on both
+  Project-creation commands, writing the default Viking profile for Run,
+  resume, and standalone reporting; Doctor-managed qualification; and
+  `--compute` as an advanced route. The Quickstart covered synthetic and
+  own-data journeys, reconnecting, and routine recovery. Normal Doctor
+  output named phases and gave a rough 5–15-minute first-setup allowance;
+  color supplemented text while redirected output stayed plain. Complete
+  package output was retained beside the maintenance log. Repair avoided the
   observed unwritable `/local/tmp`. These are dated decisions/observations;
   current behavior and acceptance belong to their present owners.
 - The matrix records the shared correction that forwarded four login-name
