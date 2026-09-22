@@ -139,37 +139,49 @@ def write_fixture(root: Path) -> Path:
 
 def test_quickstart_tracks_guided_init_and_viking_profile() -> None:
     quickstart = (REPO_ROOT / "quickstart.md").read_text(encoding="utf-8")
+    plain = " ".join(quickstart.split())
+    guided = quickstart.split("## 3. Create the Project", 1)[1].split(
+        "## 4. Validate the Project", 1
+    )[0]
+    guidance = " ".join(guided.split())
     ordered_guidance = (
-        "Enter the absolute path to the reference FASTA",
-        "asks for the absolute FASTQ directory",
-        "At `study strandedness`, enter `reverse`",
-        "At `optional regions file`",
-        "shows both numbered comparison",
-        "discloses the five built-in paired-CMH settings",
-        "normal preview also shows the strand summary",
-    )
-    positions = [quickstart.index(value) for value in ordered_guidance]
-
-    assert positions == sorted(positions)
-    assert (
-        "the delivered six paired EV/PUM1 FASTQs and their checksums" not in quickstart
-    )
-    assert "If the data provider supplied checksums, retain them" in quickstart
-    assert "Synthetic Project: ready" in quickstart
-    for value in (
+        "emrys init pum1-study",
+        "Enter the FASTA path, matching GTF path and FASTQ directory",
+        "Enter `reverse` for study strandedness",
+        "there is no regions question",
+        "first word after `>` in each FASTA header",
         "`EV -> PUM1`",
         "`A>G`",
-        "minimum sample depth\n`1`",
+        "`Use these paired-CMH defaults?`",
+        "normal preview's strand summary",
+        "`Create this Project? [y/N]`",
+        "`Project ready:`",
+    )
+    positions = [guidance.index(value) for value in ordered_guidance]
+    assert positions == sorted(positions)
+    assert "--partition-manifest" in guided
+    assert "Keep any provider checksums with the delivery records" in plain
+    assert "The FASTA contains reference sequences" in plain
+    assert "If either is missing, obtain the matching pair" in plain
+    assert "`reverse: 6`" in guidance
+    assert "`Background max fraction: 0.01 (inactive)`" in guidance
+    for setting in ("genomeSAindexNbases", "sjdbOverhang", "genomeChrBinNbits"):
+        assert f"`{setting}`" in guidance
+    assert "automatic at creation from the admitted reads and reference" in guidance
+    for value in (
+        "minimum sample depth `1`",
         "mean-depth threshold `50`",
-        "FDR threshold `0.05`",
-        "common-odds-ratio threshold\n`1.2`",
-        "absolute-difference threshold `0.005`",
-        "`background max fraction: 0.01 (inactive)`",
+        "FDR `0.05`",
+        "common odds ratio `1.2`",
+        "absolute difference `0.005`",
+    ):
+        assert value in guidance
+    for value in (
         "`viking-users`",
         "`long`",
         "`normal`",
         "One scheduler-selected exclusive node",
-        "All CPUs and all memory on that node",
+        "All CPUs and memory on that node",
         "12 hours",
         "A private directory under `/tmp`",
     ):
@@ -180,7 +192,7 @@ def test_quickstart_tracks_guided_init_and_viking_profile() -> None:
     assert readiness.index("emrys runtime discover --from-project") < readiness.index(
         "emrys doctor --repair"
     )
-    assert "If you skipped the [optional smoke test]" in readiness
+    assert "If you skipped the smoke test, skip that command" in readiness
 
 
 def validate(

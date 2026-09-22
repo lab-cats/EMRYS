@@ -97,6 +97,7 @@ from emrys.orchestration.run_coordinator.run_implementation import (
 )
 from tests.orchestration.run_coordinator.fixture import build
 from tests.orchestration.run_coordinator.fixtures.b5_doubles import with_owner_doubles
+from tests.tools import real_synthetic_e2e as e2e_driver
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 POLICY_CHECKS = load_runtime_policy()
@@ -3056,6 +3057,7 @@ def test_public_run_dry_run_is_no_write(
     arguments.profile = "ci"
 
     projections = {}
+    planned_roots = {}
     workspace = arguments.project.parent
     for level in ("normal", "verbose"):
         monkeypatch.setattr(
@@ -3071,11 +3073,15 @@ def test_public_run_dry_run_is_no_write(
         captured = capsys.readouterr()
         assert captured.out == ""
         projections[level] = captured.err
+        planned_roots[level] = e2e_driver.parse_run_plan(
+            captured.err, workspace, no_write=True
+        )
         assert "Dry-run complete" in captured.err
         assert "Execute this plan?" not in captured.err
         assert not (workspace / "runs").exists()
         assert not (workspace / "logs").exists()
 
+    assert planned_roots["normal"] == planned_roots["verbose"]
     normal = projections["normal"]
     assert "Run: " in normal
     assert f"Location: {workspace}/runs/" in normal
@@ -4501,6 +4507,15 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
         assert captured.out.startswith("JOB_ID=812345\n")
         assert receipt_path.is_file() and not prepared_path.exists()
         (request_path,) = (first.workspace / "logs").glob("submission-*/request.json")
+        assert (
+            e2e_driver.parse_submission_request(
+                subprocess.CompletedProcess(
+                    ("emrys", "resume"), 0, captured.out, captured.err
+                ),
+                first.workspace,
+            )
+            == request_path.parent
+        )
         request = json.loads(request_path.read_bytes())
         assert request["command"] == "resume"
         assert request["requested_run"] == first.run.run_id
@@ -6031,9 +6046,10 @@ def test_standalone_report_uses_project_slurm_placement(
 
     assert control.report_from_args(parser.parse_args([*argv, "--execute"])) == 0
     assert calls == [False] and len(submissions) == 1
-    execution = capsys.readouterr().err
-    assert "Exclusive allocation: requested" in execution
-    assert "all node CPUs (capacity unknown until execution)" in execution
+    execution = capsys.readouterr()
+    assert "Exclusive allocation: requested" in execution.err
+    assert "all node CPUs (capacity unknown until execution)" in execution.err
+    assert execution.out.startswith("JOB_ID=812345\n")
     submitted = submissions[0]
     (request_path,) = (tmp_path / "logs").glob("submission-*/request.json")
     request = json.loads(request_path.read_bytes())
@@ -6053,8 +6069,6 @@ def test_standalone_report_uses_project_slurm_placement(
         f" report {run_root.name} --project {project} --profile {profile} "
         in submitted.batch_script
     )
-    assert capsys.readouterr().out.startswith("JOB_ID=812345\n")
-
     admitted = load_execution_profile(config_path=profile)
     monkeypatch.setenv(scheduler.DELEGATE_MARKER_ENV, scheduler.DELEGATE_MARKER)
     monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, admitted.binding_sha256)

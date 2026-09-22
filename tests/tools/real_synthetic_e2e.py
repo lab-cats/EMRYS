@@ -38,7 +38,7 @@ TERMINAL_STATES = frozenset(
         "TIMEOUT",
     }
 )
-RUN_ROOT = re.compile(r"^Run root: (/.+/runs/run-[a-f0-9]{64})$", re.MULTILINE)
+RUN_ROOT = re.compile(r"^Location: (/.+/runs/run-[a-f0-9]{64})$", re.MULTILINE)
 REQUEST_ROOT = re.compile(
     r"^Submission request: (/.+/logs/submission-[0-9a-f]{32})$", re.MULTILINE
 )
@@ -634,8 +634,12 @@ def parse_submission(text: str, log_dir: Path) -> Job:
     return job
 
 
-def parse_submission_request(text: str, workspace: Path) -> Path:
-    request = Path(_one(REQUEST_ROOT, text, "submission request", "submit-slurm"))
+def parse_submission_request(
+    output: subprocess.CompletedProcess[str], workspace: Path
+) -> Path:
+    request = Path(
+        _one(REQUEST_ROOT, output.stderr, "submission request", "submit-slurm")
+    )
     if request.parent != workspace / "logs":
         raise DriverError(
             "submit-slurm", "submission request belongs to another Project"
@@ -1867,7 +1871,7 @@ def run_driver(
             raise
         try:
             request_root = parse_submission_request(
-                resume_submission.stdout, paths.slurm_workspace
+                resume_submission, paths.slurm_workspace
             )
             request = slurm_submission.select_submission_request(
                 projects["slurm"], request_root.name

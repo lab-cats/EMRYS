@@ -35,16 +35,6 @@ def _argv(root: Path, *, execute: bool = False) -> list[str]:
     return [*values, "--execute"] if execute else values
 
 
-def _plan(workspace: Path) -> str:
-    return "\n".join(
-        (
-            f"Run root: {workspace}/runs/run-{'a' * 64}",
-            "Reporting: automatic after scientific work",
-            "Dry-run complete; no workspace state was written.",
-        )
-    )
-
-
 def _submission(logs: Path, job_id: str = "42") -> str:
     stem = logs / f"emrys-{'a' * 32}-{job_id}"
     return f"JOB_ID={job_id}\nOUT={stem}.out\nERR={stem}.err\n"
@@ -266,7 +256,6 @@ def test_run_submission_and_wait_failure_cancel_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     workspace = tmp_path / "workspace"
-    run_root = driver.parse_run_plan(_plan(workspace), workspace, no_write=True)
     logs = workspace / "logs"
     submission = _submission(logs)
     calls: list[tuple[str, ...]] = []
@@ -294,7 +283,6 @@ def test_run_submission_and_wait_failure_cancel_once(
             timeout_seconds=1,
             poll_seconds=0.01,
         )
-    assert run_root.parent == workspace / "runs"
     assert sum(argv[0] == "scancel" for argv in calls) == 1
 
     submitted = driver.parse_submission(_submission(tmp_path, "43"), tmp_path)
@@ -394,22 +382,25 @@ def test_submission_requires_matching_request_token_and_job_id(
     assert job.stderr == job.stdout.with_suffix(".err")
 
 
-def test_submission_request_requires_one_exact_project_local_path(
+def test_submission_request_rejects_ambiguous_or_foreign_paths(
     tmp_path: Path,
 ) -> None:
     workspace = tmp_path / "workspace"
     request = workspace / "logs" / f"submission-{'a' * 32}"
-    assert (
-        driver.parse_submission_request(f"Submission request: {request}\n", workspace)
-        == request
-    )
     for text in (
         f"Submission request: {request}\nSubmission request: {request}\n",
         f"Submission request: {tmp_path / 'other' / 'logs' / request.name}\n",
         f"Submission request: {workspace / 'logs' / 'submission-short'}\n",
     ):
         with pytest.raises(driver.DriverError):
-            driver.parse_submission_request(text, workspace)
+            driver.parse_submission_request(
+                subprocess.CompletedProcess((), 0, "", text), workspace
+            )
+    with pytest.raises(driver.DriverError, match="observed 0"):
+        driver.parse_submission_request(
+            subprocess.CompletedProcess((), 0, f"Submission request: {request}\n", ""),
+            workspace,
+        )
 
 
 @pytest.mark.parametrize(

@@ -104,18 +104,27 @@ pairs were found. Enter `reverse` for study strandedness, then enter each
 sample's condition and pairing group from the table above.
 
 The supplied selection covers `1`–`22`, `X`, `Y` and `MT`; there is no regions
-question. EMRYS checks those names against your reference and saves the selection
-inside the Project. If the names differ, stop and confirm the intended selection.
+question. A reference contig name is the first word after `>` in each FASTA
+header. EMRYS checks the selected names against your reference and saves the
+selection inside the Project. If the names differ, stop and confirm the intended
+selection.
 
 Choose the number beside `EV -> PUM1`, and enter `A>G` for target change.
 At `Use these paired-CMH defaults?`, review and accept minimum sample depth `1`,
 mean-depth threshold `50`, FDR `0.05`, common odds ratio `1.2` and absolute
 difference `0.005`. This study has no background cohort.
 
-Review the destination and scientific choices, then answer `y` at
-`Create this Project? [y/N]`. Enter or `n` leaves the Project uncreated;
-`--preview` offers review only. Creation may take several minutes. Continue only
-after `Project ready:` prints the path to `project.yaml`.
+Review the normal preview's strand summary (`reverse: 6`), comparison and target,
+five paired-CMH values, and `Background max fraction: 0.01 (inactive)`. Also
+review the STAR index settings: the preview derives `genomeSAindexNbases` from
+the reference and marks `sjdbOverhang` and `genomeChrBinNbits` automatic at
+creation from the admitted reads and reference. You do not need to calculate
+or enter them.
+
+Once these choices are correct, answer `y` at `Create this Project? [y/N]`.
+Pressing Enter or `n` leaves the Project uncreated; `--preview` offers review
+only. Creation may take several minutes. Continue only after `Project ready:`
+prints the path to `project.yaml`.
 
 ## 4. Validate the Project
 
@@ -180,7 +189,7 @@ and `G` to follow the newest log lines. The
 has the other controls.
 
 **A queued job may not show a Run yet. Do not submit it again.**
-After the dashboard announces `Run complete`, leave it and check:
+After watch announces `Run complete`, leave it and check:
 
 ```bash
 emrys inspect
