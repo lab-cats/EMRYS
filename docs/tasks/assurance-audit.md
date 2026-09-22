@@ -6,7 +6,7 @@ This is the working investigation record for `ASSURANCE-01`. Its starting source
 
 The [backlog matrix](backlog_matrix.md) owns the accepted outcome and task status. This document records evidence and questions. It authorizes no implementation, protection removal, coverage change, or evidence deletion. `QUAL-01` owns measured test cost; `HARNESS-01` owns simulated-science harness choices; `REPORT-ROSTER-01` owns the reporting roster decision.
 
-All `path:line` references below refer to the pinned commit. **Source reviewed** means code or documentation was inspected, without execution in this audit. **Test characterized** means a committed test explicitly asserts the behavior; that test was not rerun for this record. **Inference** identifies a conclusion still needing a focused reproduction. No local test run, institutional Slurm run, scientific review, or biological validation was performed for this pass.
+All `path:line` references below refer to the pinned commit. **Source reviewed** means code or documentation was inspected, without execution in this audit. **Test characterized** means a committed test explicitly asserts the behavior; that test was not rerun for this record. **Inference** identifies a conclusion still needing a focused reproduction. No product or repository test suite, institutional Slurm run, scientific review, or biological validation was performed for this pass. A01-07 records one isolated local function reproduction.
 
 ## Findings matrix
 
@@ -18,7 +18,7 @@ All `path:line` references below refer to the pinned commit. **Source reviewed**
 | A01-04 | Validation roster inventory | "Exact live inventory" scan misses source-owned validators | Source | Derive the inventory from an authoritative owner roster |
 | A01-05 | Roster mutation cases | Many step permutations exercise a step-agnostic helper; one reorder case is vacuous | Source | Identify the smallest representative cases while retaining owner oracles |
 | A01-06 | Canonical-document path and H1 gate | Presence is enforced; title identity and H1 position are not | Source; test characterized | Assess each required path's value and the intended heading rule |
-| A01-07 | Markdown anchors | Tilde-fenced headings may be accepted as real anchors | Source inference | Reproduce with a tiny fixture and preserve genuine link checking |
+| A01-07 | Markdown anchors | Tilde-fenced headings are accepted as real anchors | Source; isolated local reproduction | Preserve genuine link checking while correcting the parser boundary |
 | A01-08 | Mermaid gate | Declaration and fence check has a deliberately narrow ceiling | Source | Decide whether broader syntax checking solves a distinct failure |
 | A01-09 | Hosted resource fixture | Part of the expected policy is derived from production defaults | Source | Map independent literal resource oracles before changing the fixture |
 | A01-10 | Reporting adapter fixture | Inventory expectations partly come from the same template as the builder | Source | Identify literal contract expectations for adapter headers and rows |
@@ -39,6 +39,19 @@ All `path:line` references below refer to the pinned commit. **Source reviewed**
 | A01-25 | Canonical BAM admission | Producer and validator accept different BAM/RG cases | Source; contract | Resolve acceptance before considering Stage 02 consolidation |
 | A01-26 | Reference provenance recovery | Fault test retains known publication/restoration gap | Source; test characterized | Keep recovery work with its owner; retain the fault test |
 | A01-27 | Step 06 orientation validation | Report checks count arithmetic without recounting BAM flags | Source; test characterized | Preserve worker and validator cases with their distinct ceilings |
+| A01-28 | Run all-pass reader | Accepts arbitrary unique passing check IDs by design | Source; tests | Preserve separate roster and all-pass boundaries |
+| A01-29 | Coordinator workflow fixture | Real Snakemake scheduling uses simulated science and production-derived adapters | Source; fixture contract | Retain scheduling/recovery checks without promoting scientific proof |
+| A01-30 | Slurm observation tests | A 36-case cross-product may repeat shared mechanics | Source | Measure and map faults under `QUAL-01` before reducing |
+| A01-31 | Scheduler output limit | 64 KiB refusal occurs after subprocess capture | Source; contract | Keep size-admission test; do not claim bounded capture memory |
+| A01-32 | Prepared-finalization continuity | Distinct-inode substitution is tested; recycled-inode substitution remains unproved | Source; contract | Preserve recovery fault checks and stated limit |
+| A01-33 | Historical contexts and Task module | Old request readers and the internal module still serve live diagnostic/execution paths | Source; tests | Keep their supported fault coverage |
+| A01-34 | Runtime qualification | Local startup, simulated Doctor, site checks, and Run success are different evidence | Source; tests | Preserve each layer and fixed-seal limits |
+| A01-35 | Stage-map documentation gate | Counts slugs without checking identity-table keys or aliases | Source inference | Compare with machine-key tests; retain owner-presence check |
+| A01-36 | Reporting Make target | Manual target omits artifact-adapter tests | Source | Define the target's promise; full suite coverage is separate |
+| A01-37 | Workflow dependency group | Snakemake is declared twice at the same version | Source; local uv help | Inspect lock and caller impact before configuration reduction |
+| A01-38 | Installed-wheel smoke | Wheel is built outside Git and expects unavailable commit provenance | Source; test | Preserve install proof; require separate Git-build provenance evidence |
+| A01-39 | Python shard planner | Stale timing IDs block selection; complete receipt proof is separate | Source | Measure collection cost and stale-estimate policy under `QUAL-01` |
+| A01-40 | Source topology parity | Test checks documented seams and transitions against executable rosters | Source; test | Retain this defense; avoid a duplicate registry |
 
 ## Discovery notes
 
@@ -54,7 +67,7 @@ Project admission uses `str.isdigit()` before integer conversion (`src/emrys/orc
 
 ### A01-03 — CI whitespace check does not inspect committed changes
 
-`scripts/make_quality.mk:211-219` runs `git diff --check` inside `validation-static`. The CI job first checks out the commit and runs that target (`.github/workflows/ci.yml:173-185`); the command inspects unstaged worktree changes rather than the committed PR range. The local command remains useful for local edits. Specify the intended CI comparison range and verify it covers the committed file types before changing the gate.
+`scripts/make_quality.mk:211-219` runs `git diff --check` inside `validation-static`. The CI job first checks out the commit and runs that target (`.github/workflows/ci.yml:173-185`); the command inspects unstaged worktree changes rather than the committed PR range. The local command remains useful for local edits. The checkout at `.github/workflows/ci.yml:118-122` does not request full history. Specify an event-aware committed comparison range, fetch enough history, and verify the file types before changing the gate.
 
 ### A01-04 — Validation inventory assertion misses source owners
 
@@ -66,11 +79,11 @@ The same test file parametrizes generic roster mutations over all listed steps (
 
 ### A01-06 — Canonical document names and headings
 
-`scripts/documentation/validate_structure.py:14-34,199-206` requires 19 named documents and an H1 somewhere in each. `first_heading` (`:120-126`) accepts any nonempty H1 text, regardless of position. `tests/documentation/test_validate_structure.py:158-176` explicitly accepts a renamed Workflow title. Thus the gate protects file presence and some heading structure, not document identity or first-line placement. Assess each hardcoded path against an owner obligation; decide whether the documented "first headings" promise needs a tighter check. Preserve owner-directory and local-link checks that catch distinct failures.
+`scripts/documentation/validate_structure.py:14-34,199-206` requires 19 named documents and an H1 somewhere in each. `first_heading` (`:120-126`) accepts any nonempty H1 text, regardless of position. `tests/documentation/test_validate_structure.py:158-176` explicitly accepts a renamed Workflow title. Thus the gate protects file presence and some heading structure, not document identity or first-line placement. The test fixture mirrors the 19 names at `tests/documentation/test_validate_structure.py:17-37`, but its negative test (`:179-195`) exercises only Workflow, Runbook, and Troubleshooting, with no assertion that fixture and production rosters match. Assess each path's owner obligation and the intended heading rule. Preserve owner-directory and local-link checks that catch distinct failures.
 
 ### A01-07 — Anchor parser and tilde fences
 
-Local link targets and anchors are checked in `scripts/documentation/validate_structure.py:164-196`. Its anchor extractor (`:129-147`) toggles fenced-code state only for backticks, although CommonMark also permits tilde fences. A heading-looking line inside a tilde fence could therefore satisfy a link to a nonexistent heading. This is a source inference, with no reproduction yet. Make a tiny fixture, then fix the parser boundary if confirmed; retain local-link validation.
+Local link targets and anchors are checked in `scripts/documentation/validate_structure.py:164-196`. Its anchor extractor (`:129-147`) toggles fenced-code state only for backticks, although CommonMark also permits tilde fences. A heading-looking line inside a tilde fence could therefore satisfy a link to a nonexistent heading. An isolated local call to `markdown_anchors` on a temporary file containing only a tilde fence and `# phantom` returned `phantom` as an anchor. This does not establish the full documentation check's behavior under every input. Correct the parser boundary while retaining local-link validation.
 
 ### A01-08 — Mermaid gate ceiling
 
@@ -150,6 +163,58 @@ On zero exit, the producer retains nonempty native `samtools quickcheck -v` outp
 ### A01-27 — Step 06 count checks do not recount BAMs
 
 The producer test permits an internally inconsistent flag subcount to be emitted (`tests/stages/mechanical_orientation/test_mechanical_orientation_producer.py:248-255`); the validator test catches count arithmetic (`tests/stages/mechanical_orientation/test_validate_step_06_orientation_outputs.py:113-127`). The contract (`src/emrys/stages/mechanical_orientation/CONTRACT.md:75-80,95-99`) says validation does not recount BAMs, inspect flags, quickcheck, or establish BAM/BAI correspondence. Retain both checks for their distinct failures. A passing orientation report proves its stated container and count-table checks, not independent BAM partition semantics.
+
+### A01-28 — All-pass is not an exact-roster oracle
+
+`src/emrys/orchestration/run_coordinator/all_pass.py:64-111` requires a nonempty report, unique passing rows, matching step/scope, and a bound hash, but accepts arbitrary check-ID membership. `tests/orchestration/run_coordinator/test_all_pass.py:46-112` deliberately uses invented IDs. Exact owner rosters have a separate publication check (`src/emrys/libraries/validation/report.py:83-111`) and literal owner expectations. Preserve both boundaries; describe all-pass as report status and content evidence, not independent roster proof.
+
+### A01-29 — Real workflow engine with test-owned science
+
+`tests/orchestration/run_coordinator/fixtures/workflow.py:1,20-47` uses the real Snakefile/profile but substitutes no-science commands and builds a production-derived adapter registry. `tests/orchestration/run_coordinator/test_workflow.py:256-397,474-668` exercises scheduling, reuse, and recovery; the fixture README (`tests/orchestration/run_coordinator/fixtures/README.md:1-3`) limits its claim. Retain these orchestration fault checks. They do not prove scientific computation or institutional execution. Separately, `tests/orchestration/run_coordinator/test_profile.py:27-201,271-306` pins 13 task owners and 70 artifact templates as literal expectations and should not be retired as a duplicate of this generated fixture.
+
+### A01-30 — Scheduler fixture case multiplication
+
+`tests/orchestration/run_coordinator/test_slurm_submission.py:1482-1609` expands three request versions, three cluster arrangements, and four states into 36 cases around shared observation logic. Each axis represents a real contract, but every combination may not detect a distinct fault. Measure cost and map branch/fault coverage under `QUAL-01` before proposing representative cases. Preserve identity-drift and usage fault tests at `:1611-1741`.
+
+### A01-31 — Scheduler response cap is after capture
+
+`src/emrys/orchestration/run_coordinator/scheduler_observation.py:54-68,208-218` captures subprocess stdout before rejecting replies over 64 KiB. The coordinator contract (`src/emrys/orchestration/run_coordinator/CONTRACT.md:487-496`) acknowledges that capture memory is not strictly bounded. Oversized-byte tests (`tests/orchestration/run_coordinator/test_slurm_submission.py:1922-1956`) protect admission of a reply, not process-memory bounds. Retain that defense and do not report it as a bounded capture proof.
+
+### A01-32 — Prepared-finalization continuity has a stated limit
+
+`tests/orchestration/run_coordinator/test_lifecycle.py:1875-1919,2194-2256` tests distinct-inode equal-byte substitution and preview/confirmation behavior. The owner contract (`src/emrys/orchestration/run_coordinator/CONTRACT.md:1021-1027`) says inode recycling under the same UID remains indistinguishable. Retain exact-byte, device/inode, and recovery tests; their passing status cannot establish continuity through recycled-inode substitution.
+
+### A01-33 — Historical records and internal Task remain supported
+
+`src/emrys/orchestration/run_coordinator/CONTRACT.md:414-427` keeps v1-v3 submission contexts readable for historical diagnosis, with their original identity limits. `tests/orchestration/run_coordinator/test_task.py:2509-2552` exercises the internal Task module that `src/emrys/workflow/Snakefile:280` actually invokes. These tests protect distinct supported diagnostic and execution paths. Neither is obsolete merely because its name says historical or private.
+
+### A01-34 — Runtime checks establish different evidence levels
+
+`src/emrys/evidence/runtime_availability/README.md:3-38,106-134` separates selected tool probes, empty-Snakemake startup, Slurm compute qualification, and Run success. Real local startup coverage (`tests/evidence/runtime_availability/test_runtime_availability.py:241-300`) differs from synthetic Doctor scenarios (`tests/orchestration/run_coordinator/test_doctor.py:2553-2610`). Preserve both. The fixed-content runtime seal excludes shared libraries, shebang interpreters, transitive R dependencies, and the full managed directory (`src/emrys/evidence/runtime_availability/README.md:70-103`); neither fixture qualifies Viking. CI's managed golden path runs on PRs, while real synthetic E2E is scheduled or manually selected (`.github/workflows/ci.yml:407-414,1099-1105`).
+
+### A01-35 — Stage-map gate checks owner presence, not full identity
+
+`scripts/documentation/validate_structure.py:211-232` counts 14 slug rows matching a raw-line pattern anywhere in `src/emrys/contracts/STAGE_MAP.md` and requires adjacent README, CONTRACT, and test directories. It does not parse the identity table's machine-key or alias columns; matching rows in a fenced example could satisfy the count. This is a source inference, not a reproduced documentation-gate failure. Preserve owner-presence checks and compare the remaining identity obligations with existing machine-key contract tests before altering the parser.
+
+### A01-36 — Reporting target's selected tests need a promise
+
+`scripts/make_quality.mk:199-205` runs five reporting test files via `report-test` but omits `tests/reporting/test_artifact_adapters.py`, which protects active adapter semantics. `tests/test_validation_orchestrator.py:101-111` confirms target wiring, not completeness. The full Python suite still collects adapter tests, so this is a manual-target ceiling, not a CI omission. Define whether `report-test` promises all reporting protection or a quick subset before changing it.
+
+### A01-37 — Duplicate Snakemake dependency declaration
+
+`pyproject.toml:31,59-61` declares `snakemake==9.25.1` as a runtime dependency and the sole workflow-group dependency. The repository's current `uv` commands still install project dependencies when selecting the workflow group; local help inspection supports this reading, without running a sync. This is a concrete configuration-reduction candidate. Before retiring the duplicate group entry, inspect lockfile behavior, CI commands, operator instructions, and the reason for the named group. Keep the runtime dependency.
+
+### A01-38 — Installed-wheel smoke does not prove Git-build provenance
+
+`tests/test_package_distribution.py:138-176` builds from a staged source copy without `.git` and later expects a report receipt with `git_commit` equal to `unavailable` (`:590-600`). The test meaningfully protects built-wheel resources and installed commands. It does not prove commit provenance for a wheel built inside a Git checkout; that needs separate evidence if claimed. Retain the installed-artifact checks.
+
+### A01-39 — Shard timing policy is separate from completeness proof
+
+`tests/tools/python_test_shards.py:139-144` fails planning when a duration estimate names a node ID absent from collection, although estimates schedule work rather than define correctness. Each of four shards recollects the full suite (`:253-256`), and receipt verification recollects it again (`:366-371`). The verifier proves exact complete/disjoint selection (`:299-357`), not that `estimated_seconds` is a measured duration. Measure collection cost and decide whether a stale scheduling estimate should block the suite under `QUAL-01`; preserve receipt proof.
+
+### A01-40 — Source topology has an executable parity defense
+
+`tests/test_source_dependencies.py:476-518` parses the documented CLI seams and source transitions in `src/emrys/contracts/SOURCE_TOPOLOGY.md` and compares them with the executable rosters. This is a surviving defense against documentation/code drift, in addition to the source-direction check. An ad hoc source comparison found the 25 seams and 22 transitions agree at the pinned commit; it was not a product test run. Retain the parity test and avoid adding a parallel policy registry.
 
 ## Protections to preserve during the next pass
 
