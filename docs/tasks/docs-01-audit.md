@@ -38,6 +38,10 @@ permission to change or delete the source.
   source-grounded disagreement at that revision. “Candidate” means that a
   transfer or reduction still needs a caller, link, and evidence review. No
   finding here establishes institutional qualification or biological meaning.
+- The second read-only pass on 2026-09-22 checked the same `3a672fdf` source
+  after the audit-only commit `8f8ac2e1`. It refined F03, F07–F08, F10,
+  F12–F13, F15, F17–F22, and F25–F29, and added F30–F33. Source and tests
+  were inspected, not executed.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -49,19 +53,19 @@ authoritative row or owner. Reconcile the backlog and live links, then retire
 this temporary record. Exact evidence deletion needs its own proposal,
 explicit approval, and separate commit.
 
-### Coverage of this first pass
+### Coverage so far
 
 The inventory spans tracked Markdown and Mermaid files; the limited link scan
-covered Markdown. Source comparisons are narrower. The following map keeps the remaining
-repository-wide work visible without claiming file-by-file completion.
+covered Markdown. Source comparisons are narrower. The following map keeps the
+remaining repository-wide work visible without claiming file-by-file completion.
 
-| Area | Compared in this pass | Further reading needed |
+| Area | Compared to date | Further reading needed |
 | --- | --- | --- |
 | Scientist and operator paths | Root README, Quickstart, configuration, Runbook, Troubleshooting, engineering guide | Other operations and reference guides; end-to-end reader routes. |
-| Architecture and decisions | Documentation authority, platform direction, reporting decision, logging contract, owner inventory | Other decision records, architecture maps, and all three Mermaid diagrams. |
+| Architecture and decisions | Documentation authority, platform direction, reporting decision, logging contract, owner inventory, scientist pipeline diagram | Other decision records, architecture maps, and two remaining Mermaid diagrams. |
 | Task and evidence records | Main backlog, CV campaign/backlog, polish and optimization campaigns, history index/compendium | Remaining task rows, original evidence origins, and retained artifacts. |
 | Product owners | Coordinator contract, runtime availability, reporting, resource defaults, stage and library samples | Every remaining owner README/contract, schemas, and adjacent production callers. |
-| Tests, scripts, and CI | Golden README, selected owner tests, hook scope, workflow README, documentation-check source | Remaining test/fixture READMEs, documentation tooling, workflow/profile guides, and executable checks. |
+| Tests, scripts, and CI | Golden README, selected owner tests, hook scope, workflow README, documentation-check source/tests, workflow profile guides | Remaining test/fixture READMEs, documentation tooling, and executable checks. |
 
 ## Findings matrix
 
@@ -77,29 +81,33 @@ and the boundary for each row.
 | [F04](#f04-root-quickstart-description) | Reader route | Root README calls Quickstart a synthetic first Run; Quickstart leads with real EV/PUM1. | Align root journey and retain optional smoke link. |
 | [F05](#f05-generic-study-versus-named-evpum1-route) | Reader route | “Own study” Runbook route points into fixed EV/PUM1 inputs and choices. | Separate generic study guidance from the named example. |
 | [F06](#f06-existing-project-and-new-project-recovery) | Reader route | Troubleshooting combines existing-Project navigation with absent-child Init. | Give each failure its own recovery instruction. |
-| [F07](#f07-doctor-repair-does-not-always-install) | Contradiction | Runbook says Doctor repair installs tools every time; ready runtime can be verified without installation. | Align operator wording with Doctor plan and contract. |
+| [F07](#f07-doctor-repair-does-not-always-install) | Contradiction | Runbook and a decision say Doctor repair installs tools every time; a ready runtime can be verified without installation. | Align operator and decision wording with Doctor plan and contract. |
 | [F08](#f08---version-and-local-env) | Behavior question | Runbook promises `--version` from any directory; `.env` is parsed before the version response. | Exercise malformed marked `.env` in a tiny local fixture before changing the promise. |
 | [F09](#f09-runbook-entry-order) | Reader route | Advanced request/watch/stop procedures precede Runbook orientation. | Test whether moving the orientation improves entry without hiding recovery commands. |
-| [F10](#f10-contract-location-claim) | Contradiction | Several indexes imply every source owner has an adjacent `CONTRACT.md`; some use a README or schema instead. | State actual owner-specific contract locations. |
+| [F10](#f10-contract-location-claim) | Contradiction | Two indexes claim every source owner has an adjacent `CONTRACT.md`; many use a README or schema instead. | State actual owner-specific contract locations. |
 | [F11](#f11-python-hook-scope) | Contradiction | Engineering guide omits root `setup.py` from hook scope. | Align the guide with `.pre-commit-config.yaml`. |
-| [F12](#f12-init-preview-proposal) | Stale proposal | Polish campaign says Init preview shows only destination and directories; normal preview now shows scientific values. | Compare remaining requested fields and preview/publication protection. |
-| [F13](#f13-doctor-profile-proposal) | Stale proposal | Polish campaign says Doctor has no `--profile`; the public option exists. | Reconcile proposal with accepted work and tests. |
+| [F12](#f12-init-preview-proposal) | Prior-revision proposal | Polish campaign's dated audit says Init preview shows only destination and directories; normal preview now shows scientific values. | Compare remaining requested fields and preview/publication protection. |
+| [F13](#f13-doctor-profile-proposal) | Prior-revision proposal | Polish campaign's dated audit says Doctor has no `--profile`; the public option now exists. | Reconcile proposal with accepted work and tests. |
 | [F14](#f14-old-source-attestation-cost-candidate) | Recheck candidate | Old optimization Git-call finding counts a prior revision's source calls, not necessarily current execution. | Re-evaluate the current source before selecting optimization work. |
-| [F15](#f15-cv-u22-interim-status-prose) | Compression candidate | CV-U22 card retains an interim “Verification pending” checkpoint before its present status. | Preserve unique cause/evidence; leave current card status with CV backlog. |
+| [F15](#f15-cv-u22-interim-status-prose) | Preserve chronology | CV-U22's dated checkpoints explain why the card returned to Open; compression has no demonstrated benefit yet. | Keep the causal record unless a concrete reader conflict is found. |
 | [F16](#f16-polish-merged-pr-tables) | Compression candidate | Polish campaign repeats merged-PR chronology in two long tables. | Check unique decisions before leaving routine genealogy to Git. |
-| [F17](#f17-main-backlog-chronology-and-run-repetition) | Compression candidate | Main backlog repeats PR genealogy and one exact hosted run in nearby rows. | Keep each evidence limit and accepted outcome while reducing repeat prose. |
+| [F17](#f17-main-backlog-chronology-and-run-repetition) | Preserve row evidence | One hosted run supports three distinct backlog rows; repeated row-local citations may be warranted. | Check only routine genealogy for safe compression. |
 | [F18](#f18-history-filing-rule-and-existing-compendium) | Evidence placement | History requires dated topic filenames; its indexed evidence compendium is undated. | Map links and origins before a rule exception or lossless split. |
-| [F19](#f19-doctor-experiment-evidence-in-workflow-readme) | Evidence placement | CI workflow README retains a dated Doctor experiment absent from history index. | Assess a lossless evidence-home transfer and keep workflow navigation. |
+| [F19](#f19-doctor-experiment-evidence-in-workflow-readme) | Evidence placement | CI workflow README repeats a shorter Doctor experiment summary already detailed in the CV backlog. | Use the CV card as evidence source before considering a history transfer. |
 | [F20](#f20-independent-golden-migration-comparisons) | Evidence placement | Independent-golden README mixes current oracle use with successive migration history. | Preserve comparison evidence before shortening owner instructions. |
-| [F21](#f21-coordinator-contracts-no-write-section) | Compression candidate | Coordinator contract has a 632-line no-write section with several repeated topics. | Map distinct trust and recovery rules before restructuring. |
-| [F22](#f22-coordinator-cross-owner-detail) | Compression candidate | Coordinator contract repeats Doctor, runtime-seal, and watch details also owned elsewhere. | Allocate exact semantics to the correct owner; keep necessary cross-links. |
+| [F21](#f21-coordinator-contracts-no-write-section) | Navigation candidate | Coordinator contract has a 632-line no-write section without subheadings; similar topics guard distinct boundaries. | Map topics before restructuring; no deletion inferred. |
+| [F22](#f22-coordinator-cross-owner-detail) | Ownership question | Coordinator, logging, runtime, and Runbook descriptions overlap but have different trust boundaries. | Preserve each owner's guarantee and useful cross-links. |
 | [F23](#f23-init-details-in-the-runbook) | Compression candidate | Runbook Init guidance mixes operator choices with hashing and file-identity internals. | Retain actionable warnings; place exact mechanics beside coordinator/config owners. |
 | [F24](#f24-named-profile-procedure-placement) | Audience question | Config guide holds a long named-profile operator procedure while Runbook routes there. | Decide whether Runbook needs a concise command path and config guide the format. |
 | [F25](#f25-reporting-decision-versus-migration-history) | Compression candidate | Reporting decision record includes implementation and PR migration detail beside lasting rationale. | Check unique rationale, then rely on reporting owner/Git for mechanics. |
-| [F26](#f26-alpha-carrier-note-in-reporting-readme) | Compression candidate | Reporting README narrates an alpha carrier migration in a current interface guide. | Check whether the migration has a current consumer or evidence need. |
+| [F26](#f26-alpha-carrier-note-in-reporting-readme) | Compression candidate | Reporting README narrates an alpha carrier migration alongside current collaborator API guidance. | Preserve exact current types and positional guidance if trimming history. |
 | [F27](#f27-old-fixed-resource-provenance) | Compression candidate | Resource-profile README repeats old 12-core provenance. | Retain current resource contract and historical evidence at their owners. |
 | [F28](#f28-repeated-owner-boilerplate) | Compression candidate | Owner test and stage READMEs repeat near-identical generic paragraphs. | Compare exceptions, then use one shared explanation and local differences. |
-| [F29](#f29-library-subowner-navigation) | Navigation candidate | Library owners are documented separately but lack a concise subowner index. | Test whether a small index improves source navigation without duplicating contracts. |
+| [F29](#f29-library-subowner-navigation) | Navigation mismatch | Tests point to a library index that does not route readers to six documented Python subowners. | Add a concise subowner route without copying contracts. |
+| [F30](#f30-dashboard-reporting-stage-text) | Product-facing text | Dashboard still describes three reporting transactions and a final workflow target after reporting. | Check current workflow/reporting owners and historical log aliases before selecting a product correction. |
+| [F31](#f31-historical-slurm-username-recovery-advice) | Recovery wording | Troubleshooting gives an undated upgrade instruction for a Slurm username incident whose submission fix is already present. | Preserve incident evidence and give current-version diagnosis. |
+| [F32](#f32-mermaid-checks-stated-ceiling) | Evidence ceiling | Documentation tests claim Mermaid syntax coverage; checker only checks declaration and fences. | Narrow the README claim to the actual structural check. |
+| [F33](#f33-report-receipt-version-in-the-scientist-diagram) | Diagram contradiction | Scientist pipeline diagram names a v4 report receipt; current report receipt is v8. | Correct non-authoritative diagram against reporting/schema owners. |
 
 ## Discovery notes
 
@@ -143,7 +151,7 @@ The [Quickstart](../../quickstart.md) lines 94–109 still passes an explicit
 `--partition-manifest`; [onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
 lines 695–704 and 1104–1119 accepts that path. Thus explicit-manifest behavior
 is real, while the selected automatic experience is not complete. The campaign
-also acknowledges the gap at lines 149–150. Reconcile only the current summary
+itself acknowledges the gap at lines 149–150. Reconcile only the current summary
 claim; do not change INIT-02 status or erase the explicit-manifest evidence.
 
 ### F04 — Root Quickstart description
@@ -177,14 +185,16 @@ no-adoption and no-symlink rules.
 
 ### F07 — Doctor repair does not always install
 
-The [Runbook](../operations/RUNBOOK.md) lines 585–587 says Doctor installs
-managed tools on the head node. The same Runbook lines 700–706 and the
+The [Runbook](../operations/RUNBOOK.md) lines 585–587 and 654–656, plus the
+[reporting decision](../design/decisions/execution-evidence-and-reporting.md)
+lines 44–53, speak of Doctor installing tools on the head node as a certainty.
+The same Runbook lines 700–706 and the
 [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 217–233 distinguish a repair-and-verification plan from a
 verification-only plan. A direct Doctor source test at
 `tests/orchestration/run_coordinator/test_doctor.py:2956–2960,3046–3054`
 expects no native/R installation when a ready Slurm runtime is rechecked.
-Describe the possible work rather than guaranteed installation, and retain
+Align both guides and the decision on possible package-manager work, retaining
 where head-node and compute-side checks happen.
 
 ### F08 — `--version` and local `.env`
@@ -194,9 +204,12 @@ The [Runbook](../operations/RUNBOOK.md) lines 184–188 promises
 lines 349–368 reads `.env` before version dispatch; the
 [environment loader](../../src/emrys/orchestration/run_coordinator/onboarding.py)
 lines 153–185 can reject a malformed marked file. This is a source-level edge
-case, not a reproduced command failure. A tiny local fixture should establish
-the exact failure and exit before deciding whether the promise or the CLI
-ordering changes.
+case, not a reproduced command failure. `tests/test_public_cli_contracts.py`
+lines 713–734 covers version from a clean temporary directory; the malformed
+`.env` test at `tests/orchestration/run_coordinator/test_onboarding.py:267–281`
+does not combine that file with `--version`. A tiny local fixture should
+establish the exact failure and exit before deciding whether the promise or
+CLI ordering changes.
 
 ### F09 — Runbook entry order
 
@@ -204,7 +217,8 @@ The [Runbook](../operations/RUNBOOK.md) lines 9–163 starts with retained
 submissions, watch, and stop. Its audience, setup routes, and command
 conventions first appear at lines 164–188. The procedures are useful and must
 remain findable, but a new operator meets advanced recovery terms before the
-guide explains where to start. Check root and Quickstart inbound links before
+guide explains where to start. The root README lines 67–70 and docs index
+lines 8–9 both route operators here. Check those inbound paths before
 moving a short orientation to the top; this is a navigation judgment, not a
 behavior defect.
 
@@ -216,9 +230,11 @@ lines 7–8 makes a similar adjacent-file claim. The
 [architecture](../architecture/ARCHITECTURE.md) lines 6–7 and
 [tests index](../../tests/README.md) lines 3–4 use the broader word
 “contract.” Runtime-availability and reporting owners, among others, express
-current contracts in READMEs; schema owners also use schemas. Inventory actual
-owner links before replacing the blanket filename claim with an accurate
-route. Do not create empty contracts merely to satisfy an index sentence.
+current contracts in READMEs; schema owners also use schemas. At the pinned
+revision, 62 source READMEs but only 15 adjacent `CONTRACT.md` files exist;
+47 README directories have no adjacent file. The narrower stage-owner claim
+is valid. Replace only the global filename promise with an accurate route;
+do not create empty contracts merely to satisfy an index sentence.
 
 ### F11 — Python hook scope
 
@@ -231,8 +247,8 @@ the executable scope; this audit did not run it.
 
 ### F12 — Init preview proposal
 
-[Polish campaign](polish-campaign.md) lines 313–327 says Init preview shows only
-destination, directories, and no-copy policy. Current
+[Polish campaign](polish-campaign.md) lines 313–327 says Init preview showed only
+destination, directories, and no-copy policy at its dated September 7 audit. Current
 [onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py) lines
 1208–1242 shows strand summary, comparison, target, thresholds, background,
 and STAR values normally. GTF and per-sample detail remain behind `--verbose`
@@ -243,8 +259,8 @@ values; source inspection is not proof that displayed and published bytes agree.
 
 ### F13 — Doctor profile proposal
 
-[Polish campaign](polish-campaign.md) lines 329–339 says Doctor has no profile
-selector. [Doctor](../../src/emrys/orchestration/run_coordinator/doctor.py)
+[Polish campaign](polish-campaign.md) lines 329–339 says Doctor had no profile
+selector at its dated audit. [Doctor](../../src/emrys/orchestration/run_coordinator/doctor.py)
 lines 1976–1982 accepts `--profile`, and the
 [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 729–742 describes default, named, and absolute selection. A focused
@@ -266,12 +282,12 @@ though it was false at its recorded revision.
 
 ### F15 — CV-U22 interim status prose
 
-The [CV backlog](cluster_verification_backlog.md) lines 1472–1511 includes an
-interim “Verification pending” checkpoint within CV-U22 before the card's
-current state. This can read like a second present status. Compare the card's
-dated evidence, current status cell, and index wording; preserve the unique
-reason for reopening or retaining a limit while distinguishing it from present
-acceptance. The CV backlog, not this working matrix, owns the card status.
+The [CV backlog](cluster_verification_backlog.md) lines 1472–1511 dates a
+known-smoke correction, labels “Verification pending” as that checkpoint,
+then explains the unsolved general donor requirement and returns CV-U22 to
+Open. The chronology preserves why the card reopened. No concrete confusion
+or safe reduction was established in the second pass; keep the causal record
+and the CV backlog's current status authority.
 
 ### F16 — Polish merged-PR tables
 
@@ -285,11 +301,11 @@ without that comparison could lose why a proposal was superseded.
 ### F17 — Main backlog chronology and run repetition
 
 The [main backlog](backlog_matrix.md) around lines 313, 343, and 349 includes
-PR genealogy, and lines 340–356 repeat hosted run `34306975901` across nearby
-acceptance prose. The accepted outcomes and exact CI limit must stay visible;
-the same run should not imply independent checks merely because it is cited
-twice. Map which row owns the observation and which rows only need a link. Do
-not compress away distinct acceptance criteria or alter any task status.
+PR genealogy. Lines 340–356 cite hosted run `34306975901` in three distinct
+accepted rows. The repeated row-local citation helps each acceptance stand
+alone and need not be removed. Any reduction should focus on routine PR
+chronology after checking unique baseline, measurement, and evidence limits;
+do not compress distinct acceptance criteria or alter task status.
 
 ### F18 — History filing rule and existing compendium
 
@@ -298,57 +314,63 @@ not compress away distinct acceptance criteria or alter any task status.
 record, [validation evidence](../history/validation-evidence.md), has no date
 in its filename and aggregates multiple observations; one local R anecdote at
 lines 132–139 lacks an explicit source date/revision. The compendium is linked
-from the docs index and backlog, and
-`tests/documentation/test_validate_structure.py:29` names it. Map every inbound
-link and each record's origin first. Possible outcomes are a documented legacy
+from the docs index, backlog, and coordinator contract; both
+`scripts/documentation/validate_structure.py:14–34` and
+`tests/documentation/test_validate_structure.py:29` name it. Map every inbound
+link and each record's origin first; several entries lack a source date.
+Possible outcomes are a documented legacy
 exception or lossless dated records; neither a rename nor evidence deletion is
 implied by the naming mismatch.
 
 ### F19 — Doctor experiment evidence in workflow README
 
-[Workflow README](../../.github/workflows/README.md) lines 24–38 preserves a
-retired two-worker Doctor namespace experiment: exact run `34995028343`, commit
-`45bd9cd2`, order, times, sampled RSS, and explicit limitations. The current
-workflow lane description at lines 3–22 is appropriately local to CI; the
-experiment may fit [history](../history/README.md) better. First compare the
-run artifact and history index, and plan a lossless destination plus link.
-Do not delete or paraphrase away the measurements, donor comparison, or
-uncontrolled-cache and RSS caveats.
+[Workflow README](../../.github/workflows/README.md) lines 24–38 summarizes a
+retired two-worker Doctor namespace experiment. The
+[CV backlog](cluster_verification_backlog.md) lines 3949–3995 already preserves
+the fuller record: exact run `34995028343`, artifact identity, trials, sampled
+RSS, caveats, and decision. That CV card is the evidence source for any
+transfer to [history](../history/README.md); the workflow guide needs only a
+route to it if this topic is moved. Preserve exact measurements and the
+uncontrolled-cache, shared-page, and missed-peak limits. No evidence deletion
+is authorized.
 
 ### F20 — Independent golden migration comparisons
 
 [Golden README](../../tests/contract_integration/independent_contract_goldens/README.md)
 lines 3–10 explains current literal oracles and their evidence ceiling. Lines
 12–57 then record successive schema and renderer migrations, including exact
-byte-identity comparisons. The current oracle instructions should remain
-beside tests. Before shortening old migration prose, identify which
-comparison has lasting evidence value and where its exact predecessor,
-digests, and limitations can be retained. Golden presence itself is not a
-runtime or biological validation claim.
+byte-identity comparisons. Most comparisons at lines 12–41 do not name the
+predecessor revision or old/new digests in that README; later examples at
+lines 43–57 name predecessor commits. Keep current oracle instructions beside
+tests. Before migrating a comparison into dated history, trace Git, tests,
+exact predecessor/current revisions, and oracle values. The prose alone is
+not sufficient retained proof; golden presence is not runtime or biological
+validation.
 
 ### F21 — Coordinator contract's no-write section
 
 The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 has a single `No-write and publication boundaries` section spanning lines
-87–718. Init rules recur at lines 89–150 and 184–215; watch selection appears
-at lines 56–67 and again through 557–683. These may be separable by trust or
-mutation boundary, so repeated terms alone are not proof of duplication.
-Build a topic map of command, input, exact protection, caller, test, and
-recovery consequence before tightening headings or prose. Preserve each
-independent refusal and evidence level; coordinate file-size disposition with
-SIZE-01.
+87–718 without subheadings. The apparent Init repeats separate prompts and
+publication (89–150) from hashing and input stability (184–215); watch
+selection (56–67) differs from dated view, refresh, and action rules
+(557–683). The second pass found navigability pressure, not proven deletable
+duplication. Build a topic map before changing headings; preserve independent
+refusals and evidence levels, and coordinate size disposition with SIZE-01.
 
 ### F22 — Coordinator cross-owner detail
 
 The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 236–287 details Doctor timing and presentation also described in the
-[logging contract](../design/LOGGING_CONTRACT.md) lines 172–189. Its runtime
-seal and replacement discussion at lines 313–339 overlaps the
+lines 236–287 owns Doctor observation and admission timing; the
+[logging contract](../design/LOGGING_CONTRACT.md) lines 172–189 owns emitted
+event shape and flushing. Coordinator runtime orchestration at lines 313–339
+overlaps the
 [runtime owner](../../src/emrys/evidence/runtime_availability/README.md)
-lines 59–104, and watch keys at lines 622–637 overlap the Runbook. Check which
-document owns each guarantee: coordinator should retain its command boundary,
-runtime owner its sealed-content admission, and Runbook the keys an operator
-needs. Cross-owner summaries can remain when they explain a real handoff.
+lines 59–104, which owns the closed seal and fixed-content boundary. Watch
+keys at lines 622–637 also appear in the Runbook for operator use. These are
+mostly distinct trust boundaries. Keep the coordinator command handoff,
+runtime admission, logging event rules, and operator keys with their owners;
+cross-owner summaries can remain when they explain a real handoff.
 
 ### F23 — Init details in the Runbook
 
@@ -374,32 +396,33 @@ remain with configuration. No relocation is selected yet.
 ### F25 — Reporting decision versus migration history
 
 [Execution, evidence, and reporting decision](../design/decisions/execution-evidence-and-reporting.md)
-lines 108–263 contains durable boundaries alongside exact retired callbacks,
-facades, PR #146 provenance, and current publication mechanics. The
-[reporting owner](../../src/emrys/reporting/README.md) holds present behavior;
-Git can retain routine implementation sequence. Extract the lasting reason
-for source identity and create-only publication before considering any
-shortening. The retired-path characterization and recovery warning at lines
-210–232 may be evidence or safety context, so its destination needs review.
+lines 119–159 gives lasting scientific-fingerprint and reporting-provenance
+rationale; lines 201–209 explain create-only publication. The
+[reporting owner](../../src/emrys/reporting/README.md) owns current mechanics.
+The clearest chronology candidate is the PR #146 and retired callback inventory
+at decision lines 210–225, plus the one-time transition at 253–257. Compare
+the rest with the owner before shortening; preserve the failure/recovery limit
+at 227–232 and old-Run compatibility meaning at 253–257.
 
 ### F26 — Alpha carrier note in reporting README
 
 [Reporting README](../../src/emrys/reporting/README.md) lines 22–27 says an
 approved alpha cleanup changed the carrier and retired an alias, then gives
-the current field/callable shape. Check current provider consumers and direct
-contract tests. If the historical sentence adds no active compatibility
-instruction, retain only the current interface there and let Git or an exact
-evidence record carry the transition. Do not drop the actual input/output
-types while trimming chronology.
+the current field/callable shape. That is the only explicit collaborator
+reporter API guidance found in this pass; the current carrier is in
+`src/emrys/reporting/__init__.py:24–63`, with a built-in provider caller in
+`src/emrys/analyses/paired_cmh_candidate_ranking_report/provider.py:32–33`.
+Historical framing may be shortened only while retaining actionable snapshot
+paths, types, and positional guidance.
 
 ### F27 — Old fixed-resource provenance
 
 [Resource defaults README](../../src/emrys/orchestration/run_coordinator/resources/README.md)
 lines 3–12 accurately describes the allocation-aware policy. Lines 14–21
 also narrate where the old fixed 12-core policy entered and moved in Git.
-Check whether any current maintainer needs that provenance here or whether
-the dated [CV backlog](cluster_verification_backlog.md) and Git retain it.
-Keep the present admission/capacity caveat; do not turn profile minima into
+The same origin commits are retained in the [CV backlog](cluster_verification_backlog.md)
+around line 1772. Check whether a maintainer needs the duplicate here. Keep
+the present admission/capacity caveat; do not turn profile minima into
 measured utilization or speedup.
 
 ### F28 — Repeated owner boilerplate
@@ -407,7 +430,8 @@ measured utilization or speedup.
 Six shell-stage test READMEs, including
 [STAR-index tests](../../tests/stages/star_index/README.md) and
 [alignment tests](../../tests/stages/star_alignment/README.md), repeat the
-runner/evidence paragraph. Six stage owner READMEs, including
+same five-line runner/evidence paragraph. Their first paragraphs state
+owner-specific claims. Six corresponding stage owner READMEs, including
 [STAR index](../../src/emrys/stages/star_index/README.md) and
 [alignment](../../src/emrys/stages/star_alignment/README.md), repeat a generic
 execution paragraph. Compare owner-specific exceptions before proposing one
@@ -418,11 +442,66 @@ has not been measured or approved.
 
 ### F29 — Library subowner navigation
 
-[Libraries README](../../src/emrys/libraries/README.md) can be tested as a
-short index to six documented subowners. Inspect actual library directories,
-imports, and existing links first; add navigation only if it reduces search
-work without restating each subowner contract. This is a possible small
-addition, so DOCS-01's compression aim does not make it automatic.
+[Tests library index](../../tests/libraries/README.md) lines 3–6 directs
+readers to the production [library index](../../src/emrys/libraries/README.md),
+but that index lists only three shell helpers and a runner link. Six documented
+subpackages—alignments, application logging, evidence, quality, references,
+and validation—have no route from it. A short list of links could repair this
+navigation gap without copying contracts; assess the added lines against the
+reader benefit rather than assuming a new index is required.
+
+### F30 — Dashboard reporting-stage text
+
+[Dashboard source](../../src/emrys/orchestration/run_coordinator/dashboard.py)
+lines 183–202 tells watch readers that reporting uses three dependent
+transactions and that a final workflow target follows reporting. Its rule map
+at 206–214 retains old reporting aliases; the stage table renders REPORT and
+FINAL rows even when unscheduled (1573–1608). Current
+[reporting](../../src/emrys/reporting/README.md) lines 3–16 and
+`src/emrys/orchestration/run_coordinator/reporting_boundary.py:43–44` define
+two publication operations after scientific completion. The
+[Snakefile](../../src/emrys/workflow/Snakefile) lines 394–397 ends the backend
+at verified scientific tasks. This is user-facing product text drift, not a
+request to delete historical log aliases. Review watch projection and old-log
+compatibility before selecting a separate product correction; scheduler text
+still cannot prove admitted Run completion.
+
+### F31 — Historical Slurm username recovery advice
+
+[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 65–72 tells a reader
+with Snakemake's `No username set in the environment` to “Update EMRYS to the
+submission fix,” without identifying a fixed revision or distinguishing a
+current installation. The [backlog incident](backlog_matrix.md) lines 243–252
+records the original failure and fix; current
+[submission code](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
+lines 861–870 preserves four login-name variables, with direct source tests
+at `tests/orchestration/run_coordinator/test_slurm_submission.py:2027–2099`.
+Keep the incident and safe resume/evidence advice. Current recovery should
+first identify the installed revision and actual submission diagnostic;
+this audit has not reproduced a current Slurm failure.
+
+### F32 — Mermaid check's stated ceiling
+
+[Documentation test README](../../tests/documentation/README.md) lines 3–8
+says cases cover “standalone Mermaid syntax.” The
+[checker](../../scripts/documentation/validate_structure.py) lines 235–251
+checks only a first nonblank `flowchart` declaration and absence of Markdown
+fences; its [tests](../../tests/documentation/test_validate_structure.py)
+lines 290–323 exercise those refusals. The
+[tool README](../../scripts/documentation/README.md) already describes
+declarations and fences. Narrow the test README wording: this check does not
+parse the rest of Mermaid grammar or verify rendering.
+
+### F33 — Report receipt version in the scientist diagram
+
+The linked [scientist-facing diagram](../architecture/diagrams/current_user_pipeline.mmd)
+line 15 says reporting ends with a validated v4 receipt.
+[Reporting](../../src/emrys/reporting/README.md) lines 31–49 and the
+[artifact schema index](../../src/emrys/contracts/schemas/artifacts/README.md)
+lines 3–8 identify artifact entries v4, Run result manifest v8, and report
+receipt v8. Correct the diagram's receipt label without conflating these
+separate formats. The diagram is a non-authoritative view, but it is the
+architecture's linked reader path at `docs/architecture/ARCHITECTURE.md:56`.
 
 ## Preservation boundaries for the next pass
 
