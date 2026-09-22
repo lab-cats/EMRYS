@@ -17,8 +17,9 @@ permission to change or delete the source.
   before selecting a correction.
 - Target scope: documentation across the whole tracked repository, including root guides, operations,
   decisions, architecture, tasks, history, owner READMEs and contracts, tests,
-  configuration, scripts, and CI documentation. This first source-grounded
-  pass is not a completed review of every file. The initial inventory found
+  configuration, scripts, and CI documentation. A static first read of the
+  tracked document inventory is now complete; claim-to-owner verification and
+  evidence tracing remain selective. The initial inventory found
   170 Markdown files, three Mermaid files, and 15,834 Markdown physical lines.
   Four non-test Markdown files exceed 600 physical lines: Runbook (774),
   coordinator contract (1,248), cluster verification backlog (4,107), and
@@ -55,6 +56,13 @@ permission to change or delete the source.
   and comparison, not executed behavior or completion of the full
   repository audit. The 14 grouped-validator `CHECK_IDS` sets matched their
   contract lists in a static comparison.
+- The fifth pass completed the seven remaining tracked Markdown files outside
+  those groups: the docs, Projects, licenses, and source-tree indexes,
+  configuration guide, stage map, and source topology. Together the passes
+  touched the initial 170 Markdown and three Mermaid files, but many claims
+  still need deeper caller/evidence checks. Task-record comparison and a
+  targeted schema/code-comment scan added F46–F47 and refined F44; neither
+  executed product behavior.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -131,8 +139,10 @@ and the boundary for each row.
 | [F41](docs-01-discoveries.md#f41-step-05-checks-read-only-help) | Script help contradiction | Retained Step 05 check calls itself read-only while writing a TSV and directory probe. | State input immutability and output mutation precisely. |
 | [F42](docs-01-discoveries.md#f42-report-transfer-in-the-coordinator-test-index) | Evidence placement | Coordinator test index lists report transfer as a check but links an operator procedure, not a test. | Route the prior tiny copy observation to its CV evidence record. |
 | [F43](docs-01-discoveries.md#f43-print-behavior-in-the-reporting-test-guide) | Evidence ceiling | Reporting test guide says it pins print behavior; checks cover CSS/HTML structure, while visual acceptance is pending. | Name source-level print checks without implying rendered review. |
-| [F44](docs-01-discoveries.md#f44-internal-workers-described-as-standalone-commands) | Contract contradiction | STAR and RSeQC contracts call producers repository-path commands although both are internal Run workers. | Correct opening command ownership; retain direct help and grouped validators. |
+| [F44](docs-01-discoveries.md#f44-internal-workers-described-as-standalone-commands) | Contract contradiction | STAR/RSeQC contracts and coordinator comments call producer commands public, although they are internal Run workers. | Correct command ownership across these texts; retain direct help and grouped validators. |
 | [F45](docs-01-discoveries.md#f45-watch-and-stop-in-the-command-audience-map) | Reader route | Functional-owner audience map omits public `watch` and `stop` despite their novice and operator routes. | Add the audiences or mark the examples nonexhaustive. |
+| [F46](docs-01-discoveries.md#f46-artifact-common-schema-description) | Schema description | Public common-schema metadata still says it serves v1 records; current registry reuses it for v4/v8 documents. | Review schema-byte compatibility before any wording correction. |
+| [F47](docs-01-discoveries.md#f47-r-probe-concurrency-candidate-after-cv-26) | Selection context | Optimization candidate still asks for a bounded R-probe concurrency comparison after CV-26 already measured and deferred two workers. | Bind any future proposal to CV-26's disposition and new resource/cancellation authority. |
 
 ## Discovery notes
 

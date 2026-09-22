@@ -550,6 +550,11 @@ at lines 3, 22–23, and 51–52; the RSeQC shell does likewise at lines 3,
 18–19, and 43–44. Correct the opening command-ownership claims while
 retaining direct `--help` for these scripts and the public grouped validators.
 No standalone production or recovery route is established by the help tests.
+The coordinator's `TaskBackend` and `CommandResult` docstrings
+([task source](../../src/emrys/orchestration/run_coordinator/task.py) lines
+100–104 and 146–154) also call delegated producer and validator commands
+“public.” Correct that generic ownership label without exposing internal
+producers or changing Run-owned publication.
 
 ### F45 — Watch and stop in the command-audience map
 
@@ -563,3 +568,28 @@ and the [Runbook](../operations/RUNBOOK.md) lines 139–157 teaches exact-reques
 roster, so this is an audience-routing gap rather than a false claim about
 command existence. Add those audience examples or explicitly say the table
 is selective; preserve `stop`'s exact-request and evidence ceilings.
+
+### F46 — Artifact common-schema description
+
+The public [common artifact schema](../../src/emrys/contracts/schemas/artifacts/v1/common.schema.json)
+line 5 describes definitions for “artifact-schema-v1 record contracts.” Its
+[owner README](../../src/emrys/contracts/schemas/artifacts/v1/README.md)
+lines 3–5 says active schemas still use these definitions after record schemas
+moved to later versions. The [registry](../../src/emrys/contracts/artifacts/_artifact_contracts/schema.py)
+lines 68–74 loads this file with current records, whose [index](../../src/emrys/contracts/schemas/artifacts/README.md)
+lines 3–8 names artifact entries v4, Run manifest v8, and report receipt v8.
+Correct only the stale description after checking schema-byte references and
+compatibility; the README calls those bytes a public contract.
+
+### F47 — R-probe concurrency candidate after CV-26
+
+The [optimization campaign](optimization_campaign.md) lines 292–319 still
+proposes comparing bounded concurrency of independent R namespace probes.
+The [CV-26 record](cluster_verification_backlog.md) lines 3949–3987 already
+retains a four-trial serial/two-worker hosted steady-ready comparison and a
+decision to retain serial checks: a one-CPU profile is supported, diagnosis
+has no admitted concurrency budget, and concurrent-child cancellation is not
+owned. The campaign links CV-26 for a different source reduction, so this is
+a candidate-selection context gap, not proof that a new resource-aware study
+is forbidden. Link the measured disposition at the proposal before any new
+selection; complete Doctor-path attribution and cancellation proof remain open.
