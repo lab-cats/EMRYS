@@ -14,6 +14,9 @@ when the bounded outcome is accepted; move lasting behavior to its owner documen
 - **Authority:** this is a documentation draft and discovery review. Extension implementation,
   package installation, cluster execution, publication, and evidence promotion require separate
   authority under the [workflow](../operations/WORKFLOW.md).
+- **Accepted reporting boundary (2026-09-22):** current scientific report generation remains
+  bespoke. Revisit shared Run-summary integration for another Analysis only when a concrete
+  external Analysis exists; this draft does not select or authorize a reconciliation repair now.
 - **Evidence:** the entries below are source and documentation inspection at the pinned commit. No
   example wheel, public Run, synthetic or site exercise, scientific review, or biological
   interpretation was performed for this record. `Observed` means the cited source states or
@@ -59,7 +62,7 @@ command, and retained artifact. A green core check alone cannot close an externa
 | `EX-10` | No `examples/` files are tracked. A separate example adds maintained files, requiring an explicit quantified `AC-GUARD-006` exception before implementation. | Observed / Open | Inventory planned files and net lines by surface; protect unique mock assertions and propose only caller-complete retirements. |
 | `EX-11` | `examples/` would be outside default Ruff, pre-commit, coverage, core-wheel, and source-import checks; conventional example tests enter unscoped collection. CI commands and Make targets have contract tests. | Observed / Open | Route explicit example checks and update affected gate contracts, with no unmeasured core coverage credit. |
 | `EX-12` | Provider/configuration callbacks, planning, selected worker commands, and reporter execution run with the operator's authority; admission attributes provider code but does not sandbox commands. | Observed / Open | State the trusted-package boundary and check example command origins and owned paths without claiming a sandbox. |
-| `EX-13` | **Reporting blocker:** artifact indexing registers external adapters but unconditionally applies built-in CMH Step `09` reconciliation to every complete Step `09` scope. The proposed tally has none of its four required CMH adapters. Optional external Step `10` has the same built-in assumption. | Observed source path / Open repair | Establish a bounded module-aware reconciliation decision; retain built-in defenses and prove generic external Run-summary/report admission before claiming end-to-end fit. |
+| `EX-13` | **Future integration risk:** shared Run-summary indexing registers external adapters but applies built-in CMH Step `09` reconciliation to every complete Step `09` scope. The proposed tally has none of its four required CMH adapters; optional external Step `10` has the same assumption. Scientific report generation remains bespoke. | Observed source path / Deferred | Reassess shared summary admission when a concrete external Analysis exists. Select no repair now; preserve the built-in defenses if a later change is needed. |
 | `EX-14` | Installed watch and verbose inspection assume the built-in statistical/context tail. External owners are unmapped, Step `09` is labeled paired CMH, reporting is said to follow Step `10`, and REPORT says three transactions although the owner defines two. | Observed source path / Open public effect | Exercise external Run/watch presentation and correct labels, mapping, next action, and transaction count without making scheduler text completion authority. |
 
 ## Source discoveries by finding
@@ -81,8 +84,9 @@ artifact kinds and path prefixes. A result TSV plus validation TSV fits without 
 built-in provider demonstrates a Step `09` dependency on Step `08` sites, input receipt, and summary
 in [`paired_cmh_candidate_ranking/__init__.py`](../../src/emrys/analyses/paired_cmh_candidate_ranking/__init__.py), lines 358–376. Step `08` gives each candidate `gene_ids` as `NA` or a
 semicolon-delimited, duplicate-free list ([`step08.py`](../../src/emrys/contracts/scientific_evidence/step08.py), lines 64–87 and 267–299).
-This is a descriptor and planner fit only. The current reporting reconciliation does not admit a
-generic Step `09` result as proposed; see EX-13 before claiming an end-to-end interface fit.
+This is a descriptor and planner fit only. If a concrete external Step `09` Analysis is later
+introduced, its shared Run-summary admission needs review under EX-13 before claiming an
+end-to-end interface fit. Scientific report generation remains bespoke.
 
 For the proposed tally, the smallest descriptor shape using the current
 [`AnalysisTaskV1` and `AnalysisArtifactV1` rules](../../src/emrys/analyses/__init__.py) is:
@@ -470,7 +474,7 @@ before implementation approval. Evidence deletion is outside this scope.
 
 | Maintained surface | Reduction or consolidation candidate from this review |
 | --- | --- |
-| Core product code | Reuse the existing provider, reporter, registry, and one artifact-index reconciliation owner. EX-13 needs an owner-local dispatch decision; no safe core-code deletion is yet demonstrated. |
+| Core product code | Reuse the existing provider and reporter boundaries. No core reporting change is selected now; EX-13 records a possible future integration need to evaluate with a concrete external Analysis. No safe core-code deletion is yet demonstrated. |
 | Example product code | Keep one bounded package tree if its identity coupling is acceptable; count any second wheel separately. No preexisting example code can be retired. |
 | Tests and protections | Compare the [mocked composition test](../../tests/orchestration/run_coordinator/test_materialization.py) assertion by assertion with the installed proof; retire only exact overlap and preserve its unique planning checks. Preserve built-in Step `09`/`10` reconciliation defenses. |
 | Scripts and CI gates | Reuse an existing static/wheel lane if its measured runtime fits; no duplicate new runner script or safe script retirement has been identified. |
@@ -533,7 +537,7 @@ undeclared reads, subprocesses, and services; report that assessment for the tes
 ordinary fixture test establishes a complete read set or a filesystem/network sandbox for other
 providers.
 
-### EX-13 — reporting reconciliation blocks generic Step 09
+### EX-13 — future external-Analysis Run-summary integration
 
 The [artifact registry](../../src/emrys/reporting/_artifact_index/registry.py) adds outputs from the
 selected external descriptor. But [native reconciliation](../../src/emrys/reporting/_artifact_index/reconciliation.py)
@@ -541,10 +545,13 @@ dispatches solely by Step ID: every complete Step `09` scope goes to the built-i
 [`reconcile_step09`](../../src/emrys/reporting/_artifact_index/reconcile_step09.py), which uses
 unconditional `next(...)` lookups for four paired-CMH adapters. A one-task tally declares its own
 result and validation adapters, so a complete tally scope has none of those four. Source review
-therefore predicts `StopIteration` during Run-summary preparation; that exception is outside the
-operation's handled `ArtifactIndexError` path. This is a **source-derived blocker**, not an observed
-external-Run failure. It affects report preview before the external reporter runs, new publication,
-and the retained Run-summary admission path. Generic adapter registration alone does not close it.
+therefore predicts `StopIteration` during Run-summary preparation if that external result were
+introduced; that exception is outside the operation's handled `ArtifactIndexError` path. This is
+a **source-derived future integration risk**, not an observed external-Run failure or a current
+repair assignment. It would affect report preview before the external reporter runs, new
+publication, and retained Run-summary admission. Generic adapter registration alone would not
+close it. The scientific report renderer itself remains bespoke under the
+[reporting owner](../../src/emrys/reporting/README.md); no generic renderer or schema is proposed.
 
 The same Step-only dispatch applies the built-in
 [`reconcile_step10`](../../src/emrys/reporting/_artifact_index/reconcile_step10.py) to any complete
@@ -557,27 +564,26 @@ labels every Step `10` lock `scientific-context` and adds `.previous` residue ch
 the selected module. An unrelated external Step `10` needs a naming and residue-policy review
 before its lock behavior is called compatible.
 
-**Open owner-local design decision:** use the admitted Analysis descriptor/profile to select when
-the existing CMH and context reconcilers apply, while still admitting declared external artifacts
-and independent validation. Preserve the built-in Step `09` source/hash/sample-order defense and
-Step `10` receipt graph defense at equal strength; do not globally remove them or create a parallel
-artifact registry. Audit all first-publication and retained-inspection callers, add built-in parity
-and generic-external tests, and count core-code/test/gate growth under EX-10 before approval. A
-public external Run-summary/report result is necessary to close this row.
+**Deferred design topic:** once an actual external Analysis is selected for implementation,
+recheck whether its shared Run-summary path needs adaptation. Preserve the built-in Step `09`
+source/hash/sample-order defense and Step `10` receipt graph defense at equal strength. Review
+first-publication and retained-inspection callers and count any code/test/gate growth under EX-10
+before seeking implementation authority. A public external Run-summary/report result is necessary
+for the accepted EXTENSION-01 outcome, but no reconciliation design is selected now.
 
 The selected module is already admitted in
 [`prepare_context`](../../src/emrys/reporting/_artifact_index/context.py) before reconciliation,
 and retained [Run-summary validation](../../src/emrys/reporting/transaction_validation.py) calls
-that same preparation path. These are the design candidates to review, not implementation
-authority:
+that same preparation path. The following are **future source-level hypotheses**, not a preferred
+design or implementation authority:
 
 | Candidate | Expected effect | Review condition |
 | --- | --- | --- |
-| Select native Step `09`/`10` reconcilers from the admitted module identity, keeping Steps `00c`–`08` common. | Existing paired-CMH and context checks remain attached to their owner; external declared outputs use generic artifact and scope checks plus their independent validator. | Preferred source-level candidate. Check first publication and retained validation together, and confirm no built-in source/hash/sample-order or receipt-graph defense is weakened. |
+| Select native Step `09`/`10` reconcilers from the admitted module identity, keeping Steps `00c`–`08` common. | Existing paired-CMH and context checks remain attached to their owner; external declared outputs could use common artifact and scope checks plus their independent validator. | Possible future candidate only. Check first publication and retained validation together, and confirm no built-in source/hash/sample-order or receipt-graph defense is weakened. |
 | Infer the owner from whether CMH adapters happen to be present. | Smaller-looking dispatch, but a missing built-in adapter could select the generic route and bypass the very check meant to catch it. | Do not use without an independent, exact built-in roster check; currently no demonstrated net advantage. |
 | Add a provider-supplied reconciliation callback or second artifact registry. | Lets each provider run custom report-time checks. | No concrete need in this one-task example; it expands the public interface and maintained authority. |
 
-| Required proof before closing EX-13 | Expected observation |
+| Future proof if a concrete external Analysis is implemented | Expected observation |
 | --- | --- |
 | Built-in Step `09`/`10` valid fixture and existing mutation cases | Same complete results and same failure propagation for changed CMH source/hash/sample order, significant subset, spectrum, context receipt, and context outputs. A missing built-in adapter must fail, not enter a generic fallback. |
 | External Step `09` valid result and validation report with distinct adapter IDs | Run-summary preview/preparation, executed publication, reporter HTML, and retained admission complete without a built-in CMH projection. |
@@ -629,17 +635,20 @@ with a short owner link where needed.
 
 ## Proposed bounded delivery sequence
 
+This sequence is for a later approved implementation. The current documentation phase selects no
+reporting repair; EX-13 is revisited only with a concrete external Analysis.
+
 1. **Refresh the review facts against the exact implementation target.** Recheck PR #304's live head,
    changed source paths, accepted backlog row, and guardrails. Revise any drifted discovery before
    treating a quoted line or contract as current.
 2. **Choose one collaborator method.** Accept or replace the proposed candidate-to-annotated-gene
    tally. Define the pre-CMH population after Step `07` selection and decide inclusion of `NA`,
    intronic/intergenic, low-depth, non-PASS, and untested rows. Confirm its full input is available
-   from Step `08` and needs only existing artifact kinds. The descriptor fits Step `09`, but EX-13
-   blocks Run-summary/report admission. Review a bounded module-aware reconciliation choice,
-   including first publication and retained inspection, before claiming end-to-end fit. Preserve
-   built-in CMH and Step `10` defenses; leave optional external Step `10` open unless separately
-   demonstrated. Stop for interface review if the selected method needs a new task boundary.
+   from Step `08` and needs only existing artifact kinds. The descriptor fits Step `09`; EX-13
+   records a source-derived Run-summary risk for a later external implementation. Keep current
+   scientific reporting bespoke and defer any shared-summary adaptation until a concrete external
+   Analysis exists. Leave optional external Step `10` open unless separately demonstrated. Stop
+   for interface review if the selected method needs a new task boundary.
 3. **Freeze literal behavior.** Specify the sites-only input or a reason for each additional
    adapter; define unique-candidate, multi-gene, `NA`, sorting, threshold, zero-row, header-only,
    newline, UTF-8, and supported GTF-ID rules. Keep a unit oracle, a real Step `08` same-strand
@@ -647,16 +656,17 @@ with a short owner link where needed.
    descriptive, not biological interpretation.
 4. **Quote the footprint and seek bounded authority.** Inventory planned new, changed, and retired
    files and net lines by core code, example code, tests, gates, configuration, docs, and state.
-   Include the reporting reconciliation and watch-presentation candidates, preserve the mock's
-   unique checks and all exact evidence, and resolve temporary lock/install policy. Obtain
-   implementation plus any quantified `AC-GUARD-006` growth authority before edits.
+   Record EX-13 as a deferred integration risk, not a planned repair. Include any selected
+   watch-presentation work, preserve the mock's unique checks and all exact evidence, and resolve
+   temporary lock/install policy. Obtain implementation authority and any quantified
+   `AC-GUARD-006` growth authority before edits.
 5. **Define the external package boundary.** Choose one shared wheel or two separately installed
-    wheels after accounting for reporter-source changes in the Analysis digest and the maintenance
-    cost of separation. Specify names, versions, licenses, supported exact EMRYS wheel/commit, and
-    standard-library or explicit Python requirements. Use a dedicated distribution-owned package tree,
-    matching package-level entry points, and distribution-owned callbacks/workers; state that
-    installing and admitting the selected package
-   executes trusted code and that admission is not a sandbox. Add no core registry or installer.
+   wheels after accounting for reporter-source changes in the Analysis digest and the maintenance
+   cost of separation. Specify names, versions, licenses, supported exact EMRYS wheel/commit, and
+   standard-library or explicit Python requirements. Use a dedicated distribution-owned package
+   tree, matching package-level entry points, and distribution-owned callbacks/workers; state that
+   installing and admitting the selected package executes trusted code and that admission is not
+   a sandbox. Add no core registry or installer.
 6. **Admit one immutable configuration.** Add a closed JSON schema and normalizer for the selected
    method. Verify unknown-key refusal, equivalent authored forms normalizing to one policy and
    Analysis ID. Keep descriptor construction deterministic and check repeated admission/profile
@@ -664,8 +674,8 @@ with a short owner link where needed.
    changed module metadata/bytes and target-only drift. State the distribution-version,
    dependency-field, and descriptor-output identity limits.
 7. **Declare and plan one task.** State every input adapter and consumed path, native TSV and
-    validation-report outputs, Step/scope, minimum resources, and genuinely needed dependencies.
-    Choose a distinct owner key outside the built-in prepublication special case.
+   validation-report outputs, Step/scope, minimum resources, and genuinely needed dependencies.
+   Choose a distinct owner key outside the built-in prepublication special case.
    Use working outputs for the producer and final outputs for the validator. Verify no-write direct
    planning, provenance roles, input completeness, path safety, installed command origins, and
    resource floor. Do not count Slurm submission preview as provider admission or task planning.
@@ -707,13 +717,13 @@ with a short owner link where needed.
     stated evidence level; leave site, scientific, and biological claims open until independently
     established.
 
-## Open decisions before implementation
+## Future implementation decisions
 
-Resolve the Step `09` reporting reconciliation blocker and built-in parity; the selected method's
-edge cases and expected output; one shared wheel versus separate Analysis/reporter wheels and
-their version pairing; whether core reserves built-in owner keys; watch presentation; package
-metadata and license; the quantified growth
-exception and disposable lock/install policy; and the smallest complete CI scenario. For each new discovery,
-identify its exact revision and source or executed artifact, then revise the corresponding matrix
-row. A source inference stays labeled as such until an actual public-path check supplies execution
-evidence.
+Future implementation will need to settle the selected method's edge cases and expected output;
+wheel layout and version pairing; whether core reserves built-in owner keys; watch presentation;
+package metadata and license; the quantified growth exception and disposable lock/install policy;
+and the smallest complete CI scenario. For each new discovery, identify its exact revision and
+source or executed artifact, then revise the corresponding matrix row. A source inference stays
+labeled as such until an actual public-path check supplies execution evidence. Revisit EX-13 only
+with a concrete external Analysis; preserve the current bespoke scientific report boundary and do
+not infer a generic reporting project from this draft.
