@@ -1,9 +1,10 @@
 # DOCS-01 discovery notes, third file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F62 onward. F62–F64 use PR head `b67e0eeb`; F65–F66 use `cf94af08`;
-F67–F70 use `c0a6027a`, all read on 2026-09-22. These are documentation
-observations, not runtime results or accepted changes.
+holds F62 onward. F62–F64 use PR head `b67e0eeb`; F65–F66 began at
+`cf94af08`, with F66 extended at `9c4fafdc`; F67–F70 use `c0a6027a`;
+F71 uses `9c4fafdc`, all read on 2026-09-22.
+These are documentation observations, not runtime results or accepted changes.
 
 ## Discovery notes
 
@@ -79,7 +80,10 @@ sense. [Materialization](../../src/emrys/orchestration/run_coordinator/materiali
 lines 1195–1202 requires declared inputs, and the
 [task runner](../../src/emrys/orchestration/run_coordinator/task.py) lines
 2600–2616 and 2788–2790 checks them for stability. The guides omit this Run
-dependency and provenance role. No task or scientific analysis was executed.
+dependency and provenance role. The [stage map](../../src/emrys/contracts/STAGE_MAP.md)
+lines 58–77 calls its edge roster complete but names only sites and receipt
+for Step 08→09, reflecting the narrower computational dependency. It does not
+describe the additional task input. No task or scientific analysis was executed.
 
 ### F67 — Step 09 producer language in source topology
 
@@ -140,3 +144,19 @@ lines 153–189 can populate `EMRYS_SITE=viking`. A
 [source test](../../tests/orchestration/run_coordinator/test_onboarding.py)
 lines 285–298 pins the synthetic default. The mismatch is conditional on an
 inherited or saved site default; no CLI or host command was run.
+
+### F71 — Quickstart Projects home default and later path
+
+The [Quickstart](../../quickstart.md) lines 54–61 says pressing Enter accepts
+the default `Projects` home and later commands use those defaults. Guided Init
+at lines 92–100 uses that saved home, but validation at lines 126–132 and
+reconnection at 260–269 hard-code `$EMRYS_SOURCE_ROOT/Projects/pum1-study`.
+[Setup](../../src/emrys/orchestration/run_coordinator/onboarding.py) lines
+214–255 offers an inherited `EMRYS_PROJECTS_ROOT` ahead of the repository's
+`Projects` directory and saves the selected path; named Init at 1261–1269
+creates under it. With an inherited alternate home, pressing Enter makes the
+documented later `cd` miss the Project, although Init prints the actual path.
+The same Quickstart lines say to leave the optional log root empty, while an
+inherited `EMRYS_LOG_ROOT` is saved without prompting at onboarding lines
+237–250. These are conditional reader-route mismatches, not failures in a
+fresh environment with no such process defaults. No command was run.

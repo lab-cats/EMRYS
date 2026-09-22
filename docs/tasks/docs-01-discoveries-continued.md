@@ -126,13 +126,23 @@ under one inspection node fed only by BAM/BAI. Its legend at line 39 says
 arrows are data or contract dependencies. The authoritative
 [stage map](../../src/emrys/contracts/STAGE_MAP.md) lines 67–70 requires
 BED12 from `convert_GTF_to_BED12` as a second RSeQC input; BAM QC has no
-such fan-in. Add the annotation dependency or split the evidence branches.
-Do not turn either non-gating evidence branch into a Run completion gate.
+such fan-in. The missing annotation edge is a diagram omission. “Non-gating”
+at stage-map lines 36–43 applies to downstream computation, not whole-Run
+completion: both evidence owners are in the
+[required owner roster](../../src/emrys/workflow/contracts/local_cmh_v2.json)
+lines 179–196, the [default workflow target](../../src/emrys/workflow/Snakefile)
+lines 393–397 includes every expected task, and
+[Results inspection](../../src/emrys/orchestration/run_coordinator/inspection.py)
+lines 276–283 requires every expected task verified.
 The same diagram's reference node at lines 2, 18, 24–27, and 35 presents
 FAI/BED12 alongside supplied FASTA/GTF, including a direct FAI continuation.
 The stage map at lines 47–50 and 69–79 instead identifies FASTA/GTF as external
 and Steps `00b`/`00c` as BED12/FAI producers. This is a generated-versus-supplied
-provenance ambiguity in the diagram, not evidence that the DAG is wrong.
+provenance ambiguity in the diagram, not evidence that the DAG is wrong. The
+[Step 05 contract](../../src/emrys/stages/split_n_cigar/CONTRACT.md) lines
+12–14 likewise says Step 00c “supplies” FASTA with its sidecars; Step 00c
+does not produce FASTA but does register that external file as an artifact
+adapter. That wording alone establishes no additional dependency error.
 
 ### F38 — Slurm request in the reliability diagram
 

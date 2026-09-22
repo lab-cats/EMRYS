@@ -132,6 +132,13 @@ permission to change or delete the source.
   diagnostic capture and test selection, and Init site defaults with their
   documentation. It added F67–F70. No CI artifact, CLI, runtime, or Slurm
   execution was inspected; these findings describe source-visible scope.
+- The twentieth read-only pass at `9c4fafdc` checked the fourteen-owner stage
+  map against profile and module declarations, traced selected history claims
+  to retained Git revisions, and followed Quickstart's saved-default route. It
+  corrected F37's computation-versus-Run gate wording, extended F66, and added
+  F71. Historical scale-probe numbers and a cited merge-tree equality matched
+  their named Git records; original VM/Viking runtime artifacts were not in
+  the checked trees and were not independently qualified here.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -201,7 +208,7 @@ and the boundary for each row.
 | [F34](docs-01-discoveries-continued.md#f34-prepared-finalization-in-the-reliability-diagram) | Diagram omission | Reliability diagram sends every resume to a new Attempt; prepared finalization may complete the old Attempt. | Show finalization and eligible continuation as distinct paths. |
 | [F35](docs-01-discoveries-continued.md#f35-fastq-pairing-language) | Wording ambiguity | Glossary and engineering guide say names never infer pairing; guided Init detects R1/R2 mates from names. | Distinguish mate discovery from authored biological pairing. |
 | [F36](docs-01-discoveries-continued.md#f36-cross-owner-history-in-runtime-test-guidance) | Placement candidate | Runtime test README ends with a sentence about retired report-publisher tests. | Check whether that history belongs with reporting evidence, then keep this README to runtime test scope. |
-| [F37](docs-01-discoveries-continued.md#f37-bed12-dependency-in-the-scientist-diagram) | Diagram ambiguity | Combined QC/orientation node lacks RSeQC's BED12 dependency; the upstream reference node also groups produced FAI/BED12 with external FASTA/GTF. | Stage map defines the artifact edges; no execution defect was observed. |
+| [F37](docs-01-discoveries-continued.md#f37-bed12-dependency-in-the-scientist-diagram) | Diagram ambiguity | Combined QC/orientation node lacks RSeQC's BED12 dependency; the reference node groups produced FAI/BED12 with external FASTA/GTF. | Evidence branches do not gate downstream computation but remain required for whole-Run completion. |
 | [F38](docs-01-discoveries-continued.md#f38-slurm-request-in-the-reliability-diagram) | Diagram omission | Slurm authorization is drawn as direct Attempt creation, omitting the pre-Run submission request. | Show request/submission and compute-side admission separately. |
 | [F39](docs-01-discoveries-continued.md#f39-validation-roster-inventory-claim) | Evidence ceiling | Fixed map covers 14 current validation-report producers, not every validator, and cannot discover a new source producer. | Name scope and future-discovery limit; preserve literal rosters and owner checks. |
 | [F40](docs-01-discoveries-continued.md#f40-concurrency-in-the-local-workflow-profile) | Terminology drift | Local workflow profile guide says “sample concurrency”; current policy resolves per-stage concurrency. | Align wording with resource schema and policy. |
@@ -230,11 +237,12 @@ and the boundary for each row.
 | [F63](docs-01-discoveries-third.md#f63-background-cohort-in-the-scientist-diagram) | Diagram ambiguity | Scientist diagram depicts an optional background cohort entering only ranking; selected background samples traverse upstream processing. | The optional filter acts during ranking; no source behavior defect was observed. |
 | [F64](docs-01-discoveries-third.md#f64-star-mechanics-in-a-scientific-decision) | Responsibility overlap | Scientific pipeline decision repeats STAR derivation and compatibility mechanics in config and coordinator owners. | Original-study values, rationale, and cited manual remain distinct decision context. |
 | [F65](docs-01-discoveries-third.md#f65-report-template-owner-description) | Ownership wording | Template README credits Python view builders with title, introduction, sections, and end note; the packaged template defines these elements and Python supplies values. | The discrepancy is in owner description, not observed output. |
-| [F66](docs-01-discoveries-third.md#f66-step-09-qc-summary-input-scope) | Input-scope wording | Step 08/09 guides say CMH does not consume the Step 08 QC summary; producer and validator omit it, but the Run task declares and binds it as an input. | Distinguish computational reads from Run dependency and stability checks. |
+| [F66](docs-01-discoveries-third.md#f66-step-09-qc-summary-input-scope) | Input-scope wording | Step 08/09 guides and stage map name sites and receipt only; producer and validator omit QC summary, but the Run task declares and binds it as an input. | Distinguish computational reads from Run dependency and stability checks. |
 | [F67](docs-01-discoveries-third.md#f67-step-09-producer-language-in-source-topology) | Ownership wording | Source topology calls the Step 09 result producer “Python”; its owner and task planner identify the R script as producer. | No runtime or scientific behavior defect is inferred. |
 | [F68](docs-01-discoveries-third.md#f68-slurm-diagnostic-artifact-bounds) | Evidence-scope overclaim | CI guide calls uploaded Slurm diagnostics bounded and redacted; setup and terminal capture write full status and journals without those transformations. | Private accounting files are excluded; no artifact contents or disclosure were assessed. |
 | [F69](docs-01-discoveries-third.md#f69-python-shard-inventory-scope) | Test-scope overclaim | Test baseline says CI shards the complete Python inventory; two test files are excluded from the shard plan and receipts. | Ordinary CI runs them separately; scheduled Python 3.11 shards do not establish all-test coverage. |
 | [F70](docs-01-discoveries-third.md#f70-omitted-site-does-not-always-mean-direct) | Conditional reader-route error | Runbook says omitting `--site` creates a direct profile; `EMRYS_SITE=viking` from process or saved settings makes both Init parsers select Slurm. | This does not affect the no-default case; no command was run. |
+| [F71](docs-01-discoveries-third.md#f71-quickstart-projects-home-default-and-later-path) | Conditional reader-route error | Quickstart says later commands use the Projects home accepted during setup, but validation and reconnect hard-code the repository Projects path. | An inherited alternate home changes the saved destination; no command was run. |
 
 ## Discovery notes
 
