@@ -7,6 +7,12 @@ full-Run, production, scientific-review, or biological evidence unless a row
 explicitly says so.
 Current state comes from live Git and checks bound to the revision under review.
 
+## September 14 Viking walkthrough
+
+The [source-bound E01–E12 walkthrough record](2026-09-14-viking-walkthrough.md)
+preserves the operator-reported observations, exact identities, dated decisions,
+and their limits while the original backlog and campaign records remain in place.
+
 ## PORT-NC-01 integration replay
 
 Tests from `fix/no-clobber` informed but did not validate the differently
