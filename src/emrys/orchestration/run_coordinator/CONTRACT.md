@@ -1066,11 +1066,12 @@ cleanup; child execution receives these signals unblocked. Closed stream pipes
 do not establish process completion.
 
 The fresh Linux Task CLI additionally enables child-subreaper behavior before
-entry and binds it explicitly to both native command runners. It normalizes an
-inherited ignored SIGCHLD disposition before its first ownership validation,
-then requires one thread, no preexisting child and unchanged normal SIGCHLD
-handling. The same bounded cleanup loop signals unreaped direct children and
-reaps adopted descendants,
+entry and binds it explicitly to both native command runners. Before its first
+ownership validation it re-establishes the default SIGCHLD disposition from an
+inherited default or ignored disposition, clearing hidden no-child-wait state;
+custom handlers remain ambiguous. It then requires one thread, no preexisting
+child and unchanged normal SIGCHLD handling. The same bounded cleanup loop
+signals unreaped direct children and reaps adopted descendants,
 including children that create separate sessions. This path uses fresh child
 identities instead of a numeric process-group target. A child worklist supplies
 signal targets only; closure requires the registered main child's outcome and
