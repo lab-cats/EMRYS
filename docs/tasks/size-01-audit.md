@@ -207,3 +207,29 @@ The [fixture owner](../../src/emrys/orchestration/run_coordinator/synthetic_fixt
 ### dashboard.py
 
 The [dashboard owner](../../src/emrys/orchestration/run_coordinator/dashboard.py#L249) contains descriptor-pinned stream caching, exact scheduler/log selection, diagnostic trace parsing, and terminal layout. Watch consumes all of these; moving sections into new files would improve navigation without reducing maintained behavior. The strongest cross-file candidate remains one admitted stream observation with full-history and bounded-tail projections. [Stream tests](../../tests/orchestration/run_coordinator/test_dashboard.py#L528) protect generation resets, path and UID admission, timeouts, and diagnostics; watch tests protect bounded escaped display. A smaller candidate is the resource fallback text stored in STAGES: for 11 known stage keys, the only production caller passes it to [stage_resource_text](../../src/emrys/orchestration/run_coordinator/dashboard.py#L903), which returns observed text or “not yet reported” without displaying that fallback. Four other known keys can still use it. Removing dormant strings needs a full consumer check and would not bring this file below 600. Scheduler ambiguity and log-derived completion claims remain separate from admitted Run inspection.
+
+## Sixth pass: remaining contracts, logging, and display owners
+
+### api.py
+
+The [public validator](../../src/emrys/contracts/orchestration/api.py#L695) accepts a profile argument. Its cached route serializes and decodes that profile and includes it in the cache key, but the current uncached semantic validator does not read the argument. Removing only the unused internal decode and cache dimension is a concrete small candidate; the public signature remains used by coordinator callers. The review must preserve strict JSON error behavior, cache correctness, and exact validation of every record kind. This is not yet a caller-complete implementation decision and would not by itself take the file below 600.
+
+### application_model.py
+
+The [application model](../../src/emrys/contracts/orchestration/application_model.py#L173) binds immutable Analysis, ExecutionPlan, and Run records, processing compatibility, pure resource resolution, and successor authority. Its plan semantics enforce ordering, graph edges, and predecessor closure. [Contract tests](../../tests/contracts/orchestration/test_application_model_contracts.py#L623) exercise successor and resource drift. These duties share the immutable plan boundary; splitting them would relocate code. Next proof: compare resource-resolution callers with resource_policy.py for equivalent decisions without introducing a second Run authority.
+
+### scientific_context.py and step09.py streaming mechanics
+
+The Step 10 [_stream_tsv](../../src/emrys/contracts/scientific_evidence/scientific_context.py#L292) and Step 09 [_stream_projection_tsv](../../src/emrys/contracts/scientific_evidence/step09.py#L582) each implement strict bounded TSV streaming and nearly the same row-width loop. The existing neutral [TSV library](../../src/emrys/libraries/validation/tsv.py#L58) is the first possible owner for common lexing. Any shared primitive must preserve Step 09 variable-header checks, Step 10 fixed headers, error precedence, diagnostics, and bounded memory. [Step 09 streaming tests](../../tests/contracts/scientific_evidence/test_step09.py#L387) and [Step 10 mutation tests](../../tests/contracts/scientific_evidence/test_scientific_context.py#L188) are relevant parity protections. The independent Step 10 scientific rederivation and R producer remain separate.
+
+### step08.py
+
+[Path-based and admitted-byte manifest entrypoints](../../src/emrys/contracts/scientific_evidence/step08.py#L309) already share semantic table validators. Normalization, onboarding, and the Step 08 output validator use those distinct admission boundaries. [API fingerprint and byte-admission tests](../../tests/contracts/scientific_evidence/test_step08.py#L228) constrain removal. No caller-complete net reduction surfaced in this pass; the 29 lines above the threshold warrant a retention decision, not arbitrary trimming. Fixture checks are not cluster or scientific proof.
+
+### handler.py
+
+The [AttemptLog](../../src/emrys/libraries/application_logging/handler.py#L131) lifecycle methods converge on [_transition](../../src/emrys/libraries/application_logging/handler.py#L414), which serializes durable write, sync, state change, and closure. Record writing keeps durable JSON and console projection distinct. [Handler tests](../../tests/libraries/application_logging/test_handler.py#L73) cover ordering, synchronization, and failures; installed smoke exercises another layer. No duplicate state machine surfaced. Retention is more defensible than a mechanical split pending an exact path-specific exception decision.
+
+### candidate_display.py
+
+The [candidate display owner](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/candidate_display.py#L548) builds one immutable roster for the provider, HTML, and two figure modules. Its [fallback Step 09 scan](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/candidate_display.py#L206) and [Step 10-selected scan](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/candidate_display.py#L259) repeat snapshot and duplicate-ID checks but make different ranking and membership decisions. Sharing only the equivalent traversal mechanics may reduce code; preserve roster, fallback, and snapshot behavior covered by [display tests](../../tests/reporting/test_candidate_display.py#L284). A small helper that leaves parallel scans or adds surface without net reduction would not close SIZE-01.
