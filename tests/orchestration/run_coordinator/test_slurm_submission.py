@@ -1481,7 +1481,8 @@ def test_recorded_submission_retains_raw_responses_without_waiting_for_the_job(
 
 @pytest.mark.parametrize("version", ["v2", "v3", "v4"])
 @pytest.mark.parametrize(
-    ("cluster", "local_cluster"), [(None, "alpha"), ("alpha", "alpha"), ("alpha", "beta")]
+    ("cluster", "local_cluster"),
+    [(None, "alpha"), ("alpha", "alpha"), ("alpha", "beta")],
 )
 @pytest.mark.parametrize("state", ["PENDING", "RUNNING", "COMPLETED", "CANCELLED"])
 def test_request_resources_respect_supported_cluster_scope(
@@ -1531,9 +1532,7 @@ def test_request_resources_respect_supported_cluster_scope(
                 f"700123.batch|{os.getuid()}|{selected}|00:00:02|1024K|8M|0\n"
             ).encode()
         detailed = "TimeUsed:0" in argv[-1] or ",Elapsed,Timelimit" in argv[-1]
-        return _root_row(
-            **fields, Cluster=selected, **(resources if detailed else {})
-        )
+        return _root_row(**fields, Cluster=selected, **(resources if detailed else {}))
 
     monkeypatch.setenv("SLURM_CLUSTERS", "other")
     command = Mock(side_effect=reply)

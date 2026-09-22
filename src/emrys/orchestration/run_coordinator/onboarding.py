@@ -1315,7 +1315,9 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             or not _confirm_admission("Create this Project?")
         ):
             console_print(
-                "Preview complete; Project not created.", style="yellow", file=sys.stdout
+                "Preview complete; Project not created.",
+                style="yellow",
+                file=sys.stdout,
             )
             return 0
         print(

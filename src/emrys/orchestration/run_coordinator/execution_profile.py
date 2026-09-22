@@ -241,7 +241,9 @@ class ExecutionProfile:
             ),
         ):
             restrictive = isinstance(value, int) and (
-                not isinstance(reservation, int) or not reservation or value < reservation
+                not isinstance(reservation, int)
+                or not reservation
+                or value < reservation
             )
             if verbose or (slurm and restrictive):
                 lines.append(

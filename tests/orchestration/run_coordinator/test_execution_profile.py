@@ -132,10 +132,12 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
         "Workflow CPU ceiling: allocation capacity (unknown until execution)" in summary
     )
     assert (
-        "Workflow memory ceiling: allocation capacity (unknown until execution)" in summary
+        "Workflow memory ceiling: allocation capacity (unknown until execution)"
+        in summary
     )
     assert (
-        "Stage thread caps: {'00a': 'workflow', '00c': 'workflow', '01': 'auto'" in summary
+        "Stage thread caps: {'00a': 'workflow', '00c': 'workflow', '01': 'auto'"
+        in summary
     )
     assert "Repeated-stage concurrency caps: {'01': 'auto'" in summary
     assert "'minimum_mb': 40960" in summary

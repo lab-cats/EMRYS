@@ -793,6 +793,12 @@ def test_ci_slurm_setup_is_guarded_real_and_diagnostic() -> None:
     assert '"$evidence_dir/qualified-readiness.txt"' in script
     assert "cluster_scoped_squeue=exit_0" in script
     assert "for command in scancel slurmctld slurmdbd slurmd; do" in script
+    assert (
+        'sudo -u slurm -- slurmdbd -V > "$evidence_dir/slurmdbd-version.txt"' in script
+    )
+    assert 'if [[ "$command" == slurmdbd ]]; then' in script
+    assert 'version="$(sudo -u slurm -- "$command" -V)"' in script
+    assert 'version="$("$command" -V)"' in script
     assert r"^slurm(-wlm)?[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+)$" in script
     assert '[[ "${BASH_REMATCH[2]}" == "$slurm_release" ]]' in script
     assert 'dpkg --compare-versions "$slurm_release" ge 23.11.6' in script
@@ -809,6 +815,24 @@ def test_ci_slurm_setup_is_guarded_real_and_diagnostic() -> None:
     assert "systemctl show --property=" in script
     assert "-u mysql" not in script
     assert "-u slurmdbd" not in script
+    admin_file = 'config_pending="$(mktemp "$RUNNER_TEMP/emrys-mysql-admin.XXXXXX")"'
+    admin_client = 'sudo mysql --defaults-file="$config_pending" --no-login-paths'
+    assert admin_file in script
+    assert (
+        "printf '[client]\\nuser=root\\npassword=root\\n' > \"$config_pending\""
+        in script
+    )
+    assert script.count(admin_client) == 2
+    assert "sudo mysql --protocol=socket" not in script
+    assert (
+        'if [[ -n "$config_pending" ]]; then\n        rm -f -- "$config_pending"'
+        in script
+    )
+    assert 'rm -f -- "$config_pending"\nconfig_pending=""\nunset db_password' in script
+    assert script.index("dpkg --compare-versions") < script.index(admin_file)
+    assert script.index('config_pending=""\nunset db_password') < script.index(
+        "sudo systemctl restart munge"
+    )
     assert script.index("dpkg --compare-versions") < script.index("CREATE DATABASE")
     assert script.index(
         'sudo install -o root -g root -m 0644 "$config_pending" /etc/slurm/slurm.conf'
