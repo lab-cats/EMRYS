@@ -112,7 +112,14 @@ regions-file and reference-name/region choices are explained as alternatives,
 and the latter prompt names the admitted FASTA. An explicit
 `--partition-manifest` skips those questions while retaining guided samples.
 The [EV/PUM1 selection](../../../../configs/step_07_partitions.primary_contigs.tsv)
-is a maintained study input, never inferred from the site or FASTA names.
+is a maintained study input. When guided sample conditions are `EV` and `PUM1`,
+Init offers its packaged `1`–`22`, `X`, `Y`, `MT` whole-sequence selection by
+name and requires an explicit yes. Declining uses the ordinary region questions;
+an explicit partition manifest or region input bypasses the offer. The site,
+Project name and FASTA never select scientific scope, and noninteractive callers
+must still provide selectors. The packaged file is also available at the
+existing `configs/` path; its rows pass the same manifest and reference admission
+as other region inputs.
 
 When all five built-in paired-CMH values are omitted interactively, one prompt
 first discloses them and accepts or declines the set; decline restores the

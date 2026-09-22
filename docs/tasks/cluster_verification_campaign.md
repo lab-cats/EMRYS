@@ -146,8 +146,8 @@ historical observations; neither requires causal reconstruction. New failures
 found during verification belong with their existing source or operational
 owner. Doctor validation, runtime inspection, CLI planning, application logging,
 lifecycle recovery and reporting publication retain their existing authorities.
-`INIT-02` and CV-U22 still need original-intent selection and compatible-donor
-discovery decisions before their source work can be called complete.
+`INIT-02` still needs hosted and novice acceptance of its explicit guided study
+choice; CV-U22 needs compatible-donor discovery before its source work is complete.
 
 ## Completion and handoff
 

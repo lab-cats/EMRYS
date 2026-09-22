@@ -117,7 +117,7 @@ namespaces = false
 "emrys.evidence.canonical_bam_qc" = ["*.sh"]
 "emrys.evidence.rseqc_orientation" = ["*.sh"]
 "emrys.ingestion.sample_manifest_admission" = ["*.sh"]
-"emrys.orchestration.run_coordinator" = ["resources/*.yaml"]
+"emrys.orchestration.run_coordinator" = ["resources/*.yaml", "resources/*.tsv"]
 "emrys.reporting" = ["styles/*.css", "templates/*.html.j2"]
 
 [tool.setuptools.dynamic]

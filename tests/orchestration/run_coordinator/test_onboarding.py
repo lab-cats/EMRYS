@@ -583,6 +583,7 @@ def test_guided_project_confirmation_publishes_reviewed_answers_once(
                 "pair_1",
                 "PUM1",
                 "pair_2",
+                "n",
                 "",
                 "chrSynthetic",
                 selection,
@@ -616,6 +617,7 @@ def test_guided_project_confirmation_publishes_reviewed_answers_once(
     assert (
         "Choose a regions file, or press Enter to type FASTA names/regions." in prompts
     )
+    assert "Use the EV/PUM1 whole-sequence selection" in prompts
     assert f"FASTA names/regions from {Path(reference_fasta).name}" in prompts
     assert "Accepted FASTA names (1): chrSynthetic" in plain_prompts
     assert plain_prompts.count("study strandedness") == 1
@@ -854,13 +856,19 @@ def test_guided_project_rejects_selector_absent_from_supplied_fasta(
         Path(row[mate]) for row in rows for mate in ("r1_fastq", "r2_fastq")
     ]
     arguments.sample = [
-        [row["sample_id"], row["condition"], row["replicate"], row["strandedness"]]
-        for row in rows
+        [
+            row["sample_id"],
+            "EV" if index % 2 == 0 else "PUM1",
+            row["replicate"],
+            row["strandedness"],
+        ]
+        for index, row in enumerate(rows)
     ]
     arguments.regions_file = []
     arguments.region = []
-    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("\nnot-a-contig\n"))
-    monkeypatch.setattr(onboarding.sys, "stderr", _Terminal())
+    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("n\n\nnot-a-contig\n"))
+    prompts = _Terminal()
+    monkeypatch.setattr(onboarding.sys, "stderr", prompts)
 
     with pytest.raises(
         onboarding.OnboardingError, match="absent from the reference FASTA"
@@ -868,6 +876,7 @@ def test_guided_project_rejects_selector_absent_from_supplied_fasta(
         onboarding._guided_manifest_members(
             arguments, reference_contigs=(("chrSynthetic", 12),)
         )
+    assert "Use the EV/PUM1 whole-sequence selection" in prompts.getvalue()
 
 
 @pytest.mark.parametrize("site", (None, "viking"))
@@ -1473,11 +1482,13 @@ def test_manifest_init_is_deterministic_validated_and_dry_run_first(
 
 
 @pytest.mark.parametrize("include_mt", (True, False))
+@pytest.mark.parametrize("guided_choice", (True, False))
 def test_project_init_reads_study_partitions_with_guided_vendor_samples(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     include_mt: bool,
+    guided_choice: bool,
 ) -> None:
     assignments = (
         ("ABE_EV_2", "EV", "replicate_2"),
@@ -1507,7 +1518,9 @@ def test_project_init_reads_study_partitions_with_guided_vendor_samples(
         / "configs/step_07_partitions.primary_contigs.tsv"
     )
     selected_manifest = partition_source.relative_to(partition_source.parents[1])
-    command = ["init", output.name, "--partition-manifest", str(selected_manifest)]
+    command = ["init", output.name]
+    if not guided_choice:
+        command.extend(("--partition-manifest", str(selected_manifest)))
     for name in onboarding._PROJECT_FIELDS:
         value = getattr(arguments, name)
         if value is not None:
@@ -1521,15 +1534,20 @@ def test_project_init_reads_study_partitions_with_guided_vendor_samples(
     original = _tree_bytes(tmp_path)
     retained = partition_source.read_bytes()
 
-    assert cli.main(command) == 0
+    assert cli.main(command) == (2 if guided_choice else 0)
     assert _tree_bytes(tmp_path) == original
     preview = capsys.readouterr()
     assert "optional regions file" not in preview.err
     prompts = _Terminal()
-    monkeypatch.setattr(onboarding.sys, "stdin", _Terminal("y\n"))
+    monkeypatch.setattr(
+        onboarding.sys, "stdin", _Terminal("y\ny\n" if guided_choice else "y\n")
+    )
     monkeypatch.setattr(onboarding.sys, "stderr", prompts)
     assert cli.main(command) == (0 if include_mt else 2)
     assert prompts.getvalue().count("Create this Project? [y/N]") == 1
+    assert (
+        "Use the EV/PUM1 whole-sequence selection" in prompts.getvalue()
+    ) == guided_choice
     assert partition_source.read_bytes() == retained
     if not include_mt:
         assert "absent from the reference FASTA" in prompts.getvalue()
@@ -1548,6 +1566,7 @@ def test_project_init_reads_study_partitions_with_guided_vendor_samples(
         for sample, condition, replicate in sorted(assignments)
     ]
     partitions = step08.validate_partition_manifest(output / "partitions.tsv")
+    assert (output / "partitions.tsv").read_bytes() == retained
     assert partitions.rows == [
         dict(partition_id=value, selector_type="region", selector_value=value)
         for value in chromosomes

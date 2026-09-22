@@ -16,6 +16,7 @@ from collections import Counter
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, replace
 from functools import partial
+from importlib.resources import files
 from pathlib import Path
 
 import yaml
@@ -983,6 +984,7 @@ def _guided_manifest_members(
     *,
     reference_contigs: Sequence[tuple[str, int]] | None = None,
 ) -> dict[str, tuple[bytes, int]]:
+    arguments._pum1_selection = False
     interactive = _interactive_terminal()
     fastqs = list(getattr(arguments, "fastq", ()))
     if not fastqs:
@@ -1035,41 +1037,46 @@ def _guided_manifest_members(
             raise OnboardingError(
                 "input-list creation needs --regions-file/--region or an interactive terminal"
             )
-        print(
-            "Choose a regions file, or press Enter to type FASTA names/regions.",
-            file=sys.stderr,
-        )
-        regions_file = _prompt("optional regions file")
-        if regions_file:
-            regions_files = [["regions", regions_file]]
-            arguments.regions_file = regions_files
+        if {row[1] for row in samples} == {"EV", "PUM1"} and _confirm_admission(
+            "Use the EV/PUM1 whole-sequence selection (1-22, X, Y, MT)?"
+        ):
+            arguments._pum1_selection = True
         else:
-            if reference_contigs is None:
-                reference_contigs = _reference_contigs(Path(arguments.reference_fasta))
-            names = [name for name, _length in reference_contigs]
-            shown = names[:24]
-            suffix = f"; plus {len(names) - len(shown)} more" if len(names) > 24 else ""
-            console_field(
-                f"Accepted FASTA names ({len(names)})",
-                " ".join(shown) + suffix,
-                value_style="bold green",
+            print(
+                "Choose a regions file, or press Enter to type FASTA names/regions.",
                 file=sys.stderr,
             )
-            label = f"FASTA names/regions from {Path(arguments.reference_fasta).name}"
-            selectors = shlex.split(_prompt(label))
-            if not selectors:
-                raise OnboardingError("at least one chromosome or region is required")
-            lengths = dict(reference_contigs)
-            try:
-                for selector in selectors:
-                    validate_region_selector(selector, lengths)
-            except ValidationError as exc:
-                raise OnboardingError(str(exc)) from exc
-            regions = [
-                [f"part{index:03d}", selector]
-                for index, selector in enumerate(selectors, start=1)
-            ]
-            arguments.region = regions
+            regions_file = _prompt("optional regions file")
+            if regions_file:
+                regions_files = [["regions", regions_file]]
+                arguments.regions_file = regions_files
+            else:
+                if reference_contigs is None:
+                    reference_contigs = _reference_contigs(Path(arguments.reference_fasta))
+                names = [name for name, _length in reference_contigs]
+                shown = names[:24]
+                suffix = f"; plus {len(names) - len(shown)} more" if len(names) > 24 else ""
+                console_field(
+                    f"Accepted FASTA names ({len(names)})",
+                    " ".join(shown) + suffix,
+                    value_style="bold green",
+                    file=sys.stderr,
+                )
+                label = f"FASTA names/regions from {Path(arguments.reference_fasta).name}"
+                selectors = shlex.split(_prompt(label))
+                if not selectors:
+                    raise OnboardingError("at least one chromosome or region is required")
+                lengths = dict(reference_contigs)
+                try:
+                    for selector in selectors:
+                        validate_region_selector(selector, lengths)
+                except ValidationError as exc:
+                    raise OnboardingError(str(exc)) from exc
+                regions = [
+                    [f"part{index:03d}", selector]
+                    for index, selector in enumerate(selectors, start=1)
+                ]
+                arguments.region = regions
     members = _draft_manifest_members(fastqs, samples, regions_files, regions)
     if (
         missing
@@ -1115,7 +1122,7 @@ def _project_manifest_members(
         members = _guided_manifest_members(
             arguments, reference_contigs=reference_contigs
         )
-        if partition_value is None:
+        if partition_value is None and not arguments._pum1_selection:
             return members
     else:
         if getattr(arguments, "fastq", ()) or getattr(arguments, "sample", ()):
@@ -1138,8 +1145,16 @@ def _project_manifest_members(
                 )
         members = {"samples.tsv": (tsv_bytes(sample_table.header, sample_rows), 0o644)}
 
-    partition_path = _admit_supplied_file(partition_value, "partition manifest")
-    partition_data, _ = read_bytes_with_identity(partition_path, "partition manifest")
+    if partition_value is None:
+        partition_data = (
+            files("emrys.orchestration.run_coordinator")
+            .joinpath("resources/step_07_partitions.primary_contigs.tsv")
+            .read_bytes()
+        )
+        partition_path = Path("packaged EV/PUM1 selection")
+    else:
+        partition_path = _admit_supplied_file(partition_value, "partition manifest")
+        partition_data, _ = read_bytes_with_identity(partition_path, "partition manifest")
     partition_table = step08.validate_partition_manifest_bytes(
         partition_data, partition_path
     )

@@ -1320,13 +1320,15 @@ as inactive rather than becoming another question. All known values remain in
 the guide; novice Viking acceptance is still required, so CV-U20 remains
 **Verification pending**.
 
-**Maintained study selection:** `INIT-02` now lets the guided sample journey
-read the existing primary-contig manifest selected in Quickstart. The operator
-does not paste sequence names or provide a separate regions file for this
-study. The exact `1`–`22`, `X`, `Y`, `MT` selection is validated against the
-admitted FASTA and retained in the Project; additional contigs are not silently
-included and a missing selected name blocks creation. Site selection still
-controls placement only. Exact hosted and novice verification remain pending.
+**Maintained study selection:** With EV/PUM1 sample conditions, guided Init
+offers the packaged `1`–`22`, `X`, `Y`, `MT` selection by name and requires an
+explicit yes. The existing primary-contig manifest path links to the same
+maintained file. The operator enters neither its path nor its 25 names.
+Existing admission checks the selection
+against the FASTA, retains its order, excludes extra contigs and blocks creation
+if a selected name is missing. Declining continues generic region questions;
+explicit selectors bypass the offer. Site selection controls placement only.
+Exact hosted and novice verification remain pending under `INIT-02`.
 
 ### CV-U21 Technical parameter assistance
 
@@ -2502,13 +2504,13 @@ refusal. Static checks pass locally; application/subprocess cases passed the
 current integrated standard CI. Institutional novice walkthrough remains
 pending.
 
-**Current selected-input correction:** `INIT-02` uses the maintained study
-partition manifest alongside guided sample assignment. Sample and partition
-conflicts are checked separately; copied samples still require a partition
-manifest. Imported rows preserve their order and source-relative paths. The Quickstart no longer asks for a
-25-name paste. `INIT-03` provides in-process confirmation and the focused guide
-pass now follows that delivered path. CV-06 is **Verification pending** for
-current hosted regression and institutional acceptance.
+**Current selected-input correction:** `INIT-02` offers the maintained EV/PUM1
+selection in guided Init without a manifest path or 25-name paste. Explicit
+manifests still work alongside guided samples; sample and partition conflicts
+remain separate, and copied samples still require a partition manifest.
+Imported rows preserve order and source-relative paths. `INIT-03` provides
+in-process confirmation. CV-06 is **Verification pending** for current hosted
+regression and institutional acceptance.
 
 **Original-input manifest follow-up:** The operator's fresh-user walkthrough
 exposed vendor FASTQ mates named `_1`/`_2` and 25 explicit whole-chromosome

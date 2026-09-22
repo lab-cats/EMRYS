@@ -1,5 +1,10 @@
 # Run-coordinator resource defaults
 
+[`step_07_partitions.primary_contigs.tsv`](step_07_partitions.primary_contigs.tsv)
+is the maintained EV/PUM1 whole-sequence selection used only after explicit
+guided Init acceptance. The historical `configs/` path links to this same file
+for explicit manifest use; the installed command reads its packaged copy.
+
 [`default_execution.yaml`](default_execution.yaml) uses all allocated,
 process-accessible workflow CPUs and RAM. Repeated stages fit automatic
 concurrency and CPU/memory shares to the admitted workload, and supported native
