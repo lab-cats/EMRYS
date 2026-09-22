@@ -20,13 +20,17 @@ The source review is pinned to [PR #304](https://github.com/lab-cats/EMRYS/pull/
 head `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`. PR #303 is a sibling,
 not part of that head. The checkout used for this document started clean at the
 named commit. [PR #307](https://github.com/lab-cats/EMRYS/pull/307) head
-`ba1fbdd3cc56196fc2ece35b73ddba56b786d223` descends from that commit;
-its two-file delta adds selected Doctor timing checks to the synthetic E2E
-runner and updates the CV-26 record. It changes no product owner, Quickstart,
-or INTERACTIVE-01 text cited below. [PR #316](https://github.com/lab-cats/EMRYS/pull/316)
-and [PR #320](https://github.com/lab-cats/EMRYS/pull/320) are separate open
-branches proposing INIT-02 study selection and CV-U22 runtime donor selection;
-their changes are compared, not included in this documentation branch.
+`5ecc409c123fe34f746a61f7e92397c6978f3cab` descends from that commit;
+its earlier source change adds selected Doctor timing checks to the synthetic E2E
+runner. Its later commits change documentation only. It changes no product
+owner, Quickstart, or INTERACTIVE-01 text cited below.
+[PR #316](https://github.com/lab-cats/EMRYS/pull/316) head
+`e1e802177b5333454e93e5e7c4f38d229f33f62a` and
+[PR #320](https://github.com/lab-cats/EMRYS/pull/320) head
+`1bb133e5fb47d82e84e8bc797c7591dcbbf4d8ae` are separate open branches
+proposing INIT-02 study selection and CV-U22 runtime donor selection; their
+latest commits change documentation only. Their changes are compared, not
+included in this documentation branch.
 PR #320 is stacked on an earlier #316 head, so its integration remains to be
 reconciled. Source, owner contracts, tests, and guides were inspected. No
 product test was run locally for this audit; no installed-command walkthrough,
@@ -46,20 +50,20 @@ creation or completion.
 
 | No. | Boundary | Source-grounded discovery | Unsettled choice or next evidence |
 | --- | --- | --- | --- |
-| [1](#1-public-entry-and-manual-route) | Public entry | Bare `emrys` currently exits with usage error; marked saved settings load even before help/version parsing. | Accepted: bare terminal entry starts guidance, named commands remain manual. Specify the transcript and preserve nonterminal behavior. |
-| [2](#2-bootstrap-and-saved-settings) | Setup | Setup is checkout-bound, defaults to a dry-run, and creates one `.env` only with `--execute`; the CLI loads saved settings once before dispatch. | Decide same-invocation approval and exact propagation of newly saved values. |
+| [1](#1-public-entry-and-manual-route) | Public entry | Bare `emrys` currently exits with usage error; marked saved settings load even before help/version parsing. Current prompting needs stdin and stderr terminals. | Accepted: bare terminal entry starts guidance, named commands remain manual. Specify the transcript and preserve nonterminal behavior. |
+| [2](#2-bootstrap-and-saved-settings) | Setup | Setup is checkout-bound, defaults to a dry-run, and creates one `.env` only with `--execute`; the CLI discards the loaded settings-file path before dispatch. | Decide same-invocation approval and value propagation; skip create-absent Setup for returning users. |
 | [3](#3-project-context) | Project | Named Init uses the selected Projects home or current directory; Project-aware commands use an exact Project path and never search parents for one. | Define new versus existing selection without newest-Project or partial-root inference. |
-| [4](#4-scientific-input-questions) | Scientific intent | Init already asks for reference, FASTQs, assignments, comparison, regions, target, and disclosed defaults. | Reuse its questions; review a complete prompt transcript and refusal paths. |
+| [4](#4-scientific-input-questions) | Scientific intent | Init already asks for reference, FASTQs, assignments, comparison, regions, target, and disclosed defaults. Detected sample IDs precede mate validation. | Reuse its questions; review a complete prompt transcript, invalid inputs, and refusal paths. |
 | [5](#5-maintained-study-selection) | Study selection | This branch still needs an explicit EV/PUM1 manifest; sibling PR #316 proposes an explicit packaged selection. | Reconcile that pending implementation and verify installed-package and novice behavior. |
 | [6](#6-project-preview-and-publication) | Init approval | Init confirms after review and preserves create-absent and input-change checks. Decline and creation can both return zero. | Expose an owner outcome without parsing text or treating file presence as proof. |
 | [7](#7-read-only-project-validation) | Validation | Existing validation re-admits Project inputs and scientific compatibility without writing, including FASTQ content rehashing. | Budget repeated reads and stop on failure without promoting it to runtime proof. |
-| [8](#8-runtime-source-and-admission) | Runtime | This branch uses an exact donor or current environment; sibling PR #320 proposes a bounded donor picker. Reuse can write in two Projects. | Keep source choice explicit, report both mutation paths, and preserve partial evidence. |
-| [9](#9-doctor-readiness-and-repair) | Doctor | Diagnosis is read-only; confirmed maintenance and Slurm qualification remain Doctor-owned. | Distinguish ready, declined, blocked, and repaired outcomes; carry one exact profile. |
-| [10](#10-direct-and-slurm-run-approval) | Run | Interactive direct execution confirms a frozen Run plan. Slurm confirms a submission/resource request; its Run plan is built later on compute. | Bind exact Analysis and reviewed request; retain duplicate-request refusal. |
+| [8](#8-runtime-source-and-admission) | Runtime | This branch uses an exact donor or current environment; sibling PR #320 proposes a bounded donor picker. A runtime file is only a candidate, and donor preview validates two Projects. | Keep source choice explicit, report both mutation paths, and preserve partial evidence. |
+| [9](#9-doctor-readiness-and-repair) | Doctor | Diagnosis is read-only; confirmed maintenance and Slurm qualification remain Doctor-owned. Readiness and public exit alone lose repair history. | Distinguish ready, declined, blocked, and repaired outcomes; carry one exact profile. |
+| [10](#10-direct-and-slurm-run-approval) | Run | Interactive direct execution confirms a frozen Run plan. Slurm confirms a submission/resource request; its Run plan is built later on compute. Terminal scheduler state can pass the duplicate guard. | Bind exact Analysis and reviewed request; retain duplicate-request refusal and manual retry review. |
 | [11](#11-submission-and-watch-handoff) | Monitoring | Submission retains a request before `sbatch`. Numeric `watch JOB_ID` is scheduler-only diagnostic selection. | Hand off the exact Project request, then re-admit any later Run association. |
-| [12](#12-return-recovery-and-completion) | Return | Inspection owns completion and recovery from admitted evidence, including ambiguous requests. | Define re-entry without persistent wizard state or automatic resubmission. |
+| [12](#12-return-recovery-and-completion) | Return | Inspection owns completion and recovery from admitted evidence; multiple requests may map to one Run. | Define exact request-bound re-entry without persistent wizard state or automatic resubmission. |
 | [13](#13-owner-results-and-maintenance-footprint) | Composition | Several public handlers return zero for both no-write preview and success; owners already implement admission, repair, and scheduling. | Audit private outcomes and caller-complete consolidation; quantify any product-growth exception. |
-| [14](#14-presentation-documentation-and-proof) | Acceptance | The Quickstart still chains separate commands; terminal and evidence levels have distinct contracts. | Draft novice wording, terminal cases, hosted checks, and separate Viking acceptance. |
+| [14](#14-presentation-documentation-and-proof) | Acceptance | The Quickstart still chains separate commands; approvals, watch, and actions use different terminal gates. | Draft novice wording, redirected terminal cases, hosted checks, and separate Viking acceptance. |
 
 ## Findings and source discoveries
 
@@ -85,7 +89,9 @@ new `--advanced` flag is not selected. Preserve the current no-write usage
 failure for nonterminal bare invocation unless separately approved, along with
 help/version, unknown-option, and named-command behavior. Check clean and
 malformed saved settings, both the installed console launcher and isolated
-`-m emrys` path, and TTY detection using the existing stdin/stderr boundary.
+`-m emrys` path. The current prompt gate requires both stdin and stderr to be
+terminals (`onboarding.py` lines 960-961); stdout redirection alone does not
+make an otherwise interactive invocation nonterminal.
 Existing public tests cover isolated help/version and named commands, but no
 bare-command TTY journey was found (`test_public_cli_contracts.py` lines
 482-532 and 713-800).
@@ -111,6 +117,14 @@ settings, search an unrelated checkout, or create global Project, profile,
 runtime, or scientific defaults. Check refusal/EOF, an existing `.env`, process
 precedence, and a returning user outside the checkout. Existing coverage starts
 at `test_onboarding.py` lines 212 and 301.
+
+A returning user with saved settings must skip create-absent Setup. The CLI
+startup loader returns the exact marked `.env` path it found, but `main`
+currently discards that result (`__main__.py` lines 349-357). Retain that
+private result to show the origin and effective values, including process
+overrides, without scanning for settings again. A regular unmarked nearer
+`.env` is ignored by the existing loader; a malformed marked one stops before
+guidance.
 
 ### 3. Project context
 
@@ -148,6 +162,12 @@ second scientific question set. Draft a complete plain-English transcript for
 two-condition, mixed-strand, multi-condition, background, and invalid-input
 cases. Keep color optional and every default readable with `NO_COLOR`. Inspect
 the current prompt tests at `test_onboarding.py` lines 609-728 and 1092-1152.
+The current `Detected FASTQ pairs` display lists candidate sample IDs before
+mate validation. Discovery scans only immediate recognized filenames and
+ignores other files; a sample with one mate may be listed and then refused
+before preview (`onboarding.py` lines 964-1025 and 1433-1470). The guide must
+not describe that display as proof of six complete libraries. Cover missing
+mates and unrecognized filenames in the prompt review.
 
 The current interactive Init path has this order; it is a source trace, not a
 proposed new guide transcript:
@@ -183,17 +203,19 @@ outcome before proposing an automatic study route. Check the installed package,
 the exact 25-name selection, missing contigs, and the existing explicit-manifest
 and generic-region routes. Do not add another selector validator.
 
-**Pending sibling implementation.** PR #316 head
-`bd3f1399305732e76435679e08c504ad6793010b` adds a yes/no EV/PUM1
+**Pending sibling implementation.** PR #316's current head
+`e1e802177b5333454e93e5e7c4f38d229f33f62a` retains the code from
+`bd3f1399305732e76435679e08c504ad6793010b` that adds a yes/no EV/PUM1
 whole-sequence offer after the user has assigned exactly those two conditions
 and left partition selectors absent. Acceptance reads a packaged 25-name TSV
 through the existing partition admission; refusal continues to generic regions,
 explicit selectors bypass the offer, and missing nonterminal selectors still
 fail. Its Quickstart uses that route and its `INIT-02` row says Verification
 pending. The change is absent from this branch and has no completed installed
-guided-command or novice Viking evidence. Its exact-head ordinary
-[hosted run](https://github.com/lab-cats/EMRYS/actions/runs/35776280689) passes,
-including the wheel lane; selected real synthetic E2E is skipped. The
+guided-command or novice Viking evidence. The ordinary
+[hosted run](https://github.com/lab-cats/EMRYS/actions/runs/35776280689) passed
+on the older code head, including the wheel lane; selected real synthetic E2E
+was skipped. That run does not validate the current documentation-only head. The
 eventual INTERACTIVE-01 guide must recheck the exact integrated behavior
 instead of copying this sibling proposal as a current contract.
 
@@ -216,6 +238,15 @@ an exit code, or rely on path existence. Keep public exits and text unchanged.
 Check refusal, input changes during review, one-pass hashing, partial
 publication, and exact created identity (`test_onboarding.py` lines 328-558 and
 1011-1044).
+Before the guarded publication body, including during reservation setup,
+`KeyboardInterrupt` propagates and may still leave a reserved directory. The
+`BaseException` guard around member writes and internal tree readmission wraps
+an interruption as `OnboardingError` and reports exit 2 with the partial tree
+preserved. After that helper returns, Init performs one final unguarded input
+recheck; interruption there propagates even though a `project.yaml` may now
+exist and `Project ready` has not printed (`onboarding.py` lines 619-651 and
+1383-1407). Test all three boundaries; do not promise one interruption exit or
+infer completion from path presence.
 
 ### 7. Read-only Project validation
 
@@ -256,9 +287,12 @@ same donor (`onboarding.py` lines 2105-2151 and 2231-2251).
 **To settle.** Ask for an explicit known donor or use the current-environment
 route. Review both Projects' possible writes before confirmation; never promise
 atomic rollback, silently replace a selection, or retry over retained partials.
-First distinguish an existing admitted inventory, which can continue to Doctor,
-from an absent inventory needing discovery or Doctor preparation. Keep
-`--replace` as the owner's explicit same-donor operation.
+An existing `runtime.tsv` is a candidate, not proof of an admitted or ready
+inventory; Doctor loads and inspects it afresh (`doctor.py` lines 576-610).
+An absent inventory needs discovery or Doctor preparation. Explicit donor
+planning also validates both borrower and donor Projects before preview,
+including their input rehashes (`onboarding.py` lines 2105-2108 and 1686-1698).
+Keep `--replace` as the owner's explicit same-donor operation.
 
 The present Quickstart skips runtime discovery when there is no smoke-test donor
 and proceeds to Doctor, so the guide must settle whether discovery is needed
@@ -266,18 +300,21 @@ for each path rather than make it unconditional. Expose an exact
 admitted/declined owner result. Existing protection cases include
 `test_onboarding.py` lines 2993, 3124, 3190, 3286, and 3338.
 
-**Pending sibling implementation.** PR #320 head
-`62b874785b88d1edf29747bf54241461338d021a` makes a bare
+**Pending sibling implementation.** PR #320's current head
+`1bb133e5fb47d82e84e8bc797c7591dcbbf4d8ae` retains the code from
+`62b874785b88d1edf29747bf54241461338d021a` that makes a bare
 `--from-project` on a terminal list at most 256 immediate Projects under the
 canonical Projects home with runtime inventories. The list is explicitly
 unverified; a numbered choice still runs the existing donor admission.
 Omitting a choice returns zero without a write. A bare source in a nonterminal
 call, or combined with `--execute`/`--replace`, is refused. This proposal is
-absent here, and its base predates PR #316's current head. Its exact-head
+absent here, and its base predates PR #316's current head. The
 [ordinary hosted run](https://github.com/lab-cats/EMRYS/actions/runs/35776414501)
-passes with selected real synthetic E2E skipped; installed donor selection and
-site acceptance remain separate. A future guide must recheck the integrated
-result; it must not interpret a listed candidate or zero exit as admitted reuse.
+passed on the older code head with selected real synthetic E2E skipped; that
+run does not validate the current documentation-only head. Installed donor
+selection and site acceptance remain separate. A future guide must recheck the
+integrated result; it must not interpret a listed candidate or zero exit as
+admitted reuse.
 
 ### 9. Doctor readiness and repair
 
@@ -298,6 +335,14 @@ Keep diagnosis, repair approval, package installation, and qualification with
 Doctor; distinguish `already ready`, `declined`, `blocked`, and `qualified` in an
 owner result. Preserve one maintenance log and retained partial evidence. Check
 read-only diagnosis and refusal (`test_doctor.py` lines 432, 972, 1077, 2575).
+The public Doctor adapter returns only an integer; `DoctorResult.ready` cannot
+by itself distinguish initial readiness from completed repair or a declined
+preview (`doctor.py` lines 2007-2020 and 2089-2134). An owner-private outcome
+seam remains to be designed before guide composition. `--execute` without
+`--repair` returns 2, as do wrong-node invocations: a Slurm allocation without
+the advanced `--compute` selection, or `--compute` without a canonical
+allocation (`doctor.py` lines 2027-2040). The guide must not use either path
+as a shortcut to readiness.
 The guide should stop on an owner-supplied external remediation instead of
 repeating `--repair`; Doctor normally runs on the head node. An already ready
 direct profile can return without repair, while explicitly requested Slurm
@@ -339,6 +384,12 @@ before the interactive wait; source review found no second scan after that
 wait in `_schedule`. Review the commit boundary and adjacent protections before
 claiming atomic duplicate prevention. Test one approved action and exact
 preview-to-commit identity without a hidden `--execute` bypass.
+The guard only stops matching requests whose scheduler state is nonterminal or
+unconfirmed (`control.py` lines 1104-1165). A terminal scheduler observation
+can permit a new submission even when Run evidence is unresolved
+(`test_materialization.py` lines 5069-5103). Passing the guard is not a guided
+retry decision: require review of the exact request and any admitted Run and
+Attempt, then leave any repeat submission to a separate manual approval.
 
 ### 11. Submission and watch handoff
 
@@ -384,6 +435,17 @@ persistent last-used selection, automatic resume, or auto-reporting. A queued
 submission may have no Run yet. Check reconnect, multiple submissions for one
 Run, unknown scheduler state, and failed re-verification. Treat a watch exit
 code as command completion, never as Run completion or recovery approval.
+Several requests can point to one Run, so selecting that Run does not recover
+a unique request (`control.py` lines 226-243 and 294-329). Keep the selected
+request identity across refreshes. Explicit `inspect --submission REQUEST
+--watch --actions` offers a request stop preview, even if a Run is later
+associated. The `emrys watch` shorthand can retain an already admitted Run
+alongside its selected request and then offer Run resume/report reviews; those
+actions re-admit the exact Run (`control.py` lines 2593-2617, 2735-2755, and
+3033-3063). The guide must keep the request identity distinct from that Run.
+An inspection suggestion to repeat the original Run invocation for a Run with
+no started Attempt is not sufficient by itself to resubmit: reconcile the
+retained request and scheduler observation first (`control.py` lines 790-808).
 
 ### 13. Owner results and maintenance footprint
 
@@ -405,6 +467,7 @@ The public outcomes that composition must distinguish are:
 | Doctor | Read-only diagnosis returns 0 when ready and 1 when not ready. With `--repair`, blocked or declined preview returns 1; interrupted repair returns 130. | Confirmed repair or `--execute` can return 0 after final readiness; an already ready direct profile can return 0 without any repair prompt, while Slurm qualification still has its site path. |
 | Direct Run | No/blank/EOF or nonterminal omission of `--execute` previews a frozen plan and returns 0 without executing. | Confirmation executes that plan; `--execute` bypasses its pre-execution display, and a zero result has the existing limited Run/report meaning. |
 | Slurm Run | No/blank/EOF or nonterminal omission of `--execute` previews a submission request and returns 0 without submission; the duplicate guard can stop with 2. | Confirmation or `--execute` retains a request before `sbatch`; zero means accepted submission, not Run creation or completion. |
+| Watch or Inspect selection | Menu cancellation, EOF, or interruption returns 0; ambiguous nonterminal selection returns 2. A noninteractive watch snapshot can also return 0 with no admitted Run association. | Exact Project/request/Run selection permits inspection; watch command completion still does not prove Run completion. |
 
 If sibling PR #320 is integrated, its donor picker adds another zero-result
 no-write path when no candidate is selected. It must remain distinct from an
@@ -448,12 +511,13 @@ caller-complete net reduction.
 
 The smallest candidate outcome interfaces are owner-specific. Reuse
 `ProjectValidation`, `validate_project`, the runtime discovery plan's
-`inspection`/`admit` result, and `DoctorResult.ready`. Setup and Init need an
+`inspection`/`admit` result, and Doctor's diagnosis data. Setup and Init need an
 unambiguous private publication outcome because their public integer result
 also covers a no-write preview. Runtime needs its admitted selection, and
 Control needs the exact retained request and job identity from `_schedule` for
-the Project inspection handoff. Doctor may be able to compose its existing
-readiness result without another generic outcome type. This is an interface
+the Project inspection handoff. Doctor's private path must also distinguish
+initial readiness, declined or blocked repair, and completed qualification;
+`DoctorResult.ready` alone does not encode that history. This is an interface
 proposal requiring an exact caller review before implementation. No tracked
 fixture or retained evidence has been shown safe to delete.
 
@@ -478,6 +542,25 @@ Current terminal output must remain understandable without color, in redirected
 output, and in a dumb terminal. Source review does not prove an installed or
 novice Viking journey.
 
+Terminal gates differ: Setup/Init, Doctor confirmation, and Run confirmation
+require stdin and stderr terminals (`onboarding.py` lines 960-961,
+`doctor.py` lines 1480-1484, `control.py` lines 1046-1050). Interactive watch
+requires stdin and stdout terminals with `TERM` other than `dumb`; otherwise
+it renders one snapshot and can return zero (`_inspection_presentation.py`
+lines 1117-1153). Watch `--actions` requires all three streams to be terminals
+and a non-dumb `TERM` (lines 1062-1066). The guide must specify and test which
+route applies under stdout or stderr redirection and avoid treating a snapshot
+as continued monitoring. If watch first has to choose among multiple requests
+or Runs, that picker separately requires stdin and stderr terminals; redirected
+stderr can refuse selection before the watch display is reached (`control.py`
+lines 177-193 and 294-329). Passing the exact request selector avoids that
+ambiguity for the guided handoff. Doctor and Control write approval questions
+to stdout despite using stdin/stderr for eligibility; with redirected stdout,
+an approval may still read a response while its question is hidden in the
+redirected stream. The proposed guide must make the question visible at its
+actual approval boundary (`doctor.py` lines 1480-1484; `control.py` lines
+1046-1053).
+
 **To settle.** Once a selected guide works, make Quickstart one linear head-node
 journey and retain manual procedures with their owners. Use tiny local fixtures
 for TTY/PTY, refusal and EOF at every approval boundary, source-bound and
@@ -487,6 +570,9 @@ submission, and request-based watch.
 Cover the controlled console launcher and isolated `-m emrys` entry, clean and
 malformed `.env`, bare and named commands, exact owner exits, and no writes on
 refusal in their existing test owners rather than adding a second harness.
+Include a terminal-scheduler request with unresolved Run evidence, menu
+cancellation versus ambiguous nonterminal selection, request stop preview
+versus separately admitted Run recovery, and request-to-Run re-verification.
 Run applicable hosted checks on the exact implementation commit. A fresh
 novice Viking walkthrough and site observations remain separate; no biological
 interpretation follows from software or scheduler success.
@@ -496,8 +582,9 @@ found in the available worktree and Python environments. A source-bound
 `--help`, `--version`, or bare invocation exits during import because
 `jsonschema` is absent, before argument parsing or interaction. This does not
 verify those three public behaviors. No dependency was installed for the audit.
-The selected PR #307 synthetic E2E timing assertion also needs a passing run
-on its exact commit before it supports even that hosted claim.
+The selected PR #307 synthetic E2E timing assertion supports a hosted claim
+only with a passing run on the exact head named in that claim; an earlier run
+cannot validate later documentation-only commits.
 
 ## Proposed Viking/PUM1 journey
 
@@ -512,16 +599,16 @@ supplied or explicitly reviewed by the operator.
 | --- | --- | --- |
 | Installed start | Follow the Quickstart's one head-node install path, then enter guidance from the checkout. | The CLI cannot perform its own uv/Pixi installation before it exists. A failed install stops before the guide. |
 | Entry | Bare `emrys` on a terminal starts the guide; named commands remain manual. Show what Project and settings are in scope. | This entry is owner-approved. Preserve malformed-settings refusal before parsing, other CLI behavior, and the current nonterminal no-write error unless separately approved. |
-| Saved settings | Show the Projects home, `viking` site, optional log root, and value precedence; ask before one create-absent `.env` publication. | Setup owns the file. A dry-run/decline does not continue as a saved setting; same-invocation values are carried explicitly. |
+| Saved settings | Show the Projects home, `viking` site, optional log root, value precedence, and any loaded settings file; ask before one create-absent `.env` publication only for first setup. | Setup owns the file. A returning user skips create-absent Setup; a dry-run/decline does not continue as a saved setting. Same-invocation values are carried explicitly. |
 | Project context | Choose new or an exact existing `project.yaml`; show the canonical path. | No latest/parent/global lookup, adoption of a partial tree, or implicit Project switch. |
-| New study | Ask for reference FASTA/GTF and the FASTQ directory; review six detected pairs, the Quickstart's EV/PUM1 assignments, study-wide `reverse`, and `EV -> PUM1`. | Init owns pairing and scientific admission. A missing or incompatible input stops before Project publication. |
+| New study | Ask for reference FASTA/GTF and the FASTQ directory; review six candidate sample IDs, the Quickstart's EV/PUM1 assignments, study-wide `reverse`, and `EV -> PUM1`. | Init owns pairing and scientific admission. The detected list precedes mate validation; a missing or incompatible input stops before Project publication. |
 | Scope and thresholds | Review the maintained `1`–`22`, `X`, `Y`, `MT` selection only after an explicit study choice if INIT-02 is integrated; otherwise retain the exact manifest route. Ask for `A>G` and review the five disclosed paired-CMH values and inactive background. | A site or Project name cannot choose scientific scope. `--preview`, refusal, or input EOF must retain their distinct no-write/error outcomes. |
 | Project creation | Show the complete Init preview, then ask once to create and explain FASTQ hashing time. | Init owns absent publication and completion re-admission. A declined preview is not creation; a failed partial tree requires inspection, not automatic retry. |
 | Validation | Show the selected Project and a read-only compatibility check, including repeated FASTQ reads. | Validate owns a current observation. Failure stops; later owners re-admit rather than trust an earlier PASS. |
-| Runtime source | If an inventory is already admitted, proceed. Otherwise explain the current-environment, explicit donor, or Doctor-managed path; review donor and borrower writes when reuse is chosen. | Runtime owns admission; a listed donor is unverified, skip is no write, and retained partials or existing selections are never silently replaced. |
+| Runtime source | If an inventory exists, show it as a candidate for fresh admission; otherwise explain the current-environment, explicit donor, or Doctor-managed path. Review donor and borrower writes when reuse is chosen. | Runtime and Doctor own admission; a listed donor or existing file is unverified, skip is no write, and retained partials or selections are never silently replaced. |
 | Doctor | Show the exact Analysis/profile and diagnosis; only offer Doctor-owned repair when it has a plan. | External remediation, refused repair, or incomplete Slurm qualification stops before Run. The same profile is rechecked at Run. |
 | Launch | Review the exact Analysis and direct frozen plan or Slurm submission/resource request; ask once. | Control owns duplicate-risk review and submission. Slurm approval returns an exact request and job, not a created or completed Run. |
-| Watch and return | Offer request-bound Project watch, show how to recheck, then show the exact Project/request for the operator to retain for later inspection. | Inspection owns later association, completion, and supported recovery. Leaving watch never stops a job or authorizes another submission. |
+| Watch and return | Offer request-bound Project watch, show how to recheck, then show the exact Project/request for the operator to retain for later inspection. | Inspection owns later association, completion, and supported recovery. Leaving watch, a terminal scheduler state, or a missing Run never authorizes another submission. |
 
 ### Transcript evidence boundary
 
@@ -532,13 +619,13 @@ operator- or runtime-supplied.
 
 | Segment | Current prompt or output at pinned #304 | Still proposed or conditional |
 | --- | --- | --- |
-| Setup | `Projects home`, `site`, `log root (optional)`, `Saved CLI defaults`, `CLI defaults ready` (`onboarding.py` lines 214-257). | The guide must add one reviewed save decision without calling Setup twice, then carry values within the invocation. |
+| Setup | `Projects home`, `site`, `log root (optional)`, `Saved CLI defaults`, `CLI defaults ready` (`onboarding.py` lines 214-257). | The guide must add one reviewed save decision without calling Setup twice, then carry values within the invocation. Returning users need no second create-absent Setup. |
 | Project choice | Named Init requires `PROJECT_NAME`; Project-aware commands accept an exact selector (`onboarding.py` lines 270-295 and 729-759). | New/existing choice and `pum1-study` name entry are guide connective text, not current bare-CLI behavior. |
-| Reference and samples | `reference fasta`, `reference gtf`, `FASTQ directory`, detected pairs, `study strandedness`, then each missing `condition for SAMPLE` and `pairing group for SAMPLE` (`onboarding.py` lines 812-893, 939-961, and 981-1025). | The Quickstart supplies six EV/PUM1 assignments and study-wide `reverse`; actual input paths are not supplied by EMRYS. Sample questions follow sorted IDs, which differs from the Quickstart table order. |
+| Reference and samples | `reference fasta`, `reference gtf`, `FASTQ directory`, `Detected FASTQ pairs` (candidate IDs), `study strandedness`, then each missing `condition for SAMPLE` and `pairing group for SAMPLE` (`onboarding.py` lines 812-893, 939-961, and 981-1025). | The Quickstart supplies six EV/PUM1 assignments and study-wide `reverse`; actual input paths are not supplied by EMRYS. Sample questions follow sorted IDs, which differs from the Quickstart table order. The detected list does not yet prove mate pairing. |
 | Scope | The pinned path accepts the explicit checkout manifest or asks for generic regions (`onboarding.py` lines 1027-1073 and 1100-1156). | PR #316's maintained 25-name offer is not in this branch; a continuous guide must use the explicit manifest route until it is integrated and rechecked. |
 | Comparison and thresholds | Two compatible conditions offer numbered `EV -> PUM1`/`PUM1 -> EV`, then `comparison [1 / 2]`, `target change`, and `Use these paired-CMH defaults?` (`onboarding.py` lines 838-893 and 1074-1095). | The Quickstart supplies `A>G` and the disclosed `1`, `50`, `0.05`, `1.2`, `0.005`; no background cohort is selected. The guide must display, not infer, that scientific intent. |
 | Publication and validation | Complete preview, `Create this Project? [y/N]`, hashing warning, `Project ready`, then a separate validation PASS (`onboarding.py` lines 1163-1258 and 1313-1398). | Guide continuation requires the exact created outcome; neither exit 0 nor path presence suffices. |
-| Runtime and Doctor | A chosen donor can show `Runtime discovery: READY` and `Admit this runtime inventory? [y/N]`; Doctor asks `Apply this {operation} plan? [y/N]` when repair is available (`onboarding.py` lines 2304-2356; `doctor.py` lines 1480-1484). | Donor use is optional; PR #320's picker is not in this branch. The plan operation and readiness depend on fresh diagnosis. |
+| Runtime and Doctor | A chosen donor can show `Runtime discovery: READY` and `Admit this runtime inventory? [y/N]`; Doctor asks `Apply this {operation} plan? [y/N]` when repair is available (`onboarding.py` lines 2304-2356; `doctor.py` lines 1480-1484). | Donor use is optional; PR #320's picker is not in this branch. Donor preview can rehash two Projects. The plan operation and readiness depend on fresh diagnosis. |
 | Launch and return | Control asks `Execute this plan? [y/N]`, then prints the exact submission request and job; completion is unverified (`control.py` lines 1046-1050 and 1165-1225). | A `Watch now?` question is guide-only proposed text. Request-bound inspection exists, but later Run association and completion must be independently admitted. |
 
 ## Proposed design and delivery order
@@ -573,7 +660,9 @@ provisional private operation in `onboarding.py` would return `Path | None`:
 | `--preview`, or final no/blank/EOF/nonterminal confirmation | `None` after the existing no-write message | Exit 0; no Project created. |
 | Confirmed `y`/`yes` or `--execute` | Canonical `project.yaml` path only after create-absent publication and final input recheck | Exit 0 and the same `Project ready` output. |
 | `OSError`, `OnboardingError`, `ValidationError`, `orchestration_contracts.ContractValidationError`, or `step08.ContractError` | Propagate to a thin public adapter | Same error message and exit 2. |
-| `KeyboardInterrupt` | Propagate without a new catch | Same interruption and retained partial-state behavior. |
+| `KeyboardInterrupt` before guarded member writes, including reservation setup | Propagate without a new catch | Same interruption behavior; a partially reserved directory may remain. |
+| `KeyboardInterrupt` during guarded member writes or internal tree readmission | Existing publication guard wraps it as `OnboardingError`; preserve the partial tree | Same error message and exit 2; completion member presence is not proof. |
+| `KeyboardInterrupt` during final input recheck after publication | Propagate without a new catch | Same interruption behavior; `project.yaml` may exist without a `Project ready` result. |
 
 The public `init_project_from_args` would remain the integer adapter. Preserve
 its questions and streams, `--preview`/`--execute` exclusivity, one-pass FASTQ
@@ -583,7 +672,8 @@ onboarding tests and the coordinator contract would change with it. The CLI
 dispatcher, Doctor, Control, schemas, scripts, fixtures, and retained evidence
 have no established change for this slice. Tests must distinguish preview,
 final refusal/EOF, required-answer EOF, nonterminal mode, confirmed creation,
-input drift, hashing, partial publication, and public exit/output parity.
+input drift, hashing, interruption before, during, and after publication,
+retained partials, and public exit/output parity.
 
 A source-only structural estimate is about seven added product lines and zero
 new product files; moving the current body into a private operation would make
