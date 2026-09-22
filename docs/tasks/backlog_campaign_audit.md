@@ -133,8 +133,9 @@ separate from study selection; its status does not follow `INIT-02`.
 table, CV-06/CV-U08/CV-U20 passages, and charter delivery summary now name
 the delivered *explicit* Quickstart `--partition-manifest` route separately
 from `INIT-02`'s Open automatic-selection outcome. They retain `INIT-01` and
-`INIT-03` implementation and each CV card's own pending hosted/novice
-acceptance. No card status changed.
+`INIT-03` implementation and each CV card's own remaining novice/site or
+selected real-Slurm acceptance. Ordinary software checks later passed
+[ordinary baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692); no card status changed.
 
 ### 3. `CV-U22` runtime reuse
 
@@ -207,8 +208,8 @@ that the old standalone entry point survives.
 **Documentation correction:** The CV backlog remaining-work row and
 current-sounding CV-16/CV-24/CV-25 summaries now agree with
 `DASHBOARD-RETIRE-01`: standalone entry point/callers and new-name transition
-are implemented, while standard CI and institutional visual verification
-remain. The matrix's compression closeout sentence is bound to September 14.
+are implemented. Ordinary software checks passed [ordinary baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692);
+institutional visual verification remains. The matrix's compression closeout sentence is bound to September 14.
 The earlier local-test limit, v1–v3 stream reads, and shared watch
 parsing/rendering remain explicit. No evidence or card status changed.
 
@@ -356,9 +357,12 @@ CV-10 and CV-18 now cite ordinary hosted software checks at
 the selected real synthetic E2E job was skipped in both runs. Their selected
 real-Slurm and institutional cancellation/recovery acceptance remains separate.
 CV-14 and CV-22 now distinguish baseline ordinary CI from novice/site
-acceptance. The older resource coverage map at cluster backlog line
-4103 should identify CV-U06/CV-U28 as the current allocation-policy owners;
+acceptance. The [resource coverage map](cluster_verification_backlog.md#earlier-observations-and-coverage-reconciliation)
+now identifies CV-U06/CV-U28 as the current allocation-policy owners;
 CV-07/11/22 retain selection, fit, and disclosure responsibilities.
+The linked retention ledger records the further ordinary-CI wording sweep
+across CV-06 and twelve CV-U cards, while CV-01/CV-U06 keep selected
+real-Slurm acceptance. No current card status changed.
 
 **Additive evidence transfer:** Dated records now preserve
 [CV-10 containment/retry](../history/2026-09-15-cv10-containment-retry.md),

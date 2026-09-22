@@ -242,8 +242,9 @@ the shared presentation owner and expose the same Boolean `--verbose` switch.
 Cyan keys remain distinct from neutral or semantic values; terminal success,
 pending and failure states use the shared restrained palette while redirected,
 `NO_COLOR` and dumb-terminal text remains literal. Focused onboarding and
-presentation checks passed locally. Standard CI and Viking visual acceptance
-remain, so CV-U01 is **Verification pending**.
+presentation checks passed locally. The correction passed
+[baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692);
+Viking visual acceptance remains, so CV-U01 is **Verification pending**.
 
 ### CV-U02 Default CLI verbosity
 
@@ -252,7 +253,9 @@ applies to every Slurm approval, including Doctor. Requested resources,
 exclusivity, explicit hosts and material workflow ceilings are critical normal
 output; detailed limits and diagnostics remain verbose. `SUBMISSION-PREVIEW-01`
 in the [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up)
-tracks exact hosted and institutional verification of this reconciled policy.
+records the reconciled policy. Ordinary software regression passed in
+[baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692);
+institutional presentation acceptance remains.
 
 **Operator report:** “Overall cli output is far too verbose by default, there
 should be an option to get all that output but by default it should return only
@@ -293,8 +296,8 @@ associations, runtime checks and per-Task/evidence detail. Focused current-sourc
 CLI suites passed 430 tests with one skip; two scientific execution fixtures
 were deselected because their controlled `-I` children loaded a different
 editable EMRYS installation, a test-environment source-binding mismatch rather
-than presentation evidence. CV-U02 is **Verification pending** for standard CI
-and Viking terminal acceptance.
+than presentation evidence. At that implementation checkpoint, CV-U02 was
+**Verification pending** for standard CI and Viking terminal acceptance.
 
 **September 17 adversarial audit:** Default-verbosity behavior is likewise
 incomplete across Init. `emrys init synthetic` always prints dataset, publication
@@ -310,16 +313,19 @@ destination, dataset profile, library count, publication state and evidence
 boundary; read composition, reference size and publication mechanics are
 verbose. Manifest Init defaults to its destination, manifest count and
 publication state; exact members and policy are verbose. Both preserve errors
-and no-write outcomes. Focused local checks passed; standard CI and Viking
-terminal acceptance remain, so CV-U02 is **Verification pending**.
+and no-write outcomes. At that September 17 checkpoint, focused local checks
+passed; standard CI and Viking terminal acceptance remained, so CV-U02 was
+**Verification pending**.
 
 **September 21 critical-preview refinement:** Named Init's normal review now
 keeps only the compact scientific choices needed to catch an incorrect immutable
 plan: strand summary, comparison/target, five paired-CMH thresholds, background
 state/maximum and three STAR values. Per-sample paths and assignments remain
 verbose. This is deliberate critical information under AC-GUARD-002, not a
-return of diagnostic narration. CV-U02 remains **Verification pending** for
-hosted CI and Viking terminal acceptance.
+return of diagnostic narration. The refined software checks passed
+[baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692).
+CV-U02 remains
+**Verification pending** for Viking terminal acceptance.
 
 ### CV-U03 Init and Validate summaries
 
@@ -341,7 +347,10 @@ error; `--verbose` restores hashes, counts, paths, warnings and Analysis detail.
 summary, five paired-CMH values, active/inactive background maximum and all three
 STAR values in the normal review. These are the effective immutable study
 choices; verbose still owns individual sample/mate paths and assignments.
-CV-U03 remains **Verification pending** for hosted CI and Viking visual review.
+The refined software checks passed
+[baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692).
+CV-U03 remains
+**Verification pending** for Viking visual review.
 
 ### CV-U04 Doctor presentation
 
@@ -852,9 +861,11 @@ active/unknown scheduler states, override, malformed retained arguments and a
 missing scheduler response; exact processing-source comparison is covered at
 the normalized projection seam. The slice adds 45 net maintained product lines
 across two existing product files, with no new file, schema, persistent field,
-configuration, dependency or mutable state. Hosted CI and institutional review
-of the red warning during real delayed scheduler/Run population remain
-outstanding, so CV-U12 is **Verification pending**.
+configuration, dependency or mutable state. The software warning checks passed
+[baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692).
+Institutional review of the
+red warning during real delayed scheduler/Run population remains outstanding,
+so CV-U12 is **Verification pending**.
 
 ### CV-U13 Watching progress
 
@@ -923,8 +934,9 @@ and no timestamp, directory order or scheduler query chooses a target. The
 ordinary no-argument command no longer falls through to all current-user Slurm
 jobs. Exact job IDs, exact job names and the expert raw `inspect --job-id`
 surface remain available. Focused selector, request, scheduler, renderer and
-watch checks pass locally; standard CI and Viking/operator use
-remain required, so CV-U13 is **Verification pending**.
+watch checks pass locally. Ordinary software regression passed in
+[baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692);
+Viking/operator use remains required, so CV-U13 is **Verification pending**.
 
 ### CV-U14 Dashboard logs
 
@@ -1208,9 +1220,11 @@ new routing; novice Viking/PTY acceptance remains, so CV-U18 stays
 command with a yes/no prompt after the complete review. Approval uses the same
 collected answers and existing creation checks; decline, EOF and explicit
 `--preview` leave the Project absent. Automation retains `--execute`. The
-guide now follows that delivered interaction. CV-U18 is **Verification pending**
-for exact hosted and novice verification; earlier replay fixtures are historical
-evidence for the superseded interface.
+guide now follows that delivered interaction. The current confirmation checks
+passed [baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692).
+CV-U18 remains
+**Verification pending** for novice Viking acceptance; earlier replay fixtures
+are historical evidence for the superseded interface.
 
 ### CV-U19 Long-term interactive CLI
 
@@ -1330,8 +1344,10 @@ regions file for this study. The exact `1`–`22`, `X`, `Y`, `MT` selection is
 validated against the admitted FASTA and retained in the Project; additional
 contigs are not silently included and a missing selected name blocks creation.
 Site selection still controls placement only. Automatic selection without the
-manifest argument remains Open under `INIT-02`; exact hosted and novice
-verification of this explicit route remains pending.
+manifest argument remains Open under `INIT-02`. Software checks for the
+explicit route passed
+[baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692);
+novice Viking verification remains pending.
 
 ### CV-U21 Technical parameter assistance
 
@@ -1401,9 +1417,10 @@ fail before publication without exposing sequence content. Focused local tests
 cover later and R2 maxima, plain and gzip input, malformed records, deterministic
 numeric publication, long records across streaming fragments, concatenated and
 padded gzip, gzip integrity and
-explicit override preservation. CV-U21 is
+explicit override preservation. At that checkpoint CV-U21 was
 **Verification pending** for hosted CI and a fresh operator walkthrough with
-non-synthetic variable-length reads.
+non-synthetic variable-length reads. The software correction later passed
+[baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692).
 
 **September 20 approved STAR-default completion:** Guided initialization no
 longer asks a non-technical user for `genomeSAindexNbases`; it derives and shows
@@ -1422,9 +1439,10 @@ nanosecond change time observed with the FASTA summary; a change through full
 admission fails before publication. Existing Projects without
 `genome_chr_bin_nbits` normalize to `18` without rewriting their files. The Step
 `00a` validator adds a seventh exact check for the retained native value. CV-U21
-remains **Verification pending** for hosted CI and a fresh operator walkthrough
-with non-synthetic variable-length reads and a representative fragmented
-reference.
+The CV-U21 software correction passed ordinary checks in
+[baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692)
+but remains **Verification pending** for a fresh operator walkthrough with
+non-synthetic variable-length reads and a representative fragmented reference.
 
 **September 21 novice-default boundary:** The shorter questionnaire does not
 extend mechanical parameter determination. STAR values remain derived as above;
@@ -1662,9 +1680,11 @@ chunks used by the sole content hash, and the resulting immutable sample
 admission is reused by full Project admission without reopening a FASTQ.
 Preview still reads zero FASTQ content. Focused local tests cover exact observer
 bytes, one execution hash per FASTQ, mutation during stable reads and restored-
-mtime post-admission mutation. CV-U25 is **Verification pending** for hosted CI,
-comparable large-input timing and a fresh Viking/operator exercise; ctime is the
-accepted ordinary-filesystem post-hash mutation boundary and is not claimed as
+mtime post-admission mutation. CV-U25 passed ordinary software checks in
+[baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692)
+and remains **Verification pending** for comparable large-input timing and a fresh
+Viking/operator exercise; ctime is the accepted ordinary-filesystem post-hash
+mutation boundary and is not claimed as
 protection against privileged tampering that can forge filesystem metadata.
 
 ### CV-U26 Manifests inside the Project
@@ -1993,8 +2013,10 @@ association in the same target. A Run is offered separately only when no exact
 request represents it. Multiple requests for one Run remain distinct picker
 choices instead of collapsing to the newest or silently becoming Run-only.
 Both `emrys watch` and Run-selected `inspect --watch` use this selection path.
-The focused local suite passes; standard CI and the intended Viking terminal
-exercise remain pending, so CV-U31 is **Verification pending**.
+The focused local suite and
+[baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692)
+passed the software correction. The intended Viking terminal exercise remains
+pending, so CV-U31 is **Verification pending**.
 
 ### CV-U32 Dashboard independent of working directory
 
@@ -2045,8 +2067,10 @@ inventories retained submissions as well as Runs under each immediate admitted
 Project. It applies the same 256-target refusal and picker as Project-local use,
 creates no registry or current pointer, and performs no scheduler query while
 enumerating candidates. Exact `--project` remains available. Focused local
-selection checks pass; standard CI and institutional filesystem/terminal use
-remain pending, so CV-U32 is **Verification pending**.
+selection checks pass. Ordinary software regression passed in
+[baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692);
+institutional filesystem/terminal use remains pending, so CV-U32 is
+**Verification pending**.
 
 `INIT-01` now uses that same selected Projects home for named creation. This
 does not expand discovery beyond the declared home or let an unrelated working
@@ -2093,8 +2117,8 @@ query. Duplicate rows, wrong ID/UID/cluster, malformed metrics and identity
 drift leave the admitted root state visible while reporting usage unknown. The
 shared renderer labels live samples and final accounting distinctly, and both
 interactive and snapshot request watches ask for resources. Focused local fault
-and rendering matrices pass; standard CI and institutional accounting/display
-remain pending. Future wall-time tuning
+and rendering matrices pass. At the September 18 checkpoint, standard CI and
+institutional accounting/display still remained pending. Future wall-time tuning
 and its measurements remain with the optimization campaign, not this card.
 
 **Current supported scope:** Terminal usage and its root rechecks retain the
@@ -2102,8 +2126,10 @@ admitted cluster. Live `sstat` has no cluster selector, so its exact-root checks
 remain local; nonlocal live samples are explicitly unavailable without losing
 the selected request state. `SCHED-USAGE-01` in the
 [main backlog](backlog_matrix.md#novice-setup-and-operational-follow-up) owns this
-source correction and argument-sensitive cases. CV-U33 is **Verification pending**
-for exact hosted regression and institutional accounting/display acceptance;
+source correction and argument-sensitive cases. CV-U33 passed ordinary
+software regression in
+[baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692)
+and remains **Verification pending** for institutional accounting/display acceptance;
 transport fixtures are not scheduler execution.
 
 ## Additional Viking UX findings — 2026-09-16
@@ -2512,9 +2538,11 @@ partition manifest to guided Init. Sample and partition conflicts are checked
 separately; copied samples still require a partition manifest. Imported rows
 preserve their order and source-relative paths. Quickstart no longer asks for a
 25-name paste. `INIT-03` provides in-process confirmation and the focused guide
-follows that delivered path. CV-06 is **Verification pending** for current
-hosted regression and institutional acceptance. Automatic study selection
-without a manifest argument remains Open under `INIT-02`.
+follows that delivered path. CV-06 passed ordinary software regression in
+[baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692)
+and remains **Verification pending** for institutional novice acceptance.
+Automatic study selection without a manifest argument remains Open under
+`INIT-02`.
 
 **Original-input manifest follow-up:** The operator's fresh-user walkthrough
 exposed vendor FASTQ mates named `_1`/`_2` and 25 explicit whole-chromosome
@@ -3003,7 +3031,8 @@ clear. Changing a plan creates a new Run; no automatic budget reduction or
 unmeasured throughput promise. Reuse resource admission rather than adding a
 second scheduler authority.
 **Owners/dependencies:** `SCHED-01` owns the implemented explicit undersized-memory
-preflight and its final-source software verification; this card owns the broader
+preflight and its ordinary baseline software verification; this card owns the
+broader
 institutional heterogeneous-capacity and UX acceptance.
 Coordinate execution profiles/capacity, CV-07/09/22, and optimization discussion 3.
 
@@ -4118,7 +4147,7 @@ Operator transfer and visual acceptance remain pending; `REPORT-01` through
 | Doctor starts over every time | CV-05 replaces the original hypothesis and its duplicate with the observed distinction between reuse and revalidation. |
 | Manual profile setup and repeated restoration were written as one finding | CV-07 and CV-08 retain the two distinct P0 outcomes. |
 | Previously successful node should be used | CV-09/11/22 capture runtime provenance, capacity, and explicit placement; a hostname alone is not a dependency or capacity guarantee. |
-| Use more of an exclusive allocation | CV-07/11/22 expose resource policy and fit; measured tuning remains in the optimization campaign. No new performance promise is implied. |
+| Use more of an exclusive allocation | CV-U06/CV-U28 own the current allocation-aware policy; CV-07/11/22 cover profile selection, capacity fit and submission disclosure, and CV-U27 owns smoke-to-real guidance. Comparable tuning remains [optimization candidate 3](optimization_campaign.md#3-tune-existing-resource-profiles). A larger reservation or resolved share does not prove utilization or better wall time. |
 
 Implementation links, exact checks, remaining acceptance, and explicit
 dispositions belong in the relevant card when work is selected. Update the

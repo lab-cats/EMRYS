@@ -1,8 +1,9 @@
 # CV card retention review — working draft
 
 Source snapshot: audit branch at a009037beb3a073738945472b6cffcbe31b834ee
-on 2026-09-22. Line numbers below refer to that
-[delegated cluster backlog](cluster_verification_backlog.md). This temporary
+on 2026-09-22. Every numeric source range in the tables is frozen to that
+[exact cluster backlog revision](https://github.com/lab-cats/EMRYS/blob/a009037beb3a073738945472b6cffcbe31b834ee/docs/tasks/cluster_verification_backlog.md),
+not the changing [current backlog](cluster_verification_backlog.md). This temporary
 review is not a second card-status or acceptance authority. The card indexes
 and detailed records remain authoritative, and no source evidence is removed.
 
@@ -52,8 +53,8 @@ commit; no candidate is approved for removal by this review.
 | Card and source lines | Current obligation and material to preserve | Possible checkpoint treatment |
 | --- | --- | --- |
 | CV-U01 · VP · 194–247 | Semantic color across Init, Validate, Run and Inspect, with readable plain/NO_COLOR/dumb modes; preserve negative terminal report and missed Init callers. Viking visual review remains. | Earlier implementation/refinement at 209–229 can condense after the September 17 correction and source limits survive. |
-| CV-U02 · VP · 248–323 | Minimum normal output and sole verbose route without hiding compact approval disclosure or named-Init science choices; preserve negative Run/Inspect/runtime report and 430-pass source limit. Hosted and Viking presentation remain. | Repeated implementation stages at 269–314 may condense after the synthetic/manifest correction and exact checks transfer. |
-| CV-U03 · VP · 324–345 | Init scientific summary and Validate pass/fail detail, including strand, five paired-CMH and three STAR settings; hosted and visual review remain. | September 21 scientific-preview refinement is a decision, not routine chronology. |
+| CV-U02 · VP · 248–323 | Minimum normal output and sole verbose route without hiding compact approval disclosure or named-Init science choices; preserve negative Run/Inspect/runtime report and 430-pass source limit. Baseline ordinary CI passed; Viking presentation remains. | Repeated implementation stages at 269–314 may condense after the synthetic/manifest correction and exact checks transfer. |
+| CV-U03 · VP · 324–345 | Init scientific summary and Validate pass/fail detail, including strand, five paired-CMH and three STAR settings; baseline ordinary CI passed and Viking visual review remains. | September 21 scientific-preview refinement is a decision, not routine chronology. |
 | CV-U04 · VP · 346–391 | Doctor categories, requirements and live progress with detailed repair output under verbose; preserve September 16 collision and attribution boundary, linked to CV-UX-01. Viking terminal review remains. | Initial correction prose at 384–390 may condense after the collision record and current contract survive. |
 | CV-U05 · VP · 392–418 | Superseding 5–25-minute setup notice is expectation, not timing proof; keep excessive-duration report and CV-26 attribution gap. | Little dispensable narration. |
 | CV-U06 · VP · 419–534 | Current allocation-aware stage policy, limits and site gap; preserve four-core report, fixed-policy provenance, overlapping local counts/interpreter mismatch, 2048-MiB test-only selected follow-up, and 495/244/251 approved accounting correction. No utilization or speedup proof. | Local checkpoint sequence at 476–504 may move after exact evidence transfer; selected full-allocation journey at 506–522 has no retained passing run. |
@@ -62,7 +63,7 @@ commit; no candidate is approved for removal by this review.
 | CV-U09 · VP · 673–706 | Explain optional synthetic Project built from tiny invented reads/reference/settings to check installation, Viking execution and reports, not full-study capacity or scientific choices; preserve time/confidence tradeoff and novice acceptance. | Initial check prose at 683–693 includes this scope, so no complete span is nominated. |
 | CV-U10 · Completed · 707–721 | Remove unnecessary novice Git command while keeping provenance and advanced Runbook route; static documentation completion only. | No site or scientific proof implied; little to shorten. |
 | CV-U11 · VP · 722–789 | Preserve confusing literal example and negative handoff report; separate paste-ready commands, no-write preview, completion-last publication, prompt/output correction and novice site gap. | Intermediate implementation at 743–769 may condense after the exact reports and Bash/link-check limits transfer. |
-| CV-U12 · VP · 790–858 | Duplicate-submission hazard, normalized pre-Run projection, explicit --allow-duplicate-submission override, no automatic cancellation/retry, raw-argv bypass examples, fail-closed legacy handling and byte-identical profile rule; hosted and institutional warning review remain. | Earlier safeguard narrative at 806–819 may condense only after the override and no-cancel decision survive. |
+| CV-U12 · VP · 790–858 | Duplicate-submission hazard, normalized pre-Run projection, explicit --allow-duplicate-submission override, no automatic cancellation/retry, raw-argv bypass examples, fail-closed legacy handling and byte-identical profile rule; baseline ordinary CI passed and institutional warning review remains. | Earlier safeguard narrative at 806–819 may condense only after the override and no-cancel decision survive. |
 | CV-U13 · VP · 859–928 | Bounded Runs/submissions inventory, exact ID/name, no newest-by-time selection and ambiguity failure; preserve original unknown-site report separately from diagnosed raw-resolver defect and later pre-Run gap. | Implementation at 871–885 can condense only after all three observations and 249-test limit transfer. |
 | CV-U14 · VP · 929–975 | Color actual log bytes, preserve plain/NO_COLOR; keep monocolor report and real log-form mismatch. Viking/tmux visual acceptance remains. | Two implementation descriptions at 938–957 may condense after literal-form regression rationale survives. |
 | CV-U15 · VP · 976–993 | Unclear Verify/associate again report is distinct from the then-unverified explanation; current label is read-only recheck, with operator wording acceptance pending. | Almost no removable history. |
@@ -111,6 +112,13 @@ retaining novice/site acceptance. The linked main-matrix rows also distinguish
 baseline CI from their remaining acceptance. No card status changes follow
 from these checks. Hosted checks for this newer audit PR head must be assessed
 separately.
+
+A second wording sweep reconciles CV-06, CV-U01/U02/U03/U12/U13/U18/U20/U21/
+U25/U31/U32/U33 and the linked `SCHED-01` and `DASHBOARD-RETIRE-01` rows
+with that baseline ordinary CI. Dated earlier pending-CI checkpoints remain
+historical; current novice, Viking, visual, warning, timing and accounting
+acceptance does not follow from the software result. CV-01 and CV-U06 still
+need their separately selected real-Slurm lane.
 
 The dated Viking [E01–E12 record](../history/2026-09-14-viking-walkthrough.md)
 preserves the charter observations. Additive dated records now preserve
