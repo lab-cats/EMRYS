@@ -15,10 +15,11 @@ inspection below used its ancestor `f32260f0408fe1826af401fc1ddce0f2478ae6ce`.
 The intervening commits reformat the selected Doctor timing assertion and
 revise CV-26's documentation status/acceptance; production, package, and guide
 sources are byte-identical.
-The reviewed ancestor contains PRs #300, #302, and #304. PRs #303, #305, and #306 form a
-separate CI stack and are not in the target tree. PR #307 changes the cluster
-backlog and selected synthetic CI evidence over #304. Recheck the live PR head
-and the relevant diff before using these observations for a release candidate.
+The reviewed ancestor contains PRs #300, #302, and #304. PRs #303, #305,
+#306, and #321 form a separate delivery stack and are not in this source tree.
+PR #307 changes the cluster backlog and selected synthetic CI evidence over
+#304. Recheck its live head and relevant diff before using these observations
+for a release candidate.
 No candidate artifact, installed full Run, institutional execution, or release
 publication was performed for this investigation.
 
@@ -58,7 +59,7 @@ local navigation labels, not new backlog items.
 
 | ID | Release question | Established at the reviewed head | Next check or decision | Existing owner |
 |---|---|---|---|---|
-| `R01` | Exact candidate and included work | PR #307 is at `5ecc409c`; the investigated ancestor `f32260f0` differs by timing-check formatting and CV-26 documentation closure. PRs #303/#305/#306 are a separate CI stack. | Select and freeze the eventual candidate, then bind each check and artifact to that exact head. | `RELEASE-01`; live Git and CI |
+| `R01` | Exact candidate and included work | Open PR #307 is at `5ecc409c`; the investigated ancestor `f32260f0` differs by timing-check formatting and CV-26 documentation closure. PRs #303/#305/#306/#321 are a separate stack. | Select and freeze the eventual candidate, then bind each check and artifact to that exact head. | `RELEASE-01`; live Git and CI |
 | `R02` | Promised operations | Quickstart describes a Viking Project-to-Results path; the Runbook also describes direct-host operation. | Classify each public operation as prerelease/v1 promised, limited, or unsupported, including recovery and report regeneration. | `RELEASE-01`; coordinator and reporting owners |
 | `R03` | Platforms and site | README describes Linux/POSIX, direct one-host or one-node Slurm; managed repair is narrower. | State tested combinations and resource/storage requirements; qualify any named Viking promise at one revision. | `RELEASE-01`, `SITE-PARITY-01`, `CLUSTER-VERIFY-01` |
 | `R04` | Distributed artifact | Quickstart clones the moving default branch and uses `uv sync --locked`; Runbook documents an exact tag/commit checkout; the distribution test builds an sdist and wheel. | Choose a pinned checkout, wheel paired with that checkout, standalone or limited wheel, and which built artifact is distributed and tested. | `RELEASE-01`; package and onboarding owners |
@@ -75,6 +76,8 @@ local navigation labels, not new backlog items.
 | `R15` | Cross-owner release coverage | The architecture index maps ingestion, stages, evidence, Analysis, workflow, reporting, contracts, and tests; all 61 tracked package assets in scope match static patterns, but the wheel test samples 43 and no complete installed Run has been exercised. | Trace the selected public journey through each relevant owner and its packaged assets, callers, validators, contracts, and tests; record what remains unexamined. | `RELEASE-01`; functional-owner inventory and existing owners |
 | `R16` | Input-admission claim | Named Init checks individual FASTQ records on creation, but not R1/R2 ID or count concordance; Project validation and specialist manifest validation are narrower, and the optional pair helper checks only a prefix of IDs. | State exactly which input checks a release promises; trace the selected checkout study through public Init, validation, and first Run preview, and route any stronger pairing claim to the ingestion owner. | `RELEASE-01`; ingestion/onboarding owners |
 | `R17` | Obsolete-Run refusal before Slurm report submission | `report --execute` with Slurm placement schedules before the reporting owner inspects the selected Run; source tests show submission from a dummy Run. | If this operation is promised, require obsolete-Run refusal before creating a request or calling `sbatch`; retain a public candidate-artifact check across preview, direct execution, and Slurm placement. | `RELEASE-01`; coordinator/reporting owners and R09 |
+| `R18` | Interactive mutation modes and help | Named Init, runtime discovery, Run/resume, and Doctor repair can write after terminal confirmation without `--execute`; public runtime-discovery help incorrectly says the flag is required to write. | Classify explicit preview, declined/accepted prompt, and `--execute` per promised command; correct the runtime help through its owner and test the selected public mode. | `RELEASE-01`; CLI/onboarding/Doctor owners |
+| `R19` | Direct-host capacity wording | The Runbook states a fixed 12-CPU/240-GiB default-workflow minimum, but the current allocation-aware resolver has per-stage fit rules, not that fixed gate. | Reconcile the Runbook with the current admission rule and separately state study-specific resource needs; do not promote configured or suggested capacity to measured support. | `RELEASE-01`; resource-policy and Runbook owners |
 
 ## Discovery record
 
@@ -82,10 +85,10 @@ local navigation labels, not new backlog items.
 
 The current source target is PR #307 at the commit above, while the ordinary
 checkout from which this investigation began was on an older, unrelated branch.
-PRs #303, #305, and #306 change CI independently and are not included in this
-head. PR #307 adds selected synthetic CI timing evidence over PR #304. A future
-candidate review must inspect its actual ancestry, tree, artifact, and check
-results rather than inherit this snapshot's conclusions.
+PRs #303, #305, #306, and #321 change a separate delivery stack and are not
+included in this head. PR #307 adds selected synthetic CI timing evidence over
+PR #304. A future candidate review must inspect its actual ancestry, tree,
+artifact, and check results rather than inherit this snapshot's conclusions.
 
 This investigation's branch still descends from `f32260f0`; a direct diff to
 the 2026-09-22 live #307 head `5ecc409c` found only the timing-check formatting
@@ -93,9 +96,9 @@ and the owner-revised CV-26 documentation closure above. Separate open
 [PR #314](https://github.com/lab-cats/EMRYS/pull/314) audits schemas,
 [PR #316](https://github.com/lab-cats/EMRYS/pull/316) proposes packaged EV/PUM1
 selection, and [PR #320](https://github.com/lab-cats/EMRYS/pull/320) proposes
-a prepared-Project runtime donor picker. PR #320 branches from an earlier
-commit of #316, not its current head. None is included in the reviewed tree;
-their inclusion and integration order remain candidate decisions.
+a prepared-Project runtime donor picker. PR #320 branches from #316; neither
+is included in the reviewed tree. Their inclusion and integration order remain
+candidate decisions.
 
 ### R02 — Promised operations
 
@@ -154,14 +157,14 @@ by a normal Project-to-Results promise.
 The [README](../../README.md#supported-environment) describes Linux/POSIX,
 Python 3.11 or newer, one direct host or one Snakemake executor inside a
 single-node Slurm allocation, and cooperative single-user storage that passes
-Doctor. It narrows
-managed repair to x86-64 Linux with Pixi. The Quickstart selects Python 3.14
-and a specific Viking path; the Runbook's managed direct-host route specifies
-kernel 4.18+, glibc 2.28+, and at least 12 visible CPUs and 240 GiB for the
-retained stage allowances. These are the documented default-workflow minimum,
-not a full-study capacity estimate. Slurm operation also requires the checkout,
-Python environment, Project, runtime, and inputs at the same physical paths
-on head and compute nodes.
+Doctor. It narrows managed repair to x86-64 Linux with Pixi. The Quickstart
+selects Python 3.14 and a specific Viking path; the Runbook's managed
+direct-host route specifies
+kernel 4.18+ and glibc 2.28+. Its stated 12-CPU/240-GiB default-workflow
+minimum conflicts with the current allocation-aware resolver (R19); it is not
+an established admission or full-study capacity threshold. Slurm operation
+also requires the checkout, Python environment, Project, runtime, and inputs
+at the same physical paths on head and compute nodes.
 These are documented boundaries, not proof of every combination. The open
 [`SITE-PARITY-01`](backlog_matrix.md#platform-operation-and-portability) and
 [`CLUSTER-VERIFY-01`](cluster_verification_campaign.md) work retain exact-site
@@ -189,7 +192,7 @@ support decision.
 |---|---|---|---|---|
 | Checkout, Viking head and one Slurm node | `setup`, named `init`, `validate`, `doctor`, `run`, `watch`, `inspect` | [Quickstart](../../quickstart.md) documents the EV/PUM1 journey; exact-revision novice/site proof remains with `SITE-PARITY-01`. | Open | Open |
 | Same Viking route | Eligible `resume`, independent `report`, exact-request `stop` | [Runbook](../operations/RUNBOOK.md) and [Troubleshooting](../operations/TROUBLESHOOTING.md) document admitted recovery; `stop` is Slurm-specific. | Open | Open |
-| Checkout, approved direct managed Linux host | Synthetic or own-study Init, validation, Doctor, synchronous Run/inspect, eligible recovery/report | [Direct-host procedure](../operations/RUNBOOK.md#standalone-compute-host-with-a-managed-runtime) defines host and resource requirements; selected hosted checkout exercise is not installed-artifact proof. | Open | Open |
+| Checkout, approved direct managed Linux host | Synthetic or own-study Init, validation, Doctor, synchronous Run/inspect, eligible recovery/report | [Direct-host procedure](../operations/RUNBOOK.md#standalone-compute-host-with-a-managed-runtime) describes the route; its fixed capacity sentence needs reconciliation (R19). Selected hosted checkout exercise is not installed-artifact proof. | Open | Open |
 | Checkout, named institution runtime and placement | `runtime discover`, Doctor, Run/inspect, eligible recovery/report | [Site-runtime procedure](../operations/RUNBOOK.md#institution-provided-runtime) requires exact tool/R versions; name the site and direct or one-node Slurm placement. | Open | Open |
 | Source archive built into a wheel, named host and placement | Every selected public command | The existing test builds an sdist but installs only its derived wheel; prove the exact distributed archive, derived wheel, resources, setup boundary, and dependency route (R04). | Open | Open |
 | Wheel paired with a matching checkout, named placement | Every selected public command | No documented route yet proves wheel code executes while the checkout supplies only declared data/defaults (R04). | Open | Open |
@@ -211,14 +214,20 @@ workflow, scientific/R, schema, runtime, and reporting assets in
 [`pyproject.toml`](../../pyproject.toml). The
 [distribution test](../../tests/test_package_distribution.py) checks packaged
 resources and some installed behavior. Its build produces both an sdist and a
-wheel from a copied source tree. Choose whether the distributed unit is a
-pinned checkout, an sdist, a wheel paired with the exact checkout, or a
+wheel from a copied source tree. That test copy contains selected root metadata,
+the Python lock, and `src/`, but excludes root `configs/`, `Projects/`,
+`quickstart.md`, `docs/`, `scripts/`, and Make targets. The test counts the
+sdist without inspecting its members, so its result cannot establish those
+checkout resources or lock delivery through a source archive. Choose whether
+the distributed unit is a pinned checkout, an sdist, a wheel paired with the
+exact checkout, or a
 standalone/limited wheel. Name which unit is installed and tested. A wheel
 need not promise the entire user journey unless that scope is deliberately
 selected. The present smoke installs the built wheel, not the sdist. If the
 sdist is selected, build and install from the exact distributed sdist, retain
-its digest and the resulting wheel digest, and exercise its promised assets,
-provenance, and public commands. `emrys setup` adds a separate checkout
+its digest and the resulting wheel digest, inventory promised root resources,
+the delivered lock, and carried build provenance, and exercise its promised
+assets and public commands. `emrys setup` adds a separate checkout
 dependency under R13.
 
 The distribution choice remains **OPEN / DEFERRED**. These are the current
@@ -227,7 +236,7 @@ route-specific acceptance questions, not four simultaneous release promises:
 | Candidate route | Current boundary | Minimum additional proof if selected |
 |---|---|---|
 | Pinned checkout | Supplies Git root, `uv.lock`, `configs/` selection, and `Projects/`; `setup` writes checkout-root settings and direct-host operation uses a separate route. | Freeze a clean commit and lock; install with the documented locked command; resolve the installed command's source; exercise each promised public operation with explicit settings when outside the checkout. |
-| Source archive | The test builds an sdist but installs only its derived wheel; an extracted archive is not the Git checkout required by `setup`. | Hash the distributed sdist, inspect its resources and metadata, build and install from that exact archive, hash the derived wheel, and verify the selected commands and dependency policy. |
+| Source archive | The test builds an sdist from a subset of the checkout but inspects only its derived wheel; an extracted archive is not the Git checkout required by `setup`. | Hash the distributed sdist, inspect promised resources, lock delivery, and build metadata, install from that exact archive, hash the derived wheel, and verify selected commands and dependency policy. |
 | Wheel paired with checkout | The checkout can supply data and defaults missing from the wheel, but ordinary checkout `uv sync` installs editable checkout code rather than proving use of the wheel. | Pin and hash both units; document an installer route that actually selects the wheel; prove installed code and assets come from it while only declared data/defaults come from the matching checkout. |
 | Standalone wheel | Installed smoke covers selected Init and validation; the reviewed wheel lacks the study selection and checkout-free `setup`, and distributes a lock hash rather than `uv.lock`. | Choose limited or complete scope. For a complete novice promise, resolve R05/R06/R13 and exercise the full public installed path with documented resources and no checkout leakage. |
 
@@ -242,18 +251,18 @@ then use that owner's existing manifest admission. Do not duplicate or infer
 the biological region selection from the site or reference.
 
 A separate open [PR #316](https://github.com/lab-cats/EMRYS/pull/316)
-(head `bd3f1399` at the 2026-09-22 refresh) proposes to package the maintained
-selection, keep the `configs/` path as a link, and offer it after explicit
-EV/PUM1 guided sample assignment. Its wheel
-check covers resource presence and byte equality, while source-level guided
-Init tests cover selection, explicit-manifest preservation, and
-missing-reference refusal. PR #316 is a sibling of the reviewed PR #307 head,
-so none of these changes are established at this document's source revision.
-If it enters a release candidate, recheck the exact built artifact and run
-public installed guided Init from outside the checkout using that packaged
-choice. Its present wheel smoke still supplies an explicit fixture partition
-manifest and does not establish the new interactive path, a complete Run, public report
-regeneration, or novice Viking acceptance.
+(head `e1e80217` at the 2026-09-22 refresh; the described source was reviewed
+at `bd3f1399`) proposes to package the maintained selection, keep the
+`configs/` path as a link, and offer it after explicit EV/PUM1 guided
+sample assignment. Its wheel check covers resource presence and byte equality,
+while source-level guided Init tests cover selection, explicit-manifest
+preservation, and missing-reference refusal. PR #316 is a sibling of the
+reviewed PR #307 head, so none of these changes are established at this
+document's source revision. If it enters a release candidate, recheck the
+exact built artifact and run public installed guided Init from outside the
+checkout using that packaged choice. Its reviewed wheel smoke still supplies an explicit
+fixture partition manifest and does not establish the new interactive path, a
+complete Run, public report regeneration, or novice Viking acceptance.
 
 ### R06 — Dependency policy
 
@@ -265,6 +274,18 @@ support requires that exact lock, specify a usable way for consumers to obtain
 and apply it or explicitly pair the wheel with a checkout. `pyproject.toml`
 allows broader versions of `jsonschema` and `referencing`; the constrained
 test proves neither incompatibility nor compatibility across those ranges.
+The installed probe checks that direct dependency version strings are present;
+it does not compare the installed dependency graph with the checkout or
+installer lock. A lock-bound wheel claim needs that comparison for its selected
+platform. Keep transitive native/R dependency assurance with its existing
+runtime owner.
+The documented pinned-checkout install uses
+`uv sync --locked --no-default-groups --group workflow --python 3.14`, while
+hosted synthetic CI uses `uv sync --locked --group workflow` and includes the default
+development group. A successful hosted checkout journey is not an exact
+exercise of the lean user environment. Check that documented recipe separately
+at the candidate revision before claiming it, while keeping the wheel's
+runtime-only dependency probe as a distinct boundary.
 The [environment owner](../operations/ENGINEERING_CONVENTIONS.md#dependencies-and-environments)
 assigns Python to uv and Project-owned native/R environments to Pixi and
 `renv`. The packaged Pixi and `renv` locks do not by themselves prove the
@@ -385,7 +406,12 @@ its owner, and dated evidence in its evidence home under the
 [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression).
 Reconcile the README's description of a synthetic first Run with the current
 Quickstart's real EV/PUM1 path and optional smoke test; reconcile its Alpha
-label with the selected release. The README already says installed collaborator
+label with the selected release. The README's “regenerated” reporting wording
+is broader than the current command: `report --execute` generates absent
+bundles, reuses complete ones after verification, and refuses partial or blocked
+ones without overwrite. The [Runbook](../operations/RUNBOOK.md#inspect-and-open-reports)
+and [Troubleshooting](../operations/TROUBLESHOOTING.md#run-and-reporting-state)
+already describe this boundary. The README already says installed collaborator
 modules may replace the downstream Analysis. If that is retained as a release
 promise, route a separately installed provider/reporter exercise through
 `EXTENSION-01`; otherwise narrow the claim. Document current limits, including
@@ -405,6 +431,27 @@ The selected real-tool synthetic lane runs from the checkout in a hosted
 environment. Its 130-pair profile exercises both a direct Project and a
 disposable-Slurm Project and checks parity; its 100,000-pair profile exercises
 Slurm only. Neither profile is an installed release-artifact or Viking test.
+The driver's [Step 09 terminal oracle](../../tests/tools/real_synthetic_e2e.py)
+checks three all-site rows, one significant row, a distinct selected candidate,
+and its significant status. Although the
+[fixture](../../src/emrys/orchestration/run_coordinator/synthetic_fixture.py)
+also names expected allele frequencies, absolute difference, and common odds
+ratio, that driver does not assert those numeric values. Its real-tool and
+placement evidence should not be described as numeric method validation; the
+[independent Step 09 owner oracle](../../tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_oracle.py)
+covers separate count-derived numeric cases.
+Both hosted profiles use four libraries and one `primary` partition; the
+100,000-pair profile changes read volume and reference length, not sample or
+partition topology. These lanes do not exercise Step 07 multi-partition fan-out
+or Step 08 multi-partition fan-in/order. The
+[Step 08 guarded R fixture](../../tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.R)
+checks two partitions at its own evidence layer. A broader cohort or partition
+claim needs a selected exact-artifact exercise; a single-partition hosted run
+cannot establish it.
+The hosted driver also rewrites each fixture's resource profile with a
+[CI-specific policy](../../tests/tools/real_synthetic_e2e.py) that lowers
+repeatable-stage memory floors to 2,048 MiB. A passing hosted Run therefore
+does not exercise unchanged packaged resource defaults.
 The lane is scheduled or explicitly dispatched rather than an ordinary PR lane.
 A scheduled run uses the default branch; an exact candidate needs a selected-ref
 dispatch and retained commit identity. PR #307 adds complete Doctor timing,
@@ -505,7 +552,10 @@ that specialist interface is promised; it cannot be counted as pipeline savings.
 
 Current [allocation-aware policy](../../src/emrys/orchestration/run_coordinator/resources/default_execution.yaml)
 and Viking's exclusive-node request are resource plans, not utilization or
-safe peak-RSS measurements. [Doctor timing](../../src/emrys/orchestration/run_coordinator/doctor.py)
+safe peak-RSS measurements. The selected hosted end-to-end Run lowers
+repeatable-stage memory minima to 2,048 MiB for its fixture (R11), so it cannot
+establish packaged-default sufficiency or real-study capacity.
+[Doctor timing](../../src/emrys/orchestration/run_coordinator/doctor.py)
 includes readiness and possible queue delay; the selected
 [PR #307 assertion](../../tests/tools/real_synthetic_e2e.py) checks records,
 not a speed threshold. [Slurm batch usage](../../src/emrys/orchestration/run_coordinator/scheduler_observation.py)
@@ -580,8 +630,10 @@ R, shell, and motif bytes, while Doctor checks declared runtime dependencies.
 It does not run either analysis from the candidate wheel, and
 `RUNTIME-CLOSURE-01` still owns transitive R dependency assurance. The Step
 `09` validator does not recompute CMH statistics; Step `10` rederives selected
-context and transaction rules but does not rerun R. Keep owner oracles, real
-R exercise, installed operation, and independent scientific review separate.
+context and transaction rules but does not rerun R. The hosted end-to-end
+driver's terminal oracle checks counts and candidate identity/status, not the
+fixture's expected AF and odds-ratio values (R11). Keep owner oracles, real R
+exercise, installed operation, and independent scientific review separate.
 
 For reporting, the package patterns and wheel test include the single HTML
 template and stylesheet. The [reporting owner](../../src/emrys/reporting/README.md)
@@ -604,9 +656,20 @@ marks Evidence `02b`/`03` as non-gating branches. Owner documentation for
 [Stage 08](../../src/emrys/stages/cohort_candidate_preprocessing/README.md)
 states that their validators check declared structure, receipts, counts, and
 staged tables without rerunning samtools, bcftools, or R candidate construction.
-These are important independent contract checks with specific limits, not an
-independent scientific-method review. A release note using “validated” must
-identify its exact check and evidence layer.
+The default [workflow profile](../../src/emrys/workflow/contracts/local_cmh_v2.json)
+still requires both evidence owners, and the Snakefile's final target includes
+all expected task markers; “non-gating” describes downstream DAG edges, not a
+license to omit them from a complete Results claim. The
+[Step 07 validator](../../src/emrys/stages/partitioned_cohort_mpileup/CONTRACT.md)
+does not verify VCF coordinates against selectors or REF/ALT and FORMAT
+semantics. The [Step 08 validator](../../src/emrys/stages/cohort_candidate_preprocessing/CONTRACT.md)
+checks internal tables but does not recompute candidate IDs or deterministic
+row order. Owner [Step 07](../../tests/stages/partitioned_cohort_mpileup/test_validate_step_07_mpileup_outputs.py)
+and [Step 08](../../tests/stages/cohort_candidate_preprocessing/test_validate_step_08_preprocessing_outputs.py)
+fixtures demonstrate these false passes; they do not show faulty producer
+output. These are important independent contract checks with specific limits,
+not an independent scientific-method review. A release note using “validated”
+must identify its exact check and evidence layer.
 
 | Owner boundary | Next targeted release check if its operation is promised |
 |---|---|
@@ -690,6 +753,57 @@ placement. For Slurm refusal, assert no new submission request or `sbatch`
 call; for all paths, compare retained Run/scientific/evidence bytes and
 membership. Keep current-format success/recovery as a positive control.
 
+### R18 — Interactive mutation modes and help
+
+Omitting `--execute` is not a universal no-write contract. Named Init prints a
+plan and can create after `y`; when `--execute` is omitted, its explicit
+`--preview` suppresses the creation offer.
+`runtime discover`, `run`, `resume`, and `doctor --repair` also offer a terminal
+confirmation path before publication or execution. With `--execute` omitted,
+noninteractive use or a declined prompt leaves the corresponding preview
+unwritten, subject to each owner's documented diagnostic/log boundary. The current
+[public runtime-discovery help](../../src/emrys/__main__.py) says discovery is
+read-only unless `--execute` is supplied, while the
+[owner command](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+and its test admit an inventory after interactive `y` without that flag. Its
+`--replace` help similarly calls the no-`--execute` preview no-write even though
+confirmation can select the replacement. The Runbook and Quickstart describe
+the confirmation path more accurately. Route the help correction through the
+CLI/onboarding owner before claiming a safe public preview contract.
+
+`setup`, `profile create`, `init manifests`, and `init synthetic` instead use
+an explicit no-write default and `--execute` publication. Keep these modes
+separate from commands that offer terminal confirmation.
+
+Specialist [owner validators](../../src/emrys/libraries/validation/report.py)
+use `--output` and `--execute`: their default prints a dry-run; execute
+publishes a validation report and can replace a valid predecessor under the
+[publication owner](../../src/emrys/libraries/validation/publication.py).
+Project validation, `validate manifest`, `validate all-pass`, and
+`validate artifact-contracts` are separate read-only interfaces. Reference
+reconciliation and storage qualification also expose their own preview and
+publication phases; storage qualification includes compute/finalization.
+Classify the exact mode for each promised command and use an explicit preview
+or a controlled declined prompt for candidate-artifact no-write assertions.
+Reuse existing owner tests; do not create a second generic confirmation policy.
+
+### R19 — Direct-host capacity wording
+
+The [direct-host Runbook](../operations/RUNBOOK.md#standalone-compute-host-with-a-managed-runtime)
+asserts that the default workflow's retained concurrent-stage allowances
+require at least 12 CPUs and 240 GiB. The current
+[default profile](../../src/emrys/orchestration/run_coordinator/resources/default_execution.yaml)
+derives workflow capacity from the accessible allocation and uses automatic
+stage concurrency with per-stage minima; the largest listed stage minimum is
+40,960 MiB. The [resolver](../../src/emrys/contracts/orchestration/application_model.py)
+checks whether one task fits in the admitted cores and memory, not a fixed
+12/240 threshold. This does not prove a 40,960-MiB host can complete every
+study or native tool operation. The Runbook should state the actual admission
+rule and keep study-specific sizing and qualified site capacity separate.
+Viking's whole-node request and 12-hour limit are configured requests, not
+measured utilization or completion capacity; its scratch suitability remains
+an operator/site evidence question.
+
 ## Conditional owner routing
 
 These are dependencies of a **selected claim**, not a second backlog or a
@@ -719,10 +833,12 @@ R11.
    ancestry, clean-tree state, included PRs, and excluded sibling work. Decide
    whether proposed changes such as PR #316 enter the candidate. If the head
    changes later, identify which artifact and evidence checks it invalidates.
-2. **Write the release promise (R02/R03/R14/R16).** For prerelease and v1 separately,
+2. **Write the release promise (R02/R03/R14/R16/R18/R19).** For prerelease and v1 separately,
    classify each public operation and environment as promised, limited, or
    unsupported. For each selected combination, state required inputs, success
-   and refusal behavior, platform/resource bounds, and the owner of its proof.
+   and refusal behavior, interactive/explicit execution modes, platform/resource
+   bounds, and the owner of its proof. Reconcile the direct-host guide's fixed
+   minimum with the current resource admission rule before describing capacity.
    Resolve whether Viking is a named support claim and whether any performance
    or capacity figure is promised; hosted Slurm alone cannot decide either.
 3. **Choose one distribution and dependency contract (R04–R07/R13).** Compare
@@ -732,7 +848,7 @@ R11.
    version, source, and artifact identities are checked. Record why rejected
    routes do not meet the chosen scope. Decide product numbering independently
    of schema IDs and obsolete-Run policy.
-4. **Route only selected gaps to existing owners (R05/R08–R10/R13/R15/R16).** Map
+4. **Route only selected gaps to existing owners (R05/R08–R10/R13/R15/R16/R18/R19).** Map
    each promise across the owner/source/resource/validator chain to an existing
    public check or an exact missing scenario. Before
    any separately approved implementation, search adjacent owners for
@@ -744,7 +860,8 @@ R11.
    resource identities. Install through the route users will follow in a clean
    environment. Check supported public commands from a working directory
    outside the checkout and any checkout-bound `setup` inside it, including
-   controlled refusal and no-write paths. If complete installed operation is
+   controlled refusal and no-write paths using explicit preview where the
+   command offers terminal confirmation. If complete installed operation is
    promised, add a tiny real local Project-to-Results Run and public report
    preview, publication into empty owned state, and verified reuse. Source
    fixtures, installed-command checks, and real local execution remain
@@ -760,11 +877,12 @@ R11.
    or scientific review through their existing owners. Quantitative performance
    claims require a separate comparable experiment under R14. Do not infer one
    evidence layer from another.
-7. **Reconcile guides, notes, and disposition (R10/R12).** Make README,
+7. **Reconcile guides, notes, and disposition (R10/R12/R18/R19).** Make README,
    Quickstart, Runbook, Troubleshooting, package metadata, and one durable
    release note agree on the actual install route, supported scope, current
-   formats, older-Run limits, known issues, exact evidence, and prerelease/v1
-   differences. Mark each unproved claim as limited, excluded, or blocked by
+   formats, older-Run limits, interactive write modes, resource admission,
+   known issues, exact evidence, and prerelease/v1 differences. Mark each
+   unproved claim as limited, excluded, or blocked by
    its existing owner. Review the resulting concise readiness checklist
    against `RELEASE-01` acceptance. Tagging, package-index publication, and
    added platform support remain separate decisions.
