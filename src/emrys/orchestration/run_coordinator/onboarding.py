@@ -1051,21 +1051,25 @@ def _guided_manifest_members(
                 regions_files = [["regions", regions_file]]
                 arguments.regions_file = regions_files
             else:
+                fasta = Path(arguments.reference_fasta)
                 if reference_contigs is None:
-                    reference_contigs = _reference_contigs(Path(arguments.reference_fasta))
+                    reference_contigs = _reference_contigs(fasta)
                 names = [name for name, _length in reference_contigs]
                 shown = names[:24]
-                suffix = f"; plus {len(names) - len(shown)} more" if len(names) > 24 else ""
+                remaining = len(names) - len(shown)
+                suffix = f"; plus {remaining} more" if remaining else ""
                 console_field(
                     f"Accepted FASTA names ({len(names)})",
                     " ".join(shown) + suffix,
                     value_style="bold green",
                     file=sys.stderr,
                 )
-                label = f"FASTA names/regions from {Path(arguments.reference_fasta).name}"
+                label = f"FASTA names/regions from {fasta.name}"
                 selectors = shlex.split(_prompt(label))
                 if not selectors:
-                    raise OnboardingError("at least one chromosome or region is required")
+                    raise OnboardingError(
+                        "at least one chromosome or region is required"
+                    )
                 lengths = dict(reference_contigs)
                 try:
                     for selector in selectors:
@@ -1153,8 +1157,9 @@ def _project_manifest_members(
         )
         partition_path = Path("packaged EV/PUM1 selection")
     else:
-        partition_path = _admit_supplied_file(partition_value, "partition manifest")
-        partition_data, _ = read_bytes_with_identity(partition_path, "partition manifest")
+        manifest_label = "partition manifest"
+        partition_path = _admit_supplied_file(partition_value, manifest_label)
+        partition_data, _ = read_bytes_with_identity(partition_path, manifest_label)
     partition_table = step08.validate_partition_manifest_bytes(
         partition_data, partition_path
     )
