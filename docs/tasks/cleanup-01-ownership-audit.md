@@ -3,7 +3,7 @@
 This is a working design audit for the deferred
 [CLEANUP-01 outcome](backlog_matrix.md#deferred-operational-work), based on
 [PR #310](https://github.com/lab-cats/EMRYS/pull/310) at its checked
-2026-09-22 head c1a3b382df84cbe55a295d24f3c9ace71ea7b2c7. Relative to
+2026-09-22 head 8d1e20818fb2075456491fab2b737fdf1e7b8241. Relative to
 the audited implementation commit 1a58d2da8c2d232078c3e86b1be3d0d4241eb41e,
 that head changes only `docs/tasks/release-readiness.md`; implementation source
 is inherited from PR #307. This working audit records source discovery and
