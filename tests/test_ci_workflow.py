@@ -457,12 +457,24 @@ def test_managed_golden_path_uses_only_the_public_direct_journey(
     exec(compile(fixture_setup, str(WORKFLOW_PATH), "exec"), {})
     admitted = load_execution_profile(profile)
     resources = resolve_resource_policy(
-        admitted.resource_policy, AllocationCapacity(4, 16384, "hosted fixture")
+        admitted.resource_policy,
+        AllocationCapacity(4, 16384, "hosted fixture"),
+        workload={"samples": 4, "partitions": 1},
     )
     assert admitted.computational_resources_explicit
     assert admitted.placement.document() == {"kind": "direct"}
     assert resources.workflow_cores == 4
     assert resources.workflow_memory_mb == 16384
+    assert dict(resources.stage_concurrency) == {
+        "01": 4,
+        "02": 4,
+        "02b": 4,
+        "03": 4,
+        "04": 4,
+        "05": 4,
+        "06": 4,
+        "07": 1,
+    }
     assert cache["uses"] == ("actions/cache@caa296126883cff596d87d8935842f9db880ef25")
     assert cache["with"]["path"] == (
         "${{ runner.temp }}/emrys-managed-golden/project/runtime/managed/renv/cache"
