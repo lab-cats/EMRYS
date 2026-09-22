@@ -501,6 +501,10 @@ remaining visual review for polish item 14, and date item 36's former missing
 Slurm preflight while retaining CV-11's institutional capacity limit.
 Item 33 now includes a dated read-only ruleset check for `master` and this
 PR's distinct correction-branch base, without changing hosted settings.
+Further source tracing separates item 7's explicitly deferred STAR values,
+item 12's per-Dataset physical-file reuse policy, and item 35's unbound
+Snakemake module content from demonstrated Run or site failures. Item 6's
+artifact timestamp exposure is source-indicated and awaits its own probe.
 
 **Next:** Resolve items 7, 9, 12 and 35 against direct tests or policy; select
 separate corrections for 6 and 11 and a hosted decision for 33 if approved.

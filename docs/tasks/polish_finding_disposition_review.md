@@ -9,8 +9,9 @@ permission to implement or remove any proposal. The original
 [main matrix](backlog_matrix.md) retain their distinct roles.
 
 **Observed:** Several original premises in the [polish campaign](polish-campaign.md)
-have changed at the audit baseline. Item 7 (lines 313–327) says Init preview
-shows only output locations, but the current public preview in
+have changed at the audit baseline. Item 7's September 7 finding said Init
+preview showed only output locations; this branch dates that claim in the
+source campaign. The current public preview in
 [`onboarding.py`](../../src/emrys/orchestration/run_coordinator/onboarding.py)
 lines 1163–1258 includes libraries, Analysis/site, reference, scientific
 choices, and defaults, with detailed manifests behind verbose output. That
@@ -38,6 +39,21 @@ The current [contract test](../../tests/contracts/orchestration/test_orchestrati
 rejects a non-string time but not a malformed string. This is a local contract
 probe, with no hosted or site evidence. Other `FormatChecker` callers remain
 to be reviewed before selecting a correction.
+The same optional checker is used by the artifact validator. Run-summary and
+report-receipt schemas declare timestamp formats, making them source-indicated
+exposures that still need a direct malformed-record probe. The artifact-record
+schema and the report index's own Run-contract checker have no timestamp field.
+This narrows the follow-up without promoting the orchestration probe to proof
+of artifact behavior.
+
+Item 7's current preview validates a provisional Project definition and shows
+the major scientific choices. When unset, it labels `sjdb_overhang` and
+`genome_chr_bin_nbits` automatic at creation; the creation path derives those
+values after FASTQ admission and then publishes final Project bytes. Focused
+tests cover displayed choices and some published values, but no complete
+preview/publication agreement oracle is retained. This is an explicit deferred
+value, not a demonstrated silent mismatch. Acceptance needs a semantic rule
+for exact displayed choices versus deferred values.
 
 **Confirmed group mismatch:** Item 11 is not yet aligned:
 [Quickstart](../../quickstart.md) line 44 uses
@@ -60,6 +76,20 @@ rejects reused physical files by device and inode (`onboarding.py` lines
 path equality and caches by path
 ([`normalization.py`](../../src/emrys/orchestration/run_coordinator/normalization.py)
 lines 359–385). This is a policy comparison, not an established defect.
+The source comparison confirms that the draft helper rejects reuse of one
+physical FASTQ across sample/mate roles, while Project admission checks only
+same-row R1/R2 path equality; a cross-row path or hard-linked mate can pass that
+specific check. Symlink handling differs at these trust boundaries; no
+Run-level failure was reproduced, and one Dataset may legitimately be
+used by multiple Analyses. Decide physical reuse per Dataset sample/mate roles,
+separately from item 12's explicit-filename interface proposal.
+
+Item 35's recorded Snakemake hash identifies the Python executable bytes;
+version and empty-workflow probes exercise installed Snakemake but do not bind
+its module-tree bytes. The lock pins an intended distribution, while fresh
+Run/resume re-admission does not identify a live module-tree hash. No controlled
+same-version mutation or end-to-end escape was demonstrated. Choose the needed
+content guarantee before selecting a caller-complete change.
 
 **First complete item inventory:** Each line below maps one numbered
 [polish discussion](polish-campaign.md) at `3a672fdf`. "Delivered" means its
@@ -76,13 +106,13 @@ durable disposition is decided.
 | 3 | Reference-provenance replacement recovery defect remains owner-documented. | Keep recovery evidence with that owner. |
 | 4 | Runtime-report publication proposal is explicitly retired. | Historical rationale only after retention check. |
 | 5 | Current-artifact admission through the public validator is delivered. | Avoid re-presenting it as a missing feature. |
-| 6 | Public v3 Attempt receipt admission accepted `finished_at: "not-a-time"` in a source-bound local probe under the locked checker closure. | Keep a live correctness proposal: select timestamp policy and maintained checker, then cover valid historical/current and malformed strings plus other format callers. |
-| 7 | Init preview now shows major scientific choices, but detailed paths are verbose and final bytes follow admission. | Replace the old missing-preview premise; verify exact preview/publication agreement before closing acceptance. |
+| 6 | Public v3 Attempt receipt admission accepted `finished_at: "not-a-time"` in a source-bound local probe under the locked checker closure. Artifact Run summary and report receipt have source-indicated exposure, not a direct probe. | Select timestamp policy and maintained checker; test malformed and valid historical/current fields through public orchestration and artifact admission. |
+| 7 | Init previews major choices; when unset, two STAR values are explicitly deferred until FASTQ admission, so final Project bytes can differ from provisional preview bytes. | Replace the old missing-preview premise; define and verify semantic agreement for displayed exact and deferred choices without preview input reads or writes. |
 | 8 | Doctor `--profile` supports default, named, and absolute selections in source and focused tests. | Mark source delivery; keep site acceptance with CV-07. |
 | 9 | Current Slurm repair planning skips the formerly alleged direct-storage plan. | Re-evaluate full placement behavior and site evidence; do not claim the old source-predicted failure persists. |
 | 10 | Novice institutional walkthrough remains accepted under `SITE-PARITY-01`. | Keep its exact site evidence requirement. |
 | 11 | Quickstart excludes default `dev`; managed golden CI includes it. The offline locked graph has 17 CI-only package names, while shared versions agree. | Verify an operator-minimal golden journey separately from the later `pytest` containment check; assert group selection. No install-speed or site claim. |
-| 12 | Draft FASTQ physical-identity check differs from Project normalization's path-based check. | Preserve explicit mate-path proposal and settle admission policy before calling this a defect. |
+| 12 | Draft FASTQ physical-identity refusal differs from Project admission's same-row path check; cross-row or hard-linked reuse is source-permitted, with no Run reproduction. | Decide per-Dataset physical-reuse policy apart from the explicit-name proposal; retain legitimate cross-Analysis Dataset reuse and distinct symlink boundaries. |
 | 13 | Ineffective reporting-memory control is retired. | Historical disposition only. |
 | 14 | Standalone dashboard retirement is implemented; ordinary baseline software/docs CI passed, while institutional visual review remains. | Keep `DASHBOARD-RETIRE-01`, legacy readers and the separate evidence-deletion gate. |
 | 15 | Per-script Bash syntax checking is delivered. | Keep owner check, not an open proposal. |
@@ -105,7 +135,7 @@ durable disposition is decided.
 | 32 | Release dependency inventory/provenance remains an unselected proposal. | Coordinate with `RELEASE-01` before making a release artifact. |
 | 33 | September 22 API recheck found the default-branch rulesets still lack required status checks; PR #312's correction-branch base returned no effective rules. | Keep hosted policy unselected; test proposed merge behavior separately before any settings change. |
 | 34 | Complete R dependency closure is accepted as Open `RUNTIME-CLOSURE-01`. | Keep recursive closure and snapshot-off acceptance with the row. |
-| 35 | Installed Snakemake content guarantee remains unresolved. | Trace current package binding before calling an escape or solution proven. |
+| 35 | Snakemake's recorded SHA binds Python executable bytes; version/startup probes do not bind installed Snakemake module bytes. No controlled same-version escape was demonstrated. | Decide the installed-content guarantee and test changed-package behavior through Doctor, fresh Run, resume and child entry before selecting a replacement. |
 | 36 | Explicit Slurm memory preflight is implemented and its ordinary baseline software checks passed; `SCHED-01` remains Verification pending. | Date-bound the old missing-implementation premise; keep CV-11's institutional capacity limit. |
 | 37 | Browser/copy/print report review remains pending under report rows 01–03. | Retain rendered visual and link acceptance separate from receipts. |
 | 38 | Pre-execution cancellation policy remains unselected. | Decide expected signal/EOF behavior before changing public exits. |

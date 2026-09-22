@@ -315,19 +315,23 @@ a proposed dependency/correctness correction, not an established reduction.
 
 ### 7. Show the effective Project before creation
 
-**Finding:** [Initialization](../../src/emrys/orchestration/run_coordinator/onboarding.py)
-collects fifteen fields and generates admitted Project bytes, but its preview
-shows only the output root, owned directories, and no-copy policy.
-The revised quickstart explains the scientific suggestions and repeated setup
-answers; the command's generated preview is unchanged.
+**September 7 finding:** At the audited revision,
+[Initialization](https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/onboarding.py)
+collected fifteen fields, but its preview showed only the output root, owned
+directories, and no-copy policy. The revised quickstart explained scientific
+suggestions while the command's preview stayed narrow.
 
-**Outcome and acceptance:** Display a faithful, readable preview of the already
-generated definition, including reference paths, analysis/cohort choices,
-target change, and thresholds. Explain suggestions without presenting them as
-universally valid scientific settings. Prove preview/publication agreement and
-no writes during preview. Reuse current rendering and admission; add no draft
-registry or parallel schema. This new UX proposal may need a small product-size
-exception.
+**Current boundary (September 22):** [Init](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+now previews the reference, libraries,
+comparison, target change, thresholds, and STAR choices from a validated
+provisional definition. When unset, two STAR values are labeled automatic at
+creation; FASTQ admission derives them before final Project publication.
+
+**Remaining acceptance:** Prove that every displayed exact choice and deferred
+label agrees with the final admitted definition, without reading FASTQ content
+or writing during preview. Explain suggestions without presenting them as
+universally valid science. Reuse current rendering and admission, with no draft
+registry or parallel schema; any selected change follows current size guardrails.
 
 ### 8. Let Doctor inspect the selected execution profile
 
