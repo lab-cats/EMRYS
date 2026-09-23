@@ -1,13 +1,14 @@
 # DOCS-01 discovery notes, fourth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F100–F126. F100–F104 use local audit head `e1771d21`; F105–F108 use
+holds F100–F129. F100–F104 use local audit head `e1771d21`; F105–F108 use
 `b65e8fb8`; F109–F110 use `26898b5e`; F111 uses `cd45bd51`, F112 uses
 `b62e207b`, F113 uses `ac14392e`, F114–F117 use `b72b03c0`, and F118–F119 use
 `24579272`; F120 uses `dc44861b`, F121–F122 use `f538efe4`, and F123 uses
 `7e7c364c`, F124 uses `663da8ed`, and F125–F126 use `54f7b756`, all read on
-2026-09-22. These are documentation observations, not runtime results,
-accepted changes, or permission to alter retained evidence.
+2026-09-22. F127–F129 use `777345b6`, read on 2026-09-23. These are
+documentation observations, not runtime results, accepted changes, or
+permission to alter retained evidence.
 
 ## Discovery notes
 
@@ -481,6 +482,59 @@ approved normal repair omits `Runtime work` while retaining its value in the
 maintenance log. The normal plan heading still distinguishes repair from
 verification; only package-manager output establishes actual package reuse.
 This is a guide display-scope observation, not a Doctor or cluster result.
+
+### F127 — Older local checks inside active CV acceptance cards
+
+The [CV-U08 card](cluster_verification_backlog.md) lines 638–645 retains a
+local-check ledger of 631 tests, 169 Markdown documents, 13 Quickstart Bash
+blocks, one macOS skip, and six excluded isolated child cases. The
+[CV-U20 card](cluster_verification_backlog.md) lines 1264–1279 records 554
+focused tests but repeats the 169/13 snapshot and six-case environment limit.
+Both cards continue with later acceptance wording at lines
+659–668 and 1315–1329. The current tree has 175 tracked Markdown files and
+14 Quickstart Bash fences. Git blame dates the 169/13 and six-case text to
+September 16 commits `1dcc0ce4b` and `024bd5dbc`, while CV-U20's adjacent
+policy and test-count wording changed September 21. A prose-introduction commit
+does not establish the revision actually checked, and neither card names one
+beside its local totals. This is routine validation chronology beside active
+acceptance, not evidence that those historical checks failed. The skipped-case,
+installed-environment, no-cluster, and no-scientific-proof limits remain
+material evidence; their deletion is not authorized by this finding.
+
+### F128 — Tool-specific thread effects in the coordinator contract
+
+The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 781–785 repeats STAR sorting threads, samtools worker counts and sort
+memory, and Java helper-pool behavior already specified in the
+[STAR](../../src/emrys/stages/star_alignment/CONTRACT.md) lines 67–77,
+[canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md) lines 61–71,
+and [duplicate-marking](../../src/emrys/stages/duplicate_marking/CONTRACT.md)
+lines 40–51 owner contracts. The same samtools worker rule sits with
+[orientation](../../src/emrys/stages/mechanical_orientation/CONTRACT.md) lines
+101–103 and [BAM QC](../../src/emrys/evidence/canonical_bam_qc/CONTRACT.md)
+lines 142–144; [FASTA sidecars](../../src/emrys/stages/fasta_sidecars/CONTRACT.md)
+lines 53–63 and [split-N-cigar](../../src/emrys/stages/split_n_cigar/CONTRACT.md)
+lines 42–53 own the other Java-worker detail. Current
+[materialization](../../src/emrys/orchestration/run_coordinator/materialization.py)
+lines 371–379 derives the native allowance and rejects impossible budgets.
+This is a bounded five-line coordinator detail overlap, not a demonstrated
+deletion: the central allowance, refusal, immutable policy, and owner-specific
+tool behavior remain distinct. Source and tests were read, not executed.
+
+### F129 — Unrouted workflow-profile index
+
+A limited inline/reference link scan over 175 tracked Markdown files found no
+inbound local Markdown link to the 11-line
+[profile index](../../src/emrys/workflow/profiles/README.md). The
+[workflow overview](../../src/emrys/workflow/README.md) lines 3–4 and 16–19
+already distinguishes the processing graph, links directly to the
+[local profile](../../src/emrys/workflow/profiles/local/README.md), and names
+the one-host and planner boundaries. That local guide lines 3–13 explains the
+exact YAML and admitted-package binding. The intermediate index repeats much
+of this orientation while uniquely stating that another selectable engine
+profile requires approval. Its lack of an inbound Markdown route is a
+navigation and compression candidate, not proof that its whole 11 lines can
+go; filesystem browsing and non-Markdown routes were not checked.
 
 ## Reviewed overlaps without a saving claim
 

@@ -315,6 +315,12 @@ permission to change or delete the source.
   Doctor detail/timing wording. Focused Step 07, Step 10, CI, and test-guide
   comparisons found no further distinct claim. These were source and test
   readings only; no product, test, CI, or cluster command ran.
+- A coordinator-contract, CV-card, and workflow-profile pass at local head
+  `777345b6` added F127–F129 for mixed validation chronology, duplicated
+  worker flag detail, and an unrouted intermediate guide. Bounded root,
+  Quickstart, operations, reference, and glossary comparisons found no further
+  distinct claim. The older local-check totals were not replayed; source and
+  tests were read without product, CI, or cluster execution.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -343,7 +349,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 126 numbered records include F41, F43, and F87, dismissed after recheck so
+The 129 numbered records include F41, F43, and F87, dismissed after recheck so
 their original claims and corrections remain traceable. The last column records
 an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -476,6 +482,9 @@ Discovery notes give source references and the boundary for each row.
 | [F124](docs-01-discoveries-fourth.md#f124-reliability-diagram-collapses-two-validation-orders) | Diagram sequence drift | Reliability diagram routes every task through validation before publication and labels validation-failure recovery as an owner action; the runner validates Steps 08/09 before publication but other owners after native publication. | The runner owns recovery; post-commit validation failure preserves native outputs. The diagram is non-authoritative and no runtime defect is inferred. |
 | [F125](docs-01-discoveries-fourth.md#f125-producer-publication-claim-in-the-shared-contract-index) | Owner-routing drift | Shared-contract index says producers own computation and publication; current first-party scientific tasks separate producer computation from runner publication and recovery. | Reporting and other record publication have their own owners; this wording alone implies no runtime defect. |
 | [F126](docs-01-discoveries-fourth.md#f126-doctor-plan-detail-and-timing-display-in-the-runbook) | Display-scope drift | Runbook does not qualify when Doctor prints `Runtime work` or full invocation timing; the field requires verbose repair, while normal elapsed output requires `--repair`. | Plan heading still distinguishes repair from verification, and package-manager output owns actual reuse evidence. No Doctor behavior defect is inferred. |
+| [F127](docs-01-discoveries-fourth.md#f127-older-local-checks-inside-active-cv-acceptance-cards) | Evidence placement | CV-U08 and CV-U20 carry older local-check totals beside later active acceptance wording without naming the checked source revision. | Historical check outcomes are not disproved; excluded cases, environment, and evidence-ceiling limits remain material and cannot be deleted by this audit. |
+| [F128](docs-01-discoveries-fourth.md#f128-tool-specific-thread-effects-in-the-coordinator-contract) | Compression candidate | Coordinator contract repeats five lines of worker-specific STAR, samtools, and Java flag effects already held by their stage and evidence contracts. | Central resource derivation and refusal remain coordinator-owned; no safe saving is established by the overlap alone. |
+| [F129](docs-01-discoveries-fourth.md#f129-unrouted-workflow-profile-index) | Navigation and compression candidate | The 11-line workflow-profile index has no inbound tracked Markdown link while parent and local-profile guides carry most of its current orientation. | Its selectable-profile approval rule is unique; filesystem routes were not assessed and no deletion scope is established. |
 
 ## Discovery notes
 
