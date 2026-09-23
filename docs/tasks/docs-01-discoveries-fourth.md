@@ -171,6 +171,10 @@ record ignored restoration failure; and
 record cleanup limits and a characterized lost-predecessor sequence. Their
 current refusal and residue guidance remains owner-specific; the canonical
 loss has retained old source and a fault oracle. No safe saving is established.
+At `25f62591`, [FASTA sidecars](../../src/emrys/stages/fasta_sidecars/CONTRACT.md)
+lines 72–74 adds a seventh distinct contrast: the retired standalone script
+could fill one missing sidecar, while a Run rejects a partial pair. Keep that
+current refusal; no useful net saving is established.
 
 ### F108 — Scientific completion in the run-summary guide
 

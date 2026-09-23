@@ -554,9 +554,10 @@ Its detailed proposals at lines 393–427, 620–711, 735–756, 775–834, and
 lines 52–71 owns current accepted priorities and status. The
 [documentation decision](../design/decisions/repository-and-delivery.md)
 lines 91–94 places routine progress chronology in Git. These nine physical
-lines are a review surface rather than a verified saving: the complete-command
-measurement prerequisite and the boundary against parallel initiatives still
-need to remain intelligible. No task status or performance claim changed.
+lines include one blank and are a review span. A three-to-four-line route could
+save five to six local lines only if complete-command measurement and the
+boundary against parallel initiatives remain intelligible. No draft or saving
+was verified; task status and performance claims remain unchanged.
 
 ### F98 — Worker prerequisites inside validation sections
 

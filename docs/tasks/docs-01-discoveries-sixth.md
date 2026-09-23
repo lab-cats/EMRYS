@@ -1,8 +1,10 @@
 # DOCS-01 discovery notes, sixth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F164–F168. F164–F167 compare local head `f79bc435`; F168 and the
-F19/F64/F92 refinements compare `5aaa17f0`, read on 2026-09-23. Counts are
+holds F164–F169. F164–F167 compare local head `f79bc435`; F168 and the
+F19/F64/F92 refinements compare `5aaa17f0`; F97/F107/F169 use `25f62591`,
+read on 2026-09-23. The full coordinator contract and root/operator/owner
+history sweeps found no other substantial reduction. Counts are
 review spans and conditional arithmetic, not verified savings or approval to
 alter guides, accepted status, or evidence. No product, test, CI, or cluster
 command was run.
@@ -83,3 +85,16 @@ A compact owner route might save five to seven lines from this span, conditional
 on a usable coordinator link: its current broad heading does not land near
 420–429. No tracked Markdown link targets the logging section heading, but
 the heading remains a useful boundary. No draft or net saving was verified.
+
+### F169 — Runtime Discover display rule repeated in the coordinator contract
+
+The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 289–297 defines shared labels, semantic emphasis, and unchanged plain,
+redirected, dumb-terminal and `NO_COLOR` output for Runtime Discover and other
+scientist-facing commands. Its Runtime Discover lines 321–324 retain unique
+`READY`/`NOT READY`, no-write/admitted outcomes, verbose checks, and any shared
+source seal, then repeat the common color/plain rule. Line 323 begins the
+unique seal continuation; 323–324 are a review span, not two removable lines.
+A two-line account of 321–324 might save two physical lines after reflow while
+keeping the unique outcomes and seal. No draft, net saving, or command result
+was verified.
