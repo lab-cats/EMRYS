@@ -525,13 +525,14 @@ covers the separate stage-default table.
 
 At local audit head `f2e719c0`, the [test driver](../../tests/tools/real_synthetic_e2e.py)
 line 2 promises real-tool direct/Slurm parity on “one synthetic EMRYS Run”;
-`build_parser()` at 163–165 exposes that sentence as command help. Profile 130
-selects separate direct and Slurm workspaces at 251–254, then admits and
-completes a Run in each before comparison at 2126–2185. Its distinct two- and
-three-Attempt histories are stated in the [test-tool guide](../../tests/tools/README.md)
-lines 11–20. Profile 100000 selects only Slurm at 251–254 and returns no
-direct comparison at 2184–2187. The blanket help description misstates both
-profile scopes; it establishes no failure of either test. No driver or CI ran.
+`build_parser()` at 163–165 exposes that sentence as command help. Recheck at
+`8eadfdbb` narrowed the finding: profile 130 uses separate direct and Slurm
+workspaces, but asserts the same selected Run identity at 1852–1854 and equal
+immutable Run authority at 1542–1550. Its distinct Attempt histories are
+correctly stated in the [test-tool guide](../../tests/tools/README.md) lines
+11–20. Profile 100000 selects only Slurm at 251–254 and returns no direct
+comparison at 2184–2187. Help overstates that profile's parity scope; the
+one-Run identity is defensible for 130. No driver or CI ran.
 
 ### F163 — Optional worker threads shown as required
 

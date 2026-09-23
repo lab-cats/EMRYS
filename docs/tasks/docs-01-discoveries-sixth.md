@@ -346,17 +346,18 @@ unverified upper bound. No lossless draft, link check or net saving exists.
 ### F185 — Canonical BAM producer LB and PL exactness overclaimed
 
 At local audit head `f8c49f9e`, the [canonical BAM contract](../../src/emrys/stages/canonical_bam/CONTRACT.md)
-lines 50–54 requires exact `ID`, `SM`, `LB` and `PL:ILLUMINA` fields. The
-[worker](../../src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh)
-lines 69–74 and 94–107 instead search for substrings in one `@RG` line.
-An otherwise valid coordinate-sorted input with `ID:sample`, `SM:sample`,
-`LB:sample-extra`, `PL:ILLUMINA-extra`, and positive `RG:sample` records
-appears able to take the hard-link reuse path at line 125 and pass the final
-worker check. The [grouped BAM check](../../src/emrys/libraries/alignments/bam.py)
-lines 56–65 requires exact `ID`/`SM` fields but omits `LB`/`PL`, as the contract
-acknowledges at lines 142–147. Unlike F173's Step 05 prefix case, this mismatch
-is not caught by that grouped field check. This is source inference; no
-malformed Run, ordinary STAR output, or product execution was observed.
+requires exact `ID`, `SM`, `LB` and `PL:ILLUMINA` at lines 50–54; the
+[worker](../../src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh) at
+69–74 and 94–107 instead substring-matches one `@RG` line. Recheck at
+`8eadfdbb` narrows the example to a coordinate-sorted input with exact
+`ID:sample`, `SM:sample`, `PL:ILLUMINA`, longer `LB:sample-extra`, and matching
+`RG:sample` records: it appears able to take hard-link reuse at 125 and pass
+the final check. The earlier longer PL example was not established as valid,
+though PL is also substring-matched. The [grouped BAM check](../../src/emrys/libraries/alignments/bam.py)
+at 56–65 checks exact `ID`/`SM` but omits `LB`/`PL`, as the contract notes at
+142–147. The rewrite path writes exact fields, so this is primarily a reuse
+and final-check overclaim. No real-tool edge case, Run, or ordinary STAR output
+was observed.
 
 ### F186 — CV-U21 superseded STAR heuristic chronology
 
