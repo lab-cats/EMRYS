@@ -1,10 +1,11 @@
 # DOCS-01 discovery notes, sixth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F164–F170. F164–F167 compare local head `f79bc435`; F168 and the
+holds F164–F172. F164–F167 compare local head `f79bc435`; F168 and the
 F19/F64/F92 refinements compare `5aaa17f0`; F97/F107/F169 use `25f62591`;
-and F170 uses `8ef78400`, read on 2026-09-23. The full coordinator contract
-and root/operator/owner history sweeps found no other substantial reduction. Counts are
+F170 uses `8ef78400`, and F171–F172 use `c6ec1562`, read on 2026-09-23. The
+full coordinator contract and root/operator/owner history sweeps found no
+other substantial reduction. Counts are
 review spans and conditional arithmetic, not verified savings or approval to
 alter guides, accepted status, or evidence. No product, test, CI, or cluster
 command was run.
@@ -113,6 +114,32 @@ view choice before those keys act on log lines. This is a conditional reader
 ambiguity, not a missing watch capability or proof of a runtime defect. No
 interactive watch was run and no line saving was established.
 
+### F171 — Processing reuse link opens the contract at its top
+
+At local audit head `c6ec1562`, the [optimization campaign](optimization_campaign.md)
+line 326 labels a link “Processing reuse,” but its reference definition at
+line 441 targets the coordinator `CONTRACT.md` without a section anchor. That
+file has 1,248 lines; its [processing reuse and provider boundary](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#processing-reuse-and-provider-boundary)
+begins at line 882 and describes the compatible upstream Run and exact artifact
+admission. The campaign's historical measurement context remains distinct.
+This is a reader route into the wrong part of a large owner contract, not a
+claim that reuse or performance is defective. No guide was changed or Run
+executed.
+
+### F172 — Glossary format links bypass exact owners
+
+At local audit head `c6ec1562`, the [glossary](../reference/GLOSSARY.md) line 61
+defines PDF as a Step 09 scientific plot, but its “reporting owner” link opens
+the [HTML report guide](../../src/emrys/reporting/README.md), which names no
+PDF output. The [Step 09 owner](../../src/emrys/analyses/paired_cmh_candidate_ranking/README.md)
+lines 8–11 names the two PDFs; its [contract](../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md)
+lines 56–72 fixes the six-output roster. Glossary line 33 similarly sends CSS
+readers to the broad report guide, which names no stylesheet; the
+[styles owner](../../src/emrys/reporting/styles/README.md) lines 3–6 describes
+the shared CSS and presentation-only limit. Both existing glossary statements
+retain their evidence ceilings. This is link ownership, not a format or report
+behavior defect; no file or rendered report was changed.
+
 ## Other focused source comparisons at `8ef78400`
 
 The current root and operator guides were reread against CLI/coordinator source
@@ -126,3 +153,13 @@ Analysis, consistent with the architecture's public model. Full source and
 retained-evidence comparison remain open. These were static comparisons, not
 executed CLI, CI, hosted-artifact review, institutional proof, or scientific
 review.
+
+## Link-route recheck at `c6ec1562`
+
+A read-only scan of all 170 tracked non-audit Markdown files found no exact
+inbound Markdown destination to the headings claimed unlinked in F19, F25,
+F64, and F164, nor to the five file-level targets in F96 and F129. This
+rechecked nine destination/anchor pairs; it does not account for external
+bookmarks or non-Markdown readers. Focused operator, design, owner, task,
+history, test, and CI routes found F171–F172 and already recorded F21/F59/F161.
+Existing links were read at their destinations, not rendered or exercised.

@@ -221,15 +221,13 @@ permission to change or delete the source.
 - A read-only Step 00a–10 owner comparison at local head `b62e207b`
   extended F99 to Step 01→02's data-input versus Run-gate wording. The other
   early and late stage contracts yielded no new high-confidence finding.
-  No validator, Run, test, CI, or cluster command was run.
 - A read-only reporting, evidence, ingestion, and CI/tooling comparison at
   the same head added F112 for the R check's unqualified report-support claim.
   Other apparent overlaps were existing findings or distinct owner routes.
-  No report, R check, test, CI, or cluster command was run.
 - A read-only entry-route, architecture, and task-evidence comparison at local
   head `ac14392e` added F113 for CV-26's mixed current and dated record.
   Existing findings covered the other apparent guide and diagram discrepancies.
-  No product, test, CI, or cluster command was run.
+  No product, test, CI, or cluster command ran across these three passes.
 - An adversarial recheck at local head `d3b1f94a` challenged F100–F113 against
   their cited owners and found no material false positive or unsupported saving.
   The full 1,248-line coordinator contract and selected test-owner guides were
@@ -352,7 +350,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 170 records, 67 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 172 records, 67 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -526,14 +524,16 @@ Of 170 records, 67 were dismissed after recheck; linked notes give reasons. The 
 | [F168](docs-01-discoveries-sixth.md#f168-scheduler-stream-names-repeated-in-the-logging-contract) | Dismissed after recheck | Logging contract's scheduler passage repeats names already examined under dismissed F22. | The 5–7-line estimate added no new evidence; distinct logging and coordinator readers, plus unique local behavior, establish no useful saving. |
 | [F169](docs-01-discoveries-sixth.md#f169-runtime-discover-display-rule-repeated-in-the-coordinator-contract) | Small internal overlap | Coordinator contract repeats its shared color and plain-text rule in Runtime Discover guidance. | A four-line passage might become two lines; keep READY/NOT READY, no-write/admitted outcomes, verbose checks and seal. Saving is unverified. |
 | [F170](docs-01-discoveries-sixth.md#f170-first-watch-log-controls-before-a-run-exists) | Conditional reader ambiguity | Quickstart names Up/G as log controls immediately after watch; a queued request without a Run initially opens overview. | The existing Runbook gives `3`/`v` for evidence/log view; explicit Run selection already opens that view. Source checked, not exercised. |
+| [F171](docs-01-discoveries-sixth.md#f171-processing-reuse-link-opens-the-contract-at-its-top) | Link precision | Optimization campaign's “Processing reuse” link opens the top of the 1,248-line coordinator contract. | The exact reuse section has an existing anchor; this is reader navigation, not a reuse or performance defect. |
+| [F172](docs-01-discoveries-sixth.md#f172-glossary-format-links-bypass-exact-owners) | Owner route | Glossary PDF and CSS entries send readers to broad reporting guidance that names neither format. | Step 09 owns the scientific PDFs; report styles own CSS. The referenced behavior and evidence limits remain unchanged. |
 
 ## Discovery notes
 
 The [first discovery notes](docs-01-discoveries.md),
 [continued notes](docs-01-discoveries-continued.md),
 [third file](docs-01-discoveries-third.md),
-[fourth file](docs-01-discoveries-fourth.md), and
-[fifth file](docs-01-discoveries-fifth.md) give sources, uncertainty, and
+[fourth file](docs-01-discoveries-fourth.md), [fifth file](docs-01-discoveries-fifth.md), and
+[sixth file](docs-01-discoveries-sixth.md) give sources, uncertainty, and
 preservation boundaries for every matrix row. The temporary split keeps each
 document below the 600-line review threshold.
 
