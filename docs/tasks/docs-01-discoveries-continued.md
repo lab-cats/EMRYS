@@ -132,14 +132,10 @@ under one inspection node fed only by BAM/BAI. Its legend at line 39 says
 arrows are data or contract dependencies. The authoritative
 [stage map](../../src/emrys/contracts/STAGE_MAP.md) lines 67–70 requires
 BED12 from `convert_GTF_to_BED12` as a second RSeQC input; BAM QC has no
-such fan-in. The missing annotation edge is a diagram omission. “Non-gating”
-at stage-map lines 36–43 applies to downstream computation, not whole-Run
-completion: both evidence owners are in the
-[required owner roster](../../src/emrys/workflow/contracts/local_cmh_v2.json)
-lines 179–196, the [default workflow target](../../src/emrys/workflow/Snakefile)
-lines 393–397 includes every expected task, and
-[Results inspection](../../src/emrys/orchestration/run_coordinator/inspection.py)
-lines 276–283 requires every expected task verified.
+such fan-in. The [diagram index](../architecture/diagrams/README.md) lines
+3–14 calls this view concise and non-authoritative. “Non-gating” in the stage
+map at 36–43 concerns downstream computation; the diagram makes no Run
+completion claim. The missing edge is a reader depiction, not a DAG defect.
 The same diagram's reference node at lines 2, 18, 24–27, and 35 presents
 FAI/BED12 alongside supplied FASTA/GTF, including a direct FAI continuation.
 The stage map at lines 47–50 and 69–79 instead identifies FASTA/GTF as external
@@ -167,21 +163,15 @@ unconditional resume edge is a distinct observation.
 [Contract-integration index](../../tests/contract_integration/README.md)
 lines 8–9 says roster expectations cover “every current validator.” The
 [roster guide](../../tests/contract_integration/validation_rosters/README.md)
-lines 3–6 claims producer inventory coverage. At the pinned revision there
-are 16 source `validator.py` owners; the
+lines 3–6 means producers of ordered validation-report check IDs. The
 [roster test](../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py)
-lines 23–41 lists 14 grouped validation-report producers. Its inventory
-assertion at 84–95 checks that fixed map's paths and discovers only legacy
-`scripts/validate_step_*.py`, so a new source-owner validator is not
-automatically found. This is a narrower producer scope and maintenance limit;
-artifact-contract and sample-manifest validators have different contracts.
-The fixed map does cover all 14 currently enumerated validation-report
-producers, and literal ordered rosters remain an independent protection.
-The public CLI catalog (`src/emrys/__main__.py:44–65,318–333`) also exposes
-`all-pass`, artifact-contract, and manifest validation outside those 14.
-Owner real-output assertions remain distinct, including Step 10's direct one-row
-case at `tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_validator.py:80–99`;
-central synthetic roster checks alone cannot establish actual output meaning.
+lines 23–41 covers all 14 current producers. The
+[public CLI](../../src/emrys/__main__.py) lines 44–65 and 318–333 also exposes
+all-pass, artifact-contract, and manifest validators outside that set. Only
+the parent index's unqualified “validator” scope is overbroad. The fixed map's
+inventory assertion at test lines 84–95 does not discover future source
+owners, but neither README promises that. Literal ordered rosters remain a
+distinct protection; they do not prove real-output or scientific meaning.
 
 ### F40 — Concurrency in the local workflow profile
 
@@ -220,9 +210,9 @@ The CV card at 4086–4090 names no exact run date, source commit, command
 transcript, or retained artifact for that tiny exercise. It is an honest
 current evidence home, not yet a source for a date-qualified history transfer.
 The [test baseline](../design/TEST_BASELINE.md) line 15 links the test guide's
-`#what-the-checks-establish` heading. Its real test rows and the Runbook
-transfer anchor have distinct inbound readers; the transfer row links a
-procedure rather than a test. REPORT-01–03 and CV-27 retain their separate acceptance requirements.
+`#what-the-checks-establish` heading. The Runbook owns the procedure; the
+test row itself is one physical line with no direct-test link, a plausible
+one-line reduction. REPORT-01–03 and CV-27 retain separate acceptance.
 
 ### F43 — Print behavior in the reporting test guide
 
@@ -237,38 +227,23 @@ acceptance remains a separate evidence layer, with no guide edit established.
 
 ### F44 — Internal worker command ownership
 
-The opening of the [STAR contract](../../src/emrys/stages/star_alignment/CONTRACT.md)
-lines 3–6 calls its producer an explicit repository-path command, which is
-literally how the Run invokes it and does not itself promise standalone
-support. The [RSeQC contract](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md)
-lines 3–8 additionally calls the operation independently runnable, an ambiguous
-supported-command claim. Both contracts later call their shells internal Run
-workers (STAR lines 65–68;
-RSeQC lines 58–61), as do their adjacent READMEs (STAR lines 12–18; RSeQC
-lines 11–16). The STAR shell requires runner-supplied `EMRYS_TASK_WORK_DIR`
-at lines 3, 22–23, and 51–52; the RSeQC shell does likewise at lines 3,
-18–19, and 43–44. Their shell tests supply runner-like paths and assert
-refusal without them (`tests/stages/star_alignment/test_step_01_star_align.sh:11,74`;
-`tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh:11,77`).
-That establishes the internal interface, not supported standalone publication
-or recovery. The RSeQC opening's command classification is ambiguous, while
-explicit script paths, direct `--help`, and grouped validators remain useful.
-The coordinator's `TaskBackend` and `CommandResult` docstrings
-([task source](../../src/emrys/orchestration/run_coordinator/task.py) lines
-100–104 and 146–154) also call delegated producer and validator commands
-“public.” This is a definite terminology mismatch: those commands are
-delegated and recorded, with exact argv/exit evidence and Run-owned publication.
-The [public-CLI tests](../../tests/test_public_cli_contracts.py) lines 113–154
-also group ten shell workers as entry points and label three nonexecutable
-scripts `INTERPRETER_ONLY_SHELL_DEFECTS`; lines 829–865 call their modes
-“public shell” defects. The [stage index](../../src/emrys/stages/README.md)
-lines 30–39 and RSeQC, duplicate-marking, and split-N-cigar contracts instead
-classify these producers as internal Run workers. Git records the three modes
-as `100644`, but that alone does not make them defects in a public CLI. The
-test classification and names differ from supported command ownership;
-`--help`, arbitrary-working-directory, missing-argument, file-mode, argv,
-and exit protections remain useful. No test removal follows from this
-wording question.
+**Dismissed for DOCS-01 at `d84a8c41`.** The
+[STAR contract](../../src/emrys/stages/star_alignment/CONTRACT.md) lines 3–6
+names its producer's repository path without promising standalone support.
+The [RSeQC contract](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md)
+lines 3–8 says “independently runnable,” but its lines 58–61 and adjacent
+[README](../../src/emrys/evidence/rseqc_orientation/README.md) lines 11–16
+classify the shell as an internal Run worker. Both shells require a runner
+work directory; [STAR](../../tests/stages/star_alignment/test_step_01_star_align.sh)
+line 74 and [RSeQC tests](../../tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh)
+line 77 assert refusal without it. The
+[coordinator docstrings](../../src/emrys/orchestration/run_coordinator/task.py)
+at 100–104 and 146–154 and [public-CLI tests](../../tests/test_public_cli_contracts.py)
+at 113–154, 829–865 use “public” for delegated workers, while the
+[stage index](../../src/emrys/stages/README.md) lines 30–39 calls them internal.
+These labels do not establish a supported standalone command or useful DOCS-01
+reduction. Help, argument, exit, and file-mode checks remain legitimate;
+no test removal or standalone publication claim follows.
 
 ### F45 — Watch and stop in the command-audience map
 

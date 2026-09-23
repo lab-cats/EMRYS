@@ -208,13 +208,13 @@ not confirmation or refutation of the documented behavior.
 
 ### F09 — Runbook entry order
 
-The [Runbook](../operations/RUNBOOK.md) lines 9–163 starts with retained
-submissions, watch, and stop. Its audience, setup routes, and command
-conventions first appear at lines 164–188. The procedures are useful and must
-remain findable, but a new operator meets advanced recovery terms before the
-guide explains where to start. The root README lines 67–70 and docs index
-lines 8–9 both route operators here. Those inbound routes make the entry
-order a navigation question; no reader outcome or behavior defect was observed.
+**Dismissed for DOCS-01 at `d84a8c41`.** The
+[Runbook](../operations/RUNBOOK.md) opens with its evidence and owner boundary
+at 1–7, then puts request/watch/stop procedures at 9–163 before setup at
+164–188. The [root README](../../README.md) lines 67–70 and
+[docs index](../README.md) lines 8–9 route operators here. The procedures
+serve returning operators; no reader failure or useful reduction from changing
+their order is established.
 
 ### F10 — Contract-location claim
 
@@ -286,9 +286,9 @@ calls `admit_origins()` at 2561, 2651, 2662, and 2676 before producer entry.
 The shared helper at 1861–1898 observes the installed package; its identity
 routine uses [`installed_python_package_identity`](../../src/emrys/libraries/installed_package_identity.py)
 at 286–293 to traverse package bytes. No current task-entry attestation
-invokes Git. Four package observations remain; their latency and independent
-necessity are unmeasured. The old 24-call count was not false at its pinned
-revision, and the current byte/build-origin boundaries must be preserved.
+invokes Git. The dated 24-call observation remains valid, but future Git/HEAD
+instructions are a compression review span. Four package observations have
+unmeasured cost/necessity; preserve current byte/build-origin guards.
 
 ### F15 — CV-U22 interim status prose
 
@@ -388,15 +388,15 @@ procedural sequence. Their overlap does not justify deleting either wholesale.
 
 ### F19 — Doctor experiment evidence in workflow README
 
-[Workflow README](../../.github/workflows/README.md) lines 24–38 gives a
-15-line completed Doctor experiment account: run and revision, four-trial
-summary, mean time/RSS, limits, retirement, and the surviving driver. The
-[CV backlog](cluster_verification_backlog.md) lines 3949–3995 holds these facts
+[Workflow README](../../.github/workflows/README.md) lines 26–39 has 14 lines
+of completed Doctor experiment prose: run and revision, four trials, mean
+time/RSS, limits, retirement, and the surviving driver. The
+[CV backlog](cluster_verification_backlog.md) lines 3949–3999 holds these facts
 plus the artifact identity and trial-level measurements. Workflow lines 3–22
 own current CI lanes; the experiment section gives no active lane instruction.
-Its “probes remain serial” decision agrees with the CV card. The 15 lines are
-a review span, not a measured saving; exact results, uncontrolled cache,
-shared-page and missed-peak limits remain evidence. No deletion is authorized.
+Its serial-probe decision and resource/cancellation rationale lack a separate
+durable owner route in this pass. The 14 lines are not measured savings;
+exact results, cache, shared-page and missed-peak limits remain evidence.
 
 ### F20 — Independent golden migration comparisons
 
