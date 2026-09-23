@@ -30,7 +30,10 @@ supported binaries. Setup must prove versions, readiness, cluster registration,
 and exact `squeue --clusters=emrys-ci` observation before its scenario starts.
 The CI-only controller allows the Task cleanup signal horizon before forced
 termination and retains controller and worker file logs; this does not weaken
-the resume boundary or change production Slurm policy.
+the resume boundary or change production Slurm policy. Stop/resume alone limits
+workflow scheduling to one core so the gated native Task has no unrelated active
+Task whose closure could be ambiguous; it retains whole-node exclusive Slurm
+placement. The other scenarios retain allocation-wide workflow parallelism.
 Private service state stays on that runner; the scenario artifact contains only
 bounded operator, runtime, setup, and terminal evidence. Infrastructure
 readiness alone is not proof that an active Task was cancelled or that

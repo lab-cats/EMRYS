@@ -477,7 +477,7 @@ def symbolic_resource_document() -> dict[str, Any]:
     }
 
 
-def ci_resource_document() -> dict[str, Any]:
+def ci_resource_document(*, serial_workflow: bool = False) -> dict[str, Any]:
     """Derive the hosted-fixture policy from packaged allocation-aware defaults."""
     from emrys.orchestration.run_coordinator.execution_profile import (
         load_execution_profile,
@@ -487,6 +487,8 @@ def ci_resource_document() -> dict[str, Any]:
     )
 
     document = load_execution_profile().resource_policy.document()
+    if serial_workflow:
+        document["workflow_cores"] = 1
     document["stage_memory_mb"].update(
         {step_id: {"minimum_mb": 2048} for step_id in REPEATABLE_STAGE_IDS}
     )
@@ -502,6 +504,7 @@ def slurm_execution_profile_bytes(
     nodelist: str | None,
     scratch_parent: Path,
     module_init: Path | None = None,
+    serial_workflow: bool = False,
 ) -> bytes:
     from emrys.contracts.orchestration import api as contracts
     from emrys.orchestration.run_coordinator.execution_profile import SCHEMA_VERSION
@@ -509,7 +512,7 @@ def slurm_execution_profile_bytes(
     try:
         document = {
             "schema_version": SCHEMA_VERSION,
-            "resources": ci_resource_document(),
+            "resources": ci_resource_document(serial_workflow=serial_workflow),
             "placement": {
                 "kind": "slurm",
                 "account": account,
@@ -1135,24 +1138,28 @@ def _resource_snapshot(
     }
 
 
-def _assert_ci_allocation_resources(resources: dict[str, Any]) -> None:
+def _assert_ci_allocation_resources(
+    resources: dict[str, Any], *, serial_workflow: bool = False
+) -> None:
     symbolic = resources["symbolic"]
     effective = resources["effective"]
     allocation = resources["allocation"]
+    expected_symbolic_cores: str | int = 1 if serial_workflow else "allocation"
+    expected_effective_cores = 1 if serial_workflow else allocation.get("cores")
     if (
-        symbolic.get("workflow_cores") != "allocation"
+        symbolic.get("workflow_cores") != expected_symbolic_cores
         or symbolic.get("workflow_memory_mb") != "allocation"
     ):
         raise DriverError(
             "assert-parity",
-            "Hosted Run did not retain allocation-wide CPU and memory policy",
+            "Hosted Run did not retain the selected CPU and allocation-memory policy",
         )
-    if effective.get("workflow_cores") != allocation.get("cores") or effective.get(
+    if effective.get("workflow_cores") != expected_effective_cores or effective.get(
         "workflow_memory_mb"
     ) != allocation.get("memory_mb"):
         raise DriverError(
             "assert-parity",
-            "Hosted Run did not resolve CPU and memory to its observed allocation",
+            "Hosted Run did not resolve the selected CPU and observed memory policy",
         )
     sample_stage_ids = ("01", "02", "02b", "03", "04", "05", "06")
     symbolic_concurrency = symbolic.get("stage_concurrency", {})
@@ -1162,10 +1169,14 @@ def _assert_ci_allocation_resources(resources: dict[str, Any]) -> None:
             "assert-parity",
             "Hosted Run did not retain automatic sample-stage concurrency",
         )
-    if any(effective_concurrency.get(step_id) != 4 for step_id in sample_stage_ids):
+    expected_concurrency = 1 if serial_workflow else 4
+    if any(
+        effective_concurrency.get(step_id) != expected_concurrency
+        for step_id in sample_stage_ids
+    ):
         raise DriverError(
             "assert-parity",
-            "Hosted Run did not resolve four-library stages to four-way concurrency",
+            "Hosted Run did not resolve the selected sample-stage concurrency",
         )
 
 
@@ -1295,6 +1306,7 @@ def _attempt_snapshot(
     expected_status: str,
     expected_exit_code: int,
     operation: str,
+    serial_workflow: bool = False,
 ) -> dict[str, Any]:
     from emrys.orchestration.run_coordinator import inspection
 
@@ -1332,7 +1344,7 @@ def _attempt_snapshot(
         raise DriverError(
             "assert-parity", "Resource allocation scheduler identity differs"
         )
-    _assert_ci_allocation_resources(resources)
+    _assert_ci_allocation_resources(resources, serial_workflow=serial_workflow)
     attempt_id = str(attempt["workflow_attempt_id"])
     return {
         "id": attempt_id,
@@ -1456,6 +1468,10 @@ def _admitted_interruption(
         or not receipt.get("task_start_records")
     ):
         raise DriverError("native-stop", "stopped Attempt identity or receipt differs")
+    resources = _resource_snapshot(attempt)
+    if resources["allocation"]["slurm_job_id"] != job.job_id:
+        raise DriverError("native-stop", "stopped Attempt allocation identity differs")
+    _assert_ci_allocation_resources(resources, serial_workflow=True)
     attempts, receipts, blockers = inspection.inspect_attempt_chain(
         run_root, authority=authority
     )
@@ -1510,6 +1526,7 @@ def _admitted_completion(
     jobs: tuple[Job, ...],
     failure: dict[str, Any] | None = None,
     interruption: dict[str, Any] | None = None,
+    serial_workflow: bool = False,
 ) -> dict[str, Any]:
     from emrys.orchestration.run_coordinator import inspection
 
@@ -1546,6 +1563,7 @@ def _admitted_completion(
         operation="resume"
         if failure is not None or interruption is not None
         else "execute",
+        serial_workflow=serial_workflow,
     )
     if (
         len(
@@ -2020,13 +2038,14 @@ def run_driver(
         )
         transcripts.run(f"{label}-init-plan", init, cwd=repo)
         transcripts.run(f"{label}-init", [*init, "--execute"], cwd=repo)
-        # Keep the packaged allocation policy while lowering only repeated-stage
-        # memory admission floors for this tiny disposable fixture.
+        # Keep the packaged policy while lowering only repeated-stage memory
+        # admission floors. The stop journey uses one workflow core so the
+        # native gate cannot overlap unrelated Tasks whose closure is unknown.
         (workspace / "runtime/profiles/default.yaml").write_bytes(
             json.dumps(
                 {
                     "schema_version": "emrys.execution-profile.v1",
-                    "resources": ci_resource_document(),
+                    "resources": ci_resource_document(serial_workflow=stop_journey),
                     "placement": {"kind": "direct"},
                 }
             ).encode()
@@ -2047,12 +2066,16 @@ def run_driver(
         slurm_execution_profile_bytes(
             **slurm_settings,
             module_init=failure_module_init if recovery_journey else None,
+            serial_workflow=stop_journey,
         ),
     )
     # This disposable Project selects its site before any Run exists. Doctor's
     # qualification must not consume the separate deliberate engine failure.
     (paths.slurm_workspace / "runtime/profiles/default.yaml").write_bytes(
-        slurm_execution_profile_bytes(**slurm_settings)
+        slurm_execution_profile_bytes(
+            **slurm_settings,
+            serial_workflow=stop_journey,
+        )
     )
     from emrys.evidence.storage_inventory import qualification
 
@@ -2313,6 +2336,7 @@ def run_driver(
         jobs=slurm_jobs,
         failure=failures["slurm"],
         interruption=interruption,
+        serial_workflow=stop_journey,
     )
     parity = (
         _assert_direct_slurm_parity(direct_completion, slurm_completion)

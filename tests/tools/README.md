@@ -22,7 +22,11 @@ public workflow commands.
   do not establish Viking memory policy or cross-node behavior. The disposable
   CI controller's 300-second `KillWait` matches the Task cleanup signal horizon;
   it does not change production scheduler policy or permit resume without an
-  admitted interruption boundary.
+  admitted interruption boundary. The stop/resume scenario deliberately limits
+  the workflow to one core so its gated native Task cannot overlap unrelated
+  Tasks with unknown cancellation closure. It still requests the whole runner
+  exclusively; the success and failure/resume scenarios retain allocation-wide
+  workflow CPU and automatic four-library concurrency.
   Real hosted scientific Runs derive their resource policy from the packaged
   allocation-aware defaults and resolve against the runner allocation. The tiny
   fixture lowers only repeatable-stage memory admission floors to 2048 MiB; it

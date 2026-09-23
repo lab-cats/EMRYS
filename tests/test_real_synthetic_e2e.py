@@ -283,6 +283,66 @@ def test_ci_resource_document_preserves_packaged_policy_with_fixture_minima() ->
     }
 
 
+def test_ci_resource_document_serializes_only_workflow_cpu() -> None:
+    allocation_wide = driver.ci_resource_document()
+    serial = driver.ci_resource_document(serial_workflow=True)
+
+    assert serial == {**allocation_wide, "workflow_cores": 1}
+
+
+def test_slurm_execution_profile_can_serialize_stop_resume_workflow(
+    tmp_path: Path,
+) -> None:
+    from emrys.orchestration.run_coordinator.execution_profile import (
+        load_execution_profile,
+    )
+    from emrys.orchestration.run_coordinator.resource_policy import (
+        AllocationCapacity,
+        resolve_resource_policy,
+    )
+
+    rendered = driver.slurm_execution_profile_bytes(
+        account=None,
+        partition="emrys-ci",
+        qos=None,
+        time_limit="02:00:00",
+        nodelist=None,
+        scratch_parent=tmp_path / "scratch",
+        serial_workflow=True,
+    )
+
+    profile_document = json.loads(rendered)
+    assert profile_document["resources"] == driver.ci_resource_document(
+        serial_workflow=True
+    )
+    assert profile_document["placement"]["cpus_per_task"] == "node"
+    assert profile_document["placement"]["memory_mb"] == 0
+    assert profile_document["placement"]["exclusive"] is True
+    profile = tmp_path / "ci.json"
+    profile.write_bytes(rendered)
+    admitted = load_execution_profile(config_path=profile)
+    resolved = resolve_resource_policy(
+        admitted.resource_policy,
+        AllocationCapacity(4, 16384, "hosted fixture", slurm_job_id="42"),
+        workload={"samples": 4, "partitions": 1},
+    )
+    assert resolved.allocation.cores == 4
+    assert resolved.workflow_cores == 1
+    assert set(dict(resolved.stage_concurrency).values()) == {1}
+    assert set(dict(resolved.step_threads).values()) == {1}
+    driver._assert_ci_allocation_resources(
+        {
+            "symbolic": admitted.resource_policy.document(),
+            "effective": resolved.effective_document(),
+            "allocation": {
+                "cores": resolved.allocation.cores,
+                "memory_mb": resolved.allocation.memory_mb,
+            },
+        },
+        serial_workflow=True,
+    )
+
+
 def test_native_gate_adapter_passes_version_probe_without_claiming_gate(
     tmp_path: Path,
 ) -> None:
