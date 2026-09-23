@@ -453,21 +453,20 @@ No useful independent reduction of the 77-line review span is established.
 
 ### F91 — Repeated stage and evidence contract openings
 
-The first paragraphs of all ten stage and both evidence `CONTRACT.md` files
-span 48 physical lines: seven four-line and three three-line stage openings
-(37), plus five- and six-line evidence openings (11). For example,
-[canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md) lines 3–6
-and [Step 02b QC](../../src/emrys/evidence/canonical_bam_qc/CONTRACT.md)
-lines 3–7 restate historical aliases and
-[STAGE_MAP](../../src/emrys/contracts/STAGE_MAP.md) ownership, while
-[RSeQC](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md) lines 3–8
-also names its repository-path producer command. The map already gives
-all identities at lines 19–34, and adjacent owner READMEs identify their
-routes. Each contract still has a useful local alias and worker/validator role,
-plus unique dependencies, consumer rules, and evidence limits. All twelve have
-a three-line alias/map preamble; a two-line form might save about one line per
-contract. The 24 map-authority lines and full 48-line openings are review spans,
-not savings estimates. No replacement or net saving was verified.
+The first paragraphs of ten stage and two evidence contracts span 48 physical
+lines: seven four-line and three three-line stage openings (37), plus five-
+and six-line evidence openings (11). [Canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md)
+lines 3–6 and [Step 02b QC](../../src/emrys/evidence/canonical_bam_qc/CONTRACT.md)
+3–7 repeat alias and [STAGE_MAP](../../src/emrys/contracts/STAGE_MAP.md)
+authority; [RSeQC](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md) 3–8
+also names its producer command. The [Step 09 analysis](../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md)
+3–6 adds an analogous four-line opening: 13 owners, 52 review lines total.
+The Step 10 analysis has a different explicit-key/alias preamble. The map owns
+identities at 19–34; local alias, worker/validator role, and Step 09's
+analysis-not-preprocessing distinction remain useful. A two-line form might
+save about one line in each original contract; Step 09 is unestimated. The
+original twelve's 24 map-authority lines and all 52 openings are review spans, not
+savings estimates. No replacement or net saving was verified.
 
 ### F92 — Python lock checks before institutional R restoration
 

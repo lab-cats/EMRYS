@@ -285,9 +285,12 @@ calls `admit_origins()` at 2561, 2651, 2662, and 2676 before producer entry.
 The shared helper at 1861–1898 observes the installed package; its identity
 routine uses [`installed_python_package_identity`](../../src/emrys/libraries/installed_package_identity.py)
 at 286–293 to traverse package bytes. No current task-entry attestation
-invokes Git. The dated 24-call observation remains valid, but future Git/HEAD
-instructions are a compression review span. Four package observations have
-unmeasured cost/necessity; preserve current byte/build-origin guards.
+invokes Git. [Build metadata](../../setup.py) at 17–40 and source authority
+91–123 allow absent Git commits; the old exact-commit/HEAD rule is not policy.
+Keep the dated 24-call observation. A private six-line sketch of the
+11-line future-selection paragraph suggests five local lines after removing
+stale Git advice; no net saving is verified. Four package observations have
+unmeasured cost/necessity; preserve installed-byte and build-origin guards.
 
 ### F15 — CV-U22 interim status prose
 
@@ -381,17 +384,18 @@ procedural sequence. Their overlap does not justify deleting either wholesale.
 
 ### F19 — Doctor experiment evidence in workflow README
 
-[Workflow README](../../.github/workflows/README.md) lines 26–39 has 13 prose
-lines plus one blank on the completed Doctor experiment. [CV-26](cluster_verification_backlog.md#cv-26-repeated-doctor-input-reads)
-3949–3999 retains its artifact, trials, limits, serial decision and retired
-apparatus. Workflow lines 3–22 own current lanes; the experiment adds no active
-instruction and has no inbound heading link in tracked Markdown. The
-[optimization campaign](optimization_campaign.md) 302–315 retains serial policy,
-while CV-26 3979–3987 alone explains the one-CPU and cancellation rationale.
-A two-to-three-line route might save 11–12 local lines, preserving CV-26's
-cache, shared-page, missed-peak and cancellation limits. [Archive inspection](docs-01-discoveries-seventh.md#retained-hosted-archive-inspection-at-496846d5)
-matched its size, hash and per-trial records, but cannot prove worker checkout
-or site performance. Net saving and post-expiry availability are unverified.
+[Workflow README](../../.github/workflows/README.md) lines 24–39 spends 16
+physical lines on a completed Doctor experiment. [CV-26](cluster_verification_backlog.md#cv-26-repeated-doctor-input-reads)
+3949–4002 owns its artifact, trials, limits, serial decision and retirement;
+the [optimization campaign](optimization_campaign.md) 302–315 retains serial
+policy. Workflow lines 3–22 own current lanes, and [CI](../../.github/workflows/ci.yml)
+still uploads donor/borrower measurements. No tracked Markdown link targets
+the experiment heading. A six-to-eight-line route keeping that heading and
+driver fact might save eight to ten local lines. The [closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+requires CV-26's exact artifact record in validation history before backlog
+retirement. [Archive inspection](docs-01-discoveries-seventh.md#retained-hosted-archive-inspection-at-496846d5)
+matched bytes and selected trials, but not worker checkout or site behavior.
+Repository net saving and post-expiry availability remain unverified.
 
 ### F20 — Independent golden migration comparisons
 
@@ -570,9 +574,9 @@ and [RSeQC](../../tests/evidence/rseqc_orientation/README.md) at lines 5–9
 (`c0cdceb1`). Eight test and six production copies repeat 58 physical lines.
 The shared indexes lack runner, scratch, interruption, recovery, command-help,
 and shell-worker versus validator distinctions; a simple link would lose them.
-An illustrative shared-context allowance is eight test-index lines plus one
-stage-index line. With 14 one-line routes, 58 repeated lines minus 14 routes
-and nine shared lines leaves 35; with two-line routes it leaves 21. For the
+An illustrative eight-line tests-root context must cover stage and evidence
+suites; allow one stage-index line too. Fourteen one-line routes leave 35 net
+lines (58 minus 14 routes and nine shared lines); two-line routes leave 21. For the
 original 12 stage files, zero/six/twelve two-line routes yield 27/21/15.
 No saving is verified.
 At `651d60d5`, nine stage, two evidence, and one analysis contract use the
