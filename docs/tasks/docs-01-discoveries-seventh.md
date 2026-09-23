@@ -343,3 +343,37 @@ A six-to-eight-line account of this ten-line subspan suggests two to four
 conditional local lines; Markdown links or preservation wording may erase
 that saving. No guide rewrite or net saving was verified. F25's full-section
 reduction remains dismissed, and retained evidence deletion is not authorized.
+
+## CV backlog and prose-overlap rescreen at `24b8853b`
+
+All 4,107 lines of the delegated CV backlog and all 53 test, script, and CI
+Markdown guides were reread against the current matrix and selected owners.
+The test guides' repeated runner paragraph is F28; the long CV card overlaps
+either have existing findings or retain distinct dated evidence and acceptance.
+A rough cross-file scan of 1,278 longer prose paragraphs surfaced 71 similar
+pairs: stage/evidence test boilerplate, owner-local validator contracts, and a
+short decision/coordinator reporting overlap already reviewed. It omitted
+lists and code and cannot rule out differently worded duplication. No product
+test, CI, cluster operation, or product-guide edit occurred in this pass.
+
+### F195 — CV-21 acceptance history repeats its current boundary
+
+The [CV-21 card](cluster_verification_backlog.md#cv-21-reporting-in-progress-and-visibility)
+lines 3529–3545 uses 17 physical lines to recount its September 17 return to
+Open and September 21 move to Verification pending. Its current acceptance at
+3473–3483 and the [campaign summary](cluster_verification_backlog.md#verified-scope-and-remaining-evidence)
+at 70–79 already state that E06 remains unexplained, causal reconstruction is
+not required, and ordinary institutional execution remains pending. The dated
+reversal is still material: controlled overlap and finalization fixtures did
+not identify E06's cause; the owner later removed cause-finding from acceptance.
+Retain both dated status decisions, the truthful transaction states, verified
+report-location gate, fail-closed committed-output admission, public producer
+boundary and finalization-fault protections, and exact-revision institutional
+proof still pending. A nine-to-eleven-line account might save six to eight
+local lines, but no lossless replacement or net saving is verified.
+This is separate from F118's normal-versus-verbose table claim and grants no
+authority to delete dated evidence.
+
+The local documentation structure check passed on this audit draft (178
+Markdown files, three Mermaid sources). It validates these links, not any
+hypothetical shortened CV-21 prose or product behavior.

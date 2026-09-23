@@ -35,8 +35,7 @@ permission to change or delete the source.
   available Python lacked `markdown_it`. No dependencies were installed.
   Later passes ran no production workflow, direct suite, CI, cluster, or
   scientific validation; the failed `--version` fixture is noted below.
-  Retained evidence was unchanged; the approved Runbook reduction is in the
-  sixth discovery notes.
+  Retained evidence was unchanged; the approved Runbook slice is in the sixth notes.
 - Line references below are for the pinned revision. Append the observed
   commit to any later audit pass or newly discovered finding; never silently
   mix revisions in one source claim. “Contradiction” means
@@ -327,7 +326,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 194 records, 76 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 195 records, 76 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -525,6 +524,7 @@ Of 194 records, 76 were dismissed after recheck; linked notes give reasons. The 
 | [F192](docs-01-discoveries-seventh.md#f192-release-acceptance-repeated-in-polish-item-30) | Conditional acceptance compression | Polish item 30 restates broad `RELEASE-01` acceptance across 28 lines while adding three distinct alpha support questions. | A 16–18-line owner route could save about 10–12 local lines only if installed-wheel scope, lock/metadata support, old-Run refusal, evidence and publication authority remain. Unverified. |
 | [F193](docs-01-discoveries-seventh.md#f193-r-dependency-closure-repeated-in-polish-item-34) | Conditional acceptance compression | Polish item 34 repeats the accepted `RUNTIME-CLOSURE-01` scope across 15 lines. | A seven-to-nine-line route could save six to eight local lines; retain first-pass omission, namespace-hash limit and the rule that fewer probes do not identify the closure. Unverified. |
 | [F194](docs-01-discoveries-seventh.md#f194-rendered-report-review-repeated-in-polish-item-37) | Conditional review compression | Polish item 37 repeats report review acceptance held by `REPORT-01`–`03` and the shared report criteria, but names extra review cases. | A 12–14-line route could save five to seven local lines only if keyboard, zoom, closed sections, screen-reader, print, copied-bundle and exact-revision limits remain. Unverified. |
+| [F195](docs-01-discoveries-seventh.md#f195-cv-21-acceptance-history-repeats-its-current-boundary) | Conditional dated-account compression | CV-21 spends 17 lines on its September 17 Open and September 21 Verification pending decisions after the card and campaign summary already state the accepted current boundary. | A nine-to-eleven-line account might save six to eight local lines; retain both dated decisions, unexplained E06, accepted protections and exact-revision institutional proof still pending. No evidence deletion is authorized; no net saving is verified. |
 
 ## Discovery notes
 
