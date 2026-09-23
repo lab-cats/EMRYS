@@ -13,6 +13,10 @@ follow-ups. The [optimization campaign](optimization_campaign.md) holds resource
 costs, tradeoffs, and measurement proposals. They support selection without
 creating another task-status list or permission to implement a proposal.
 
+The [backlog and campaign audit](backlog_campaign_audit.md) is a working,
+revision-bound review of these documents. It records discrepancies and
+discovery questions; the existing backlogs remain the status authorities.
+
 Select an accepted item or explicitly approved objective and follow the
 [development workflow](../operations/WORKFLOW.md). Before closing work, reconcile
 its result, evidence, contracts, and affected documentation. Keep useful

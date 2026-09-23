@@ -7,6 +7,58 @@ full-Run, production, scientific-review, or biological evidence unless a row
 explicitly says so.
 Current state comes from live Git and checks bound to the revision under review.
 
+## September 14 Viking walkthrough
+
+The [source-bound E01–E12 walkthrough record](2026-09-14-viking-walkthrough.md)
+preserves the operator-reported observations, exact identities, dated decisions,
+and their limits while the original backlog and campaign records remain in place.
+
+## September 14 compression closeout
+
+The [source-bound compression closeout record](2026-09-14-compression-closeout.md)
+preserves the accepted decision, both count baselines, exact hosted run
+identities, and their limits while the main matrix remains authoritative.
+
+## September 15–16 CV-10 cancellation and recovery
+
+The [September 15 containment and retry record](2026-09-15-cv10-containment-retry.md)
+preserves exact hosted software identities, artifact hashes, failed-suite
+distinctions and the closed-abort limit. The separate
+[September 16 timeout record](2026-09-16-cv10-timeout.md) preserves Viking job
+`621154`, its observed blocked state and the later bounded-warning response.
+Neither record makes the original E09 Run recoverable or closes institutional
+cancellation acceptance.
+
+## September 15 CV-U28 resource provenance
+
+The [source-bound policy reconstruction](2026-09-15-cv-u28-resource-provenance.md)
+preserves the operator report, 78-branch review, exact retired configuration
+identity and the distinct benchmark contexts. The old fixed policy is
+historical provenance; current allocation-aware acceptance remains with the
+CV-U28 card.
+
+## September 15 CV-26 Doctor measurements
+
+The [source-bound hosted timing and probe record](2026-09-15-cv26-doctor-measurements.md)
+preserves exact artifacts and hashes, phase and invocation counters, the four
+steady-ready trials, failed prototype checks, and the decision to retain
+serial R namespace checks and fresh content admission. It does not establish
+Viking or comparable whole-operation speedup; CV-26 remains Open.
+
+## September 16–21 CV-26 Doctor follow-up
+
+The [later checkpoint record](2026-09-21-cv26-doctor-followup.md) preserves
+the negative Viking duration report, the bounded elapsed-time display change,
+and the five-to-four Slurm diagnosis decision with its exact source-recorded
+checks. It claims no measured Doctor or institutional speedup.
+
+## September 16 CV-UX-01 Doctor terminal collision
+
+The [source-bound collision and repair record](2026-09-16-cvux01-doctor-collision.md)
+preserves the job `621172` presentation report and bounded local and ordinary
+CI response. Viking terminal acceptance remains pending; CV-U04 and CV-26 own
+broader Doctor presentation and timing.
+
 ## PORT-NC-01 integration replay
 
 Tests from `fix/no-clobber` informed but did not validate the differently

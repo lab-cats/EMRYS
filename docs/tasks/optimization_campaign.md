@@ -43,11 +43,13 @@ explicit primary objective and acceptable tradeoffs for each experiment.
 
 ## Candidate observations
 
-The order is an initial value-and-risk assessment, not a dependency graph.
-Reference streaming and Step 06 count consolidation are the recommended first
-implementation proposals; optional execution-profile tuning is the first
-measurement proposal. Step 08 retention and Step 07 hashing merit larger
-investigations.
+The order is the September 7 audit's initial value-and-risk assessment, not a
+dependency graph or current work selection. At that checkpoint, reference
+streaming and Step 06 count consolidation were the recommended first
+implementation proposals; optional execution-profile tuning was the first
+measurement proposal. Step 08 retention and Step 07 hashing merited larger
+investigations. Recheck current owners and measurements before selecting any
+candidate.
 
 | Discussion | Candidate | Primary opportunity | Initial behavior classification |
 |---|---|---|---|
@@ -161,11 +163,16 @@ extra temporary I/O introduced by fragments.
 
 Every partition task [binds all cohort orientation BAMs and indexes][step07-inputs],
 plus shared reference inputs. The task wrapper hashes inputs
-[twice before production][task-entry] and [once afterward][task-exit]. For `P`
-partitions and `B` bytes of common inputs, these observations alone request
-approximately `3 * P * B` logical bytes: 75 complete shared-input traversals for
-25 partitions. Producer, validator, output, and resume observations add work.
-Cache hits mean this is not a claim of 75 physical disk reads.
+[twice before production][task-entry] and [once afterward][task-exit] at the
+September 7 audit revision. The resulting `3 * P * B` estimate, or 75
+shared-input traversals for 25 partitions, is historical. On the current
+successful, nonreused Step 07 Task path, [Task](../../src/emrys/orchestration/run_coordinator/task.py)
+hashes shared inputs at initial binding, producer entry, before and after
+native publication, and final admission. For `P` partitions and `B` bytes of
+common declared inputs, those five visible windows imply at least
+`5 * P * B` logical bytes, or 125 shared-input traversals for 25 partitions,
+before other observations. This source-derived count is not a measurement of
+physical disk reads, wall time, or savings from a proposed change.
 
 First determine whether adjacent pre-entry observations can be consolidated
 without opening their mutation window. Reusing one observation across tasks requires proof that it detects
@@ -198,18 +205,25 @@ avoid a second independent resource policy.
 
 ### 8. Use qualified fast scratch for GATK spill
 
-[Slurm already establishes private temporary storage][slurm-scratch], but
-[Step 05][gatk-scratch] deliberately places GATK spill under the output directory
-because CSU `/tmp` can be too small. Evaluate sufficiently large fast scratch
+At the September 7 audit revision, [Slurm established private temporary
+storage][slurm-scratch] while [Step 05][gatk-scratch] placed GATK spill under the
+output directory because CSU `/tmp` could be too small. Current
+[Step 05](../../src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh)
+passes runner-owned `EMRYS_TASK_WORK_DIR` to both Java and GATK, as its
+[contract](../../src/emrys/stages/split_n_cigar/CONTRACT.md) records. The runner
+creates that `.scratch` directory beside the Task output working directory,
+on the same filesystem; placement alone does not qualify it as fast site
+scratch or remove shared-storage I/O. Evaluate sufficiently large fast scratch
 for disposable tool spill while keeping final-output staging and publication
 on their required filesystem.
 
 Preserve capacity qualification, headroom, ownership, interruption handling,
 and recovery. Do not blindly redirect to `/tmp`; a memory-backed filesystem
 can worsen memory pressure. Compare spill-heavy workloads on the intended
-institutional storage. This can reduce shared-storage traffic and wall time
-without reducing total bytes written or persistent output size. PR44 does not
-implement this scratch-placement change.
+institutional storage. A faster qualified path might reduce shared-storage
+traffic or wall time without reducing total bytes written or persistent output
+size; this remains unmeasured. At the September 7 audit, PR44 did not implement
+the proposed scratch-placement change.
 
 ### 9. Reduce Step 09 validation allocations
 
@@ -268,26 +282,28 @@ selecting any report-startup slice.
 
 ### 12. Audit source attribution before task entry
 
-The [normal task-entry path][task-source-entry] calls source attestation four
-times before scientific production, including the call made while constructing
-the task-start record. Each [attestation][source-attestation] performs two
-working/package comparisons and a [Git-object comparison][source-object-check].
-Together with its top-level and HEAD observations, this makes six Git
-subprocess calls per successful attestation, or 24 per normal task entry, plus
-repeated package-tree traversal and byte reads. These are source-derived call
-counts, not measured startup time or evidence that the checks are redundant.
+At the September 7 audit revision, the [normal task-entry path][task-source-entry]
+called source attestation four times before production. Each
+[attestation][source-attestation] included
+[working/package][source-package-check] and
+[Git-object][source-object-check] comparisons; the source-derived estimate was
+24 Git subprocess calls per normal Task entry. That is not current installed
+execution behavior. The current
+[installed-package admission](../../src/emrys/libraries/source_authority.py)
+reads build provenance and hashes executing package content without a runtime
+Git checkout call. [Task admission](../../src/emrys/orchestration/run_coordinator/task.py)
+still rechecks that installed identity at distinct pre-producer and publication
+boundaries. These observations establish repeated work, not measured startup
+cost or redundant protections.
 
-Measure task-start latency, Git invocations, and filesystem work on the selected
-local or institutional storage. Identify what can change between each check and the file publication it
-protects before combining checks. The
-[package comparison][source-package-check] also reads both sides when their
-resolved roots are the same; determine whether that case can be simplified
-without losing a currently detected change. Retire only equivalent work inside
-the existing source-authority owner. Preserve executing-package bytes, exact
-commit binding, changed HEAD/package detection, and task-start publication
-checks. An immutable Run does not make its source filesystem immutable and
-does not authorize caching across those boundaries. Related assurance work
-remains in the [polish campaign](polish-campaign.md).
+Measure task-start latency and package-identity filesystem work on the selected
+local or institutional storage. Identify what can change between each check
+and the record or output publication it protects before combining checks.
+Retire only equivalent work inside the existing source-authority owner.
+Preserve executing-package bytes, build-origin and Attempt binding, and
+task-start/publication checks. An immutable Run does not make installed package
+bytes immutable and does not authorize caching across those boundaries.
+Related assurance work remains in the [polish campaign](polish-campaign.md).
 
 ### 13. Measure R runtime-probe startup overhead
 

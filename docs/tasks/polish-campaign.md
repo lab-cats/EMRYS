@@ -30,7 +30,8 @@ dispositions, the 25% reduction target, broad code/test/protection/gate and
 documentation/contract audits, schema review, collaborator guidance and release
 planning. These outcomes remain accepted; none is a cluster-campaign closure
 gate. The focused novice-guide corrections and `INIT-01` through `INIT-03`
-remain in the cluster campaign's approved pre-closure tranche.
+belonged to the cluster campaign's previously approved September 14
+pre-closure tranche; that dated approval grants no current work authority.
 
 ## Evidence and selection
 
@@ -73,7 +74,8 @@ PRs #141–147 are integrated into [PR #140](https://github.com/lab-cats/EMRYS/p
 Its exact `2fb8f5ef` head passed [full ordinary CI](https://github.com/lab-cats/EMRYS/actions/runs/34301289787);
 PR #140 subsequently merged through PR #169 on 2026-09-14. Original
 PRs closed through either integration are not unimplemented proposals. The
-[overlap reconciliation](#existing-capabilities-and-overlapping-work) identifies
+numbered dispositions and the
+[overlap reconciliation](#existing-capabilities-and-overlapping-work) identify
 what each integration contains. This documentation pass ran no product tests
 or new performance measurements; ordinary CI does not establish long-lane,
 institutional, production, scientific-review, or biological acceptance.
@@ -258,9 +260,11 @@ qualification and retained reports and recovery files remain.
 
 The retired publisher could leave a partial predecessor after a backup failure,
 release its lock after failed restoration, or obscure the original error during
-cleanup. PR #115 did not repair it; PR #128's measurement consolidation and
-PR #134's test correction also left those defects unresolved. CS-27 retired the
-publisher; its removal closes this repair proposal without claiming a repair.
+cleanup. PR #115 did not repair it; [PR #128](https://github.com/lab-cats/EMRYS/pull/128)
+consolidated measurement-row assembly and
+[PR #134](https://github.com/lab-cats/EMRYS/pull/134) corrected portable
+filesystem-call test observation without repairing those defects. CS-27 retired
+the publisher; its removal closes this repair proposal without claiming a repair.
 
 ### 3. Make reference-provenance replacement recoverable
 
@@ -300,6 +304,9 @@ whose optional timestamp dependency is absent from the declared lock closure.
 An [earlier local observation](https://github.com/lab-cats/EMRYS/blob/5c99c8159f87341287e2cacf733a58f12186550f/docs/tasks/compression_backlog_matrix.md#L929-L936)
 found that historical v1 and then-current v2 Attempt receipts accepted
 `finished_at: "not-a-time"` without that checker.
+The [September 22 source-bound recheck](polish_finding_disposition_review.md)
+reproduced malformed-string admission through the public v3 validator;
+producer output and later inspection have different, narrower behavior.
 
 **Outcome and acceptance:** Choose the intended timestamp policy and provide
 its checker reproducibly through the established dependency. Test valid
@@ -312,19 +319,23 @@ a proposed dependency/correctness correction, not an established reduction.
 
 ### 7. Show the effective Project before creation
 
-**Finding:** [Initialization](../../src/emrys/orchestration/run_coordinator/onboarding.py)
-collects fifteen fields and generates admitted Project bytes, but its preview
-shows only the output root, owned directories, and no-copy policy.
-The revised quickstart explains the scientific suggestions and repeated setup
-answers; the command's generated preview is unchanged.
+**September 7 finding:** At the audited revision,
+[Initialization](https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/onboarding.py)
+collected fifteen fields, but its preview showed only the output root, owned
+directories, and no-copy policy. The revised quickstart explained scientific
+suggestions while the command's preview stayed narrow.
 
-**Outcome and acceptance:** Display a faithful, readable preview of the already
-generated definition, including reference paths, analysis/cohort choices,
-target change, and thresholds. Explain suggestions without presenting them as
-universally valid scientific settings. Prove preview/publication agreement and
-no writes during preview. Reuse current rendering and admission; add no draft
-registry or parallel schema. This new UX proposal may need a small product-size
-exception.
+**Current boundary (September 22):** [Init](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+now previews the reference, libraries,
+comparison, target change, thresholds, and STAR choices from a validated
+provisional definition. When unset, two STAR values are labeled automatic at
+creation; FASTQ admission derives them before final Project publication.
+
+**Remaining acceptance:** Prove that every displayed exact choice and deferred
+label agrees with the final admitted definition, without reading FASTQ content
+or writing during preview. Explain suggestions without presenting them as
+universally valid science. Reuse current rendering and admission, with no draft
+registry or parallel schema; any selected change follows current size guardrails.
 
 ### 8. Let Doctor inspect the selected execution profile
 
@@ -340,22 +351,24 @@ proposal is adjacent to, but distinct from, the storage-repair issue below.
 
 ### 9. Make Doctor's proposed storage repair match placement
 
-**Finding:** Doctor diagnoses storage against direct or Slurm placement, but
-constructs a direct qualification plan when storage is unready. Source predicts
-that this cannot satisfy the Slurm qualification requirement; this audit did
-not reproduce a site failure.
-The runbook now documents the supported route: retain a direct default during
-initial preparation, perform compute/finalize storage qualification, and select
-the separate Slurm profile. PR #136 consolidated readiness-result construction;
-it did not change the storage repair plan or resolve this finding.
+**September 7 finding:** Doctor diagnosed storage against direct or Slurm
+placement but constructed a direct qualification plan when storage was
+unready. Source predicted a Slurm mismatch; the audit did not reproduce a
+site failure. The former Runbook route used a direct default for initial
+preparation before separate Slurm selection.
+[PR #136](https://github.com/lab-cats/EMRYS/pull/136) provided single construction
+of the Doctor readiness result without resolving that then-current plan.
 
-**Outcome and acceptance:** Reassess the remaining command-level problem against
-that documented route and verify it through the existing plan and admission
-paths before selecting a repair change. Any selected correction must make
-repair intent and qualification requirements agree without duplicating setup
-machinery. Preserve profile ownership and the preview/execute boundary. Local
-plan proof and institutional execution are separate. This remains a proposed
-bounded defect investigation owned by this item.
+**September 22 source recheck:** The selected Slurm profile now suppresses
+direct-storage planning; Doctor delegates compute checks through Slurm and
+finishes storage qualification on the head node. The current Runbook gives
+that single head-node `doctor --repair` route. Simulated cases cover the
+delegated path; institutional placement remains unproved by this review.
+
+**Disposition:** Do not select the old predicted failure as a current defect
+without a new source or site reproduction. Preserve profile ownership and the
+preview/execute boundary. Local plan proof and institutional execution remain
+separate; any new failure belongs to its current Doctor/site owner.
 
 ### 10. Complete a novice institutional walkthrough
 
@@ -381,6 +394,10 @@ execution needs its own authorization.
 matching Doctor. The hosted golden-path clone still installs default groups.
 The remaining work is to align that CI bootstrap and verify the documented
 operator environment through the existing golden path.
+The [September 22 group comparison](polish_finding_disposition_review.md)
+confirms extra development dependencies in CI; that job also invokes `pytest`
+after the journey, so its containment check needs a separate development
+environment or later dependency stage if the journey becomes operator-minimal.
 
 **Outcome and acceptance:** Start operators with the same admitted runtime
 groups Doctor selects, retaining development dependencies for repository
@@ -524,7 +541,8 @@ Make/CI wiring are protected without adding a test registry or validation lane.
 
 ### 22. Run ordinary CI automatically on supported stacked PRs
 
-**Disposition:** Implemented and validated in PR #140, merged through PR #169.
+**Disposition:** Implemented and validated in
+[PR #140](https://github.com/lab-cats/EMRYS/pull/140), merged through PR #169.
 The `CI-01` correction removes the `master`-only PR
 base filter. The [validation policy](../design/TEST_BASELINE.md#validation-lanes)
 now covers all PR bases while retaining master-only push runs and the existing
@@ -536,9 +554,10 @@ separately addresses required merge checks.
 
 ### 23. Reduce the measured CI critical path
 
-**Disposition:** Implemented under **`CI-01`**; ordinary hosted CI passed at `b491aac5` (run 34306975901). PR #124's duration
-estimate refresh merged through PR #139 and preceded the fixture changes
-below. Hosted timing review separates queue time,
+**Disposition:** Implemented under **`CI-01`**; ordinary hosted CI passed at
+`b491aac5` (run 34306975901). The long-test duration-estimate refresh in
+[PR #124](https://github.com/lab-cats/EMRYS/pull/124) merged through PR #139
+and preceded the fixture changes below. Hosted timing review separates queue time,
 setup, R restoration, runtime readiness, and test execution rather than treating
 all elapsed time as test cost.
 
@@ -744,6 +763,16 @@ do not mean the branch has no protections or that its CI is failing.
 [Required status checks](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-status-checks-to-pass-before-merging)
 are distinct from the other hosted rules.
 
+**September 22 read-only recheck:** GitHub's active rulesets `21180321`
+(`Reviews`) and `21339165` (`no-push-master`) both target the default branch.
+Effective rules returned for `master` include both, still without
+`required_status_checks`; both list an `OrganizationAdmin` always-bypass.
+The effective branch-rules query for PR #312's base
+`codex/pr302-original-intent-corrections` returned no rules. The legacy
+branch-protection endpoint returned 404 for each branch, which does not negate
+the default-branch rulesets. No settings changed or merge-blocking behavior was
+tested; this dated observation does not select a hosted policy change.
+
 **Outcome and acceptance:** Select the ordinary checks that must succeed for
 the intended merge and bind their actual emitted check names to the effective
 policy. Reconcile overlapping rulesets and document intentional administrative
@@ -797,18 +826,20 @@ preselected implementation.
 
 ### 36. Reject explicitly insufficient Slurm memory before submission
 
-**Finding:** [Submission control][slurm-preflight]
-checks requested CPUs against workflow cores. Existing **`SCHED-01`** owns the
-corresponding missing preflight for explicitly undersized memory requests.
+**September 7 finding:** At the [audited submission-control revision][slurm-preflight],
+requested CPUs were checked against workflow cores, but an explicit
+undersized-memory preflight was missing. `SCHED-01` became its accepted owner.
 
-**Outcome and acceptance:** Reference `SCHED-01` and its full acceptance rather
-than creating another scheduler-policy task. Trace placement, resource
-overrides, and the applicable workflow/stage minimum through the existing
-submission path. Reject known insufficient capacity before `sbatch`; unknown
-capacity remains unknown. Preserve the CPU authority, dry-run/confirmation
-boundary, and absence of scheduler/workspace writes on rejection. Reuse the
-current resource owners without a general resource solver. Local submission
-proof does not establish institutional execution or memory performance.
+**Current disposition and acceptance (September 22):** `SCHED-01` implements
+effective-profile CPU and memory admission before submission, Doctor repair
+planning, profile authoring and placement-only resume. Its public no-submit,
+no-write software cases passed
+[ordinary baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692).
+Known insufficient capacity is rejected before `sbatch`; symbolic or omitted
+capacity stays unknown. The dry-run/confirmation boundary and current resource
+owners remain. [CV-11](cluster_verification_backlog.md#cv-11-resource-profile-compatibility)
+retains heterogeneous institutional acceptance. Software proof does not
+establish institutional execution or memory performance.
 
 ### 37. Verify reports in browsers, copied Results, and print
 
@@ -1002,13 +1033,10 @@ still owns any broader acceptance or unresolved follow-up.
 | Compression selection and findings reconciliation | [PR #120](https://github.com/lab-cats/EMRYS/pull/120), [PR #123](https://github.com/lab-cats/EMRYS/pull/123), [PR #135](https://github.com/lab-cats/EMRYS/pull/135) |
 | Historical documentation-path bans | [PR #121](https://github.com/lab-cats/EMRYS/pull/121) |
 | Reporting import-permission consolidation | [PR #122](https://github.com/lab-cats/EMRYS/pull/122) |
-| Long-test duration estimates | [PR #124](https://github.com/lab-cats/EMRYS/pull/124) |
 | Continuing stacked work while CI runs | [PR #125](https://github.com/lab-cats/EMRYS/pull/125) |
 | Unused reporting-table presentation metadata | [PR #126](https://github.com/lab-cats/EMRYS/pull/126) |
-| Storage measurement-row assembly and portable filesystem-call test observation | [PR #128](https://github.com/lab-cats/EMRYS/pull/128), [PR #134](https://github.com/lab-cats/EMRYS/pull/134) |
 | Unconsumed summary context, predecessor validation, and scientific input snapshots | [PR #129](https://github.com/lab-cats/EMRYS/pull/129), [PR #132](https://github.com/lab-cats/EMRYS/pull/132), [PR #133](https://github.com/lab-cats/EMRYS/pull/133) |
 | Polish, optimization, quickstart, and continued-compression findings | [PR #131](https://github.com/lab-cats/EMRYS/pull/131), [PR #138](https://github.com/lab-cats/EMRYS/pull/138); original documentation inputs are linked in Evidence and selection |
-| Single construction of the Doctor readiness result | [PR #136](https://github.com/lab-cats/EMRYS/pull/136) |
 | Direct accumulation of admitted GTF exon rows | [PR #137](https://github.com/lab-cats/EMRYS/pull/137) |
 
 The following changes are also implemented, included in the validated PR #140
@@ -1016,16 +1044,19 @@ head, and merged into master through PR #169:
 
 | Work already covered | Reference |
 | --- | --- |
-| Automatic ordinary CI on stacked PRs | [PR #140](https://github.com/lab-cats/EMRYS/pull/140), item 22 |
-| Per-script Bash syntax checking | [PR #141](https://github.com/lab-cats/EMRYS/pull/141), item 15 |
-| Selected Ruff correctness rules | [PR #142](https://github.com/lab-cats/EMRYS/pull/142), item 17 |
-| Shared local/CI sharder self-tests | [PR #143](https://github.com/lab-cats/EMRYS/pull/143), item 21 |
 | Preserved source-identity policy and one shared declaration of fixed HTML outputs | [PR #144](https://github.com/lab-cats/EMRYS/pull/144), [PR #145](https://github.com/lab-cats/EMRYS/pull/145) |
 | Canonical BAM create-exclusive publication, with legacy replacement retired | [PR #146](https://github.com/lab-cats/EMRYS/pull/146) |
-| Direct create-only reporting publication; six callback carriers and the private facade retired; redundant tests reconciled | [PR #147](https://github.com/lab-cats/EMRYS/pull/147) |
 
-These implementations do not close unrelated recovery defects in items 1–4,
-the Doctor storage-repair issue in item 9 or browser/scientific review.
+PR #147 joined that validated head and merge. The
+[reporting lifecycle decision](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression)
+holds its create-only publication, retired carriers/facade, and test boundary
+with the original PR link.
+
+The integrations did not themselves repair the recovery defects originally
+described in items 1–4. Items 2 and 4 were later retired; items 1 and 3 retain
+their owner recovery work. Item 9's old direct-plan prediction is historical;
+institutional Doctor qualification, browser review, and scientific review remain
+separate.
 PR #150 completed item 13; CS-18 subsequently moved canonical BAM and the
 other scientific producers into runner-owned publication. Current recovery and
 provenance checks remain. Create-only publication never permits removing
