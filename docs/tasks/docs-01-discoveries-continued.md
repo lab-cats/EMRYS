@@ -151,13 +151,13 @@ adapter. That wording alone establishes no additional dependency error.
 ### F38 — Slurm request in the reliability diagram
 
 [Reliability diagram](../architecture/diagrams/reliability.mmd) lines 2–6
-draws approval straight to Attempt creation. For whole-Run Slurm placement,
-the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+shows generic approval to Attempt creation, without labeling Slurm. For
+whole-Run placement, the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 410–418 and 431–449 creates and synchronizes a retained submission
 request before `sbatch`; a request can exist before any Run or Attempt. The
 [Runbook](../operations/RUNBOOK.md) lines 9–25 gives that request its own
-inspection route. Request/submission and compute-side Run admission are
-distinct from direct execution; scheduler status cannot supply Run truth.
+inspection route. The diagram omits that path; it does not misdraw a labeled
+Slurm path. Scheduler status cannot supply compute-side Run truth.
 
 ### F39 — Validation roster inventory claim
 
@@ -189,7 +189,8 @@ lines 41–53 defines `stage_concurrency` for repeated stages 01–07, including
 cohort partitions; [resource policy](../../src/emrys/orchestration/run_coordinator/resource_policy.py)
 lines 37–48 resolves that keyed control. The Snakemake profile sets engine
 defaults, not one sample-wide policy. The per-stage term does not promise
-that any particular allocation will admit every task.
+that any particular allocation will admit every task. “Sample concurrency”
+is loose shorthand, not a claimed global cap or a proved contract conflict.
 
 ### F41 — Step 05 check's read-only help
 
@@ -268,16 +269,15 @@ wording question.
 ### F45 — Watch and stop in the command-audience map
 
 The [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
-lines 22–29 maps commands to audiences but omits `watch` and `stop`. Both
-commands are registered in the public parser
-([CLI](../../src/emrys/__main__.py) lines 275–288); the
-[Quickstart](../../quickstart.md) lines 176–185 teaches `watch` to scientists,
-and the [Runbook](../operations/RUNBOOK.md) lines 139–157 teaches exact-request
-`stop` to operators. The inventory says `emrys --help` owns the complete
-roster, so this is an audience-routing gap rather than a false claim about
-command existence. Its opening at lines 3–4 already says the inventory is
-selective, so a nonexhaustive label adds little. The missing audience
-examples have different purposes; `stop` remains exact-request and evidence-limited.
+at 22–29 omits `watch` and `stop`, though the public
+[CLI](../../src/emrys/__main__.py) at 275–288 registers both. The
+[Quickstart](../../quickstart.md) at 176–185 routes `watch`, and the
+[Runbook](../operations/RUNBOOK.md) at 139–157 routes exact-request `stop`.
+At recheck head `2398f144`, the inventory's opening at 3–4 explicitly makes
+the map selective and assigns the complete command roster to `emrys --help`.
+The omission therefore establishes no missing command or required reader
+route. Dismissed as an optional navigation preference; `stop` retains its
+owner-local evidence limit.
 
 ### F46 — Artifact common-schema description
 

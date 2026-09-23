@@ -581,8 +581,8 @@ evidence limits. At `c0cdceb1`, the five-line test paragraph also appeared in
 test copies plus six production copies repeat 58 physical lines. The
 preliminary 31–32-line net estimate covers only the original 12 stage files.
 At `651d60d5`, nine stage, two evidence, and one analysis contract use the
-same two-line opening linked to the shared
-[test evidence ceiling](../../tests/README.md#evidence-limits):
+same two-line opening routing to the [test index](../../tests/README.md),
+which contains the shared evidence ceiling:
 24 physical lines are under review: four clauses stand alone, while eight
 second lines continue with unique owner limits. [Canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md)
 has a different two-line version at 177–178. Owner-specific coverage, oracles,

@@ -237,10 +237,9 @@ interrupted, and peer-cancelled local validation lanes retain bounded
 diagnostics. The [validation driver](../../tests/tools/run_validation.py)
 copies each failed or interrupted lane's entire log at lines 234–240 and
 prints the entire failed log at 243–249 and 444–455. Peer-cancelled logs are
-also retained at 466–485. These paths show no byte or line limit, so the
-unqualified “bounded” claim exceeds the source behavior. This is separate
-from F68's uploaded Slurm diagnostic wording. No lane ran and no log contents
-were inspected.
+also retained at 466–485. No byte or line cap is shown; “bounded” may refer
+only to the finite lane/file set. This differs from F68's uploaded Slurm
+diagnostics. No lane ran or log contents were inspected.
 
 ### F76 — Step 07 dataset-promotion route
 
@@ -288,9 +287,8 @@ inventory at this revision contains one data fixture,
 [`make_target_expansions.json`](../../tests/fixtures/public_cli_contracts/make_target_expansions.json),
 and [one test module](../../tests/test_public_cli_contracts.py) names it at
 lines 22–27. A repository reference search found no second test consumer.
-One module can exercise more than one command owner, so module references alone
-do not disprove the guide's “more than one test owner” wording. This is a
-current-use question, not a verified discrepancy or relocation case.
+One module may cover multiple command owners; at recheck head `2398f144`,
+this concern was dismissed. No discrepancy or relocation case is established.
 
 ### F80 — Alignment helper tool boundary
 
@@ -388,9 +386,8 @@ lines 42–57 carries that edge into `predecessors`, and the
 predecessor's verified marker. The [task runner](../../src/emrys/orchestration/run_coordinator/task.py)
 validates and checks semantic all-pass at lines 2763–2779 before publishing
 that marker at 2883–2920. Thus 02b cannot overlap its *corresponding sample's*
-Step 02 validation in an ordinary Run; different samples may overlap. This is
-a timing statement about the admitted graph, not an execution defect or a
-claim about a standalone worker invocation.
+Step 02 validation in an ordinary Run; different samples may overlap. This
+describes Run order, not an execution defect; standalone capability remains valid.
 F99 records the related Step 01→02 and Step 06→07 data-input versus
 Run-scheduling distinction.
 
@@ -412,16 +409,15 @@ institutional fast-scratch performance question remains unmeasured.
 ### F88 — Old Slurm memory preflight proposal
 
 The [polish campaign](polish-campaign.md) dates its source audit to
-`fdf76760` at lines 35–44, then item 36 at 798–811 calls explicitly
-undersized Slurm-memory preflight missing and describes rejection as the
-remaining outcome. The current [main backlog](backlog_matrix.md) line 172
-marks `SCHED-01` Verification pending and records the effective-profile CPU
-and explicit-memory check before submission, Doctor repair planning, and
-profile creation. The [CV-11 card](cluster_verification_backlog.md) lines
-2994–2996 and 3014–3024 records that implemented slice and integrated CI
-checks while retaining institutional heterogeneous-node acceptance. Item
-36 is a dated proposal, not the current software status. This audit did not
-rerun the checks or establish institutional behavior.
+`fdf76760` at lines 35–44; item 36 at 798–811 calls undersized Slurm-memory
+preflight missing. Current [execution profile](../../src/emrys/orchestration/run_coordinator/execution_profile.py)
+lines 188–207 checks CPU and explicit memory, and
+[submission](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
+line 829 invokes it before scheduler request. [Focused tests](../../tests/orchestration/run_coordinator/test_execution_profile.py)
+lines 260–287 cover rejection without a log write. The [SCHED-01 row](backlog_matrix.md)
+line 172 and [CV-11 card](cluster_verification_backlog.md) lines 2994–3024
+distinguish integrated checks from institutional heterogeneous-node acceptance.
+Item 36 is dated, not current software status; no check or cluster work ran here.
 
 ### F89 — One-Run wording before Run creation
 
