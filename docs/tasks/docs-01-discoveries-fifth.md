@@ -1,10 +1,11 @@
 # DOCS-01 discovery notes, fifth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F130–F148. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
+holds F130–F153. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
 F132–F133 use `935adf06`, F134–F139 use `ebc0012d`, and F140 uses `f239a91d`
 on that date. F141–F143 use `1eb562f0`; F144–F145 use `f91b8303` on that
-date; F146–F148 use `cc5c1f58`. F138 was dismissed on
+date; F146–F148 use `cc5c1f58`; F149–F153 use `a3310af6`.
+F138 was dismissed on
 adversarial recheck at `f239a91d`.
 F130 was dismissed as a duplicate on recheck at local head `935adf06`.
 Source and direct tests were read, not executed. These are documentation
@@ -292,3 +293,80 @@ name is historical; the leaf names exact examples and bars expectations
 generated from production serializers. Those reader and independent-oracle
 rules need to survive any compression. The span is not a measured net saving,
 and no fixture or test change is authorized by this audit.
+
+### F149 — Watch selection correction repeated across CV cards
+
+At local audit head `a3310af6`, [CV-U13](cluster_verification_backlog.md)
+at 914–924 records the September 18 correction to one bounded admitted
+request/Run inventory and an explicit picker. [CV-U31](cluster_verification_backlog.md)
+at 1985–1992 restates associated Runs, distinct requests, and shared watch
+and inspect selection; [CV-U32](cluster_verification_backlog.md) at 2038–2049
+restates Projects-home request/Run enumeration, bounded refusal, and no
+scheduler query. The current selection contract is in the
+[coordinator owner](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+at 56–67; the [operator route](../operations/RUNBOOK.md) is at 39–59. The
+31 combined physical lines are a review span, not a saving estimate. Preserve
+each card's separate operator request and status, the September 17 defect
+explanations, Projects-home and 256-target limits, exact scheduler diagnostics,
+focused-check scope, and pending hosted/Viking acceptance. A shared final
+behavior does not make those evidence histories interchangeable.
+
+### F150 — Named Init review roster repeated in adjacent CV cards
+
+At local audit head `a3310af6`, [CV-U02](cluster_verification_backlog.md)
+at 315–321 and adjacent [CV-U03](cluster_verification_backlog.md) at 339–343
+both state the September 21 normal-review roster: strand, comparison/target,
+five paired-CMH values, background state/maximum, and three STAR values, with
+sample paths/assignments under verbose. The
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+at 202–207 already owns that current boundary. The 12 physical lines are a
+review span, not a saving estimate. CV-U02's concise-versus-verbose outcome
+and CV-U03's Init summary and Validate pass/fail acceptance remain different;
+retain their dated refinement and pending hosted/Viking checks.
+
+### F151 — Synthetic artifact inventory example without a named owner route
+
+At local audit head `a3310af6`, the 75-line
+[artifact inventory example](../../configs/artifact_inventory.example.tsv)
+contains 74 synthetic rows. The [config inventory](../../configs/README.md)
+at 15 and 391–394 offers only a generic specialist-example route, not this
+filename or its owner. A tracked filename search found callers only in
+[profile tests](../../tests/orchestration/run_coordinator/test_profile.py)
+at 25 and 309–322, [artifact-contract tests](../../tests/contracts/artifacts/test_artifact_schema_contracts.py)
+at 31 and 559–585, and the [report fixture builder](../../tests/reporting/fixtures/artifact_adapters_v1/build_fixture.py)
+at 38 and 192–202. All 74 example source paths use the absent
+`tests/fixtures/artifact_schema_v1/source/` prefix, which that builder
+deliberately rewrites to generated fixture sources at 993–1008. Current Run
+inventory instead projects rows from admitted profile templates in
+[orchestration projection](../../src/emrys/contracts/orchestration/projection.py)
+at 116–129 and [artifact inventory](../../src/emrys/contracts/orchestration/artifact_inventory.py)
+at 211–269. The file feeds adapter-roster, inventory-validation, and
+reporting-fixture checks; its rows and order need preservation review.
+External readers and safe relocation or reduction are unverified. Seventy-five
+lines are review scope, not a saving estimate.
+
+### F152 — Local profile promise in the config inventory
+
+At local audit head `a3310af6`, [config inventory](../../configs/README.md)
+line 14 describes `execution_profile*.yaml` as local or Slurm examples. The
+only two tracked matches, [generic](../../configs/execution_profile.example.yaml)
+at 7–8 and [Viking](../../configs/execution_profile.csu_viking_ev_pum1.yaml)
+at 47–48, both select `kind: slurm`. The packaged
+[direct default](../../src/emrys/orchestration/run_coordinator/resources/default_execution.yaml)
+at 42–43 sits outside that glob; the config guide at 359–362 already explains
+direct Project creation. This is one inventory-line wording/route drift, not a
+missing direct-execution feature or permission to change profiles.
+
+### F153 — Schema owner rules repeated in version indexes
+
+At local audit head `a3310af6`, the
+[orchestration schema index](../../src/emrys/contracts/schemas/orchestration/README.md)
+at 3–17 names the v1/v2/v3 resource roles, common version rules, and the
+canonical-validation owner. The linked [v1](../../src/emrys/contracts/schemas/orchestration/v1/README.md)
+at 3–12, [v2](../../src/emrys/contracts/schemas/orchestration/v2/README.md)
+at 3–8, and [v3](../../src/emrys/contracts/schemas/orchestration/v3/README.md)
+at 3–9 repeat parts of that roster and owner rule across 23 content lines.
+Preserve v1's Draft 2020-12 and packaged-resource distinction, v2's scientific
+Attempt receipt independent of reporting, and v3's declared-versus-resolved
+resource policy. These current semantics are different from F96's unrouted
+artifact-version notes. The span is not a verified net saving.

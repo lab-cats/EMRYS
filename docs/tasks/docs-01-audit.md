@@ -325,16 +325,9 @@ permission to change or delete the source.
 - A test-guide, evidence-owner, and schema-language pass at local head
   `3ebfb2bf` added F130–F131, extended F107 to three owner contracts, and
   found no other distinct tooling or schema-index claim. No execution ran.
-- An adversarial read-only recheck at local head `935adf06` found that F130
-  repeats F28 and dismissed it. F05 and F23 now mark their opening Runbook
-  descriptions as pre-compression baseline; F07 cites the current categorical
-  Doctor sentence and its conditional qualification. A separate tooling-guide
-  comparison added F132 for producer-only benchmark timing; an architecture
-  comparison added F133 for a fourteen-owner label that includes two evidence
-  collectors. F71 now records the Smoke Test's explicit synthetic path as a
-  limit on its saved-home mismatch. Selected early, middle, and later rows
-  otherwise retained their cited limits. No product, test, CI, or cluster
-  command ran.
+- At `935adf06`, adversarial recheck dismissed F130 as F28 overlap and
+  refined F05, F07, F23, and F71. Tooling and architecture review added
+  F132–F133. Other sampled rows kept their limits; no execution ran.
 - At `ebc0012d`, coordinator/owner/CV review added F134–F139; F52 gained
   “regeneration.” At `f239a91d`, recheck dismissed F138, narrowed F134/F136/F137,
   and added F140; CV-23/Slurm-preview/operator rereads found no new candidate.
@@ -369,7 +362,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 148 numbered records include F41, F43, F87, F130, and F138, dismissed after recheck so
+The 153 numbered records include F41, F43, F87, F130, and F138, dismissed after recheck so
 their original claims and corrections remain traceable. The last column records
 an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -524,6 +517,11 @@ Discovery notes give source references and the boundary for each row.
 | [F146](docs-01-discoveries-fifth.md#f146-scale-probe-interpretation-in-the-current-coordinator-contract) | History placement | Coordinator contract summarizes a dated local Attempt-manifest scale probe already retained in the evidence record. | Graph sharing, worker decoding, exact-byte rechecks, and the rule against a shared mutable evidence cache remain current; the mixed three-line span is under review, not a proved saving. |
 | [F147](docs-01-discoveries-fifth.md#f147-computation-scope-in-the-contract-golden-guides) | Evidence-scope ambiguity | Contract-golden guides mention “computational examples” and “computation” without naming the protected computation; direct cases cover serialization and HTML rendering, with Step 09 numerical oracles elsewhere. | Literal goldens and rendering checks remain; this is a reader-scope clarification, not evidence that the tests fail. |
 | [F148](docs-01-discoveries-fifth.md#f148-repeated-synthetic-fixture-guidance-in-three-nested-indexes) | Nested-guide repetition | Three artifact-fixture READMEs restate current-schema, synthetic-input, and evidence-limit guidance across a 17-line review span. | Historical directory-name explanation, exact fixture routes, and independent expectation rules remain; no net saving is established. |
+| [F149](docs-01-discoveries-fifth.md#f149-watch-selection-correction-repeated-across-cv-cards) | Card-history overlap | CV-U13/U31/U32 repeat parts of the September 18 watch-selection correction already held by the coordinator contract and operator Runbook. | Their distinct requests, September 17 defects, Projects-home limit, focused-check claims, and pending hosted/Viking evidence remain; no saving is verified. |
+| [F150](docs-01-discoveries-fifth.md#f150-named-init-review-roster-repeated-in-adjacent-cv-cards) | Adjacent-card overlap | CV-U02/U03 repeat the September 21 normal-versus-verbose named-Init field roster held by the coordinator contract. | CV-U02's concise/verbose outcome, CV-U03's Init summary and Validate pass/fail, and pending hosted/Viking checks remain; the 12-line span is not a saving estimate. |
+| [F151](docs-01-discoveries-fifth.md#f151-synthetic-artifact-inventory-example-without-a-named-owner-route) | Example placement | A 74-row tracked artifact inventory under `configs/` has only test and fixture callers found; its synthetic source-path prefix is rewritten by the fixture builder. | It feeds adapter-roster, inventory-validation, and reporting-fixture checks; its rows/order and external use need review before any reduction. |
+| [F152](docs-01-discoveries-fifth.md#f152-local-profile-promise-in-the-config-inventory) | Inventory wording | Config guide labels `execution_profile*.yaml` as local-or-Slurm examples, but both matching tracked examples select Slurm; the packaged default selects direct execution. | The direct placement capability and later guide text remain accurate; this is a one-line wording/route issue. |
+| [F153](docs-01-discoveries-fifth.md#f153-schema-owner-rules-repeated-in-version-indexes) | Version-index repetition | Three orchestration schema version READMEs repeat parts of the parent index's roster and canonical-validation ownership within a 23-line review span. | Their distinct Draft, receipt, and allocation-resolution semantics remain; the span is not a net saving estimate. |
 
 ## Discovery notes
 
