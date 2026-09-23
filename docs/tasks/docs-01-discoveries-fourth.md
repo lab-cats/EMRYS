@@ -228,8 +228,8 @@ lines 85–159 uses Python/Jinja HTML, and the built-in
 [figure renderer](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/figures.py)
 lines 208–231 uses Python/Matplotlib SVG. The R PDF device is relevant to
 [Step 09's scientific PDF outputs](../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md#inputs-and-six-output-transaction),
-but this check alone does not verify current
-report support. This is a guide-scope overclaim, not evidence that rendering
+but this check alone does not verify HTML report rendering or publication.
+This is a guide-scope overclaim, not evidence that rendering
 fails; neither the R check nor a report ran in this audit.
 
 ### F113 — CV-26 mixed current rules and measurement history
@@ -261,15 +261,17 @@ operation ran in this audit.
 
 [Polish item 10](polish-campaign.md) lines 360–376 says the maintained novice
 walkthrough includes site modules, explicit profile selection, and both storage
-qualification phases. The current [Quickstart](../../quickstart.md) lines 1–5,
+qualification phases. It does not say the operator manually runs the storage
+checks. The current [Quickstart](../../quickstart.md) lines 1–5,
 54–61, 92–103, and 142–174 instead gives one Viking head-node route: `emrys
 setup` saves the Viking site, guided Init creates the Project, and Doctor
 coordinates readiness before Run submission. The [Runbook](../operations/RUNBOOK.md)
 lines 532–548 says Doctor handles compute-side runtime/storage checks and head
 finalization. The current [`SITE-PARITY-01` row](backlog_matrix.md) line 170
-requires a novice to follow only that Quickstart path. Item 10's named manual
-steps describe an older reader route while its open institutional proof and
-exact-revision requirement remain valid. No novice or site walkthrough ran.
+requires a novice to follow only that Quickstart path. Item 10's named site
+module and profile steps describe an older reader route; the storage checks
+remain required under Doctor. Its open institutional proof and exact-revision
+requirement remain valid. No novice or site walkthrough ran.
 
 ### F115 — Current resource policy repeated in optimization candidate
 

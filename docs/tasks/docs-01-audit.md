@@ -296,6 +296,14 @@ permission to change or delete the source.
   files account for all current Markdown-file growth. The three earlier audit
   note introductions were corrected to point to the fourth notes beginning at
   F100. No CLI, test, official documentation, CI, or cluster command ran.
+- An adversarial recheck at local head `8b8f5fde` challenged F100–F123
+  against their cited source and narrowed F114's older novice-route wording:
+  the polish item does not call storage qualification manual. F112 now names
+  the missing HTML-rendering/publication check while preserving R PDF-device
+  coverage. A standard-library scan of all 175 current Markdown files found
+  1,613 relative destinations and 524 fragments with no unresolved local
+  target; this is narrower than the official documentation gate. No product
+  command, test, CI, or cluster operation ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -444,7 +452,7 @@ Discovery notes give source references and the boundary for each row.
 | [F111](docs-01-discoveries-fourth.md#f111-current-resource-claim-with-old-profile-citations) | Citation provenance | Optimization campaign describes current allocation-aware defaults but links to the fixed-policy profiles from its older audit revision. | Old links remain valid historical citations; no resource performance or runtime result was inferred. |
 | [F112](docs-01-discoveries-fourth.md#f112-r-environment-checks-report-support-claim) | Check-scope overclaim | Scripts index says the R environment checker verifies report support; it checks R dependencies and a headless PDF device, not current HTML report rendering. | PDF readiness is relevant to Step 09 scientific outputs; no report failure or runtime result is inferred. |
 | [F113](docs-01-discoveries-fourth.md#f113-cv-26-mixed-current-rules-and-measurement-history) | Evidence placement | CV-26's 309-line card mixes open acceptance, current Doctor rules, repeated checkpoint status, and four distinct hosted measurement blocks. | Current rules have an owner and status has a delegated card; unique measurements, failed-suite limits, and operator report remain evidence. No saving is established. |
-| [F114](docs-01-discoveries-fourth.md#f114-older-novice-route-in-site-parity-item) | Acceptance-route drift | Polish item 10 still describes the SITE-PARITY-01 novice walkthrough through site modules, profile selection, and manual storage phases; current acceptance calls for the Quickstart's one Viking head-node route. | Institutional novice proof remains open; this is wording/placement, not a demonstrated site result. |
+| [F114](docs-01-discoveries-fourth.md#f114-older-novice-route-in-site-parity-item) | Acceptance-route drift | Polish item 10 routes the novice through site modules and profile selection; current acceptance calls for the Quickstart's one Viking head-node route. | Doctor still coordinates the required storage checks; institutional novice proof remains open. |
 | [F115](docs-01-discoveries-fourth.md#f115-current-resource-policy-repeated-in-optimization-candidate) | Compression candidate | Optimization candidate 3 repeats current allocation-aware policy, fixed-policy provenance, and CV-U28 evidence limits already owned by resource and CV guides. | Its future measurement proposal is distinct; the 11-line repeated review span is not a verified saving. |
 | [F116](docs-01-discoveries-fourth.md#f116-cv-10-current-protocol-beside-cancellation-evidence) | Evidence placement | CV-10 interleaves current retry/finalization protocol, open cancellation acceptance, and dated hosted and Viking observations already separated by coordinator ownership. | Original acceptance, exact artifacts, failed-suite limits, and the trusted-workspace boundary remain distinct; no saving is established. |
 | [F117](docs-01-discoveries-fourth.md#f117-cv-20-current-inspection-beside-submission-history) | Evidence placement | CV-20 interleaves current submission/inspection mechanics with open reconnect/queue acceptance and dated test and CI checkpoints. | Request safety and pending institutional evidence remain; current owner rules and historical evidence have separate roles, with no saving established. |
