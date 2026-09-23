@@ -321,7 +321,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 | --- | --- | --- |
 | Scientist and operator paths | All nine root and operations Markdown files, configuration guide, and all three reference guides; selected routes compared with CLI source and direct tests | Remaining claim-to-source paths and an executed operator journey are unverified. |
 | Architecture and decisions | All 19 architecture, design, and reference Markdown/Mermaid files, including all three diagrams; selected provider/schema claims and stage-map edges compared with source | Remaining source implications and visual rendering are unverified. |
-| Task and evidence records | All eight baseline task/history Markdown files (excluding this audit's seven files); 60 CV index entries reconciled to card endings; 55 commit-like refs screened locally | Object presence does not verify historical claims; three hosted objects and artifact-to-claim bindings remain unverified. |
+| Task and evidence records | All eight baseline task/history Markdown files (excluding temporary audit notes); 60 CV index entries reconciled to card endings; 55 commit-like refs screened locally; three hosted merge objects and associated run/job metadata later checked through GitHub | Actual worker checkout, artifact contents, and artifact-to-claim bindings remain unverified. |
 | Product owners | All 62 `src/emrys/` READMEs and all 15 owner contracts, including full rechecks of the 1,248-line coordinator and 14 other contracts (1,817 lines) with selected production comparisons | Remaining code and schema claims beyond selected owner paths. |
 | Tests, scripts, and CI | All 53 Markdown files in these trees, plus selected source assertions, direct test cases, and documentation-check code | Executable checks were not run; compare remaining code, fixtures, and retained evidence. |
 | Non-Markdown notices | Root `LICENSE` and `NOTICE` plus the bundled renv MIT text were inspected for file-location references | License meaning and third-party compliance were not evaluated. |
@@ -589,8 +589,9 @@ resources, onboarding, runtime reuse, managed coverage, dashboard, and logs
 retain distinct acceptance or dated evidence. No safe deletion was found.
 
 The eight exact commits sampled in the historical validation compendium resolve
-locally. CV-10's two cited hosted test-merge commits and CV-26's cited hosted
-checkout do not exist in this local Git object store, although their named PR
-heads and bases do. That limits offline verification of CI-to-merge provenance;
-it does not establish a broken citation or invalidate the retained CI claims.
-No hosted artifact was downloaded or CI run started for this audit.
+locally. CV-10's two cited hosted test merges and CV-26's cited hosted checkout
+are absent from this local Git object store, but read-only GitHub commit data
+confirms their existence and stated parent order. Associated run/job status
+metadata was also checked. Neither metadata source proves the worker's actual
+checkout, artifact contents, individual cases, or scientific claims. No hosted
+artifact was downloaded or CI run started for this audit.

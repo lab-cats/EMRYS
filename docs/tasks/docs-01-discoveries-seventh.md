@@ -177,3 +177,27 @@ owner-status and campaign-history issues. Polish item 30's earlier Quickstart
 account is explicitly dated context, not a current guide claim. Tests, CI,
 institutional work and scientific review were not run or promoted by these
 static reads.
+
+## Hosted provenance and stage-contract rescreen at `2722ae30`
+
+Read-only GitHub commit data confirmed the parent order for [CV-10 merge
+`f28a829c`](https://github.com/lab-cats/EMRYS/commit/f28a829ca894674f4e17d9e6f4bf618b7296ea1e),
+[CV-10 merge `3aa865b1`](https://github.com/lab-cats/EMRYS/commit/3aa865b1c42d710f40b2a698045db2eed9438bcf),
+and [CV-26 merge `20897a7c`](https://github.com/lab-cats/EMRYS/commit/20897a7cb8e4b2549e4a456142af2c971744bcb7).
+Associated [run 34993805649](https://github.com/lab-cats/EMRYS/actions/runs/34993805649)
+and [run 34944690812](https://github.com/lab-cats/EMRYS/actions/runs/34944690812)
+succeeded. [Run 35000308100](https://github.com/lab-cats/EMRYS/actions/runs/35000308100)
+failed overall while its managed golden job passed, a distinction the CV-10
+card already makes. Run metadata names the PR head rather than a merge SHA;
+commit parentage plus run/job status does not prove actual worker checkout,
+case counts, timing, or artifact bytes and hashes. No artifact was downloaded.
+
+All ten stage contracts, adjacent guides, current validators and selected
+workers/tests were compared read-only. All 52 documented check IDs match
+source; existing F173/F185 producer exactness limits remain. The STAR-index
+guide's reference/settings summary accurately describes its path, contig and
+settings checks; it does not claim byte-for-byte index derivation, so no new
+finding was added. A separate challenge of 14 larger or uncertain line-saving
+estimates found no material overstatement. They remain conditional on the
+content-preservation limits in their existing notes. No product command, test,
+CI, cluster operation, or dependency install ran.
