@@ -253,6 +253,13 @@ permission to change or delete the source.
   and other long CV cards produced no further distinct high-confidence finding
   in this pass. Source and selected test assertions were read, not executed;
   no guide, product, CI, or cluster command ran.
+- An adversarial quality pass at local head `8e8d526f` spot-checked F01–F61
+  and higher-risk F62–F99 against their cited sources. It withdrew F41's
+  contradiction and F43's guide-overclaim concern after reading full help and
+  print-CSS assertions; F62–F99 needed no material correction. A static check
+  using the repository's heading-slug rule found 146 resolving local fragments
+  in the five audit files, including all 119 matrix links. No product, test,
+  official documentation, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -280,9 +287,9 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 119 numbered records include F87, dismissed after recheck so its original
-claim and correction remain traceable. The last column records an evidence
-limit, uncertainty, or preservation boundary. It is not a work order.
+The 119 numbered records include F41, F43, and F87, dismissed after recheck so
+their original claims and corrections remain traceable. The last column records
+an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
@@ -327,9 +334,9 @@ Discovery notes give source references and the boundary for each row.
 | [F38](docs-01-discoveries-continued.md#f38-slurm-request-in-the-reliability-diagram) | Diagram omission | Slurm authorization is drawn as direct Attempt creation, omitting the pre-Run submission request. | Request/submission precede compute-side Run admission. |
 | [F39](docs-01-discoveries-continued.md#f39-validation-roster-inventory-claim) | Evidence ceiling | Fixed map covers 14 current validation-report producers, not every validator, and cannot discover a new source producer. | Fixed-roster scope and future producer discovery have different limits. |
 | [F40](docs-01-discoveries-continued.md#f40-concurrency-in-the-local-workflow-profile) | Terminology drift | Local workflow profile guide says “sample concurrency”; current policy resolves per-stage concurrency. | The guide term differs from per-stage policy. |
-| [F41](docs-01-discoveries-continued.md#f41-step-05-checks-read-only-help) | Script help contradiction | Retained Step 05 check calls itself read-only while writing a TSV and directory probe. | Input immutability and output writes coexist. |
+| [F41](docs-01-discoveries-continued.md#f41-step-05-checks-read-only-help) | Dismissed after recheck | Step 05 help explicitly announces its TSV output before calling the validation read-only; the adjacent guide says input BAM/BAI stay unchanged. | The full help makes the output write visible; no hidden write, contract conflict, or saving is established. |
 | [F42](docs-01-discoveries-continued.md#f42-report-transfer-in-the-coordinator-test-index) | Evidence placement | Coordinator test table lists report transfer but links a procedure; CV-27's tiny local exercise identifies no exact retained artifact. | The coordinator test index links a transfer procedure; CV-27 holds bounded evidence. |
-| [F43](docs-01-discoveries-continued.md#f43-print-behavior-in-the-reporting-test-guide) | Evidence ceiling | Reporting test guide says it pins print behavior; checks cover CSS/HTML structure, while visual acceptance is pending. | Source-level print checks do not establish rendered review. |
+| [F43](docs-01-discoveries-continued.md#f43-print-behavior-in-the-reporting-test-guide) | Dismissed after recheck | Reporting test guide says it pins print behavior, and source assertions do pin print CSS rules; the guide makes no browser/PDF acceptance claim. | Rendered review remains separate in REPORT-01–04; no documentation defect or saving is established. |
 | [F44](docs-01-discoveries-continued.md#f44-internal-worker-command-ownership) | Ownership terminology | Coordinator docstrings and public-CLI tests call internal workers “public”; RSeQC opening ambiguously says independently runnable. | Internal-worker and grouped-validator classifications differ from the public wording. |
 | [F45](docs-01-discoveries-continued.md#f45-watch-and-stop-in-the-command-audience-map) | Reader route | Selective audience map omits public `watch` and exact-request `stop` despite their novice and operator routes. | The audience map omits watch and stop; stop retains its evidence limit. |
 | [F46](docs-01-discoveries-continued.md#f46-artifact-common-schema-description) | Schema description | Common-schema description says v1 records although current records reuse its correct v1 resource identity. | Only the description appears stale; schema bytes and references remain a public contract. |

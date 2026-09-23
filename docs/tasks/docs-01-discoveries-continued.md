@@ -192,13 +192,13 @@ that any particular allocation will admit every task.
 ### F41 — Step 05 check's read-only help
 
 [Retained Step 05 check](../../tests/data_checks/validate_step05_outputs.sh)
-line 20 calls itself “Read-only validation,” while its own help at 13–18
-names a status TSV. Execution creates an output directory, writes/removes a
-probe, and writes or replaces the TSV at 75–95. The
-[owner README](../../tests/data_checks/README.md) lines 3–7 correctly says
-BAM/BAI are not mutated and lists the writes. Script help omits the
-input-versus-output distinction, including existing TSV replacement. This
-observation does not change the retained operator check's behavior.
+line 20 calls itself “Read-only validation,” but its own help at 13–18
+explicitly says it writes a status TSV. Execution creates an output directory,
+writes/removes a probe, and writes or replaces the TSV at 75–95. The
+[owner README](../../tests/data_checks/README.md) lines 3–7 says BAM/BAI are
+not mutated and lists the writes. Reading the complete help and owner guide
+resolves the input-versus-output scope. The earlier contradiction claim is
+dismissed; no hidden write, documentation correction, or saving is established.
 
 ### F42 — Report transfer in the coordinator test index
 
@@ -220,11 +220,13 @@ procedure rather than a test. REPORT-01–03 and CV-27 retain their separate acc
 ### F43 — Print behavior in the reporting test guide
 
 [Reporting test README](../../tests/reporting/README.md) lines 3–7 says tests
-pin “print behavior.” The checked source cases assert print CSS, generated
-HTML text, and an SVG height attribute, not browser or PDF layout review.
-The [backlog](backlog_matrix.md) lines 291–294 still keeps REPORT-01–04 visual
-or layout acceptance pending. Name source-level print rules and generated
-structure in the test guide without implying rendered user acceptance.
+pin “print behavior.” The [direct test](../../tests/reporting/test_report.py)
+lines 695–735 asserts print CSS rules; other cases cover generated HTML text
+and an SVG height attribute. The [backlog](backlog_matrix.md) lines 291–294
+keeps REPORT-01–04 visual or layout acceptance pending. The guide itself does
+not claim browser or PDF review, and “print behavior” accurately describes its
+source-level checks. The earlier guide-overclaim concern is dismissed; rendered
+acceptance remains a separate evidence layer, with no guide edit established.
 
 ### F44 — Internal worker command ownership
 
