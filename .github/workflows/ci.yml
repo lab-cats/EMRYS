@@ -1096,8 +1096,104 @@ jobs:
       - name: Require every Python 3.11 shard to pass
         run: test "${{ needs.python311-full-shards.result }}" = "success"
 
+  prepare-synthetic-e2e-runtime:
+    name: Prepare shared immutable real-synthetic runtime
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' &&
+      (inputs.synthetic_130 || inputs.synthetic_100000))
+    runs-on: ubuntu-26.04
+    timeout-minutes: 90
+    steps:
+      - name: Select shared preparation paths
+        run: |
+          set -euo pipefail
+          {
+            printf 'PIXI_WORKSPACE=%s/emrys-managed-runtime\n' "${RUNNER_TEMP}"
+            printf 'PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml\n' "${RUNNER_TEMP}"
+            printf 'RENV_PROJECT=%s/emrys-renv\n' "${RUNNER_TEMP}"
+            printf 'RENV_PATHS_CACHE=%s/emrys-renv/cache\n' "${RUNNER_TEMP}"
+            printf 'RENV_PATHS_LIBRARY=%s/emrys-renv/library\n' "${RUNNER_TEMP}"
+          } >> "${GITHUB_ENV}"
+          install -d -m 0700 "${RUNNER_TEMP}/emrys-renv"
+
+      - *checkout
+
+      - *setup_primary_python
+
+      - *setup_uv
+
+      - name: Prepare locked Python dependency cache
+        run: uv sync --locked --group workflow --python python
+
+      - name: Stage the reviewed runtime lock for shared preparation
+        run: |
+          set -euo pipefail
+          install -d -m 0700 "${PIXI_WORKSPACE}" "${RENV_PROJECT}"
+          cp -- \
+            src/emrys/resources/runtime/pixi.toml \
+            src/emrys/resources/runtime/pixi.lock \
+            "${PIXI_WORKSPACE}/"
+
+      - name: Prepare locked native and R base dependency cache
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: ${{ env.PIXI_VERSION }}
+          manifest-path: ${{ env.PIXI_MANIFEST }}
+          environments: native r
+          activate-environment: r
+          locked: true
+          cache: true
+          cache-key: emrys-real-e2e-runtime-v2-ubuntu-26.04-
+          cache-write: true
+          post-cleanup: true
+
+      - name: Restore prepared R dependency cache
+        id: shared-renv-cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ${{ runner.temp }}/emrys-renv/cache
+            ${{ runner.temp }}/emrys-renv/library
+          key: >-
+            emrys-real-e2e-renv-v2-ubuntu-26.04-${{ runner.arch }}-${{ hashFiles('src/emrys/renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
+
+      - name: Restore locked R dependencies on cache miss
+        if: steps.shared-renv-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          make -s r-restore RSCRIPT_BIN="$(command -v Rscript)"
+
+      - name: Select and verify prepared R dependencies
+        run: |
+          set -euo pipefail
+          rscript_bin="$(command -v Rscript)"
+          renv_library="$({
+            EMRYS_USE_RENV=1 \
+            EMRYS_LOCAL_PILOT_R=0 \
+            RENV_CONFIG_SANDBOX_ENABLED=FALSE \
+            RENV_CONFIG_AUTO_SNAPSHOT=FALSE \
+            R_PROFILE_USER="${GITHUB_WORKSPACE}/src/emrys/.Rprofile" \
+              "${rscript_bin}" -e \
+                'cat(normalizePath(.libPaths()[[1L]], winslash = "/", mustWork = TRUE))'
+          })"
+          test -n "${renv_library}"
+          test -d "${renv_library}"
+          RENV_LIBRARY="${renv_library}" \
+            make -s r-check RSCRIPT_BIN="${rscript_bin}"
+
+      - name: Publish prepared R dependency cache
+        if: steps.shared-renv-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ${{ runner.temp }}/emrys-renv/cache
+            ${{ runner.temp }}/emrys-renv/library
+          key: ${{ steps.shared-renv-cache.outputs.cache-primary-key }}
+
   synthetic-e2e-130:
     name: Real synthetic E2E 130 (${{ matrix.scenario }})
+    needs: prepare-synthetic-e2e-runtime
     if: >-
       github.event_name == 'schedule' ||
       (github.event_name == 'workflow_dispatch' && inputs.synthetic_130)
@@ -1107,18 +1203,14 @@ jobs:
       fail-fast: false
       max-parallel: 3
       matrix:
-        include:
-          - scenario: success-parity
-            cache_writer: "true"
-          - scenario: failure-resume
-            cache_writer: "false"
-          - scenario: stop-resume
-            cache_writer: "false"
+        scenario:
+          - success-parity
+          - failure-resume
+          - stop-resume
     env:
       E2E_PROFILE: "130"
       E2E_DATASET_PROFILE: smoke-v1
       E2E_SCENARIO: ${{ matrix.scenario }}
-      E2E_CACHE_WRITER: ${{ matrix.cache_writer }}
     steps:
       - &synthetic_select_paths
         name: Select isolated runtime and evidence paths
@@ -1160,7 +1252,7 @@ jobs:
           version: ${{ env.UV_VERSION }}
           enable-cache: true
           cache-dependency-glob: uv.lock
-          save-cache: ${{ env.E2E_CACHE_WRITER }}
+          save-cache: false
 
       - &synthetic_stage_runtime
         name: Stage the reviewed runtime lock outside the checkout
@@ -1182,8 +1274,8 @@ jobs:
           activate-environment: r
           locked: true
           cache: true
-          cache-key: emrys-real-e2e-runtime-
-          cache-write: ${{ env.E2E_CACHE_WRITER }}
+          cache-key: emrys-real-e2e-runtime-v2-ubuntu-26.04-
+          cache-write: false
           post-cleanup: true
 
       - &synthetic_install_slurm
@@ -1207,18 +1299,18 @@ jobs:
             ${{ runner.temp }}/emrys-renv/cache
             ${{ runner.temp }}/emrys-renv/library
           key: >-
-            emrys-real-e2e-pixi-renv-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src/emrys/renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
+            emrys-real-e2e-renv-v2-ubuntu-26.04-${{ runner.arch }}-${{ hashFiles('src/emrys/renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
+          fail-on-cache-miss: true
 
       - &synthetic_restore_python
         name: Restore locked Python environment
         run: uv sync --locked --group workflow --python python
 
       - &synthetic_restore_r
-        name: Restore and select locked R environment
+        name: Select and verify shared locked R environment
         run: |
           set -euo pipefail
           rscript_bin="$(command -v Rscript)"
-          make -s r-restore RSCRIPT_BIN="${rscript_bin}"
           renv_library="$({
             EMRYS_USE_RENV=1 \
             EMRYS_LOCAL_PILOT_R=0 \
@@ -1231,18 +1323,8 @@ jobs:
           test -n "${renv_library}"
           test -d "${renv_library}"
           printf 'RENV_LIBRARY=%s\n' "${renv_library}" >> "${GITHUB_ENV}"
-
-      - &synthetic_save_renv
-        name: Save exact R dependency cache after successful restore
-        if: >-
-          env.E2E_CACHE_WRITER == 'true' &&
-          steps.renv-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
-        with:
-          path: |
-            ${{ runner.temp }}/emrys-renv/cache
-            ${{ runner.temp }}/emrys-renv/library
-          key: ${{ steps.renv-cache.outputs.cache-primary-key }}
+          RENV_LIBRARY="${renv_library}" \
+            make -s r-check RSCRIPT_BIN="${rscript_bin}"
 
       - &synthetic_record_runtime
         name: Record exact runtime authorities outside the checkout
@@ -1334,6 +1416,14 @@ jobs:
           # shellcheck disable=SC2024 # Privileged read; the runner owns the destination.
           sudo journalctl --no-pager -u munge -u slurmctld -u slurmd \
             > "${E2E_EVIDENCE_ROOT}/slurm/final-journal.txt" 2>&1
+          # Retain scheduler file logs because post-launch cancellation events
+          # are not guaranteed to reach the system journal.
+          # shellcheck disable=SC2024 # Privileged read; the runner owns the destination.
+          sudo cat /var/log/slurm/slurmctld.log \
+            > "${E2E_EVIDENCE_ROOT}/slurm/final-slurmctld.log" 2>&1
+          # shellcheck disable=SC2024 # Privileged read; the runner owns the destination.
+          sudo cat /var/log/slurm/slurmd.log \
+            > "${E2E_EVIDENCE_ROOT}/slurm/final-slurmd.log" 2>&1
           exit 0
 
       - &synthetic_checkout_unchanged
@@ -1376,6 +1466,7 @@ jobs:
 
   synthetic-e2e-100000:
     name: Real synthetic E2E 100000 (production-like)
+    needs: prepare-synthetic-e2e-runtime
     if: >-
       (github.event_name == 'schedule' && github.event.schedule == '17 5 * * 0') ||
       (github.event_name == 'workflow_dispatch' && inputs.synthetic_100000)
@@ -1385,9 +1476,6 @@ jobs:
       E2E_PROFILE: "100000"
       E2E_DATASET_PROFILE: production-like-v1
       E2E_SCENARIO: production-like
-      E2E_CACHE_WRITER: >-
-        ${{ github.event_name == 'workflow_dispatch' &&
-        inputs.synthetic_100000 && !inputs.synthetic_130 }}
     steps:
       - *synthetic_select_paths
       - *synthetic_checkout
@@ -1399,7 +1487,6 @@ jobs:
       - *synthetic_restore_renv
       - *synthetic_restore_python
       - *synthetic_restore_r
-      - *synthetic_save_renv
       - *synthetic_record_runtime
       - *synthetic_configure_slurm
       - *synthetic_run

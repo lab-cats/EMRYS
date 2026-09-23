@@ -110,6 +110,52 @@ def test_profile_and_scenario_are_independent_but_compatible(
     assert "requires profile 100000" in capsys.readouterr().err
 
 
+def test_failure_resume_admits_direct_failure_without_scheduler_job(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    direct_run = tmp_path / "direct-run"
+    slurm_run = tmp_path / "slurm-run"
+    initial_job = driver.Job("42", tmp_path / "42.out", tmp_path / "42.err")
+    resumed_job = driver.Job("43", tmp_path / "43.out", tmp_path / "43.err")
+    admitted: list[tuple[Path, driver.Job | None]] = []
+    commands: list[str] = []
+
+    def admitted_failure(
+        run_root: Path, *, job: driver.Job | None
+    ) -> dict[str, object]:
+        admitted.append((run_root, job))
+        return {"run_root": str(run_root)}
+
+    class FakeTranscripts:
+        def run(
+            self, label: str, command: list[str], **_kwargs: object
+        ) -> subprocess.CompletedProcess[str]:
+            commands.append(label)
+            return subprocess.CompletedProcess(command, 0, "JOB_ID=43\n", "")
+
+    monkeypatch.setattr(driver, "_admitted_failure", admitted_failure)
+    monkeypatch.setattr(driver, "wait_for_job", lambda *_args, **_kwargs: resumed_job)
+
+    failures, jobs = driver._resume_failed_runs(
+        arguments=SimpleNamespace(slurm_timeout_seconds=60, poll_seconds=0.01),
+        transcripts=FakeTranscripts(),  # type: ignore[arg-type]
+        python=Path("/runtime/python"),
+        repo=tmp_path,
+        paths=SimpleNamespace(slurm_workspace=tmp_path / "slurm"),
+        projects={"direct": tmp_path / "direct", "slurm": tmp_path / "slurm"},
+        direct_run_root=direct_run,
+        slurm_run_root=slurm_run,
+        initial_job=initial_job,
+        scontrol=Path("/usr/bin/scontrol"),
+        scancel=Path("/usr/bin/scancel"),
+    )
+
+    assert admitted == [(direct_run, None), (slurm_run, initial_job)]
+    assert commands == ["direct-resume", "slurm-resume-submit"]
+    assert set(failures) == {"direct", "slurm"}
+    assert jobs == (initial_job, resumed_job)
+
+
 def test_step09_oracle_rejects_unknown_significant_status(tmp_path: Path) -> None:
     all_sites = tmp_path / "all.tsv"
     significant = tmp_path / "significant.tsv"

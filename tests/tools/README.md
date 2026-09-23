@@ -19,7 +19,10 @@ public workflow commands.
   Invalid submission paths trigger the existing emergency cleanup guard for the
   single reported job; that guard is not the public stop proof, and missing or
   ambiguous job IDs never authorize cancellation. Hosted single-node scenarios
-  do not establish Viking memory policy or cross-node behavior.
+  do not establish Viking memory policy or cross-node behavior. The disposable
+  CI controller's 300-second `KillWait` matches the Task cleanup signal horizon;
+  it does not change production scheduler policy or permit resume without an
+  admitted interruption boundary.
   Real hosted scientific Runs derive their resource policy from the packaged
   allocation-aware defaults and resolve against the runner allocation. The tiny
   fixture lowers only repeatable-stage memory admission floors to 2048 MiB; it

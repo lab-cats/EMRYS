@@ -1674,7 +1674,7 @@ def _resume_failed_runs(
     scancel: Path,
 ) -> tuple[dict[str, dict[str, Any]], tuple[Job, Job]]:
     failures = {
-        "direct": _admitted_failure(direct_run_root),
+        "direct": _admitted_failure(direct_run_root, job=None),
         "slurm": _admitted_failure(slurm_run_root, job=initial_job),
     }
     transcripts.run(
