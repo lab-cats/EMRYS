@@ -1,11 +1,12 @@
 # DOCS-01 discovery notes, fourth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F100–F119. F100–F104 use local audit head `e1771d21`; F105–F108 use
+holds F100–F120. F100–F104 use local audit head `e1771d21`; F105–F108 use
 `b65e8fb8`; F109–F110 use `26898b5e`; F111 uses `cd45bd51`, F112 uses
 `b62e207b`, F113 uses `ac14392e`, F114–F117 use `b72b03c0`, and F118–F119 use
-`24579272`, all read on 2026-09-22. These are documentation observations, not
-runtime results, accepted changes, or permission to alter retained evidence.
+`24579272`; F120 uses `dc44861b`, all read on 2026-09-22. These are
+documentation observations, not runtime results, accepted changes, or
+permission to alter retained evidence.
 
 ## Discovery notes
 
@@ -349,6 +350,27 @@ evidence that Quickstart omits an input the novice must choose. Preserve the
 original inline-values requirement, historical selected values, and pending
 novice/site acceptance. No Init or Viking journey ran.
 
+### F120 — Superseded Init replay in the active CV backlog
+
+The [CV-U18 card](cluster_verification_backlog.md#cv-u18-interactive-input-list-creation)
+lines 1129–1140 calls a generated, safely quoted creation command the selected
+implementation and says direct fixtures cover that replay. Its later
+“Current confirmation correction” at lines 1204–1210 says `INIT-03` replaced
+the command with a yes/no prompt and explicitly classes those replay fixtures
+as historical evidence. The [main matrix](backlog_matrix.md) line 86 also
+records the serializer's retirement. The [current Init owner](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+lines 1302–1322 previews, then prompts `Create this Project?` unless execution
+or explicit preview selects another path; lines 1391–1397 print `Project ready`
+only after publication. The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 147–151 and direct [onboarding assertions](../../tests/orchestration/run_coordinator/test_onboarding.py)
+at 364–365 and 460–461 agree on that current boundary. CV-U21's dated
+September 20 explanation at lines 1413–1415 also describes omission of
+automatic STAR flags from the retired replay command; its automatic-value
+and reference-freshness reasoning remains distinct. The CV chronology does
+record the supersession, so this is a current-reader framing and compression
+candidate, not evidence of an Init behavior defect or permission to discard
+the older fixtures and observations. No Init command or test ran in this pass.
+
 ## Reviewed overlaps without a saving claim
 
 The [test-tool guide](../../tests/tools/README.md) lines 25–30,
@@ -364,6 +386,13 @@ The [scientific-pipeline decision](../design/decisions/scientific-pipeline.md)
 lines 80–92 states lasting cohort, selector, receipt, and count/exclusion
 safety choices. Step 07 and Step 08 owner contracts give their detailed
 mechanics. This concise decision-to-owner overlap establishes no saving.
+
+The [polish campaign](polish-campaign.md) lines 1027–1028 says the immediately
+preceding PR #140–147 implementations do not close recovery defects in items
+1–4. Items 2 and 4 later record publisher retirement, closing those repair
+proposals without claiming repair; items 1 and 3 remain proposed. Because
+“these implementations” is scoped to the earlier PR list, the sentence is
+historically accurate and does not establish a separate contradiction.
 
 [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 52–56 repeats the
 coordinator's exact byte/device/inode and same-UID limitation at contract

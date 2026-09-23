@@ -266,6 +266,13 @@ permission to change or delete the source.
   links resolve to 46 local commit/path targets, and all 62 line fragments
   fall within their cited files; this checks link targets, not claim semantics
   or hosted artifacts. No product, test, CI or cluster command ran.
+- A further read-only pass at local head `dc44861b` rechecked root and operator
+  routes, selected scientific and evidence owner contracts, architecture and
+  schema wording, and campaign chronology. It added F120 for a superseded Init
+  replay description in the active CV backlog. The other selected claims
+  matched their current owners or were already covered by F01–F119; a scoped
+  polish-campaign sentence did not establish another contradiction. No product,
+  test, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -293,7 +300,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 119 numbered records include F41, F43, and F87, dismissed after recheck so
+The 120 numbered records include F41, F43, and F87, dismissed after recheck so
 their original claims and corrections remain traceable. The last column records
 an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -419,6 +426,7 @@ Discovery notes give source references and the boundary for each row.
 | [F117](docs-01-discoveries-fourth.md#f117-cv-20-current-inspection-beside-submission-history) | Evidence placement | CV-20 interleaves current submission/inspection mechanics with open reconnect/queue acceptance and dated test and CI checkpoints. | Request safety and pending institutional evidence remain; current owner rules and historical evidence have separate roles, with no saving established. |
 | [F118](docs-01-discoveries-fourth.md#f118-cv-21-reporting-table-detail-level) | Output-scope drift | CV-21 says normal inspection shows reporting transaction rows and the table appears at each detail level; current inspection shows the table only with `--verbose`. | Normal Reporting admission and blockers remain, while verbose rows retain the three transaction states; E06 cause and institutional proof remain separate. |
 | [F119](docs-01-discoveries-fourth.md#f119-cv-u20-inline-study-value-claim-after-automatic-defaults) | Guide-description drift | CV-U20 says Quickstart supplies fixed STAR values and `0.01` inline; the current guide names the five active CMH values while Init derives STAR values and displays the inactive background maximum. | The original all-known-values requirement and dated selected values remain provenance; this is not evidence of a missing user input or product defect. |
+| [F120](docs-01-discoveries-fourth.md#f120-superseded-init-replay-in-the-active-cv-backlog) | Temporal framing | CV-U18's selected-implementation paragraph describes a generated creation command as current, while its later current correction and INIT-03 record direct yes/no confirmation; CV-U21 also retains a dated replay detail. | Earlier replay fixtures and STAR automatic-value reasoning remain historical evidence; current guided behavior is separately established by source and tests. |
 
 ## Discovery notes
 
