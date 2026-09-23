@@ -517,12 +517,12 @@ lines 119–159 gives lasting scientific-fingerprint and reporting-provenance
 rationale; 161–199 declares independent expectations; 201–209 explains
 create-only publication; 227–251 describes recovery and artifact meaning; and
 253–257 states the old-Run compatibility consequence. These remain decision
-content. The [reporting owner](../../src/emrys/reporting/README.md) owns
-current mechanics. The exact predecessor
-`0ece377ca2b285d6ec2a46f7d2441c78f16409e1` and PR #146 at decision
-lines 210–212 support the retired overwrite and replacement-failure account,
-not merely routine genealogy. Their date and origin, and the nondeletion limit
-at 212–214, are material to [history's](../history/README.md) rules. A narrower
+content. The [reporting owner](../../src/emrys/reporting/README.md) owns mechanics.
+Decision lines 210–214 cite
+`0ece377ca2b285d6ec2a46f7d2441c78f16409e1` (PR #146), the predecessor tree
+that still contains `report.py` and the canonical-BAM retirement. Reporting
+commit `053f4130` removes the facade; the prior failure account and nondeletion
+limit matter to [history's](../history/README.md) rules. A narrower
 compression candidate is the retired symbol enumeration at 216–218 and
 223–225. Exact names such as `ReceiptValidationOps` and `RunSummaryBuildDeps`
 occur only here in current Markdown, so their removal would rely on Git history,
@@ -577,9 +577,9 @@ and [RSeQC](../../tests/evidence/rseqc_orientation/README.md) at lines 5–9
 (`c0cdceb1`). Eight test and six production copies repeat 58 physical lines. The
 preliminary 31–32-line net estimate covers only the original 12 stage files:
 48 repeated lines become 12 one-line local routes plus 4–5 shared lines.
-The shared test indexes do not yet carry the full runner, scratch, interruption,
-recovery, and shell-worker versus grouped-validator distinctions. A two-line
-local route would cut that estimate by six; no saving is verified.
+The shared test indexes lack full runner, scratch, interruption, recovery, and
+shell-worker versus validator distinctions. Six two-line routes yield 25–26
+potential saved lines; all twelve yield 19–20. Neither scenario is verified.
 At `651d60d5`, nine stage, two evidence, and one analysis contract use the
 same two-line opening routing to the [test index](../../tests/README.md),
 which contains the shared evidence ceiling:

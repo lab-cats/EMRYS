@@ -1,12 +1,13 @@
 # DOCS-01 discovery notes, sixth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F164–F181 and a recheck of F158. F164–F167 compare local head `f79bc435`; F168 and the
+holds F164–F184 and a recheck of F158. F164–F167 compare local head `f79bc435`; F168 and the
 F19/F64/F92 refinements compare `5aaa17f0`; F97/F107/F169 use `25f62591`;
 F170 uses `8ef78400`, F171–F172 use `c6ec1562`, and F173–F175 use
 `286f646a`; F158/F176 use `3de8366b`, F124/F172 rechecks use
 `35668cc8`, F166/F169/F175/F177–F178 rechecks use `8489836c`, and F179 uses
-`ce4d22f8`, and F180–F181 use `619e60b7`, read on 2026-09-23. The
+`ce4d22f8`, F180–F181 use `619e60b7`, and F182–F184 use `c1969b84`,
+read on 2026-09-23. The
 full coordinator contract and root/operator/owner history sweeps found no
 other substantial reduction. Counts are
 review spans and conditional arithmetic, not verified savings or approval to
@@ -298,6 +299,45 @@ sentence. This is the same sentence and placement question already recorded
 as F36, so F181 is dismissed as a duplicate. Removing the sentence alone saves
 no physical line: the live batch-dependency caveat still occupies line 14.
 The real-Snakemake and local-versus-cluster limits at lines 7–14 must remain.
+
+### F182 — Slurm scratch cleanup wording
+
+At local audit head `c1969b84`, the [Runbook](../operations/RUNBOOK.md)
+line 589 says batch scratch is removed when the wrapper exits. The
+[submission owner](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
+lines 756–773 creates private scratch and installs a Bash `EXIT` trap; lines
+783–798 forward TERM and exit after the child. The [direct test](../../tests/orchestration/run_coordinator/test_slurm_submission.py)
+lines 2027–2105 observes cleanup after normal wrapper completion. SIGKILL or
+node loss cannot run that trap, so the unqualified lifetime claim exceeds the
+source and test guarantee. Residue is possible, not observed; site epilog
+cleanup was not checked. Keep the scratch path, `TMPDIR`, no-fallback rule,
+and site-capacity/lifetime warning at Runbook lines 584–598. A wording
+qualification is under review; no physical-line saving is established.
+
+### F183 — Historical change scope in the coordinator contract
+
+At local audit head `c1969b84`, the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 224–225 says existing CLI flags, maintenance-log modes/events,
+refusals, and exits remain unchanged. Blame attributes the sentence to
+`d0f4a2ada`; the dated [CV-19 card](cluster_verification_backlog.md)
+lines 3317–3325 already preserves that change-scope assertion and its
+acceptance limits. The contract's current Doctor repair/verification behavior
+at 217–223 and Slurm elapsed-time rule at 225 are distinct and must remain.
+Trimming the historical sentence may save one physical line, conditional on
+reflow and preservation of the CV record; no net saving is verified.
+
+### F184 — Runtime probe mechanics in the coordinator contract
+
+At local audit head `c1969b84`, [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 358–363 repeats bounded empty-workflow Snakemake startup, selected
+interpreter, private scratch, and no-study-task behavior. The
+[runtime owner](../../src/emrys/evidence/runtime_availability/README.md)
+lines 30–38 owns those probe mechanics; [probe source](../../src/emrys/evidence/runtime_availability/_probes.py)
+lines 156–201 uses an empty workflow and disposable temporary directory.
+The coordinator's head diagnosis, compute qualification, execution-preflight
+placement and head-success limit are unique here. A concise owner route might
+save two to four physical lines from this six-line span, conditional on a
+lossless draft and link check. No product defect or net saving is established.
 
 ## Other focused source comparisons at `8ef78400`
 

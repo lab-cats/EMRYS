@@ -301,17 +301,14 @@ permission to change or delete the source.
 - At `663da8ed`, F124 compared the reliability diagram's one validation order
   with the runner's two; F32 clarified H1 order. Six reference-style link
   destinations resolved statically. No execution ran.
-- At `54f7b756`, F125–F126 addressed producer/publication ownership and Doctor
-  detail/timing; Step 07/10, CI, and test guides yielded no other claim or execution.
-- At `777345b6`, coordinator, CV, and workflow review added F127–F129
-  (validation chronology, worker flags, unrouted guide). Root, Quickstart,
-  operations, reference, and glossary comparisons found no other claim.
-  Source and tests were read; older checks were not replayed, and no product,
-  CI, or cluster operation ran.
-- At `3ebfb2bf`, test/evidence/schema review added F130–F131 and extended
-  F107 to three owner contracts; no other tooling/schema claim or execution.
-- At `935adf06`, recheck dismissed F130 as F28 overlap, refined F05/F07/F23/F71,
-  and added F132–F133; other sampled limits held, and no execution ran.
+- At `54f7b756`, F125–F126 addressed producer/publication and Doctor timing; Step 07/10, CI, and test-guide reads found no further finding.
+- At `777345b6`, coordinator/CV/workflow review added F127–F129
+  (validation chronology, worker flags, unrouted guide); sampled root,
+  Quickstart, operations, reference, and glossary claims held. Source/tests
+  were read; prior checks were not replayed and no product/CI/cluster ran.
+- At `3ebfb2bf`, test/evidence/schema review added F130–F131 and extended F107;
+  at `935adf06`, F130 was dismissed as F28 overlap, F05/F07/F23/F71 refined,
+  and F132–F133 added. Other sampled limits held; no execution ran.
 - At `ebc0012d`, coordinator/owner/CV review added F134–F139; F52 gained
   “regeneration.” At `f239a91d`, recheck dismissed F138, narrowed F134/F136/F137,
   and added F140; CV-23/Slurm-preview/operator rereads found no new candidate.
@@ -341,7 +338,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 181 records, 70 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 184 records, 70 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -369,10 +366,10 @@ Of 181 records, 70 were dismissed after recheck; linked notes give reasons. The 
 | [F22](docs-01-discoveries.md#f22-coordinator-cross-owner-detail) | Dismissed after recheck | Coordinator README, contract, logging, runtime, and Runbook summaries overlap across distinct trust boundaries, including request/stream names. | Their index, publication, seal, prompt, diagnostic, and action rules serve distinct readers; no useful reduction is established. |
 | [F23](docs-01-discoveries.md#f23-init-details-in-the-runbook) | Recorded compression; route open | Baseline Runbook Init guidance mixes operator choices with hashing and file-identity internals; the approved PR slice removed 40 net lines from that section. | The generic route remains open with F05; DOCS-01 is not closed. |
 | [F24](docs-01-discoveries.md#f24-named-profile-procedure-placement) | Dismissed after recheck | Config guide holds named-profile commands; Runbook links to them and retains head-node Doctor/Run steps. | The routes and exact coordinator contract serve distinct roles; no duplicate procedure or useful saving exists. |
-| [F25](docs-01-discoveries.md#f25-reporting-decision-versus-migration-history) | Compression candidate | Reporting decision retains predecessor failure provenance and a retired-symbol inventory. | Exact retired names are unique in current Markdown; Git retains them, while current logical producer and recovery limits remain. No saving is established. |
+| [F25](docs-01-discoveries.md#f25-reporting-decision-versus-migration-history) | Compression candidate | Reporting decision retains predecessor failure provenance and a retired-symbol inventory. | PR #146's tree and the later reporting retirement commit differ; exact retired names remain unique. No saving is established. |
 | [F26](docs-01-discoveries.md#f26-alpha-carrier-note-in-reporting-readme) | Dismissed after recheck | Reporting README's five-line carrier note mixes a brief migration phrase with current collaborator API guidance. | Current types and positional guidance remain; isolated trimming has negligible value. |
 | [F27](docs-01-discoveries.md#f27-old-fixed-resource-provenance) | Dismissed after recheck | Resource-profile README repeats old 12-core origins from temporary CV-U28, but also gives the durable warning not to restore that policy. | Replacing the owner warning with a CV link gives no useful net reduction; capacity and admission limits remain. |
-| [F28](docs-01-discoveries.md#f28-repeated-owner-boilerplate) | Compression candidate | Six stage owners and eight stage/evidence test guides repeat 58 physical lines; twelve contract evidence-ceiling openings add a 24-line review span. | The 31–32-line scenario assumes one-line local routes and missing shared-index context; two-line routes reduce it by six. Owner limits and actual savings remain unverified. |
+| [F28](docs-01-discoveries.md#f28-repeated-owner-boilerplate) | Compression candidate | Six stage owners and eight stage/evidence test guides repeat 58 physical lines; twelve contract evidence-ceiling openings add a 24-line review span. | The 31–32-line scenario assumes twelve one-line routes; six two-line routes yield 25–26, all twelve yield 19–20. Owner limits and net savings remain unverified. |
 | [F29](docs-01-discoveries.md#f29-library-subowner-navigation) | Dismissed for DOCS-01 | Tests point to a library index that does not route readers to six documented Python subowners. | This is a possible added-navigation question, not a compression candidate; preserve the library index and subowner guides. |
 | [F30](docs-01-discoveries-continued.md#f30-dashboard-reporting-stage-text) | Dismissed for DOCS-01 | Dashboard source places final target after reporting and retains three reporting operations; current target precedes two. | This is product display/source behavior, outside the existing-documentation audit; the observation grants no product edit. |
 | [F31](docs-01-discoveries-continued.md#f31-historical-slurm-username-recovery-advice) | Recovery/history overlap | Troubleshooting mixes current recovery with an undated older-submission cause and four-variable export detail already held by owners. | Preserve error, Run resume and evidence guidance; no fixed installed release or current site failure was established. |
@@ -526,6 +523,9 @@ Of 181 records, 70 were dismissed after recheck; linked notes give reasons. The 
 | [F179](docs-01-discoveries-sixth.md#f179-cv-01-integrated-journey-account-under-review) | Within-card compression question | CV-01's 37-line selected hosted journey account contains a unique integrated sequence alongside resource and fixture detail covered by test and recovery owners. | No net saving is established; preserve three Slurm Attempts, direct parity, controlled versus site evidence, pending exact-commit CI, and institutional limits. |
 | [F180](docs-01-discoveries-sixth.md#f180-analysis-provider-validator-independence-wording) | Wording ambiguity | Analysis owner guide says EMRYS checks a provider's independent validator; admission requires validator argv and the runner executes it separately, without proving semantic independence. | “Independent” may describe separate execution; distinguish that from the trusted provider's semantic obligation. No defect or saving was shown. |
 | [F181](docs-01-discoveries-sixth.md#f181-removed-publisher-test-history-in-the-runtime-test-guide) | Dismissed as duplicate | The runtime test guide's retired-publisher sentence is already F36. | Removing it alone saves no physical line; F36 owns any future placement review. |
+| [F182](docs-01-discoveries-sixth.md#f182-slurm-scratch-cleanup-wording) | Cleanup-scope wording | Runbook says batch scratch is removed on wrapper exit; source relies on an `EXIT` trap, and the direct test covers normal completion. | Uncatchable termination can bypass the trap; site cleanup was not checked and no line saving is established. |
+| [F183](docs-01-discoveries-sixth.md#f183-historical-change-scope-in-the-coordinator-contract) | Historical-scope candidate | Coordinator contract says CLI/log/refusal/exit behavior remains unchanged; the dated CV-19 card retains the change scope. | Keep current Doctor and timing rules; a one-line trim is conditional on reflow and evidence preservation. |
+| [F184](docs-01-discoveries-sixth.md#f184-runtime-probe-mechanics-in-the-coordinator-contract) | Cross-owner detail candidate | Coordinator contract repeats Snakemake startup mechanics owned by the runtime guide. | Keep head/compute/execution-preflight boundaries and the head-success limit; two to four lines are conditional. |
 
 ## Discovery notes
 
