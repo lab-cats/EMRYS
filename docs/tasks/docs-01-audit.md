@@ -247,6 +247,12 @@ permission to change or delete the source.
   mixed current/evidence roles in CV-10 and CV-20. Pinned optimization source
   paths were checked for existence at their cited commit, not for semantic
   support of later prose. No guide, product, test, CI, or cluster command ran.
+- A deeper owner and long-card comparison at local head `24579272` added
+  F118–F119 for reporting-detail and inline-value claims that differ from the
+  current CLI and Quickstart. Reporting/science, operations, developer/test/CI,
+  and other long CV cards produced no further distinct high-confidence finding
+  in this pass. Source and selected test assertions were read, not executed;
+  no guide, product, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -274,7 +280,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 117 numbered records include F87, dismissed after recheck so its original
+The 119 numbered records include F87, dismissed after recheck so its original
 claim and correction remain traceable. The last column records an evidence
 limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -398,6 +404,8 @@ Discovery notes give source references and the boundary for each row.
 | [F115](docs-01-discoveries-fourth.md#f115-current-resource-policy-repeated-in-optimization-candidate) | Compression candidate | Optimization candidate 3 repeats current allocation-aware policy, fixed-policy provenance, and CV-U28 evidence limits already owned by resource and CV guides. | Its future measurement proposal is distinct; the 11-line repeated review span is not a verified saving. |
 | [F116](docs-01-discoveries-fourth.md#f116-cv-10-current-protocol-beside-cancellation-evidence) | Evidence placement | CV-10 interleaves current retry/finalization protocol, open cancellation acceptance, and dated hosted and Viking observations already separated by coordinator ownership. | Original acceptance, exact artifacts, failed-suite limits, and the trusted-workspace boundary remain distinct; no saving is established. |
 | [F117](docs-01-discoveries-fourth.md#f117-cv-20-current-inspection-beside-submission-history) | Evidence placement | CV-20 interleaves current submission/inspection mechanics with open reconnect/queue acceptance and dated test and CI checkpoints. | Request safety and pending institutional evidence remain; current owner rules and historical evidence have separate roles, with no saving established. |
+| [F118](docs-01-discoveries-fourth.md#f118-cv-21-reporting-table-detail-level) | Output-scope drift | CV-21 says normal inspection shows reporting transaction rows and the table appears at each detail level; current inspection shows the table only with `--verbose`. | Normal Reporting admission and blockers remain, while verbose rows retain the three transaction states; E06 cause and institutional proof remain separate. |
+| [F119](docs-01-discoveries-fourth.md#f119-cv-u20-inline-study-value-claim-after-automatic-defaults) | Guide-description drift | CV-U20 says Quickstart supplies fixed STAR values and `0.01` inline; the current guide names the five active CMH values while Init derives STAR values and displays the inactive background maximum. | The original all-known-values requirement and dated selected values remain provenance; this is not evidence of a missing user input or product defect. |
 
 ## Discovery notes
 
@@ -456,3 +464,10 @@ The safety guard's compression, tools-first, and evidence-deletion rules
 lines 73–114. The guard, delivery process, and lasting decision address
 different readers and authority boundaries. This conceptual overlap supplies
 no verified line saving or reason to weaken the safety instructions.
+
+The optional smoke guide repeats part of Quickstart's command sequence for a
+different Project. The external scientific-evaluation checklist explicitly
+keeps review outside the pipeline. Long CV cards for resources, onboarding,
+runtime reuse, managed coverage, dashboard, and logs retain distinct acceptance
+or dated evidence despite current-rule overlap. Those comparisons established
+no additional safe deletion or measured saving.

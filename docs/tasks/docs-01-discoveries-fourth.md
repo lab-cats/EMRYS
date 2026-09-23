@@ -1,10 +1,10 @@
 # DOCS-01 discovery notes, fourth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F100–F117. F100–F104 use local audit head `e1771d21`; F105–F108 use
+holds F100–F119. F100–F104 use local audit head `e1771d21`; F105–F108 use
 `b65e8fb8`; F109–F110 use `26898b5e`; F111 uses `cd45bd51`, F112 uses
-`b62e207b`, F113 uses `ac14392e`, and F114–F117 use `b72b03c0`, all read on
-2026-09-22. These are documentation observations, not
+`b62e207b`, F113 uses `ac14392e`, F114–F117 use `b72b03c0`, and F118–F119 use
+`24579272`, all read on 2026-09-22. These are documentation observations, not
 runtime results, accepted changes, or permission to alter retained evidence.
 
 ## Discovery notes
@@ -304,6 +304,39 @@ observations at 3463–3469. A scheduler record remains observational and does
 not grant scientific or recovery authority. This is a placement question, not
 proof that any of those dated results can be discarded or that a line saving
 exists. No scheduler, Run, test, or CI command ran.
+
+### F118 — CV-21 reporting table detail level
+
+The [CV-21 card](cluster_verification_backlog.md#cv-21-reporting-in-progress-and-visibility)
+lines 3485–3497 says normal inspection shows the reporting transaction table,
+that it appears at each detail level, and that public fixtures cover normal and
+verbose rows. The current [inspection source](../../src/emrys/orchestration/run_coordinator/control.py)
+lines 2862–2881 prints `Reporting transactions:` only inside `if verbose`.
+The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 1190–1195 and 1210–1215 assigns the three rows to verbose inspection;
+normal output retains Reporting admission, blockers, and admitted report
+locations. Direct [test assertions](../../tests/orchestration/run_coordinator/test_materialization.py)
+at 2208–2222 and 2251–2262 require that split. The card's normal-output claim
+is stale relative to current source and tests. Its E06 observation, verified-
+location gate, finalization-fault cases, and pending institutional execution
+remain separate evidence. No inspection command or test ran in this audit.
+
+### F119 — CV-U20 inline study-value claim after automatic defaults
+
+The [CV-U20 card](cluster_verification_backlog.md#cv-u20-complete-viking-values-in-quickstart)
+lines 1253–1262 says Quickstart supplies fixed `sjdbOverhang=149`,
+`genomeSAindexNbases=14`, `genomeChrBinNbits=18`, and background maximum `0.01`
+inline. Its later checkpoint at 1315–1320 still says all known values remain in
+the guide. The current [Quickstart](../../quickstart.md) lines 102–124 gives
+sample assignments and five active paired-CMH values, but none of those four
+numbers. [Configuration guidance](../../configs/README.md) lines 62–92 and the
+[CV-U21 card](cluster_verification_backlog.md#cv-u21-technical-parameter-assistance)
+lines 1389–1430 explain that Init now derives the STAR values from admitted
+inputs and displays the persisted `0.01` as inactive when there is no background
+condition. This is outdated guide-description wording in a dated card, not
+evidence that Quickstart omits an input the novice must choose. Preserve the
+original inline-values requirement, historical selected values, and pending
+novice/site acceptance. No Init or Viking journey ran.
 
 ## Reviewed overlaps without a saving claim
 
