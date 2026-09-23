@@ -304,12 +304,11 @@ permission to change or delete the source.
 - At `54f7b756`, F125–F126 addressed producer/publication ownership and Doctor
   detail/timing. Step 07, Step 10, CI, and test guides yielded no other claim.
   No execution ran.
-- A coordinator-contract, CV-card, and workflow-profile pass at local head
-  `777345b6` added F127–F129 for mixed validation chronology, duplicated
-  worker flag detail, and an unrouted intermediate guide. Bounded root,
-  Quickstart, operations, reference, and glossary comparisons found no further
-  distinct claim. The older local-check totals were not replayed; source and
-  tests were read without product, CI, or cluster execution.
+- At `777345b6`, coordinator, CV, and workflow review added F127–F129
+  (validation chronology, worker flags, unrouted guide). Root, Quickstart,
+  operations, reference, and glossary comparisons found no other claim.
+  Source and tests were read; older checks were not replayed, and no product,
+  CI, or cluster operation ran.
 - A test-guide, evidence-owner, and schema-language pass at local head
   `3ebfb2bf` added F130–F131, extended F107 to three owner contracts, and
   found no other distinct tooling or schema-index claim. No execution ran.
@@ -320,8 +319,7 @@ permission to change or delete the source.
   “regeneration.” At `f239a91d`, recheck dismissed F138, narrowed F134/F136/F137,
   and added F140; CV-23/Slurm-preview/operator rereads found no new candidate.
 - At `d18470c8`, five-word shingles across 1,515 paragraphs found 59 matches; paraphrases could escape.
-- At `2398f144`–`d55baa91`, F01–F153 were rechecked; F154–F159/F94
-  added or refined; F45/F79/F144–F146/F148–F149/F153 dismissed. No product/CI ran.
+- At `2398f144`–`d55baa91`, F01–F153 were rechecked, F154–F159/F94 added or refined, and F45/F79/F144–F146/F148–F149/F153 dismissed; no product/CI ran.
 - At `286f646a`, static stage-owner and schema checks added F173–F175; no product, test, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
@@ -346,7 +344,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 176 records, 67 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 178 records, 69 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -515,17 +513,19 @@ Of 176 records, 67 were dismissed after recheck; linked notes give reasons. The 
 | [F163](docs-01-discoveries-fifth.md#f163-optional-worker-threads-shown-as-required) | Internal help ambiguity | Four shell-worker usage blocks show `--threads` among required-looking options, while parsers and owner contracts default it to one. | Internal help wording differs from admitted arguments; Run resource policy and execution are unchanged and untested here. |
 | [F164](docs-01-discoveries-sixth.md#f164-optimization-bounded-delivery-repeats-workflow) | Process compression candidate | Optimization campaign's 14-line Bounded delivery section repeats workflow and backlog rules already linked in its opening. | A shorter campaign-specific account might save six to eight lines; retain exact benchmark binding and no parallel status ledger. Unverified. |
 | [F165](docs-01-discoveries-sixth.md#f165-cv-campaign-priority-history-repeats-delegated-index) | Chronology compression candidate | CV campaign's ten-line priority history repeats the delegated priority index and CV-05 correction. | A short route might save about six lines; retain later-added CV-11/12/22 and unprioritized CV-U/UX distinction. Unverified. |
-| [F166](docs-01-discoveries-sixth.md#f166-final-source-resource-policy-repeated-in-main-checklist) | Checklist compression candidate | Main closure checklist has a nine-line resource-policy review span that overlaps CV-U06 and the durable test-tool guide. | Five to six lines might be available only if the CI parallel/serial rule remains accessible with selected-profile identity and evidence limits. Unverified. |
+| [F166](docs-01-discoveries-sixth.md#f166-final-source-resource-policy-repeated-in-main-checklist) | Checklist compression candidate | Main closure checklist has a nine-line resource-policy review span that overlaps CV-U06 and the durable test-tool guide. | Three to four lines might be available only if the CI parallel/serial rule, selected-profile identity, pending hosted status, and evidence limits remain accessible. Unverified. |
 | [F167](docs-01-discoveries-sixth.md#f167-cv-campaign-remaining-delivery-summary-repeats-matrix) | Summary compression candidate | CV campaign's 28-line remaining-delivery block restates accepted matrix rows and delegated CV status; F03 covers its INIT-02 overclaim. | A 9–12-line owner route might save 16–19 lines; preserve inbound heading links, the no-new-execution limit, CV-U06/CV-10 exceptions, and distinct campaign authority. Unverified. |
 | [F168](docs-01-discoveries-sixth.md#f168-scheduler-stream-names-repeated-in-the-logging-contract) | Dismissed after recheck | Logging contract's scheduler passage repeats names already examined under dismissed F22. | The 5–7-line estimate added no new evidence; distinct logging and coordinator readers, plus unique local behavior, establish no useful saving. |
-| [F169](docs-01-discoveries-sixth.md#f169-runtime-discover-display-rule-repeated-in-the-coordinator-contract) | Small internal overlap | Coordinator contract repeats its shared color and plain-text rule in Runtime Discover guidance. | A four-line passage might become two lines; keep READY/NOT READY, no-write/admitted outcomes, verbose checks and seal. Saving is unverified. |
+| [F169](docs-01-discoveries-sixth.md#f169-runtime-discover-display-rule-repeated-in-the-coordinator-contract) | Dismissed after recheck | Coordinator contract repeats a brief shared color/plain rule beside Runtime Discover outcomes. | The local display guarantee helps that owner, and READY/NOT READY, no-write/admitted outcomes, verbose checks and seal are distinct; no useful saving is established. |
 | [F170](docs-01-discoveries-sixth.md#f170-first-watch-log-controls-before-a-run-exists) | Conditional reader ambiguity | Quickstart names Up/G as log controls immediately after watch; a queued request without a Run initially opens overview. | The existing Runbook gives `3`/`v` for evidence/log view; explicit Run selection already opens that view. Source checked, not exercised. |
 | [F171](docs-01-discoveries-sixth.md#f171-processing-reuse-link-opens-the-contract-at-its-top) | Link precision | Optimization campaign's “Processing reuse” link opens the top of the 1,248-line coordinator contract. | The exact reuse section has an existing anchor; this is reader navigation, not a reuse or performance defect. |
 | [F172](docs-01-discoveries-sixth.md#f172-glossary-detail-links-bypass-exact-owners) | Owner route | Glossary PDF/CSS links bypass their exact owners; BED12, FAI and RG links land on brief decisions despite the glossary's detailed-owner promise. | The scientific, sidecar, BAM and style owners retain exact detail; decision rationale and evidence limits remain valid. This is reader routing, not a behavior defect. |
 | [F173](docs-01-discoveries-sixth.md#f173-step-05-producer-read-group-exactness-overclaimed) | Producer-contract overclaim | Step 05 contract credits the producer with exact read-group ID/SM matching; its shell check accepts a sample-ID prefix, while grouped validation checks exact fields. | This is a producer-local claim mismatch, not evidence that a full Run admits malformed output. |
 | [F174](docs-01-discoveries-sixth.md#f174-step-06-verified-marker-contents-overstated) | Evidence-location ambiguity | Step 06 owner places tool versions and final hashes in the workflow verified record; the verified marker contains only a terminal-attempt reference. | Output hashes and tool versions remain reachable in separate linked records; no missing evidence is shown. |
-| [F175](docs-01-discoveries-sixth.md#f175-star-gzip-test-scope-ambiguous) | Test-scope ambiguity | Step 01 test guide says both compression modes are covered; its direct fake-STAR test uses plain bytes under `.gz` names and checks suffix-selected gunzip routing. | That test does not exercise gzip decoding through STAR; separate ingestion tests use genuine gzip data. |
+| [F175](docs-01-discoveries-sixth.md#f175-star-gzip-test-scope-ambiguous) | Dismissed after recheck | Step 01 test guide explicitly describes mocked STAR results; its direct test covers both suffix-selected compression branches. | The guide does not claim STAR decoding, so no false test-scope claim or useful reduction is established. |
 | [F176](docs-01-discoveries-sixth.md#f176-polish-campaign-closing-selection-paragraph-repeats-its-opening) | Campaign-policy overlap | Polish campaign's closing selection paragraph repeats its opening and the workflow's selection/status rules. | The adjacent terminal-disposition and content-transfer rule remains unique; a six-line saving is conditional and unverified. |
+| [F177](docs-01-discoveries-sixth.md#f177-cv-06-novice-failure-detail-repeated-across-cards) | Dated-account compression candidate | CV-06 recounts September 16 novice-path gaps detailed in CV-U08/U09/U11/U18/U20. | A 9–12-line saving is conditional; preserve the integrated failure, negative institutional evidence, Open checkpoint, and later correction. |
+| [F178](docs-01-discoveries-sixth.md#f178-cv-16-watch-failure-detail-repeated-across-cards) | Dated-account compression candidate | CV-16 recounts September 16 watch failures detailed in CV-U13/U14/U16/U17. | A 6–9-line saving is conditional; preserve the combined failure, screenshot's diagnostic ceiling, Open checkpoint, and later correction. |
 
 ## Discovery notes
 

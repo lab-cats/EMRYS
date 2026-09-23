@@ -299,7 +299,7 @@ explicit path, as the [contract](../../src/emrys/orchestration/run_coordinator/C
 lines 35–37 and direct test at
 `tests/orchestration/run_coordinator/test_onboarding.py:1929–1954` establish.
 Quickstart does not instruct `--project pum1-study` from the repository root;
-the [Runbook](../operations/RUNBOOK.md) lines 294–301 gives an absolute path.
+the [Runbook](../operations/RUNBOOK.md) lines 293–294 gives an absolute path.
 The earlier finding inferred a global-name promise the guide does not make,
 and no useful documentation reduction is established.
 

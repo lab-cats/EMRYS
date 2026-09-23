@@ -1,11 +1,11 @@
 # DOCS-01 discovery notes, sixth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F164–F176 and a recheck of F158. F164–F167 compare local head `f79bc435`; F168 and the
+holds F164–F178 and a recheck of F158. F164–F167 compare local head `f79bc435`; F168 and the
 F19/F64/F92 refinements compare `5aaa17f0`; F97/F107/F169 use `25f62591`;
 F170 uses `8ef78400`, F171–F172 use `c6ec1562`, and F173–F175 use
-`286f646a`; F158/F176 use `3de8366b`, and F124/F172 rechecks use
-`35668cc8`, read on 2026-09-23. The
+`286f646a`; F158/F176 use `3de8366b`, F124/F172 rechecks use
+`35668cc8`, and F166/F169/F175/F177–F178 rechecks use `8489836c`, read on 2026-09-23. The
 full coordinator contract and root/operator/owner history sweeps found no
 other substantial reduction. Counts are
 review spans and conditional arithmetic, not verified savings or approval to
@@ -53,10 +53,11 @@ already owns the fixture floor, allocation-aware defaults, disposable Slurm
 request, and performance ceiling. [CV-U06](cluster_verification_backlog.md#cv-u06-available-resources)
 lines 505–521 adds the selected-profile history and the all-visible-CPU versus
 ordered-serial CI rule; that rule has no identified durable owner outside the
-main checklist. A two-to-three-line checklist route could save roughly five to
-six lines only if it retains that rule or routes to a durable owner, and the
-exact selected-profile identity and evidence ceiling remain accessible. This
-is not a verified saving.
+main checklist. A four-to-five-line checklist route might save only three to
+four lines after retaining that rule, the exact selected-profile identity,
+pending hosted status, and the Viking/institutional evidence ceiling. Line 114
+is shared with the preceding sentence, so this is conditional arithmetic, not
+a verified saving.
 
 ### F167 — CV campaign remaining-delivery summary repeats matrix
 
@@ -91,16 +92,16 @@ no new evidence to reverse F22's conclusion; no useful reduction is established.
 
 ### F169 — Runtime Discover display rule repeated in the coordinator contract
 
-The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+**Dismissed after recheck at `8489836c`.** The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 289–297 defines shared labels, semantic emphasis, and unchanged plain,
 redirected, dumb-terminal and `NO_COLOR` output for Runtime Discover and other
 scientist-facing commands. Its Runtime Discover lines 321–324 retain unique
 `READY`/`NOT READY`, no-write/admitted outcomes, verbose checks, and any shared
 source seal, then repeat the common color/plain rule. Line 323 begins the
 unique seal continuation; 323–324 are a review span, not two removable lines.
-A two-line account of 321–324 might save two physical lines after reflow while
-keeping the unique outcomes and seal. No draft, net saving, or command result
-was verified.
+Only the closing color/plain clause overlaps. The local display guarantee is
+useful beside the Discover outcomes, and no worthwhile reduction from the
+four-line passage is established. No command result was verified.
 
 ### F170 — First-watch log controls before a Run exists
 
@@ -184,17 +185,18 @@ versions. Records were read from source definitions, not generated or checked.
 
 ### F175 — STAR gzip test scope ambiguous
 
-At local audit head `286f646a`, the [Step 01 test guide](../../tests/stages/star_alignment/README.md)
-line 3 says both compression modes are covered. Its [direct worker test](../../tests/stages/star_alignment/test_step_01_star_align.sh)
+**Dismissed after recheck at `8489836c`.** The [Step 01 test guide](../../tests/stages/star_alignment/README.md)
+line 3 explicitly describes mocked STAR results and says both compression
+modes are covered. Its [direct worker test](../../tests/stages/star_alignment/test_step_01_star_align.sh)
 lines 48–49 and 68–72 copies plain FASTQ bytes into `.gz`-named files; fake
 STAR at lines 20–44 records arguments and writes stand-in outputs without
-reading the FASTQs. The test checks selection of the gunzip command and mixed
-suffix rejection. Genuine gzip data appears in separate [FASTQ admission](../../tests/ingestion/sample_manifest_admission/test_check_fastq_pairs.py)
+reading the FASTQs. The test checks the worker's actual suffix-selected gunzip
+branch and mixed suffix rejection. Genuine gzip data appears in separate [FASTQ admission](../../tests/ingestion/sample_manifest_admission/test_check_fastq_pairs.py)
 lines 25–39 and 85–105 and [onboarding](../../tests/orchestration/run_coordinator/test_onboarding.py)
-lines 1264–1307 tests, which have different owners. The guide's phrase may mean
-both suffix branches, which are covered; it could also be read as claiming
-decoding through STAR, which this test does not exercise. No missing product
-behavior or real-run failure is established, and no test was executed here.
+lines 1264–1307 tests, which have different owners. The mocked guide does not
+claim decoding inside STAR, and its branch coverage matches the worker's
+choice. No false scope claim or useful DOCS-01 reduction is established; no
+test was executed here.
 
 ### F176 — Polish campaign closing selection paragraph repeats its opening
 
@@ -210,6 +212,45 @@ remain. Removing only the repeated first paragraph and its following blank
 could save six physical lines, conditional on a draft and link check. This is
 distinct from F140's earlier 21-line generic procedure and F160's seven-card
 follow-up list. No replacement or net saving has been verified.
+
+### F177 — CV-06 novice failure detail repeated across cards
+
+At local audit head `8489836c`, [CV-06](cluster_verification_backlog.md#cv-06-actual-data-onboarding)
+lines 2540–2560 spends 21 physical lines recounting the September 16 guided
+Viking novice-path failure. The reference/selector sequence is detailed in
+[CV-U18](cluster_verification_backlog.md#cv-u18-interactive-input-list-creation)
+lines 1143–1164; external FASTA/GTF and stop guidance in
+[CV-U20](cluster_verification_backlog.md#cv-u20-complete-viking-values-in-quickstart)
+lines 1281–1290; command grouping and creation handoff in
+[CV-U11](cluster_verification_backlog.md#cv-u11-paste-ready-quickstart-commands)
+lines 753–760; and optional smoke/readiness in
+[CV-U08](cluster_verification_backlog.md#cv-u08-quickstart-scope-and-language)
+lines 592–603 and 621–625 and [CV-U09](cluster_verification_backlog.md#cv-u09-synthetic-project-explanation)
+lines 692–701. CV-06 uniquely records that these gaps failed as one guided
+journey. A dated, linked 9–12-line account might save 9–12 lines, conditional
+on actual wrapping. It must retain the four-gap grouping, negative
+institutional evidence, and **Open** status at that checkpoint. The September
+18 correction and later status at 2562–2570 are separate. The priority index
+links to the CV-06 heading; no replacement or net saving was verified.
+
+### F178 — CV-16 watch failure detail repeated across cards
+
+At local audit head `8489836c`, [CV-16](cluster_verification_backlog.md#cv-16-monitoring-dashboard)
+lines 3186–3202 spends 17 physical lines recording the combined September 16
+Viking watch failures. Selection is detailed in
+[CV-U13](cluster_verification_backlog.md#cv-u13-watching-progress) lines 884–891;
+monocolor logs in [CV-U14](cluster_verification_backlog.md#cv-u14-dashboard-logs)
+lines 943–948; navigation and bounded-tail limits in
+[CV-U16](cluster_verification_backlog.md#cv-u16-dashboard-scrolling) lines 1008–1018;
+and the contradictory `36/36` screenshot in
+[CV-U17](cluster_verification_backlog.md#cv-u17-completion-communication)
+lines 1090–1101. CV-16 uniquely says these failures together returned the
+integrated card to **Open** after hosted parity. A linked account might save
+6–9 lines from this 17-line span, conditional on wrapping, while keeping the
+combined operator failure and the screenshot's diagnostic, not scientific,
+evidence ceiling. The September 18 correction at 3204–3214 stays separate;
+the priority index links to the CV-16 heading. No replacement or net saving
+was verified.
 
 ## Other focused source comparisons at `8ef78400`
 
@@ -310,3 +351,17 @@ overlaps were already recorded or carried distinct owner details. A broad
 runtime-owner link to the Runbook was retained on review because Project
 readiness spans several operator sections. No test, CI, site, or scientific
 validation ran.
+
+## Current-head reconciliation at `8489836c`
+
+The non-audit diff from original scope revision `3a672fdf` to this head changes
+only the Runbook and the DOCS-01 row in the main backlog. The approved Runbook
+slice replaces 75 physical lines with 35, a net reduction of 40; F05/F21/F23/
+F48/F70/F83 were rechecked against that text. F48's absolute-path citation was
+narrowed to current lines 293–294; the other five retain their recorded limits.
+
+A standard-library, read-only scan of all 177 tracked Markdown files found
+2,050 inline link matches, 72 reference definitions and 621 fragments, with
+no unresolved local destinations or headings under the repository's slug rule.
+This scan does not parse or render CommonMark and does not replace the official
+documentation check. No product, test, CI, or cluster command ran.
