@@ -196,11 +196,11 @@ provider/reporter installation, discovery, execution, validation, reporting,
 identity, and no-parallel-framework criteria at 634–641 and 643–650. The
 [main matrix](backlog_matrix.md) line 70 already owns the accepted checklist.
 The polish finding at 626–632 uniquely explains why its sampled composition
-test does not prove real entry-point discovery. The versioned-interface,
-bounded Step 09/optional Step 10, and no-conformance-service language at
-647–649 also needs a destination check before any reduction. The 31-line
-section is a review span, not a verified saving or permission to discard
-evidence.
+test does not prove real entry-point discovery. Its ban on a generic workflow
+DSL and test-only production behavior at 638–639, plus the versioned-interface,
+bounded Step 09/optional Step 10, and no-conformance-service limits at 647–649,
+need a destination check before any reduction. The 31-line section is a review
+span, not a verified saving or permission to discard evidence.
 
 ### F143 — Unrouted reporting run-contract example
 

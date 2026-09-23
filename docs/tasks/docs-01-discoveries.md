@@ -306,12 +306,12 @@ live purpose is to avoid reselecting finished work; Git already retains
 routine chronology. The first table is not ready for wholesale replacement:
 lines 1008–1009 uniquely map PR #128/#134 and #129/#132/#133 to their slices,
 and the latter trio has no other current Markdown mapping. Their owner and
-evidence crosswalk is unresolved. The second table is more redundant: item
-decisions at lines 450–457, 469–477, and 514–535 cover
-PR #140–143; decision and reporting-owner text cover #144–145 and #147;
-the canonical BAM contract records the current create-exclusive rule and
-retired loss characterization behind #146. A shorter merged-work route may
-be viable after the first-table crosswalk. The CodeQL ruleset caveat
+evidence crosswalk is unresolved. The second table repeats outcomes at
+450–457, 469–477, and 514–535 for PR #140–143; current owners describe
+#144–147 behavior. Exact #144/#145/#147 PR-to-slice mappings appear only
+in this table; the canonical BAM contract retains #146's create-exclusive
+rule and retired loss boundary. No table saving is verified without those
+mappings. The CodeQL ruleset caveat
 at 984–989, recovery and CS-18 distinctions at 1027–1032, excluded PR #44/#45
 experiments at 1034–1039, and the campaign's evidence ceiling at 35–85 remain
 distinct. The same-file link at line 76 targets the enclosing heading and
@@ -390,15 +390,15 @@ procedural sequence. Their overlap does not justify deleting either wholesale.
 
 ### F19 — Doctor experiment evidence in workflow README
 
-[Workflow README](../../.github/workflows/README.md) lines 24–38 summarizes a
-retired two-worker Doctor namespace experiment. The
-[CV backlog](cluster_verification_backlog.md) lines 3949–3995 already preserves
-the fuller record: exact run `34995028343`, artifact identity, trials, sampled
-RSS, caveats, and decision. That CV card is the evidence source for any
-transfer to [history](../history/README.md); the workflow guide's current
-summary overlaps it. Exact measurements and the uncontrolled-cache,
-shared-page, and missed-peak limits remain evidence. No evidence deletion
-is authorized.
+[Workflow README](../../.github/workflows/README.md) lines 24–38 gives a
+15-line completed Doctor experiment account: run and revision, four-trial
+summary, mean time/RSS, limits, retirement, and the surviving driver. The
+[CV backlog](cluster_verification_backlog.md) lines 3949–3995 holds these facts
+plus the artifact identity and trial-level measurements. Workflow lines 3–22
+own current CI lanes; the experiment section gives no active lane instruction.
+Its “probes remain serial” decision agrees with the CV card. The 15 lines are
+a review span, not a measured saving; exact results, uncontrolled cache,
+shared-page and missed-peak limits remain evidence. No deletion is authorized.
 
 ### F20 — Independent golden migration comparisons
 
@@ -450,11 +450,11 @@ remains a separate Run/Task/Results authority; retain links to both when a
 sentence addresses both boundaries. No safe prose deletion is established.
 
 The coordinator [README](../../src/emrys/orchestration/run_coordinator/README.md)
-lines 68–71 says its later-section link covers watch selection, but exact
-watch/request selection chiefly lives at contract lines 56–67 and 470–681.
-The anchor exists; its destination is narrower than that README promise. At PR
-head `0cb5d507`, the Runbook's Init mechanics link (lines 310–312) also lands
-in the broad no-write section, so its navigation precision remains limited.
+lines 68–71 links the later section for watch selection, chiefly at contract
+56–67 and 470–555; watch admission is at 557–681. [Runbook](../operations/RUNBOOK.md)
+34–37 and 117–119 links there for request/log admission and watch diagnostics.
+The anchor exists; the later section owns Results/recovery. At PR head
+`0cb5d507`, Runbook Init lines 310–312 also use the broad no-write anchor.
 
 ### F22 — Coordinator cross-owner detail
 

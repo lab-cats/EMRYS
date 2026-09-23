@@ -11,6 +11,8 @@ These are observations, not accepted changes or a task-status registry.
 
 ### F30 — Dashboard reporting-stage text
 
+**Dismissed for DOCS-01 at `60659099`.** This is product-facing source copy,
+not an existing guide or contract; the observation grants no product edit.
 [Dashboard source](../../src/emrys/orchestration/run_coordinator/dashboard.py)
 lines 183–202 tells watch readers that reporting uses three dependent
 transactions and that a final workflow target follows reporting. Its rule map
@@ -183,6 +185,7 @@ central synthetic roster checks alone cannot establish actual output meaning.
 
 ### F40 — Concurrency in the local workflow profile
 
+**Dismissed after recheck at `60659099`.**
 [Local profile README](../../src/emrys/workflow/profiles/local/README.md)
 lines 5–7 says the Execution Plan and Attempt supply “sample concurrency.”
 The current [resource schema](../../src/emrys/contracts/schemas/orchestration/v3/resource_config.schema.json)
@@ -331,23 +334,19 @@ Project selector at `onboarding.py:270–285` does not consult it. The
 `project.yaml` example for Project-aware commands. That distinction matters
 for the root route's global name-lookup implication after setup.
 
-### F49 — Incomplete allocation-recovery command
+### F49 — Allocation preview needs execution-flag boundary
 
-[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 222–225 tells a
-reader with a rejected allocation or scratch path to preview the submission
-with only `--verbose </dev/null`. This fragment names neither an `emrys`
-operation nor its Project/Run selector. `--verbose` belongs to the relevant
-leaf parser; the failed submission may be Run, resume, report, or Doctor
-repair. The [control parser](../../src/emrys/orchestration/run_coordinator/control.py)
-lines 1800–1868 shows command-specific controls. The fragment omits the
-operation and selector; an exact preview command would also lack `--execute`.
-This is an actionability gap, not a demonstrated parser failure.
-The [Runbook](../operations/RUNBOOK.md) lines 401–411 supplies a complete
-`emrys run </dev/null` preview. Run, resume, and report each accept
-`--execute` (`control.py:1800–1868`); Doctor accepts it only with `--repair`
-(`doctor.py:1989–1996,2023–2029`). Redirecting stdin to `/dev/null` does not
-undo an explicit `--execute`. A no-write promise depends on the exact failed
-operation and absence of that flag.
+[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 222–225 asks a
+reader with a rejected allocation or scratch path to preview the prior
+submission with `--verbose </dev/null`. The prior command supplies its
+operation and Project/Run selector; this is not a parser or standalone-command
+defect. The [Runbook](../operations/RUNBOOK.md) lines 401–411 gives a complete
+`emrys run </dev/null` preview without `--execute`. Run, resume, and report
+accept `--execute` ([control parser](../../src/emrys/orchestration/run_coordinator/control.py)
+lines 1800–1868); Doctor accepts it with `--repair`
+(`doctor.py:1989–1996,2023–2029`). Input redirection cannot neutralize a
+retained `--execute`; the no-write reading depends on the exact prior command.
+No such command was exercised in this audit.
 
 ### F50 — Submission-request version in the coordinator contract
 
