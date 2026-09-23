@@ -316,6 +316,10 @@ lines 957–1036. The card separately retains Viking timeout job `621154` at
 2853–2873 and 2914–2947, pending hosted/site acceptance at 2963–2966, and the
 owner-accepted recycled-inode trust limit at 2968–2979. F102 concerns the E09
 example inside the current contract, not this card's mixed roles. The
+[contract's Linux subreaper rules](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+at 1068–1078 overlap CV-10 at 2816–2840. Keep the coordinator's positive
+descendant-closure criteria, non-Linux fallback, and external-service limit;
+CV-10 retains the accepted rationale, tests, dates, and exact evidence. The
 [closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
 requires exact evidence and limits to survive any temporary-card retirement.
 No evidence was moved and no safe reduction was established.

@@ -320,12 +320,14 @@ destination if that section is reshaped.
 
 ### F17 — Main backlog chronology and run repetition
 
-The [main backlog](backlog_matrix.md) around lines 313, 343, and 349 includes
-PR genealogy. Lines 340–356 cite hosted run `34306975901` in three distinct
-accepted rows. The repeated row-local citation helps each acceptance stand
-alone and need not be removed. Routine PR chronology is the candidate overlap;
-unique baseline, measurement, evidence limits, acceptance criteria, and task
-status remain separate.
+The [main backlog](backlog_matrix.md) line 313 records 93-commit PR ancestry;
+lines 343 and 349 restate PR #140/#148/#169 integration genealogy. Git and
+the linked PRs retain that routine history. Lines 305–311 preserve the agreed
+baseline and measurement rule; 316–325 retain surface totals; 333–350 bind
+hosted checks and their evidence limit to revisions. Rows 354–356 each cite
+run `34306975901` for distinct accepted outcomes; row-local proof helps
+acceptance stand alone. Only routine genealogy is a compression candidate;
+no line saving or removal of exact validation evidence is established.
 
 ### F18 — History filing rule and existing compendium
 
@@ -436,12 +438,13 @@ selection (56–67) differs from dated view, refresh, and action rules
 (557–681). The second pass found navigability pressure, not proven deletable
 duplication. The topic map below distinguishes independent refusals and
 evidence levels; any size disposition remains with SIZE-01.
-The deeper pass mapped possible subheadings without deleting prose: Init
-preview/publication 89–151; Validate/Doctor 153–182; Init continuity 184–215;
-Doctor plans/timing 217–287; managed runtime 299–339; Run/Slurm planning
-365–409; submission request 410–468; request/Run inspection 470–556;
-watch diagnostics 557–681; exact-request stop 682–717. Coordinator README
-68–71 and Runbook 36, 118, 161, and 722 can then link to precise anchors.
+The section's existing topics are Init preview/publication 89–151;
+Validate/Doctor 153–182; Init continuity 184–215; Doctor plans/timing
+217–287; managed runtime 299–339; Run/Slurm planning 365–409; submission
+request 410–468; request/Run inspection 470–556; watch diagnostics 557–681;
+and exact-request stop 682–717. Coordinator README 68–71 and Runbook 36,
+118, and 161 route readers to one of two broad contract sections. Their
+target precision is at issue; no DOCS-01 reduction is demonstrated.
 The later `Resume, inspection, Results, and reporting` section at 1141–1223
 remains a separate Run/Task/Results authority; retain links to both when a
 sentence addresses both boundaries. No safe prose deletion is established.
@@ -455,27 +458,25 @@ in the broad no-write section, so its navigation precision remains limited.
 
 ### F22 — Coordinator cross-owner detail
 
-The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 236–287 owns Doctor observation and admission timing; the
-[logging contract](../design/LOGGING_CONTRACT.md) lines 172–189 owns emitted
-event shape and flushing. Coordinator runtime orchestration at lines 326–339
-overlaps the
+The [coordinator README](../../src/emrys/orchestration/run_coordinator/README.md)
+lines 45–56 summarizes setup/site, repair, shared-generation, Slurm
+qualification, and profile rules already held by the contract at 69–99,
+153–174, 313–339, and 729–749. Its responsibility table at 31–41 and owner
+links remain distinct; 12 lines are a review span, not a saving. The
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 236–287 owns Doctor timing; the
+[logging contract](../design/LOGGING_CONTRACT.md) lines 172–189 owns event
+shape and flushing. Coordinator runtime orchestration at 326–339 overlaps the
 [runtime owner](../../src/emrys/evidence/runtime_availability/README.md)
-lines 85–104 on generation replacement, exact selectors, and fixed-content
-limits. The [Runbook](../operations/RUNBOOK.md) lines 643–654 repeats the
-replacement lifecycle but supplies the operator's selector and commands;
-the three passages are a review scope, not a measured saving. Coordinator
-lines 313–325 separately explain cross-Project publication,
-no-write behavior, prompts, and output; runtime-owner lines 70–83 define the
-seal and selector formats. Watch
-keys at contract lines 622–624 also appear in the Runbook table at lines
-96–104; presentation lines 289–297 overlap label/value and plain-output rules
-in the [logging owner](../../src/emrys/libraries/application_logging/README.md)
-at lines 13–17. The contract adds prompt/default hints, `NAME=value` fields,
-mouse handling, and sanitized evidence-view guarantees. These are narrow
-summary overlaps across distinct trust boundaries. Command handoff, runtime
-admission, logging event rules, and operator keys have separate owners;
-cross-owner summaries can explain a real handoff.
+lines 85–104 on replacement, selectors, and fixed-content limits. The
+[Runbook](../operations/RUNBOOK.md) lines 643–654 repeats that lifecycle but
+owns operator commands; coordinator 313–325 owns cross-Project publication,
+prompts and output, while runtime owner 70–83 owns seal/selector formats.
+Watch keys at contract 622–624 also appear in Runbook 96–104; presentation
+289–297 overlaps the [logging owner](../../src/emrys/libraries/application_logging/README.md)
+at 13–17. The contract adds prompt/default hints, `NAME=value`, mouse and
+sanitized evidence-view rules. These summaries serve distinct command,
+runtime-admission, logging, and operator boundaries; no saving is established.
 At pinned revision `b65e8fb8`, the [logging contract](../design/LOGGING_CONTRACT.md)
 lines 191–235 also repeats current/legacy Slurm request and stream names and
 stop-intent details from coordinator lines 410–429, 461–468, and 691–698.

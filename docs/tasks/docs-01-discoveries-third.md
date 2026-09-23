@@ -465,19 +465,18 @@ net-line opportunity; no edit or saving was verified.
 
 ### F92 — Python lock checks before institutional R restoration
 
-The [Runbook](../operations/RUNBOOK.md) lines 685–694 places Python lock and
-workflow-environment checks before its institutional R restore procedure.
-The [engineering guide](../operations/ENGINEERING_CONVENTIONS.md) lines 77–85
-already lists developer lock checks. The displayed `r-restore` and `r-check`
-[Make targets](../../scripts/make_quality.mk) lines 92–110 invoke R without
-uv; the [restore script](../../src/emrys/resources/runtime/restore_r_environment.R)
-at 43–82 requires `RENV_PROJECT`, R 4.6.1, and an existing selected renv
-lockfile before restoring.
-This path does not establish Python checks as direct command prerequisites.
-The Runbook's R 4.6.1, external `RENV_PROJECT`, library/cache,
-check, and recovery instructions at lines 696–726 serve a separate operator
-need. Whether the preceding Python checks are an independent institutional
-policy gate is unverified; no restoration was run.
+The [Runbook](../operations/RUNBOOK.md) lines 685–694 places a ten-line Python
+lock/workflow check prelude before institutional R restoration. The
+[engineering guide](../operations/ENGINEERING_CONVENTIONS.md) lines 77–85
+owns developer lock checks. The displayed `r-restore` and `r-check`
+[Make targets](../../scripts/make_quality.mk) lines 92–110 call R without uv;
+the [restore script](../../src/emrys/resources/runtime/restore_r_environment.R)
+at 43–82 requires `RENV_PROJECT`, R 4.6.1, and a selected renv lock. The
+[R owner](../../src/emrys/renv/README.md) lines 16–25 routes operator
+restoration to the Runbook but does not name Python checks. This source path
+does not establish them as direct R prerequisites. The prelude is a compression
+review span; an independent institutional gate remains unverified. Preserve
+R commands, library/cache, checks and recovery at 696–726. No restore ran.
 
 ### F93 — Repeated partition selector rule
 

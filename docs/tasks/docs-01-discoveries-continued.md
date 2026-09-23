@@ -34,17 +34,17 @@ Run completion.
 
 ### F31 — Historical Slurm username recovery advice
 
-[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 65–72 tells a reader
-with Snakemake's `No username set in the environment` to “Update EMRYS to the
-submission fix,” without identifying a fixed revision or distinguishing a
-current installation. The [backlog incident](backlog_matrix.md) lines 243–252
-records the original failure and fix; current
-[submission code](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
-lines 861–870 preserves four login-name variables, with direct source tests
-at `tests/orchestration/run_coordinator/test_slurm_submission.py:2027–2099`.
-The incident and safe resume/evidence advice remain relevant. The installed
-revision and actual submission diagnostic are absent from this current-version
-recovery instruction; this audit has not reproduced a current Slurm failure.
+[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 65–72 mixes a current
+Snakemake error and Run recovery with an undated older-submission cause,
+four-variable export list, and “Update EMRYS to the submission fix.” The
+[backlog incident](backlog_matrix.md) lines 243–252 and
+[CV card](cluster_verification_backlog.md) lines 2392–2404 retain the original
+failure and startup boundary; the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 375–382 and [submission source](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
+lines 861–870 own the exact export list, checked by direct source tests at
+`tests/orchestration/run_coordinator/test_slurm_submission.py:2027–2099`.
+No fixed installed release or current Slurm failure was established. Preserve
+error, Run inspection/resume, and evidence; historical cause and variable list are only a review span.
 
 ### F32 — Mermaid check's stated ceiling
 
