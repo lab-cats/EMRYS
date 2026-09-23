@@ -68,7 +68,7 @@ discovery below and names the next evidence needed before changing authority.
 | Finding | Baseline discovery | Next verification or disposition |
 | --- | --- | --- |
 | 1. Status vocabulary and placement | The baseline matrix left `Needs decision` undefined, the delegated backlog used `Discard`, and two Completed rows sat under Active backlog. | Both terms are now defined narrowly; the completed rows moved without status or acceptance changes. |
-| 2. `INIT-02` and dependent onboarding claims | Automatic maintained-study selection is Open, but CV summaries call `INIT-01`–`INIT-03` source-complete. Quickstart supplies a manifest path explicitly. | Present-tense summaries are corrected in this branch. Review CV-06, CV-U08, CV-U20, and CV-U21 against their own acceptance before any status change. |
+| 2. `INIT-02` and dependent onboarding claims | Automatic maintained-study selection is Open, but CV summaries called `INIT-01`–`INIT-03` source-complete. Quickstart supplies a manifest path explicitly. | Summaries are corrected; installed study-file delivery and no-argument selection remain before hosted and novice acceptance. |
 | 3. `CV-U22` runtime reuse | The card remains Open for compatible-donor discovery before installation; the documented known-smoke route is narrower. | Retain Open and the no-silent-donor rule; distinguish known-smoke evidence from the undecided general selection design. |
 | 4. `CV-26` Doctor cost | One redundant full diagnosis was removed; original complete-operation attribution and comparable measurements remain Open. | Separate exact retained measurements and the serial-probe decision from implementation checkpoints and unmeasured speedup claims. |
 | 5. Dashboard retirement | The matrix says the standalone entry point and callers are retired; several CV summaries still say that retirement remains. | Current-sounding text is corrected in this branch; keep shared watch code, historical readers, and pending visual verification. |
@@ -77,7 +77,7 @@ discovery below and names the next evidence needed before changing authority.
 | 8. Compression closeout chronology | The completed section combines the user closure, quantified shortfall, exact CI, and PR chronology. | The [dated record](../history/2026-09-14-compression-closeout.md) matches material source decisions and evidence limits; retain the closure decision and request separate authority before shortening source evidence. |
 | 9. CV card checkpoint narratives | Detailed cards repeatedly recount Open-to-implemented-to-pending transitions alongside live acceptance. | The 61-card first pass and CI wording correction are recorded below; transfer exact observations and decisions before any shortening. |
 | 10. Polish chronology and overlap | The campaign contains an old audit/PR narrative and merged-PR tables plus proposals already implemented elsewhere. | The [retention map](polish_finding_disposition_review.md#polish-audit-and-pr-chronology-retention-map) separates Git-only chronology candidates from unique decisions and evidence; transfer checks remain before compression. |
-| 11. Optimization source drift | The September 7 audit is correctly pinned, but most cited source blobs changed by the baseline. Candidates 8 and 12 have materially changed source premises. | Re-evaluate all 13 candidates against current owners and measurements without converting old proposals into defects. |
+| 11. Optimization source drift | The September 7 audit is correctly pinned, but most cited source blobs changed by the baseline. Candidates 8 and 12 had materially changed source premises. | All 13 now have a source-only comparison; numeric counts and initial priority are dated, while benefit and selection need workload evidence. |
 | 12. Time-bound campaign authority | The charter repeated earlier development authority and a then-running job as present-tense guidance. | The grant and job observation are now dated; current authority and active-installation safety retain their owners. |
 | 13. Polish proposals versus current owners | Several original findings describe capabilities now delivered; others retain a live gap. | The [per-item review](polish_finding_disposition_review.md) maps all 44 findings and five architecture options; item 6 is reproduced locally, item 11 has a confirmed group mismatch, and remaining decisions stay unselected. |
 | 14. `HARNESS-01` status versus source gap | The row is Verification pending, yet its acceptance names a remaining test-simulation admission mismatch also visible in fixtures and production records. | Recommend Open under the matrix vocabulary, subject to fixture and retained-reader review; keep controlled simulation proof distinct from scientific execution. |
@@ -202,11 +202,6 @@ new v4 streams use the current names while older names remain readable. The
 checkpoint text still assign standalone retirement as future work. The
 matrix's dated compression closeout at lines 330–331 says replacement still
 requires validation, which described its earlier checkpoint.
-
-**Next:** Check console entry points, current submission names, and historical
-readers at the baseline. Then update current-sounding summaries while retaining
-legacy-reading compatibility and the remaining standard-CI/institutional
-visual verification.
 
 **Source comparison:** [`pyproject.toml`](../../pyproject.toml) lines 39–40
 exports only `emrys`; the tree contains no standalone dashboard wrapper or
@@ -435,10 +430,9 @@ audit. The PR45 experiment at lines 329–339 states limited observed gains and
 an unmet experiment gate; that evidence must not be presented as a current
 whole-Run speedup.
 
-**Next:** Recheck candidates 1–13 against the current production owner,
-callers, resources, and retained measurements. Mark observations as surviving,
-superseded, or unresolved only after that comparison. Keep scientific and
-recovery constraints even where an optimization proposal is retired.
+**Next:** Select an objective and representative workload before any candidate
+implementation; keep scientific and recovery constraints and measure benefits
+against comparable current Runs.
 
 **Candidate-by-candidate source pass:** The comparison below checks mechanism
 only. No new benchmark, representative workload, physical-I/O measurement,
