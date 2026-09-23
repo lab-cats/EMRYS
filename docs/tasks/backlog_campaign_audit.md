@@ -528,35 +528,35 @@ chronology. The companion review proposes no deletion.
 `HARNESS-01` Verification pending while its acceptance explicitly requires
 reconciling a remaining `local-science-tools` naming/admission mismatch.
 The [workflow fixture](../../tests/orchestration/run_coordinator/fixtures/workflow.py)
-line 1015 emits that mode; a
-[test callback](../../tests/orchestration/run_coordinator/test_materialization.py)
-at lines 6350–6371 injects storage/runtime admission. The mode remains in the
-production [Attempt schema](../../src/emrys/contracts/schemas/orchestration/v1/workflow_attempt.schema.json)
-line 146 and [materialization](../../src/emrys/orchestration/run_coordinator/materialization.py)
-line 1499. The matrix defines Verification pending as implementation
-appearing complete with evidence outstanding, which does not plainly describe
-this named source/contract mismatch.
+line 1015 emits that mode; [materialization](../../src/emrys/orchestration/run_coordinator/materialization.py)
+line 1499 writes it in production. The matrix's Verification pending definition
+assumes complete implementation with evidence outstanding; the mismatch remains.
 
-**Disposition recommendation:** Under the matrix's stated vocabulary,
-`HARNESS-01` should be Open at this baseline: the fixture still emits the
-production execution mode while bypassing the admission that mode names.
-Before changing the accepted row, trace every fixture and retained-record
-reader. A selected correction must either perform real admission or name the
-injected simulation explicitly while preserving partial-failure/resume tests.
-Do not rename the production mode or remove the schema's `test-double` value
-without a separate compatibility review. This review changes no status.
+**2026-09-22 source check:** The fixture writes plain text into
+`storage.qualified.json`, hashes it, and binds Python, SHA-256 Python,
+Snakemake, and storage identities without a runtime profile or `renv` library.
+The [test callbacks](../../tests/orchestration/run_coordinator/test_materialization.py)
+at lines 6350–6371 assert the mode while replacing storage/runtime admission;
+another lifecycle seam also injects those callbacks. Production
+[lifecycle](../../src/emrys/orchestration/run_coordinator/lifecycle.py)
+re-admits storage, installed package, runtime profile, R library, and probes.
+These no-science cases exercise controlled orchestration failure/resume, not
+scientific-runtime admission.
+
+**Disposition recommendation:** Open fits the matrix vocabulary: the fixture
+emits the production mode while bypassing its admission at this baseline.
+Trace every fixture and retained reader before changing the accepted row. A
+selected correction must either perform real admission or name the injected
+simulation explicitly, retaining partial-failure/resume tests; no status changes.
 
 **Boundary check:** The production [contract](../../src/emrys/contracts/orchestration/api.py)
-lines 483–494 requires Python/storage qualification for local science mode;
-[lifecycle](../../src/emrys/orchestration/run_coordinator/lifecycle.py) lines
-1343–1366 performs actual admission. The fixture writes a fake storage
-qualification, emits the same mode, and injects callbacks that assert names
-without semantic admission; test-owned producers/validators prove controlled
-failure and resume, not scientific runtime. Separately, the schema accepts
-`test-double` at line 145 with weaker mode-specific identity requirements,
-but no production writer was found. Retained Attempt readers include schema
-admission and immutable mode equality. This is a contract-retirement candidate,
-not permission to rename/remove a mode without compatibility review.
+requires controlled SHA-256 Python and storage-qualification tool entries for
+local science mode. The
+[Attempt schema](../../src/emrys/contracts/schemas/orchestration/v1/workflow_attempt.schema.json)
+still reads `test-double`; no production writer was found. Commit `41846495`
+retained that vocabulary for historical records. Inspection admits retained
+Attempts and resume compares immutable execution modes. Schema retirement is
+a separate compatibility decision, not an automatic harness correction.
 
 ## Retention boundary for later edits
 
