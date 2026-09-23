@@ -26,9 +26,9 @@ gates, and institutional evidence limits. The delivery section's useful local
 points are retiring superseded scans/allocations across affected callers,
 binding exact benchmark evidence to the tested revision, and refreshing old
 candidate observations without a parallel status ledger. No tracked Markdown
-link targets its heading. A six-to-eight-line campaign-specific section could
-save roughly six to eight of the 14 lines, conditional on a draft and link
-check; no saving has been verified.
+link targets its heading. At `a9efa22d`, a heading-preserving seven-line
+account suggests seven local lines, conditional on a draft and link check;
+no saving has been verified.
 
 ### F165 — CV campaign priority history repeats delegated index
 

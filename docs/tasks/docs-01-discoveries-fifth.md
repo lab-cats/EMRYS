@@ -175,8 +175,9 @@ owns this selection and delivery process; the
 not every campaign slice. The campaign's explicit no-parallel-framework list
 at 92–95, tooling-only footprint exception at 98–101, and separate-selection
 warning at 13–20 remain specific, as does its dated source audit at 35–80.
-An eight-to-eleven-line linked route might save 10–13 lines if it keeps those
-limits; no draft or net saving is verified. Evidence deletion needs separate approval.
+At `a9efa22d`, an 11-line linked route suggests ten local lines; denser
+savings are unverified. No tracked Markdown link targets this heading. No
+draft, net saving, or evidence-deletion authority is established.
 
 ### F141 — Retired alpha renderer name in the report owner
 
