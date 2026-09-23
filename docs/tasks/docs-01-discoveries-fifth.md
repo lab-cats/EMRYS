@@ -85,18 +85,17 @@ does not show a graph, scheduling, or scientific-result defect.
 
 ### F134 — CV-25 implementation account beside current log owners
 
+**Dismissed for DOCS-01 after recheck at `f4ba7662`.**
 The completed [CV-25 card](cluster_verification_backlog.md#cv-25-log-discovery-and-readable-output)
-lines 3689–3746 spends roughly 58 lines on the Task-log, started-stream, and
-Run-selected log-discovery implementation and verification sequence. The
+lines 3689–3746 records three Task-log and log-discovery slices with distinct
+checks and evidence limits. The
 [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 532–555, 663–671, and 1184–1196 owns current log-root precedence,
 association, Task-log admission, and diagnostic limits; the [Runbook](../operations/RUNBOOK.md)
-lines 17–37 gives the operator's selected-Run route. The CV card mixes current
-mechanics with dated test and CI genealogy. Its original E01–E06 discovery
-need, explicit-identity/no-guessed-latest acceptance, hosted-only Completed
-disposition, historical Attempt/start limits, and separate institutional and
-retirement boundaries remain evidence. This is a placement review, not a
-verified 58-line saving or permission to delete the record.
+lines 17–37 gives the operator route. Neither replaces the CV card's original
+E01–E06 need, selected interface, dated tests/CI, hosted-only completion, or
+institutional limits. The 58 lines are history and acceptance context, not a
+safe saving or permission to delete evidence.
 
 ### F135 — CV-24 repeats the current watch action protocol
 
@@ -122,9 +121,9 @@ at 854–857. [Materialization source](../../src/emrys/orchestration/run_coordin
 lines 328, 891, and 1042–1059 confirms the implementation; the
 [coordinator index](../../src/emrys/orchestration/run_coordinator/README.md)
 lines 29–40 already maps `materialization.py` to planning. The helper names
-have no evident public or recovery role. The seven-line passage also holds
-public composition at 852–853 and distinct STAR/reference/input/R construction
-at 857–858; both must remain legible. No net saving is measured here.
+have no evident public or recovery role. Only 854–857's helper narration is a
+2–3-line candidate; retain public composition at 852–853 and distinct
+STAR/reference/input/R construction at 857–858. No net saving is measured.
 
 ### F137 — Reporting artifact format in the coordinator contract
 
@@ -463,7 +462,7 @@ F149 covers watch selection across other CV cards, not this usage policy.
 
 The [CV campaign charter](cluster_verification_campaign.md) lines 128–133
 restates the [main closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
-at 125–131; the charter already links it at 154–155. Six lines becoming one
+at 125–140; the charter already links it at 70 and 154–155. Six lines becoming one
 route suggests five fewer physical lines, conditional on a draft and link
 check, not a verified saving. Lines 135–142 also retain CV-01's continuing
 role and three institutional combinations; the [E01–E12 register](cluster_verification_campaign.md)
@@ -472,20 +471,18 @@ This review does not authorize retiring the campaign or deleting evidence.
 
 ### F159 — Polish integration genealogy repeated in its introduction
 
-At local audit head `688f7117`, the [polish campaign](polish-campaign.md)
-lines 68–76 recount PR #139/#140/#141–147/#169 integration and hosted run
-`34301289787` immediately before linking its own [merged-work map](polish-campaign.md#existing-capabilities-and-overlapping-work)
-at 991–1025. The [main matrix](backlog_matrix.md) lines 345–350 already
-records that run and the PR #140/169 integration outcome. The campaign also
-repeats PR #140/#148/#169 and run `34306975901` at 109–118; the matrix at
-340–355 and later campaign dispositions hold their accepted evidence. These
-two spans are distinct from F16's tables, F90's completed tooling sections,
+At local audit head `688f7117`, [polish campaign](polish-campaign.md) lines
+109–118 repeat PR #140/#148/#169 integration and run `34306975901` already
+recorded in the [main matrix](backlog_matrix.md) at 340–355 and later campaign
+dispositions. Opening lines 68–76 also recount integration, but retain
+distinct tested-tree identity, hosted run `34301289787`, and the
+[merged-work map](polish-campaign.md#existing-capabilities-and-overlapping-work)
+route. This is distinct from F16's tables, F90's completed tooling sections,
 F97's former selection order, and F140's generic policy list.
 
 Preserve the exact audit/test-tree identity at 68–69 (local Git gives
-`2fb8f5ef` and `8034c211` the same tree), the map route at 76, and
-item 22's “linked above” CI reference at 532–533 to run `34301289787`
-at 73. Retain the no-new-test/hosted limit at 77–79 and source
+`2fb8f5ef` and `8034c211` the same tree), item 22's “linked above” CI
+reference at 532–533, and the no-new-test/hosted limit at 77–79. Retain source
 baseline, pass changes, and original test provenance at 37–66. The
 CS-20/22 correction and exact hosted revision at 117–118 recur at 286–293;
 retain that evidence and 119–120's remaining-owner boundary. Git retains
@@ -514,11 +511,10 @@ route repeats lines 235–237 and 275–279; allocation-aware shares appear at
 281–287 and the native-control owner route at 346–350. Its warning that
 declarations are not measured utilization/performance echoes the no-saturation
 and planning-minimum limits at 285–286 and 326–328. The
-[CV-U06](cluster_verification_backlog.md) line 458 links to this heading as
-“HPC resource research,” although the section is only a short summary. The
-[Runbook benchmark link](../operations/RUNBOOK.md#resource-benchmarking) at
-388–389 is a distinct reader route to preserve, as may be context after the
-placement table. No useful DOCS-01 reduction is established for this span.
+[CV-U06](cluster_verification_backlog.md) line 458 calls this heading “HPC
+resource research”; the target routes onward to the primary profile contract
+and the [Runbook benchmark procedure](../operations/RUNBOOK.md#resource-benchmarking).
+The label is broad, but no broken route or useful reduction is established.
 [F123](docs-01-discoveries-fourth.md#f123-repeated-stage-resource-defaults-in-the-configuration-guide)
 covers the separate stage-default table.
 

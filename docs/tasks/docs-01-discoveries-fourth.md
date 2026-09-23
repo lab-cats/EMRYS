@@ -511,22 +511,19 @@ This is a guide display-scope observation, not a Doctor or cluster result.
 
 ### F127 — Older local checks inside active CV acceptance cards
 
+**Dismissed for DOCS-01 after recheck at `f4ba7662`.**
 The [CV-U08 card](cluster_verification_backlog.md) lines 638–645 retains a
 local-check ledger of 631 tests, 169 Markdown documents, 13 Quickstart Bash
 blocks, one macOS skip, and six excluded isolated child cases. The
 [CV-U20 card](cluster_verification_backlog.md) lines 1264–1279 records 554
 focused tests but repeats the 169/13 snapshot and six-case environment limit.
-Both cards continue with later acceptance wording at lines
-659–668 and 1315–1329. At audit head `777345b6`, the tree had 175 tracked
-Markdown files and 14 Quickstart Bash fences. Git blame dates the 169/13 and
-six-case text to September 16 commits `1dcc0ce4b` and `024bd5dbc`, while
-CV-U20's adjacent policy and test-count wording changed September 21. A
-prose-introduction commit does not establish the checked revision. Neither
-card names one beside its local totals. This is routine validation chronology
-beside active acceptance, not evidence that those historical checks failed.
-The skipped-case, installed-environment, no-cluster, and no-scientific-proof
-limits remain material evidence; their deletion is not authorized by this
-finding.
+Both cards continue with dated acceptance corrections at 659–668 and
+1315–1329. Git blame places the 169/13 text in September 16 commits
+`1dcc0ce4b` and `024bd5dbc`; neither card names the source revision checked.
+That missing SHA cannot be reconstructed from the prose, and the later tree's
+larger inventory does not disprove the earlier checks. No safe reduction is
+established. Skipped-case, environment, cluster, and scientific-proof limits
+remain material evidence.
 
 ### F128 — Tool-specific thread effects in the coordinator contract
 
