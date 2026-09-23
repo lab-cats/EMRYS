@@ -1,7 +1,8 @@
 # DOCS-01 discovery notes, continued
 
 This companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F30 onward. Unless a subsection names another revision, source line
+holds F30–F61; the [third file](docs-01-discoveries-third.md) holds F62–F99.
+Unless a subsection names another revision, source line
 references are pinned to `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`.
 These are observations, not accepted changes or a task-status registry.
 
@@ -24,9 +25,9 @@ The dashboard also says “Three dependent reporting transactions” when an
 identity has reporting-memory fields (dashboard lines 974–980); its source
 test at `tests/orchestration/run_coordinator/test_dashboard.py:439–443`
 retains the old `artifact_index`, `run_summary`, and `html_report` keys.
-Current reporting instead names `run_summary` and `html_report`. Correct both
-user-facing explanations and the test fixture under a separate product
-change, preserving old log aliases and current `cohort_slice` mapping
+Current reporting instead names `run_summary` and `html_report`. The
+user-facing explanations and fixture retain old wording; old log aliases and
+current `cohort_slice` mapping have separate compatibility roles
 (`test_dashboard.py:362–374`). Scheduler text still cannot prove admitted
 Run completion.
 
@@ -40,23 +41,24 @@ records the original failure and fix; current
 [submission code](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
 lines 861–870 preserves four login-name variables, with direct source tests
 at `tests/orchestration/run_coordinator/test_slurm_submission.py:2027–2099`.
-Keep the incident and safe resume/evidence advice. Current recovery should
-first identify the installed revision and actual submission diagnostic;
-this audit has not reproduced a current Slurm failure.
+The incident and safe resume/evidence advice remain relevant. The installed
+revision and actual submission diagnostic are absent from this current-version
+recovery instruction; this audit has not reproduced a current Slurm failure.
 
 ### F32 — Mermaid check's stated ceiling
 
 [Documentation test README](../../tests/documentation/README.md) lines 3–8
 says cases cover “standalone Mermaid syntax.” The
-[checker](../../scripts/documentation/validate_structure.py) lines 235–251
-checks only a first nonblank `flowchart` declaration and absence of Markdown
+[checker](../../scripts/documentation/validate_structure.py) docstring at
+235–236 also says “syntax”; lines 237–251 check only a first nonblank
+`flowchart` declaration and absence of Markdown
 fences; its [tests](../../tests/documentation/test_validate_structure.py)
 lines 290–323 exercise those refusals. The
 [tool README](../../scripts/documentation/README.md) lines 3–7 correctly
 describes declarations and fences but broadly says it checks first headings.
 The checker at lines 199–206 checks H1 only for required canonical pages;
-other Markdown files receive link checks, not an H1 requirement. Narrow both
-guides: this gate does not parse Mermaid grammar or verify rendering.
+other Markdown files receive link checks, not an H1 requirement. The gate
+does not parse Mermaid grammar or verify rendering.
 
 ### F33 — Report receipt version in the scientist diagram
 
@@ -67,19 +69,18 @@ receipt comes last. [Reporting](../../src/emrys/reporting/README.md) lines
 publication from HTML and `report_outputs.tsv` under Results. The
 [artifact schema index](../../src/emrys/contracts/schemas/artifacts/README.md)
 lines 3–8 identify artifact entries v4, Run result manifest v8, and report
-receipt v8. Correct the diagram's grouping and receipt label without
-conflating these separate formats. The diagram is non-authoritative, but it is the
+receipt v8. The diagram's grouping and receipt label conflict with these
+separate formats. The diagram is non-authoritative, but it is the
 architecture's linked reader path at `docs/architecture/ARCHITECTURE.md:56`.
 The same node says “Read-only reporting.” Reporting reads and does not change
 the successful scientific Run, but `emrys report --execute` creates absent
 owned outputs ([reporting owner](../../src/emrys/reporting/README.md) lines
-3–16). Clarify read-only scientific inputs versus create-only report
-publication so the diagram does not imply no files are written.
+3–16). Scientific-input immutability and create-only report publication
+are distinct; the diagram can read as if no files are written.
 The [test baseline](../design/TEST_BASELINE.md) lines 108–111 also lists
-“report read-only behavior” without naming the input boundary. Narrow that
-checklist phrase to immutable scientific inputs and create-only report
-publication alongside the diagram correction; this is a documentation
-ambiguity, not a report transaction defect.
+“report read-only behavior” without naming the input boundary. That phrase
+shares the diagram's ambiguity between immutable scientific inputs and new
+report outputs; no report transaction defect is inferred.
 
 ### F34 — Prepared finalization in the reliability diagram
 
@@ -90,8 +91,8 @@ lines 1008–1035 permits a distinct first action: complete an exact prepared
 terminal receipt on the existing Attempt. A prepared success starts no new
 scientific work; an eligible failed/interrupted outcome may then continue in a
 new Attempt. [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 35–50
-already explains this. Show both paths without implying that missing or
-ambiguous evidence can authorize finalization.
+already explains this. The two paths have distinct Attempt identity and
+evidence requirements; missing or ambiguous evidence grants neither.
 
 ### F35 — FASTQ pairing language
 
@@ -100,12 +101,12 @@ R1/R2 pairing from filenames. The [engineering guide](../operations/ENGINEERING_
 lines 18–20 also broadly bans inference of “pairing” from names. Guided Init
 does recognize `_R1/_R2` and `_1/_2` mates and displays detected pairs
 ([onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
-lines 964–1006; [Quickstart](../../quickstart.md) lines 79–81). The operator
-still authors condition and biological pairing group at onboarding lines
+lines 964–1006 and 1443–1466; [Quickstart](../../quickstart.md) lines 79–81).
+The operator still authors condition and biological pairing group at onboarding lines
 1010–1016; the [sample manifest guide](../../configs/README.md) lines
-144–170 makes those values authoritative. Clarify mate discovery in both
-guides versus authored experimental pairing; retain the ban on inferred
-biological meaning or sample order. This is ambiguous wording, not a
+144–170 makes those values authoritative. Mate discovery and authored
+experimental pairing are different; the ban on inferred biological meaning
+or sample order remains. This is ambiguous wording, not a
 demonstrated scientific-inference defect.
 
 ### F36 — Cross-owner history in runtime test guidance
@@ -113,10 +114,10 @@ demonstrated scientific-inference defect.
 [Runtime test README](../../tests/evidence/runtime_availability/README.md)
 lines 3–13 describes runtime probes, Snakemake startup, and their site limit.
 Line 14 then says tests solely for a retired report publisher were removed;
-that sentence does not describe a runtime test in this directory. Trace whether
-it preserves unique evidence, then keep current runtime test scope here. Place
-any durable reporting context with its
-actual owner. This is a placement candidate, not permission to discard evidence.
+that sentence does not describe a runtime test in this directory. Whether it
+preserves unique evidence is unverified; runtime test scope and durable
+reporting context have different owners. This is a placement question, not
+permission to discard evidence.
 
 ### F37 — BED12 dependency in the scientist diagram
 
@@ -152,7 +153,7 @@ the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRAC
 lines 410–418 and 431–449 creates and synchronizes a retained submission
 request before `sbatch`; a request can exist before any Run or Attempt. The
 [Runbook](../operations/RUNBOOK.md) lines 9–25 gives that request its own
-inspection route. Show request/submission and compute-side Run admission as
+inspection route. Request/submission and compute-side Run admission are
 distinct from direct execution; scheduler status cannot supply Run truth.
 
 ### F39 — Validation roster inventory claim
@@ -166,13 +167,13 @@ are 16 source `validator.py` owners; the
 lines 23–41 lists 14 grouped validation-report producers. Its inventory
 assertion at 84–95 checks that fixed map's paths and discovers only legacy
 `scripts/validate_step_*.py`, so a new source-owner validator is not
-automatically found. Name the narrower producer scope and maintenance limit;
+automatically found. This is a narrower producer scope and maintenance limit;
 artifact-contract and sample-manifest validators have different contracts.
 The fixed map does cover all 14 currently enumerated validation-report
 producers, and literal ordered rosters remain an independent protection.
 The public CLI catalog (`src/emrys/__main__.py:44–65,318–333`) also exposes
 `all-pass`, artifact-contract, and manifest validation outside those 14.
-Retain owner real-output assertions, including Step 10's direct one-row
+Owner real-output assertions remain distinct, including Step 10's direct one-row
 case at `tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_validator.py:80–99`;
 central synthetic roster checks alone cannot establish actual output meaning.
 
@@ -184,8 +185,8 @@ The current [resource schema](../../src/emrys/contracts/schemas/orchestration/v3
 lines 41–53 defines `stage_concurrency` for repeated stages 01–07, including
 cohort partitions; [resource policy](../../src/emrys/orchestration/run_coordinator/resource_policy.py)
 lines 37–48 resolves that keyed control. The Snakemake profile sets engine
-defaults, not one sample-wide policy. Use the current per-stage term without
-promising that any particular allocation will admit every task.
+defaults, not one sample-wide policy. The per-stage term does not promise
+that any particular allocation will admit every task.
 
 ### F41 — Step 05 check's read-only help
 
@@ -194,9 +195,9 @@ line 20 calls itself “Read-only validation,” while its own help at 13–18
 names a status TSV. Execution creates an output directory, writes/removes a
 probe, and writes or replaces the TSV at 75–95. The
 [owner README](../../tests/data_checks/README.md) lines 3–7 correctly says
-BAM/BAI are not mutated and lists the writes. Narrow script help to read-only
-*inputs* and disclose output mutation, including existing TSV replacement.
-Do not alter this retained operator check's behavior under DOCS-01.
+BAM/BAI are not mutated and lists the writes. Script help omits the
+input-versus-output distinction, including existing TSV replacement. This
+observation does not change the retained operator check's behavior.
 
 ### F42 — Report transfer in the coordinator test index
 
@@ -204,17 +205,16 @@ Do not alter this retained operator check's behavior under DOCS-01.
 lines 11–20 places report transfer in a table of checks, but that row links a
 Runbook procedure, not a repeatable test. The [CV card](cluster_verification_backlog.md)
 lines 4079–4090 records the tiny local copy/comparison observation and its
-limit. Route this historical command-mechanics evidence to the CV record;
+limit. The CV record is the bounded command-mechanics evidence home;
 generated-bundle contents, rendering, and institutional transfer remain
 pending rather than proved by a coordinator fixture.
 The CV card at 4086–4090 names no exact run date, source commit, command
 transcript, or retained artifact for that tiny exercise. It is an honest
 current evidence home, not yet a source for a date-qualified history transfer.
 The [test baseline](../design/TEST_BASELINE.md) line 15 links the test guide's
-`#what-the-checks-establish` heading, so keep that section and its real test
-rows; reclassify only the transfer row or route it to CV-27 outside the checks
-table. Preserve the Runbook transfer anchor, which Quickstart and CV-27 also
-use. REPORT-01–03 and CV-27 retain their separate acceptance requirements.
+`#what-the-checks-establish` heading. Its real test rows and the Runbook
+transfer anchor have distinct inbound readers; the transfer row links a
+procedure rather than a test. REPORT-01–03 and CV-27 retain their separate acceptance requirements.
 
 ### F43 — Print behavior in the reporting test guide
 
@@ -241,23 +241,23 @@ at lines 3, 22–23, and 51–52; the RSeQC shell does likewise at lines 3,
 refusal without them (`tests/stages/star_alignment/test_step_01_star_align.sh:11,74`;
 `tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh:11,77`).
 That establishes the internal interface, not supported standalone publication
-or recovery. Clarify the RSeQC opening while retaining explicit script paths,
-direct `--help`, and public grouped validators.
+or recovery. The RSeQC opening's command classification is ambiguous, while
+explicit script paths, direct `--help`, and grouped validators remain useful.
 The coordinator's `TaskBackend` and `CommandResult` docstrings
 ([task source](../../src/emrys/orchestration/run_coordinator/task.py) lines
 100–104 and 146–154) also call delegated producer and validator commands
-“public.” This is the definite ownership error. Call them delegated/recorded
-commands while retaining exact argv and exit evidence and Run-owned publication.
+“public.” This is a definite terminology mismatch: those commands are
+delegated and recorded, with exact argv/exit evidence and Run-owned publication.
 The [public-CLI tests](../../tests/test_public_cli_contracts.py) lines 113–154
 also group ten shell workers as entry points and label three nonexecutable
 scripts `INTERPRETER_ONLY_SHELL_DEFECTS`; lines 829–865 call their modes
 “public shell” defects. The [stage index](../../src/emrys/stages/README.md)
 lines 30–39 and RSeQC, duplicate-marking, and split-N-cigar contracts instead
 classify these producers as internal Run workers. Git records the three modes
-as `100644`, but that alone does not make them defects in a public CLI. Review
-the test classification and names against supported command ownership;
-preserve useful `--help`, arbitrary-working-directory, missing-argument,
-file-mode, argv, and exit protections. No test removal follows from this
+as `100644`, but that alone does not make them defects in a public CLI. The
+test classification and names differ from supported command ownership;
+`--help`, arbitrary-working-directory, missing-argument, file-mode, argv,
+and exit protections remain useful. No test removal follows from this
 wording question.
 
 ### F45 — Watch and stop in the command-audience map
@@ -271,8 +271,8 @@ and the [Runbook](../operations/RUNBOOK.md) lines 139–157 teaches exact-reques
 `stop` to operators. The inventory says `emrys --help` owns the complete
 roster, so this is an audience-routing gap rather than a false claim about
 command existence. Its opening at lines 3–4 already says the inventory is
-selective, so a nonexhaustive label adds little. Add these audience examples,
-preserving `stop`'s exact-request and evidence ceilings.
+selective, so a nonexhaustive label adds little. The missing audience
+examples have different purposes; `stop` remains exact-request and evidence-limited.
 
 ### F46 — Artifact common-schema description
 
@@ -289,9 +289,8 @@ and [schema rules](../../src/emrys/contracts/schemas/README.md) lines 8–16
 distinguish directory/resource versions from record-format versions. The
 independent golden pins the common `$id` at
 `tests/contract_integration/independent_contract_goldens/schema_contracts.json:17–20`.
-Correct the description only after schema-byte compatibility review; do not
-rename the v1 file, directory, `$id`, or references. The README calls those
-bytes a public contract; this is no evidence of a validator defect.
+Only descriptive wording is at issue; the v1 file, directory, `$id`, and
+references remain public schema bytes. No validator defect is inferred.
 
 ### F47 — R-probe concurrency candidate after CV-26
 
@@ -316,15 +315,16 @@ lines 270–285 resolves a bare name relative to the current directory; the
 lines 35–37 promises no parent or global lookup. The source test at
 `tests/orchestration/run_coordinator/test_onboarding.py:1929–1954` pins that
 boundary. From the Quickstart's repository root, `--project pum1-study` does
-not select its `Projects/pum1-study` child. Explain when a bare name works and
-show `--project Projects/pum1-study` from that root or an exact absolute path.
-This is a guide correction, not a proposed new discovery behavior.
+not select its `Projects/pum1-study` child. From that root,
+`--project Projects/pum1-study` or an exact absolute path has different
+selection behavior. This is a guide discrepancy, not a proposed new
+discovery behavior.
 Saved `EMRYS_PROJECTS_ROOT` affects named Init's destination
 (`onboarding.py:1261–1269`) and the outside-Project picker, but the exact
 Project selector at `onboarding.py:270–285` does not consult it. The
 [Runbook](../operations/RUNBOOK.md) lines 294–301 already gives an absolute
-`project.yaml` example for Project-aware commands. Keep that distinction in
-the root route rather than promising a global name lookup after setup.
+`project.yaml` example for Project-aware commands. That distinction matters
+for the root route's global name-lookup implication after setup.
 
 ### F49 — Incomplete allocation-recovery command
 
@@ -334,16 +334,15 @@ with only `--verbose </dev/null`. This fragment names neither an `emrys`
 operation nor its Project/Run selector. `--verbose` belongs to the relevant
 leaf parser; the failed submission may be Run, resume, report, or Doctor
 repair. The [control parser](../../src/emrys/orchestration/run_coordinator/control.py)
-lines 1800–1868 shows command-specific controls. Give a complete no-write
-example for the intended operation or tell the reader to repeat its exact
-preview command with `--verbose` and no `--execute`. This is an actionability
-gap, not a demonstrated parser failure.
-The [Runbook](../operations/RUNBOOK.md) lines 441–450 supplies a complete
+lines 1800–1868 shows command-specific controls. The fragment omits the
+operation and selector; an exact preview command would also lack `--execute`.
+This is an actionability gap, not a demonstrated parser failure.
+The [Runbook](../operations/RUNBOOK.md) lines 401–411 supplies a complete
 `emrys run </dev/null` preview. Run, resume, and report each accept
 `--execute` (`control.py:1800–1868`); Doctor accepts it only with `--repair`
 (`doctor.py:1989–1996,2023–2029`). Redirecting stdin to `/dev/null` does not
-undo an explicit `--execute`. Any replacement instruction must name the failed
-operation and omit that flag when it promises no writes.
+undo an explicit `--execute`. A no-write promise depends on the exact failed
+operation and absence of that flag.
 
 ### F50 — Submission-request version in the coordinator contract
 
@@ -377,7 +376,7 @@ the shared capacity observer now applies the approved RAM fallback; 248–251
 states the current four-variable submission export. The current owners include
 the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 155–178, 225–253, and 752–765, its adjacent README lines 40–66,
-the [Runbook](../operations/RUNBOOK.md) lines 574–639 and 698–722, and
+the [Runbook](../operations/RUNBOOK.md) lines 534–599 and 658–682, and
 [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 232–242. Current
 Viking placement requests an exclusive whole node with `memory_mb: 0`
 (`--mem=0`); the older partial-node missing-metadata observation and approved
@@ -389,18 +388,18 @@ slice, not a standing exception for future product growth.
 The [history compendium](../history/validation-evidence.md) lines 81–102
 already retains job `605171` as manual NORAD Step 08 evidence at exact
 `64b14a11`; the backlog adds that job's scheduler request and accounting
-context. Preserve these as distinct aspects and do not turn either into an
+context. These are distinct aspects; neither is
 EMRYS whole-Run proof. History's unchanged-record rule does not permit
 appending the later scheduler interpretation to its frozen manual-Step section
 just because the job number matches; a qualified new dated record could
 cross-link it after provenance is reconstructed.
 E04/E09/E12 overlap the synthetic and actual-data observations at 258–267;
-preserve operator-report attribution, the cancelled Run without terminal
-receipt, and deferred visual review. The `#viking-walkthrough-findings` anchor
-has live inbound links from the SITE-PARITY-01 row and CV charter. Map every
-fact and both links before any transfer; dated evidence belongs in an
-appropriate qualified home, while the backlog retains concise current
-acceptance. The charter's closure criteria and backlog's procedure are
+operator-report attribution, the cancelled Run without terminal receipt,
+and deferred visual review are separate evidence limits. The
+`#viking-walkthrough-findings` anchor has live inbound links from the
+SITE-PARITY-01 row and CV charter. Those facts and links constrain any
+future transfer; the backlog retains current acceptance. The charter's
+closure criteria and backlog's procedure are
 complementary, not safely interchangeable.
 The first successful manual setup at 191–199 is distinct from the CV register's
 E01 failed qualification. Source commits for this backlog block
@@ -412,15 +411,15 @@ Checked-in summaries do not bind every reported Viking observation to an
 installed package, Run, Attempt, profile, input, and runtime identity. That
 gap prevents a lossless, date-qualified history transfer under the current
 [history rules](../history/README.md#record-rules) without reconstructing
-source evidence. Preserve three destinations separately: current commands and
+source evidence. Three destinations remain distinct: current commands and
 policy with owners, historical observations and former approval in dated
 evidence when qualified, and status/acceptance in SITE-PARITY-01,
 CLUSTER-VERIFY-01, and their delegated CV cards.
 The old 5–15-minute setup guidance at backlog lines 217–219 is framed as an
 earlier decision; the [CV-U05 card](cluster_verification_backlog.md) lines
 393–406 and [Quickstart](../../quickstart.md) lines 161–163 carry the later
-5–25-minute user request. Keep chronology dated and route current readers to
-the current notice rather than call the old figure a current contract.
+5–25-minute user request. The older figure is dated chronology, not a current
+contract.
 
 ### F52 — Report regeneration wording
 
@@ -433,8 +432,8 @@ current create-only boundary. The
 [reporting owner](../../src/emrys/reporting/README.md) lines 3–16 says
 `--execute` publishes only from empty owned state, while a complete bundle is
 revalidated and reused (lines 102–112). The [Runbook](../operations/RUNBOOK.md)
-distinguishes these cases at baseline lines 477–490 (lines 437–450 at PR head
-`0cb5d507`): generation after skipped reporting,
+distinguishes these cases at baseline lines 477–490 (lines 437–450 at pinned
+revision `0cb5d507`): generation after skipped reporting,
 reuse of complete bundles, and refusal of partial or blocked bundles.
 [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 74–80 explicitly
 forbids treating `report` as a repair or overwrite route. “Regenerated” could
@@ -452,10 +451,10 @@ directory's `project.yaml` ([onboarding](../../src/emrys/orchestration/run_coord
 lines 270–285, 2304–2321). Outside the borrower, either command may fail or
 select another Project for inspection; separate source-selection and admission
 checks still govern mutation.
-The [Runbook](../operations/RUNBOOK.md) baseline lines 683–693 (PR head
+The [Runbook](../operations/RUNBOOK.md) baseline lines 683–693 (pinned revision
 `0cb5d507` lines 643–650) shows the exact dependent
 `--project /absolute/dependent/project.yaml` selector for the same
-replacement. Baseline lines 683–685 (PR head lines 643–646) describe
+replacement. Baseline lines 683–685 (pinned revision lines 643–646) describe
 source-Project repair with bare `emrys doctor --repair`, after a borrower
 example. Doctor also defaults to the current directory's Project
 (`doctor.py:2041–2046`), leaving the source Project implicit. Doctor's own
@@ -476,9 +475,9 @@ figure evidence. [Context admission](../../src/emrys/reporting/_run_report/conte
 lines 225–252 rejects a bare bytes return and validates the carrier; the
 [built-in provider](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/provider.py)
 lines 121–160 returns that carrier. The [reporting owner](../../src/emrys/reporting/README.md)
-lines 22–27 already names the correct return annotation. Clarify the private
-guide's API shape without changing provider behavior or core-owned fixed
-outputs. This is a source-level wording mismatch; no provider was run.
+lines 22–27 already names the correct return annotation. The private guide's
+API description is narrower than the carrier; provider behavior and core-owned
+outputs were unchanged. No provider was run.
 
 The [paired-CMH report guide](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/README.md)
 lines 22–27 also says its provider “returns scientific HTML bytes.” Its
@@ -494,8 +493,8 @@ verified CI shards, broad long-lane categories, and trigger limits, but does
 not enumerate each hosted job or its exact selection. The
 [workflow](../../.github/workflows/ci.yml) owns those job conditions (for
 example, lines 109–114) and the schedule plus Sunday 100,000-pair selection
-(lines 51–53 and 1385–1394). Point readers to `ci.yml` for exact current
-lanes and retain the baseline for test policy and evidence ceilings. This
+(lines 51–53 and 1385–1394). `ci.yml` is the exact current lane source;
+the baseline owns test policy and evidence ceilings. This
 does not imply a CI failure or that a green workflow proves cluster or
 scientific acceptance; no workflow was run in this pass.
 
@@ -516,8 +515,9 @@ lines 50–51 separately says tests never install packages. The ordinary
 a temporary installer and calls `uv lock` plus offline `uv sync` into its
 `.venv` (lines 250–308, 341–359); the [CI workflow](../../.github/workflows/ci.yml)
 uses that target at 182–186 and 1014–1021. These are distinct controlled
-installation scopes, not dependency read-only tests. Preserve disposable
-Project ownership, isolated wheel installation, and retained partial evidence.
+installation scopes, not dependency read-only tests. Disposable Project
+ownership, isolated wheel installation, and retained partial evidence are
+separate boundaries.
 No test or installation was run in this audit.
 
 ### F57 — Make fixture public target label
@@ -530,8 +530,8 @@ lines 3–4 calls `make_target_expansions.json` the expansion contract for
 `python-coverage-shard`, plus `operator_mutation` targets such as `r-restore`
 and `python-coverage-baseline-update`. Its inventory assertion at 877–903
 requires all declared `.PHONY` targets, not just supported public commands.
-Call this the complete Make target expansion inventory and preserve the
-explicit applicability classes. The fixture still protects literal command
+This is a complete Make target expansion inventory with explicit
+applicability classes. The fixture still protects literal command
 expansion and runs no recipe, as its guide correctly states at lines 10–13.
 No Make target was run for this finding.
 
@@ -552,9 +552,9 @@ lines 66–68, which selects that same file explicitly; the
 connects it to the guarded lane. The same pytest IDs can therefore be
 selected in both lanes when their prerequisites are available. No lane was
 run here, so duplicate execution in a particular CI run is unverified.
-Narrow “non-overlapping” to the distinct lane purposes. Any selection change
-belongs with [ASSURANCE-01](backlog_matrix.md) and needs proof that Python
-coverage, guarded real-R comparison, and separate failure detection survive.
+“Non-overlapping” accurately describes lane purposes but not every selected
+pytest ID. [ASSURANCE-01](backlog_matrix.md) owns any future gate-selection
+decision and surviving-protection evidence.
 
 ### F59 — Pre-Run submission recovery route
 
@@ -566,11 +566,10 @@ can exist before any Run, and its job ID may be unknown or unconfirmed. The
 request roster with `emrys inspect` and exact `--submission` inspection.
 [Control](../../src/emrys/orchestration/run_coordinator/control.py) lines
 2632–2766 prints that roster before resolving a Run and handles no Runs
-without treating their absence as permission to submit again. Route the
-first response and no-Run paragraph through retained request inspection
-before any new submission; preserve partial, malformed, `UNKNOWN`, and
-scheduler-independent observations. This is a static reader-route gap, not
-a reproduced duplicate submission.
+without treating their absence as permission to submit again. The current
+first-response and no-Run prose omits retained request inspection, including
+partial, malformed, `UNKNOWN`, and scheduler-independent observations. This
+is a static reader-route gap, not a reproduced duplicate submission.
 
 ### F60 — Submission request promise for direct execution
 
@@ -580,8 +579,9 @@ placement. Run and resume schedule a request only for a Slurm profile outside
 an existing job ([control](../../src/emrys/orchestration/run_coordinator/control.py)
 lines 1743–1783); report does likewise at lines 2099–2149. Direct placement
 executes without a Slurm request. The Runbook distinguishes direct
-from Slurm in its Run plan (baseline lines 441–450; PR head `0cb5d507`
-lines 401–411) and reporting route (baseline lines 488–493; PR head 449–453).
+from Slurm in its Run plan (baseline lines 441–450; pinned revision `0cb5d507`
+lines 401–411) and reporting route (baseline lines 488–493; pinned revision
+`0cb5d507` lines 449–453).
 The opening promise could send direct users searching for a nonexistent
 request. Slurm's pre-Run request retention and uncertain-job guidance still
 apply. No operation was executed here.

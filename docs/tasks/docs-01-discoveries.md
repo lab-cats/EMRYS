@@ -1,8 +1,9 @@
 # DOCS-01 discovery notes
 
 This companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F01–F29 source-backed observations and next checks. The
-[continued notes](docs-01-discoveries-continued.md) hold F30 onward. Unless a subsection
+holds F01–F29 source-backed observations and evidence boundaries. The
+[continued notes](docs-01-discoveries-continued.md) hold F30–F61 and the
+[third file](docs-01-discoveries-third.md) holds F62–F99. Unless a subsection
 names another revision, all source line references are pinned to
 `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`. These are audit
 observations, not accepted changes or a task-status registry.
@@ -20,13 +21,13 @@ around line 1940 describe the same bounded interface; a source test at
 `tests/orchestration/run_coordinator/test_materialization.py:3705–3725` exercises
 its preview. These are current source and test claims, not a test run today.
 The contract's line 684 still says stop admits only v3 requests. Current
-`slurm_submission.py:55–59,303–313` creates v4 requests and admits complete
+`slurm_submission.py:55–59,73–84,303–313` defaults new requests to v4 and admits complete
 named v3/v4 requests for stop. The cited public preview fixture builds v3
 (`test_slurm_submission.py:113–123`); the later native-task stop fixture also
 selects a v3 request (`test_materialization.py:6400–6417,6800–6802`). Those
-tests do not establish a v4 public stop journey. Reconcile the present-tense
-contract with F50, while preserving CV-18's v3 selected-slice history.
-The decision needs to acknowledge that narrow command. It must not imply a
+tests do not establish a v4 public stop journey. This present-tense
+contract conflict also appears in F50; CV-18's v3 slice remains dated.
+The decision omits this narrow command, and the source does not establish a
 generic Run stop or completed cluster proof: CV-18 retains queued/native-task
 cancellation and recovery verification pending in the
 [CV backlog](cluster_verification_backlog.md) around lines 3300–3305.
@@ -34,8 +35,11 @@ The same decision at line 206 limits resume to already interrupted or failed
 Runs. [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 35–50 and the
 coordinator contract lines 1008–1035 also allow `emrys resume RUN` to complete
 an exact prepared Attempt finalization. A prepared success starts no new
-scientific work. Correct both decision claims without implying every resume
-creates another Attempt or that ambiguous evidence authorizes finalization.
+scientific work. Both decision claims differ from current behavior; not every
+resume creates another Attempt, and ambiguous evidence cannot authorize finalization.
+The top-level CLI help in [`__main__.py`](../../src/emrys/__main__.py) line 261
+also describes resume only for failed or interrupted Runs; its short label
+does not mention prepared finalization.
 `tests/orchestration/run_coordinator/test_lifecycle.py:2192–2256` exercises
 public preview/execute for prepared succeeded and blocked outcomes without a
 new Attempt; lines 2259–2349 cover a finalization-only Slurm-profile path
@@ -62,8 +66,8 @@ caps were removed and 324–328 says minima are planning numbers, not dataset
 bounds. The coordinator contract lines 721–727 treats visible RAM as a
 ceiling, not guaranteed free memory, and 788–789 says Snakemake does not
 enforce per-process RSS. CV-U28 institutional resource verification remains
-pending. Operator wording should direct users to actual planned admission,
-available memory, disk, and study workload sizing.
+pending. Actual planned admission, available memory, disk, and study workload
+sizing remain distinct from a fixed policy floor.
 
 ### F03 — INIT-02 in cluster summaries
 
@@ -75,8 +79,8 @@ The [Quickstart](../../quickstart.md) lines 94–109 still passes an explicit
 `--partition-manifest`; [onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
 lines 695–704 and 1104–1119 accepts that path. Thus explicit-manifest behavior
 is real, while the selected automatic experience is not complete. The campaign
-itself acknowledges the gap at lines 149–150. Reconcile only the current summary
-claim; do not change INIT-02 status or erase the explicit-manifest evidence.
+itself acknowledges the gap at lines 149–150. The current summary claim is
+the mismatch; INIT-02 status and explicit-manifest evidence remain distinct.
 Without that flag, onboarding lines 1027–1061 asks for regions/FASTA names or
 refuses missing noninteractive input; lines 1114–1143 load a partition file
 only when its path was supplied. The direct guided source test at
@@ -92,13 +96,13 @@ The [root README](../../README.md) lines 65–70 says Quickstart provides a
 synthetic first Run. [Quickstart](../../quickstart.md) lines 1–15 starts with
 the real six-library EV/PUM1 study, and lines 74–75 offers the
 [smoke test](../operations/SMOKE_TEST.md) as optional. A first-time reader is
-sent to the correct link but given the wrong expectation. Correct the root
-description while keeping the smoke path visible and optional.
+sent to the correct link but given the wrong expectation. The real-study
+journey and optional smoke path are distinct reader routes.
 The rest of the Quickstart checks a real EV/PUM1 Run and reports at lines
 188–251. The [documentation index](../README.md) lines 8 and 18 also routes
-first-time readers there. A root correction should name this selected real
-study and route synthetic practice to the optional smoke guide, without
-presenting the named EV/PUM1 choices as universal study defaults.
+first-time readers there. The named EV/PUM1 choices are the selected real
+study, not universal defaults; synthetic practice has a separate optional
+smoke guide.
 
 ### F05 — Generic study versus named EV/PUM1 route
 
@@ -108,20 +112,20 @@ Quickstart the path for “your own study” and “your own data.” Quickstart
 thresholds, and a primary-contig manifest. The [configuration guide](../../configs/README.md)
 lines 31–124 and 144–215 explains generic Project choices. Carrying the
 named study’s choices into unrelated data is a plausible reader risk, not an
-observed misuse. Investigate a concise generic route that points to config
-authority and uses EV/PUM1 only when that is the actual study.
+observed misuse. Generic choice guidance is in the configuration guide;
+EV/PUM1 is a named-study example.
 This handoff occurs in both the standalone-host route at Runbook 280–286 and
 the general “own data” route at 289–301. Quickstart lines 83–115 fixes six
 sample assignments, `reverse` strand, `EV -> PUM1`, `A>G`, thresholds, and
 the primary-contig manifest; its title and opening identify the named study.
 The [configuration guide](../../configs/README.md) lines 62–63 explicitly
 says to replace example paths, conditions, reference, and thresholds, and
-lines 144–215 defines generic sample/partition manifests. A safe reader route
-should state which choices the operator must author and link those contracts
-before borrowing an Init command. No generic scientific defaults or completed
+lines 144–215 defines generic sample/partition manifests. The authored study
+choices and generic manifest contracts remain distinct from the named
+Quickstart command. No generic scientific defaults or completed
 new-study journey are established by these documents alone.
 
-At PR head `0cb5d507`, the Runbook now distinguishes generic choices at
+At pinned revision `0cb5d507`, the Runbook distinguishes generic choices at
 lines 288–294, but lines 295–296 direct every new study to Quickstart steps
 4–7. Those steps use `Projects/pum1-study` (Quickstart lines 126–132) and
 describe Slurm submission (lines 161–174). The Runbook's direct-host route at
@@ -134,16 +138,16 @@ ambiguity; no user journey or command was exercised.
 [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 100–107 opens one
 paragraph by telling readers to enter a directory containing `project.yaml`
 or supply `--project`, then describes Init, whose child must be absent. Both
-instructions have valid but different preconditions. Separate the existing
-Project lookup from a failed new-Project preview/creation, preserving the
+instructions have valid but different preconditions. Existing-Project lookup
+and failed new-Project preview/creation remain distinct, as do the
 no-adoption and no-symlink rules.
 The [selector](../../src/emrys/orchestration/run_coordinator/onboarding.py)
 lines 270–285 reads the current directory or one supplied Project path;
 named Init at lines 1261–1269 instead chooses an absent child beneath the
 saved Projects home or current directory. The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 135–149 says a failed publication preserves a partial root and never
-adopts it. Keep existing-Project lookup and missing-child creation as separate
-diagnoses so “enter the Project” cannot be mistaken for an Init recovery step.
+adopts it. “Enter the Project” applies to existing-Project lookup, not
+missing-child Init recovery.
 
 ### F07 — Doctor repair does not always install
 
@@ -156,15 +160,15 @@ coordinator contract lines 217–233 distinguish a repair-and-verification plan 
 verification-only plan. A direct Doctor source test at
 `tests/orchestration/run_coordinator/test_doctor.py:2956–2960,3046–3054`
 expects no native/R installation when a ready Slurm runtime is rechecked.
-Align both guides and the decision on possible package-manager work, retaining
-where head-node and compute-side checks happen.
+Possible package-manager work, preview, and head-node versus compute-side
+checks remain distinct effects across these guides and the decision.
 The decision at lines 44–50 additionally names `uv` among Doctor's
 installation delegates. The [root README](../../README.md) lines 53–56 and
 [Runbook](../operations/RUNBOOK.md) lines 258–263 assign Doctor Project-owned
 native/R work through Pixi and `renv`, with Python dependencies left to
 separate package-manager setup. The Doctor implementation's manager commands
-in `doctor.py` lines 1235–1265 call Pixi and Rscript, not `uv`. Correct the
-decision's owner list without suggesting Doctor repairs Python itself.
+in `doctor.py` lines 1235–1265 call Pixi and Rscript, not `uv`. The decision's
+owner list therefore overstates Doctor's Python package authority.
 Verification-only means no package-manager work, not necessarily a read-only
 operation. A ready runtime produces a plan with `runtime=None`
 (`doctor.py:835–870`), but confirmed Slurm repair/verification opens a
@@ -206,9 +210,8 @@ submissions, watch, and stop. Its audience, setup routes, and command
 conventions first appear at lines 164–188. The procedures are useful and must
 remain findable, but a new operator meets advanced recovery terms before the
 guide explains where to start. The root README lines 67–70 and docs index
-lines 8–9 both route operators here. Check those inbound paths before
-moving a short orientation to the top; this is a navigation judgment, not a
-behavior defect.
+lines 8–9 both route operators here. Those inbound routes make the entry
+order a navigation question; no reader outcome or behavior defect was observed.
 
 ### F10 — Contract-location claim
 
@@ -223,9 +226,9 @@ revision, 62 source README locations but only 15 adjacent `CONTRACT.md` files
 exist; 47 README directories have no adjacent file. Those 62 directories are
 not all functional owners: some are indexes or schema folders. The narrower
 [stage-owner index](../../src/emrys/stages/README.md) lines 3–5 correctly
-points each of its ten owners to an adjacent contract. Replace the two global
-filename promises with a route to each owner's actual README, contract, or
-schema; do not create empty contracts merely to satisfy an index sentence.
+points each of its ten owners to an adjacent contract. The two global
+filename promises conflict with mixed owner forms; no empty contracts are
+implied by the evidence.
 The owner inventory's later generic “adjacent contract” at lines 31–33 and
 the architecture/test indexes' conceptual use of “contract” do not make the
 same filename promise.
@@ -235,9 +238,9 @@ same filename promise.
 [Engineering conventions](../operations/ENGINEERING_CONVENTIONS.md) lines 71–74
 lists staged Python under `scripts`, `src/emrys`, and `tests`.
 [Hook configuration](../../.pre-commit-config.yaml) lines 5–16 also includes
-root `setup.py` for Ruff check and format. Correct the prose after checking
-whether any other documented hook exclusions are intentional. The hook file is
-the executable scope; this audit did not run it.
+root `setup.py` for Ruff check and format. The prose omits that file; other
+possible exclusions were not assessed. The hook file is the executable scope;
+this audit did not run it.
 
 ### F12 — Init preview proposal
 
@@ -246,10 +249,10 @@ destination, directories, and no-copy policy at its dated September 7 audit. Cur
 [onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py) lines
 1208–1242 shows strand summary, comparison, target, thresholds, background,
 and STAR values normally. GTF and per-sample detail remain behind `--verbose`
-at lines 1243–1256. Re-evaluate each requested preview field and
-preview/publication agreement before calling the entire proposal complete or
-selecting new implementation. Preserve the scientific meaning of suggested
-values; source inspection is not proof that displayed and published bytes agree.
+at lines 1243–1256. Several requested preview fields and
+preview/publication agreement remain unverified, so the entire proposal is
+not established complete. Suggested values have scientific meaning; source
+inspection is not proof that displayed and published bytes agree.
 
 ### F13 — Doctor profile proposal
 
@@ -259,8 +262,8 @@ lines 1976–1982 accepts `--profile`, and the
 [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 729–742 describes default, named, and absolute selection. A focused
 source test at `tests/orchestration/run_coordinator/test_doctor.py:464–515`
-covers the path. Reconcile the old proposal against the authoritative backlog
-and actual validation before retaining any remaining acceptance gap.
+covers the path. The old proposal predates current selection; remaining
+acceptance is governed by the backlog and exact validation evidence.
 
 ### F14 — Old source-attestation cost candidate
 
@@ -270,7 +273,7 @@ candidate at lines 269–290 counted 24 Git subprocess calls per task then;
 that is historical source counting, not measured latency. Current
 [source authority](../../src/emrys/libraries/source_authority.py) lines 68–125
 uses installed package bytes and build metadata for identity rather than that
-old Git-object path. At PR head `e500e7c0`, the normal successful task path
+old Git-object path. At pinned revision `e500e7c0`, the normal successful task path
 calls `admit_origins()` at [task entry](../../src/emrys/orchestration/run_coordinator/task.py)
 lines 2561, 2651, 2662, and 2676 before producer entry. The shared helper at
 1861–1898 observes the installed package; its current identity routine calls
@@ -287,8 +290,8 @@ The [CV backlog](cluster_verification_backlog.md) lines 1472–1511 dates a
 known-smoke correction, labels “Verification pending” as that checkpoint,
 then explains the unsolved general donor requirement and returns CV-U22 to
 Open. The chronology preserves why the card reopened. No concrete confusion
-or safe reduction was established in the second pass; keep the causal record
-and the CV backlog's current status authority.
+or safe reduction was established in the second pass. The causal record and
+the CV backlog's current status authority remain distinct.
 
 ### F16 — Polish merged-PR tables
 
@@ -297,16 +300,17 @@ tables of merged PRs #116–147: 15 rows and seven rows, about 35 lines. Its
 live purpose is to avoid reselecting finished work; Git already retains
 routine chronology. The first table is not ready for wholesale replacement:
 lines 1008–1009 uniquely map PR #128/#134 and #129/#132/#133 to their slices,
-and the latter trio has no other current Markdown mapping. Crosswalk those
-facts to owners and evidence before removing any row. The second table is
-more redundant: item decisions at lines 450–457, 469–477, and 514–535 cover
+and the latter trio has no other current Markdown mapping. Their owner and
+evidence crosswalk is unresolved. The second table is more redundant: item
+decisions at lines 450–457, 469–477, and 514–535 cover
 PR #140–143; decision and reporting-owner text cover #144–145 and #147;
 the canonical BAM contract records the current create-exclusive rule and
 retired loss characterization behind #146. A shorter merged-work route may
-be viable after the first-table crosswalk. Preserve the CodeQL ruleset caveat
+be viable after the first-table crosswalk. The CodeQL ruleset caveat
 at 984–989, recovery and CS-18 distinctions at 1027–1032, excluded PR #44/#45
-experiments at 1034–1039, and the campaign's evidence ceiling at 35–85. The
-same-file link at line 76 targets the enclosing heading and needs a valid
+experiments at 1034–1039, and the campaign's evidence ceiling at 35–85 remain
+distinct. The same-file link at line 76 targets the enclosing heading and
+needs a valid
 destination if that section is reshaped.
 
 ### F17 — Main backlog chronology and run repetition
@@ -314,9 +318,9 @@ destination if that section is reshaped.
 The [main backlog](backlog_matrix.md) around lines 313, 343, and 349 includes
 PR genealogy. Lines 340–356 cite hosted run `34306975901` in three distinct
 accepted rows. The repeated row-local citation helps each acceptance stand
-alone and need not be removed. Any reduction should focus on routine PR
-chronology after checking unique baseline, measurement, and evidence limits;
-do not compress distinct acceptance criteria or alter task status.
+alone and need not be removed. Routine PR chronology is the candidate overlap;
+unique baseline, measurement, evidence limits, acceptance criteria, and task
+status remain separate.
 
 ### F18 — History filing rule and existing compendium
 
@@ -347,26 +351,26 @@ not the date or exact installed package of a reported observation:
 The current file was created at `fe9f99a5d`, then appended with architecture
 CI at `13983b0f` and the scale probe at `550b5402`. This actual append
 history conflicts with the index's unchanged-record rule. Recoverable Git
-sources do not make the compendium a lossless replacement: preserve each
-source's unique limits before any future split or transfer.
+sources do not make the compendium a lossless replacement: each source has
+unique limits relevant to any future split or transfer.
 The compendium has file-level inbound links from the docs and history indexes
 and backlog (`docs/README.md:29`, `history/README.md:9`,
 `backlog_matrix.md:145–150`); the coordinator contract 950–955 links the
 scale-probe anchor. These four document routes plus
 `scripts/documentation/validate_structure.py:14–34` and
 `tests/documentation/test_validate_structure.py:17–36` are six tracked
-consumers outside this audit. Preserve the path and sole fragment anchor, or
-update every consumer with any authorized transfer.
-Resolve remaining observation dates, artifact identities, and semantic losses
-before choosing a documented legacy exception or lossless dated records;
+consumers outside this audit. The path, sole fragment anchor, and all six
+consumers form a coupled boundary for any authorized transfer.
+Remaining observation dates, artifact identities, and semantic losses are
+unresolved for a legacy exception or lossless dated records;
 neither a rename nor evidence deletion is implied by the naming mismatch.
 The [backlog's CV retirement condition](backlog_matrix.md) lines 145–150
 explicitly names this undated compendium as the future destination for
 E01–E12 and hosted/artifact records. That conflicts with the history index's
 dated-file and unchanged-record rules, rather than being only a filename
-oddity. Decide whether the legacy compendium is a documented exception or
-whether new dated records and updated backlog/index/checker links are the
-intended route before any transfer. No evidence is moved by this audit.
+oddity. Whether the legacy compendium is a documented exception or dated
+records are the intended route remains undecided. No evidence is moved by
+this audit.
 The [campaign evidence register](cluster_verification_campaign.md) lines
 90–100 says E01–E12 combine operator-supplied output with source review; raw
 logs and artifacts remain with the operator. Its `f2c0149` identifies reviewed
@@ -384,9 +388,9 @@ retired two-worker Doctor namespace experiment. The
 [CV backlog](cluster_verification_backlog.md) lines 3949–3995 already preserves
 the fuller record: exact run `34995028343`, artifact identity, trials, sampled
 RSS, caveats, and decision. That CV card is the evidence source for any
-transfer to [history](../history/README.md); the workflow guide needs only a
-route to it if this topic is moved. Preserve exact measurements and the
-uncontrolled-cache, shared-page, and missed-peak limits. No evidence deletion
+transfer to [history](../history/README.md); the workflow guide's current
+summary overlaps it. Exact measurements and the uncontrolled-cache,
+shared-page, and missed-peak limits remain evidence. No evidence deletion
 is authorized.
 
 ### F20 — Independent golden migration comparisons
@@ -396,9 +400,9 @@ lines 3–10 explains current literal oracles and their evidence ceiling. Lines
 12–57 then record successive schema and renderer migrations, including exact
 byte-identity comparisons. Most comparisons at lines 12–41 do not name the
 predecessor revision or old/new digests in that README; later examples at
-lines 43–57 name predecessor commits. Keep current oracle instructions beside
-tests. Before migrating a comparison into dated history, trace Git, tests,
-exact predecessor/current revisions, and oracle values. The prose alone is
+lines 43–57 name predecessor commits. Current oracle instructions and active
+tests are coupled; a date-qualified comparison also needs Git, tests, exact
+predecessor/current revisions, and oracle values. The prose alone is
 not sufficient retained proof; golden presence is not runtime or biological
 validation.
 The current [golden test](../../tests/contract_integration/independent_contract_goldens/test_independent_contract_goldens.py)
@@ -408,9 +412,9 @@ and two HTML-digest oracles; those active checks stay beside the tests.
 dated prose blocks: `2fc9e68e` (lines 12–17), `ef321aa1` (19–27),
 `8499b75e` (29–32), `8a75f588` (34–41), `f4435527` (43–49), and
 `4c67b371` (51–57). An introduction commit is not itself the predecessor
-oracle or proof of a byte comparison; recover the old and new literal values
-and retained check result before a history transfer.
-At audit head `b3af5d9e`, a read-only Git comparison of the literal
+oracle or proof of a byte comparison; old/new literal values and retained
+check results remain missing from a qualified history transfer.
+At pinned audit revision `b3af5d9e`, a read-only Git comparison of the literal
 `report_html.sha256` file with each introduction commit's parent found the
 scientific digest unchanged across `2fc9e68e`, `8499b75e`, `f4435527`, and
 `4c67b371`, and changed at `ef321aa1` and `8a75f588` where the prose describes
@@ -425,8 +429,8 @@ has a single `No-write and publication boundaries` section spanning lines
 publication (89–150) from hashing and input stability (184–215); watch
 selection (56–67) differs from dated view, refresh, and action rules
 (557–681). The second pass found navigability pressure, not proven deletable
-duplication. Build a topic map before changing headings; preserve independent
-refusals and evidence levels, and coordinate size disposition with SIZE-01.
+duplication. The topic map below distinguishes independent refusals and
+evidence levels; any size disposition remains with SIZE-01.
 The deeper pass mapped possible subheadings without deleting prose: Init
 preview/publication 89–151; Validate/Doctor 153–182; Init continuity 184–215;
 Doctor plans/timing 217–287; managed runtime 299–339; Run/Slurm planning
@@ -464,9 +468,9 @@ keys at contract lines 622–624 also appear in the Runbook table at lines
 in the [logging owner](../../src/emrys/libraries/application_logging/README.md)
 at lines 13–17. The contract adds prompt/default hints, `NAME=value` fields,
 mouse handling, and sanitized evidence-view guarantees. These are narrow
-summary overlaps across distinct trust boundaries. Keep the command handoff,
-runtime admission, logging event rules, and operator keys with their owners;
-cross-owner summaries can remain when they explain a real handoff.
+summary overlaps across distinct trust boundaries. Command handoff, runtime
+admission, logging event rules, and operator keys have separate owners;
+cross-owner summaries can explain a real handoff.
 
 ### F23 — Init details in the Runbook
 
@@ -474,13 +478,11 @@ The [Runbook](../operations/RUNBOOK.md) lines 303–335 mixes useful Init
 choices and safe prompts with exact hashing, inode, STAR derivation, and
 publication mechanics also covered by the
 [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-and [config guide](../../configs/README.md). Retain what the operator must
-choose, observe, or preserve after interruption. Compare the detailed
-paragraphs with owner tests and configuration rules before replacing mechanics
-with links; a shorter Runbook must still warn that preview does not hash FASTQ
-contents and creation can refuse changed inputs.
+and [config guide](../../configs/README.md). Operator choices, observations,
+and interruption cautions remain distinct from exact mechanics. In particular,
+preview does not hash FASTQ contents and creation can refuse changed inputs.
 
-At PR head `0cb5d507`, the approved Runbook slice removed 75 lines and added
+At pinned revision `0cb5d507`, the approved Runbook slice removed 75 lines and added
 35. Its shorter own-study section retains preview, confirmation, changed-input
 and destination cautions while linking exact mechanics to the config guide and
 coordinator contract. This records a PR-local documentation change, not audit
@@ -491,9 +493,9 @@ closure or proof of a generic end-to-end reader journey; F05 remains open.
 [Config guide](../../configs/README.md) lines 239–305 contains a long
 named-profile creation walkthrough. The [Runbook](../operations/RUNBOOK.md)
 routes operators there around lines 569–576 while retaining its own site and
-Doctor steps. Review actual user path and inbound anchors: a short command
-route may belong in the Runbook, while field meaning and YAML examples may
-remain with configuration. No relocation is selected yet.
+Doctor steps. The actual user path and inbound anchors remain unmeasured;
+command routing and field/YAML meaning have different audiences. No
+relocation is selected by this finding.
 
 ### F25 — Reporting decision versus migration history
 
@@ -506,17 +508,17 @@ content. The [reporting owner](../../src/emrys/reporting/README.md) owns
 current mechanics. The exact predecessor
 `0ece377ca2b285d6ec2a46f7d2441c78f16409e1` and PR #146 at decision
 lines 210–212 support the retired overwrite and replacement-failure account,
-not merely routine genealogy. Retain them here or transfer them losslessly
-under [history's](../history/README.md) date and origin rules; preserve the
-nondeletion limit at 212–214. A narrower compression candidate is the retired
-symbol enumeration at 216–218 and 223–225 after checking current owners.
+not merely routine genealogy. Their date and origin, and the nondeletion limit
+at 212–214, are material to [history's](../history/README.md) rules. A narrower
+compression candidate is the retired symbol enumeration at 216–218 and
+223–225 after checking current owners.
 The logical `emrys.reporting.report` producer at line 220 still has current
 compatibility meaning in `_run_report/README.md:31–36` and `models.py:19`;
 surviving callbacks are described in reporting README 114–119 and its tests
 README 13–24. The combined index/summary rule is described in the
 `_run_summary` and `_artifact_index` owner READMEs. No inbound link targets
-the decision's `reporting-lifecycle-compression` heading directly, but retain
-or retarget it deliberately if this section changes.
+the decision's `reporting-lifecycle-compression` heading directly; its
+disposition under any future section change is unverified.
 
 ### F26 — Alpha carrier note in reporting README
 
@@ -527,9 +529,8 @@ reporter API guidance found in this pass; the current carrier is in
 `src/emrys/reporting/__init__.py:24–63`, with a built-in provider caller in
 `src/emrys/reporting/paired_cmh_candidate_ranking_report/provider.py:32–33`.
 This is a five-line passage; deleting its historical opening alone saves little.
-Retain its actionable snapshot paths, types, and positional guidance unless a
-larger owner-document edit provides an equally clear home. No standalone
-compression is selected by this observation.
+Its actionable snapshot paths, types, and positional guidance are current API
+content. No standalone compression is selected by this observation.
 
 ### F27 — Old fixed-resource provenance
 
@@ -537,9 +538,9 @@ compression is selected by this observation.
 lines 3–12 accurately describes the allocation-aware policy. Lines 14–21
 also narrate where the old fixed 12-core policy entered and moved in Git.
 The same origin commits are retained in the [CV backlog](cluster_verification_backlog.md)
-around line 1772. Check whether a maintainer needs the duplicate here. Keep
-the present admission/capacity caveat; do not turn profile minima into
-measured utilization or speedup.
+around line 1772. The value of duplicate origin prose to a maintainer is
+unknown. The present admission/capacity caveat is distinct from measured
+utilization or speedup.
 
 ### F28 — Repeated owner boilerplate
 
@@ -553,12 +554,10 @@ four 12–14, or 18 lines total. The shared Run, worker, and grouped-validator
 rules already live in the [stage index](../../src/emrys/stages/README.md)
 lines 28–40; [stage test index](../../tests/stages/README.md) lines 13–16
 already owns common evidence limits and could route to the common task runner.
-Replacing each production paragraph with a one-line link while retaining its
-two exact help commands saves about 12 lines; replacing each test paragraph
-with a one-line parent link and adding four or five shared lines saves about
-19–20 lines. The combined candidate is roughly 31–32 net documentation lines
-across 12 files, before a diff verifies the exact count. Preserve local
-commands, coverage, oracle, recovery, and evidence limits. The ten stage
+The duplicated generic prose has a preliminary consolidation estimate of
+roughly 31–32 net documentation lines across 12 files; an exact count needs
+a diff. Local commands, coverage, oracle, recovery, and evidence limits are
+distinct from that generic prose. The ten stage
 contracts repeat some map/evidence links, but their local aliases, validators,
 publication, and recovery rules do not justify contract deletion. Step 09 is
 an analysis owner outside this candidate. No reduction is approved or made.
@@ -569,6 +568,5 @@ an analysis owner outside this candidate. No reduction is approved or made.
 readers to the production [library index](../../src/emrys/libraries/README.md),
 but that index lists only three shell helpers and a runner link. Six documented
 subpackages—alignments, application logging, evidence, quality, references,
-and validation—have no route from it. A short list of links could repair this
-navigation gap without copying contracts; assess the added lines against the
-reader benefit rather than assuming a new index is required.
+and validation—have no route from it. The gap concerns navigation to existing
+contracts; its reader benefit and any added lines are unmeasured.

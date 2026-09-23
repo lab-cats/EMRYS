@@ -1,10 +1,10 @@
 # DOCS-01 discovery notes, third file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F62 onward. F62–F64 use PR head `b67e0eeb`; F65–F66 began at
+holds F62 onward. F62–F64 use pinned revision `b67e0eeb`; F65–F66 began at
 `cf94af08`, with F66 extended at `9c4fafdc`; F67–F70 use `c0a6027a`;
 F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`; F74–F77 use `ab25ea9b`;
-F78–F83 use PR head `7a07d502`; F84–F88 use `ce9a3289`;
+F78–F83 use pinned revision `7a07d502`; F84–F88 use `ce9a3289`;
 F89 uses local head `39a21034`; F90–F93 and the F85 extension use `9c0264d3`;
 F94–F96 and the F22/F53 extensions use local head `e90c85f4`,
 F97–F99 and the F50/F56/F69/F86 extensions use local head `7adde22a`,
@@ -97,10 +97,10 @@ calls the Step 09 contract consumer a “Python producer.” The
 [Step 09 owner](../../src/emrys/analyses/paired_cmh_candidate_ranking/README.md)
 lines 13–18 identifies `step_09_cmh_editing_site_calling.R` as the result
 producer. The [Python module planner](../../src/emrys/analyses/paired_cmh_candidate_ranking/__init__.py)
-lines 179 and 191–237 builds a guarded R command for that script. The topology
-wording misnames the production owner; the Python planner and validator retain
-their own roles. This is static source comparison, not a runtime or scientific
-behavior finding.
+lines 88–89, 130–140, and 179–237 consumes Step 09 contract facts and builds a
+guarded R command for that script. “Python producer” may mean that Python
+planner, but can also read as the result producer. This is a role-label
+ambiguity, not an established ownership or scientific behavior error.
 
 ### F68 — Slurm diagnostic artifact bounds
 
@@ -271,8 +271,9 @@ inventory at this revision contains one data fixture,
 [`make_target_expansions.json`](../../tests/fixtures/public_cli_contracts/make_target_expansions.json),
 and [one test module](../../tests/test_public_cli_contracts.py) names it at
 lines 22–27. A repository reference search found no second test consumer.
-This is a current tracked-use discrepancy; it does not rule out future shared
-fixtures or imply that the existing fixture should move.
+One module can exercise more than one command owner, so module references alone
+do not disprove the guide's “more than one test owner” wording. This is a
+current-use question, not a verified discrepancy or relocation case.
 
 ### F80 — Alignment helper tool boundary
 
@@ -367,26 +368,26 @@ lines 42–57 carries that edge into `predecessors`, and the
 [Snakefile](../../src/emrys/workflow/Snakefile) lines 402–424 waits for the
 predecessor's verified marker. The [task runner](../../src/emrys/orchestration/run_coordinator/task.py)
 validates and checks semantic all-pass at lines 2763–2779 before publishing
-that marker at 2883–2920. Thus an ordinary Run cannot overlap 02b with Step
-02 validation. This is a timing statement about the admitted Run graph, not
-an observed execution defect or a claim about a standalone worker invocation.
+that marker at 2883–2920. Thus 02b cannot overlap its *corresponding sample's*
+Step 02 validation in an ordinary Run; different samples may overlap. This is
+a timing statement about the admitted graph, not an execution defect or a
+claim about a standalone worker invocation.
 F99 records the related Step 06→07 data-input versus Run-scheduling distinction.
 
 ### F87 — Step 05 scratch owner in optimization candidate
 
 The [optimization campaign](optimization_campaign.md) lines 199–212 says
-Step 05 deliberately puts GATK spill under the output directory because CSU
-`/tmp` can be too small, citing an earlier pinned Step 05 revision. The
-current [worker](../../src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh)
-lines 121–124 passes `EMRYS_TASK_WORK_DIR` to both Java and GATK temporary
-options. The [stage contract](../../src/emrys/stages/split_n_cigar/CONTRACT.md)
-lines 56–60 calls it runner scratch. The
-[runner](../../src/emrys/orchestration/run_coordinator/task.py) derives an
-output-staging-adjacent scratch path at 1465–1469, creates it at 1546–1575,
-and binds both `EMRYS_TASK_WORK_DIR` and `TMPDIR` at 2698–2704. Thus the
-candidate's present-tense ownership explanation has drifted, while the
-scratch remains output-adjacent. The institutional fast-scratch performance
-question was not measured or decided in this audit.
+Step 05 puts GATK spill under the output directory because CSU `/tmp` can be
+too small, citing pinned historical worker code at line 436. The current
+[worker](../../src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh)
+lines 121–124 receives `EMRYS_TASK_WORK_DIR`; the
+[runner](../../src/emrys/orchestration/run_coordinator/task.py) creates
+output-adjacent scratch at 1465–1469 and 1546–1575 and binds that variable
+at 2698–2704. The placement claim still holds. The campaign prose does not
+assign scratch ownership to the worker, and its pinned link can serve as
+historical provenance. This alleged owner-drift finding is **dismissed after
+recheck**; no current documentation error or saving is established. The
+institutional fast-scratch performance question remains unmeasured.
 
 ### F88 — Old Slurm memory preflight proposal
 
@@ -472,14 +473,15 @@ separate supplied-manifest exclusions remain distinct. No Init command ran.
 ### F94 — Dashboard retirement closeout tense
 
 The [main backlog](backlog_matrix.md) lines 327–331 ends the PR #169
-integration account in present tense: dashboard retirement “still requires a
-validated replacement.” Git attributes that paragraph to `550b54025` on
+integration account in present tense: the dashboard remains and its retirement
+“still requires a validated replacement.” Git attributes that paragraph to
+`550b54025` on
 2026-09-14. The same backlog at line 180 records the institutional owner's
 2026-09-17 acceptance of installed watch as the replacement and retirement of
 the standalone wrapper/callers. The [CV campaign](cluster_verification_campaign.md)
 lines 198–201 and [polish account](polish-campaign.md) lines 437–446 corroborate
 that later disposition. The old sentence can describe its earlier checkpoint,
-but without a date cue a current reader can take it as the remaining task.
+but without a date cue a current reader can infer the retired wrapper remains.
 Standard CI and institutional visual verification remain open in the later row;
 acceptance of the replacement is not those proofs. No dashboard was run.
 
