@@ -482,8 +482,8 @@ restoration to the Runbook but does not name Python checks. This source path
 does not establish them as direct R prerequisites. Quickstart lines 43–45
 initializes the workflow environment earlier, while the R targets do not use it.
 The ten-line prelude could yield roughly seven fewer local lines; a separate
-institutional gate remains unverified. Preserve R commands, library/cache,
-checks and recovery at 696–726. No restore ran.
+institutional gate remains unverified. Preserve `cd` for Make's relative paths,
+R commands, library/cache, checks and recovery at 696–726. No restore ran.
 
 ### F93 — Repeated partition selector rule
 

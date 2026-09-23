@@ -340,8 +340,8 @@ lines 30–38 owns those probe mechanics; [probe source](../../src/emrys/evidenc
 lines 156–201 uses an empty workflow and disposable temporary directory.
 The coordinator's head diagnosis, compute qualification, execution-preflight
 placement and head-success limit are unique here. A concise owner route might
-save two to four physical lines from this six-line span, conditional on a
-lossless draft and link check. No product defect or net saving is established.
+save two to three physical lines from this six-line span; four remains an
+unverified upper bound. No lossless draft, link check or net saving exists.
 
 ### F185 — Canonical BAM producer LB and PL exactness overclaimed
 

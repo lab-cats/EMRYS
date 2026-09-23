@@ -447,11 +447,11 @@ remains a separate Run/Task/Results authority; retain links to both when a
 sentence addresses both boundaries. No safe prose deletion is established.
 
 The coordinator [README](../../src/emrys/orchestration/run_coordinator/README.md)
-lines 68–71 links the later section for watch selection, chiefly at contract
-56–67 and 470–555; watch admission is at 557–681. [Runbook](../operations/RUNBOOK.md)
-34–37 and 117–119 links there for request/log admission and watch diagnostics.
-The anchor exists; the later section owns Results/recovery. At PR head
-`0cb5d507`, Runbook Init lines 310–312 also use the broad no-write anchor.
+68–71 links the later section for watch selection, chiefly at contract 56–67
+and 470–555; watch admission is at 557–681. [Runbook](../operations/RUNBOOK.md)
+34–37, 117–119 and 420–423 also send request/watch readers to that later
+section. Its stop and Init links at 161 and 310–312 correctly use no-write.
+The later anchor owns Results/recovery; its existence does not fix these routes.
 
 ### F22 — Coordinator cross-owner detail
 

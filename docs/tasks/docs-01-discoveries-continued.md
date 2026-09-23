@@ -38,15 +38,21 @@ Run completion.
 
 [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 65–72 mixes a current
 Snakemake error and Run recovery with an undated older-submission cause,
-four-variable export list, and “Update EMRYS to the submission fix.” The
+four-variable export list, and “Update EMRYS to the submission fix” without a
+revision. This eight-line case is useful operator guidance, not wholesale
+duplication. The
 [backlog incident](backlog_matrix.md) lines 243–252 and
 [CV card](cluster_verification_backlog.md) lines 2392–2404 retain the original
 failure and startup boundary; the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 375–382 and [submission source](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
 lines 861–870 own the exact export list, checked by direct source tests at
 `tests/orchestration/run_coordinator/test_slurm_submission.py:2027–2099`.
-No fixed installed release or current Slurm failure was established. Preserve
-error, Run inspection/resume, and evidence; historical cause and variable list are only a review span.
+[Run implementation roots](../../src/emrys/orchestration/run_coordinator/run_implementation.py)
+34–119 omit the submission owner, and the incident reports a successful
+synthetic resume; no incompatibility is inferred. No
+fixed release or current Slurm failure was established. Preserve the error,
+no-passwd cause, failed-Run evidence and offered resume. A shorter case might
+save at most zero to two local lines, unverified.
 
 ### F32 — Mermaid check's stated ceiling
 
