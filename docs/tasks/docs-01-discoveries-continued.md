@@ -290,24 +290,18 @@ reduction remains. No new measurement was run.
 
 ### F48 — Project name lookup from the repository root
 
-The [root guide](../../README.md) lines 77–79 says an operator outside a
-Project root can select it with `--project NAME_OR_PATH`. The
-[selector](../../src/emrys/orchestration/run_coordinator/onboarding.py)
-lines 270–285 resolves a bare name relative to the current directory; the
-[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 35–37 promises no parent or global lookup. The source test at
-`tests/orchestration/run_coordinator/test_onboarding.py:1929–1954` pins that
-boundary. From the Quickstart's repository root, `--project pum1-study` does
-not select its `Projects/pum1-study` child. From that root,
-`--project Projects/pum1-study` or an exact absolute path has different
-selection behavior. This is a guide discrepancy, not a proposed new
-discovery behavior.
-Saved `EMRYS_PROJECTS_ROOT` affects named Init's destination
-(`onboarding.py:1261–1269`) and the outside-Project picker, but the exact
-Project selector at `onboarding.py:270–285` does not consult it. The
-[Runbook](../operations/RUNBOOK.md) lines 294–301 already gives an absolute
-`project.yaml` example for Project-aware commands. That distinction matters
-for the root route's global name-lookup implication after setup.
+**Dismissed for DOCS-01 after recheck at `633625a7`.** The
+[root guide](../../README.md) lines 77–79 permits `--project NAME_OR_PATH`
+outside a Project; it does not promise lookup in the saved Projects home.
+The [selector](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+lines 270–285 resolves a bare name relative to the current directory or an
+explicit path, as the [contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 35–37 and direct test at
+`tests/orchestration/run_coordinator/test_onboarding.py:1929–1954` establish.
+Quickstart does not instruct `--project pum1-study` from the repository root;
+the [Runbook](../operations/RUNBOOK.md) lines 294–301 gives an absolute path.
+The earlier finding inferred a global-name promise the guide does not make,
+and no useful documentation reduction is established.
 
 ### F49 — Allocation preview needs execution-flag boundary
 
@@ -412,8 +406,7 @@ These may mean generation after an opted-out Run but omit the create-only
 boundary. The [reporting owner](../../src/emrys/reporting/README.md) lines
 3–16 says `--execute` publishes only from empty owned state; a complete bundle
 is revalidated and reused (lines 102–112). The [Runbook](../operations/RUNBOOK.md)
-distinguishes these cases at baseline lines 477–490 (lines 437–450 at pinned
-revision `0cb5d507`): generation after skipped reporting,
+distinguishes these cases at current lines 437–450: generation after skipped reporting,
 reuse of complete bundles, and refusal of partial or blocked bundles.
 [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 74–80 explicitly
 forbids treating `report` as a repair or overwrite route. “Regenerated” could
@@ -430,7 +423,7 @@ discovery defaults an omitted Project to the current directory's `project.yaml`
 ([onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
 lines 270–285, 2304–2321). Outside the borrower, a command may fail or select
 another Project; source-selection and admission checks still govern mutation.
-The [Runbook](../operations/RUNBOOK.md) at pinned `0cb5d507` lines 643–650
+The [Runbook](../operations/RUNBOOK.md) at current lines 643–649
 shows an explicit dependent selector, then a bare source-Project Doctor command.
 Doctor also defaults to the current Project (`doctor.py:2041–2046`). Its own
 borrower diagnostics at `doctor.py:654–659`, `698–707`, and `949–954` print
@@ -494,18 +487,16 @@ No test or installation was run in this audit.
 
 ### F57 — Make fixture public target label
 
+**Dismissed for DOCS-01 after recheck at `633625a7`.**
 The [fixture guide](../../tests/fixtures/public_cli_contracts/README.md)
 lines 3–4 calls `make_target_expansions.json` the expansion contract for
 “every public Make target.” The
-[test map](../../tests/test_public_cli_contracts.py) lines 182–205 includes
-`internal_lane` targets such as `validation-static` and
-`python-coverage-shard`, plus `operator_mutation` targets such as `r-restore`
-and `python-coverage-baseline-update`. Its inventory assertion at 877–903
-requires all declared `.PHONY` targets, not just supported public commands.
-This is a complete Make target expansion inventory with explicit
-applicability classes. The fixture still protects literal command
-expansion and runs no recipe, as its guide correctly states at lines 10–13.
-No Make target was run for this finding.
+[test map](../../tests/test_public_cli_contracts.py) lines 182–205 also
+includes `internal_lane` and `operator_mutation` targets; its assertion at
+877–903 inventories all declared `.PHONY` targets. “Every public” does not
+mean “only public,” so the guide does not misclassify those additional rows.
+The fixture protects literal expansion without running recipes, as its guide
+says at lines 10–13. No useful DOCS-01 reduction or Make execution is shown.
 
 ### F58 — Nonoverlapping validation lane claim
 

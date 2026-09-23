@@ -46,19 +46,21 @@ reduction. The historical claim was not replayed in this audit.
 
 ### F102 — Historical E09 example in current lifecycle rules
 
+**Dismissed for DOCS-01 after recheck at `633625a7`.**
 The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 1029–1036 states current prepared-finalization eligibility, then names
 the historical E09 Run and says its cause cannot be established or its state
 recovered under this path. The [CV evidence register](cluster_verification_campaign.md)
 line 114 retains the operator's cancellation observation; the
 [CV-10 card](cluster_verification_backlog.md) lines 2732–2744 and 2810–2814
-retains its accepted recovery boundary. The named example adds historical
-context to the current contract, while its generic missing-evidence rule is
-already stated there. Neither the E09 cause nor recovery of that old Run was
-verified by this document comparison.
+retains its accepted recovery boundary. The contract's one-sentence limit
+prevents the new rule from implying recovery of that old Run. Removing it would
+lose a useful qualification without meaningful compression. Neither the E09
+cause nor recovery of that Run was verified by this document comparison.
 
 ### F103 — Unpublished FASTQ experiment in the owner guide
 
+**Dismissed for DOCS-01 after recheck at `633625a7`.**
 The [sample-manifest owner guide](../../src/emrys/ingestion/sample_manifest_admission/README.md)
 lines 20–32 mixes current helper limits with what it calls an unpublished
 single-pass `awk` draft, its NUL-header counterexample, and a source-derived 21-pass
@@ -69,13 +71,12 @@ the byte and diagnostic boundary. The
 lines 73 and 114–151 defaults to 20 IDs, counts records, and rescans each
 requested leading ID; this
 supports the logical-pass count, not measured physical I/O or pipeline speed.
-The current direct test module has prefix, count, mismatch, and compression
-cases but no NUL-header case. The owner passage is the only current-tree
+Direct tests omit NUL-header handling. The owner passage is the only current-tree
 description found for the exact NUL-header pair and `awk` truncation; its
 documentation commit `550b54025` does not establish the draft's execution
 date or retained output. The exact counterexample and truncation detail are
-unique to this current guide; the broader accepted-input boundary also appears
-in the optimization campaign. This review establishes no deletable span or saving.
+unique to this owner guide; the campaign delegates that byte boundary to it.
+No deletable span or saving is established.
 
 ### F104 — Automatic reports after successful computation
 
@@ -97,6 +98,7 @@ reader conflict or useful DOCS-01 reduction is established.
 
 ### F105 — Retired scheduler wrapper in the stage map
 
+**Dismissed for DOCS-01 after recheck at `633625a7`.**
 The [stage map](../../src/emrys/contracts/STAGE_MAP.md) lines 81–86 explains
 the absence of `00a -> 00b` and `00a -> 00c` edges through a retired Step 00a
 scheduler wrapper under a “Current operational coupling” heading. Its current
@@ -110,8 +112,9 @@ retired-wrapper explanation with the durable fact that 00b/00c do not consume
 the STAR index and that their current references are external. The
 [00b contract](../../src/emrys/stages/gtf_to_bed12/CONTRACT.md) lines 12–20 and
 [00c contract](../../src/emrys/stages/fasta_sidecars/CONTRACT.md) lines 13–21
-independently preserve that live rule. The heading/history mixture raises a
-placement question; no safe saving or graph behavior was established here.
+independently preserve that live rule. The brief retired-wrapper account
+explains why an old coupling was not a semantic edge; the edge table alone
+does not explain the absence. No graph defect or useful reduction is established.
 
 ### F106 — Doctor storage-plan proposal after Slurm routing changed
 
@@ -134,6 +137,7 @@ of this exact plan shape was not identified in this pass.
 
 ### F107 — Retired shell-publication tests in a current test guide
 
+**Dismissed for DOCS-01 after recheck at `633625a7`.**
 The [shared-library test guide](../../tests/libraries/README.md) lines 9–20
 explains a TERM/link and inode-check cleanup gap in retired RSeQC, BAM-QC,
 and duplicate-marking shell writers, then points to the current runner suite.
@@ -145,9 +149,8 @@ at 810–845 covers analogous link, ownership, residue and input faults in a
 different publisher. That current case does not by itself reproduce the old
 TERM probe or prove one-to-one test equivalence. The current guide's
 validation-recovery section at lines 22–30 describes live tests and known
-limits. This shell passage is historical defect characterization inside a
-present test index; a lossless
-evidence home and any saving remain unverified. No test ran in this audit.
+limits. This account sits with the tests and points to the current runner suite;
+no test ran in this audit.
 
 The same retired-writer history remains in current scientific-worker contracts:
 [BAM QC](../../src/emrys/evidence/canonical_bam_qc/CONTRACT.md) lines 80–82
@@ -157,7 +160,7 @@ lines 68–70 describes truncation and empty success, and
 58–59 describes partial or mixed outputs. Their current workers use runner
 staging. The shared [publication decision](../design/decisions/execution-evidence-and-reporting.md#publish-validated-transactions)
 states the lasting runner boundary but not these distinct old failure modes.
-This expands the placement review, not the authority to remove evidence.
+Those distinct old failure modes belong with their owners.
 
 At local audit head `d18470c8`, three more current contracts retain distinct
 retired-writer history: [scientific context](../../src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/CONTRACT.md)
@@ -167,7 +170,7 @@ record ignored restoration failure; and
 [canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md) lines 82–120
 record cleanup limits and a characterized lost-predecessor sequence. Their
 current refusal and residue guidance remains owner-specific; the canonical
-loss has retained old source and a fault oracle. No safe saving follows.
+loss has retained old source and a fault oracle. No safe saving is established.
 
 ### F108 — Scientific completion in the run-summary guide
 
@@ -378,6 +381,7 @@ novice/site acceptance. No Init or Viking journey ran.
 
 ### F120 — Superseded Init replay in the active CV backlog
 
+**Dismissed for DOCS-01 after recheck at `633625a7`.**
 The [CV-U18 card](cluster_verification_backlog.md#cv-u18-interactive-input-list-creation)
 lines 1129–1140 calls a generated, safely quoted creation command the selected
 implementation and says direct fixtures cover that replay. Its later
@@ -392,10 +396,9 @@ lines 147–151 and direct [onboarding assertions](../../tests/orchestration/run
 at 364–365 and 460–461 agree on that current boundary. CV-U21's dated
 September 20 explanation at lines 1413–1415 also describes omission of
 automatic STAR flags from the retired replay command; its automatic-value
-and reference-freshness reasoning remains distinct. The CV chronology does
-record the supersession, so this is a current-reader framing and compression
-candidate, not evidence of an Init behavior defect or permission to discard
-the older fixtures and observations. No Init command or test ran in this pass.
+and reference-freshness reasoning remains distinct. The CV chronology
+explicitly records the supersession, so this is not a current reader ambiguity
+or a safe compression candidate. No Init command or test ran in this pass.
 
 ### F121 — renv activation path in the root notice
 

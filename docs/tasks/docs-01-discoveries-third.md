@@ -26,7 +26,9 @@ producer command lines; setup or external state can still differ. The
 [test fixture](../../tests/test_benchmark_stage_resources.py)
 lines 33–41 includes a valid producer without the placeholder. This limits what
 the label proves about the command's actual resource setting; it is not a
-measured performance discrepancy. No benchmark was executed.
+measured performance discrepancy. No benchmark was executed. The
+[SETUP-02 row](backlog_matrix.md) line 176 already owns eventual helper and
+documentation retirement.
 
 ### F63 — Background cohort in the scientist diagram
 
@@ -86,11 +88,11 @@ at 196–278 do not pass it; the computation claim is accurate in that narrower
 sense. [Materialization](../../src/emrys/orchestration/run_coordinator/materialization.py)
 lines 1195–1202 requires declared inputs, and the
 [task runner](../../src/emrys/orchestration/run_coordinator/task.py) lines
-2600–2616 and 2788–2790 checks them for stability. The guides omit this Run
-dependency and provenance role. The [stage map](../../src/emrys/contracts/STAGE_MAP.md)
-lines 58–77 calls its edge roster complete but names only sites and receipt
-for Step 08→09, reflecting the narrower computational dependency. It does not
-describe the additional task input. No task or scientific analysis was executed.
+2600–2616 and 2788–2790 checks them for stability. The owner descriptions
+omit this Run task-input and provenance role. The
+[stage map](../../src/emrys/contracts/STAGE_MAP.md) lines 58–77 inventories
+direct artifact edges, not every bound task input; its roster is not shown to
+be incomplete. No task or scientific analysis was executed.
 
 ### F67 — Step 09 producer language in source topology
 
@@ -110,13 +112,13 @@ The [CI workflow guide](../../.github/workflows/README.md) lines 15–22 says
 only bounded, redacted setup and terminal diagnostics enter the infrastructure
 artifact. The [setup script](../../tests/tools/configure_ci_slurm.sh) lines
 43 and 51–58 copies Slurm configuration, full service status, and service
-journals into that directory with no line limit or redaction step. The
+journals into that directory with no byte/line cap or content-redaction step. The
 [workflow](../../.github/workflows/ci.yml) lines 1344–1358 does the same for
 terminal status and journals, then uploads the runtime/Slurm evidence directory
-at 1371–1383. The commands deliberately exclude private accounting
-configuration and database journals. This contradicts the guide's general
-“bounded, redacted” description; no CI artifact contents were inspected, and
-no sensitive-data disclosure is inferred.
+at 1371–1383. Capture has a finite service and file scope and deliberately
+excludes private accounting configuration and database journals. The guide's
+unqualified “bounded, redacted” description exceeds these transformations; no
+CI artifact contents were inspected or sensitive-data disclosure inferred.
 
 ### F69 — Python shard inventory scope
 
@@ -167,11 +169,6 @@ reconnection at 260–269 hard-code `$EMRYS_SOURCE_ROOT/Projects/pum1-study`.
 `Projects` directory and saves the selected path; named Init at 1261–1269
 creates under it. With an inherited alternate home, pressing Enter makes the
 documented later `cd` miss the Project, although Init prints the actual path.
-The [Smoke Test](../operations/SMOKE_TEST.md) lines 8–11 and 23–30 also routes
-readers through the Quickstart but creates its disposable synthetic Project at
-an explicit repository `Projects/emrys-smoke` path. That synthetic command does
-not use the saved home; returning to the real-study Quickstart still inherits
-the named-Init versus hard-coded-`cd` mismatch when a different home was saved.
 
 At local audit head `d18470c8`, the [Projects index](../../Projects/README.md)
 lines 3–6 also says named Init from the repository root creates each Project
@@ -368,13 +365,10 @@ undefined status among 51 ID rows in a static count. The
 [polish campaign](polish-campaign.md) line 435 calls that outcome open. The
 decision itself remains unresolved; this finding concerns the matrix's
 status vocabulary and assigns no new authority or acceptance state.
-The delegated [CV backlog](cluster_verification_backlog.md) line 13 imports
-those status meanings, yet its Status column calls CV-12 `Discard` at line
-106. The detailed card at 3026–3037 records a deliberate terminal
-disposition to stop causal reconstruction, and the
-[campaign charter](cluster_verification_campaign.md) lines 173–177 permits
-rejection by decision. This is a label-vocabulary distinction; the disposition
-and its unknown original cause remain intact.
+The delegated [CV backlog](cluster_verification_backlog.md) calls CV-12
+`Discard` at line 106, but its detailed card at 3026–3037 explicitly explains
+that terminal decision. It is a deliberate exception, not a target for status
+normalization; its unknown original cause remains intact.
 
 ### F86 — Step 02b parallel-validation claim
 
@@ -411,6 +405,7 @@ institutional fast-scratch performance question remains unmeasured.
 
 ### F88 — Old Slurm memory preflight proposal
 
+**Dismissed for DOCS-01 after recheck at `633625a7`.**
 The [polish campaign](polish-campaign.md) dates its source audit to
 `fdf76760` at lines 35–44; item 36 at 798–811 calls undersized Slurm-memory
 preflight missing. Current [execution profile](../../src/emrys/orchestration/run_coordinator/execution_profile.py)
@@ -420,7 +415,8 @@ line 829 invokes it before scheduler request. [Focused tests](../../tests/orches
 lines 260–287 cover rejection without a log write. The [SCHED-01 row](backlog_matrix.md)
 line 172 and [CV-11 card](cluster_verification_backlog.md) lines 2994–3024
 distinguish integrated checks from institutional heterogeneous-node acceptance.
-Item 36 is dated, not current software status; no check or cluster work ran here.
+Item 36 is an explicit historical proposal, not a present-tense guidance error.
+No useful compression is established; no check or cluster work ran here.
 
 ### F89 — One-Run wording before Run creation
 
@@ -493,15 +489,13 @@ examples, and supplied-manifest exclusions remain. No Init command ran.
 
 ### F94 — Dashboard retirement closeout tense
 
-The [main backlog](backlog_matrix.md) lines 327–331 says the dashboard remains
-and retirement “still requires a validated replacement” (`550b54025`,
-September 14). At local audit head `3cfe4eff`, the
-[CV backlog](cluster_verification_backlog.md) line 79 also assigns coordinated
-standalone entry-point/caller/name retirement to `DASHBOARD-RETIRE-01` in its
-current “Remaining acceptance” table; its CV-16 account at lines 3173–3184
-retains the older checkpoint. The authoritative [main backlog](backlog_matrix.md)
-line 180 records the institutional owner's September 17 acceptance of installed
-watch and wrapper/caller retirement.
+At local audit head `3cfe4eff`, the
+[CV backlog](cluster_verification_backlog.md) line 79 still assigns standalone
+entry-point/caller/name retirement to `DASHBOARD-RETIRE-01` in its current
+“Remaining acceptance” table. The [main backlog](backlog_matrix.md) line 180
+records the institutional owner's September 17 acceptance of installed watch
+and wrapper/caller retirement. Main-backlog lines 327–331 and the CV-16 card
+at 3173–3184 are dated older checkpoints, not current competing status.
 The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 498–499 still claims direct loading under isolated system Python. Shared
 scheduler mechanics remain, but [dashboard.py](../../src/emrys/orchestration/run_coordinator/dashboard.py)
