@@ -36,6 +36,7 @@ trace this correction; no documentation deletion follows.
 
 ### F131 — Receipt validation scope in the glossary
 
+**Dismissed after recheck at `71ac2272`.**
 The [glossary](../reference/GLOSSARY.md) line 69 defines a receipt as published
 after all other transaction members “validate” and says its presence marks
 transaction completion. The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
@@ -47,10 +48,10 @@ lines 57–64 makes the second order explicit: its worker checks staged VCFs,
 the runner publishes VCFs and receipt, and the independent validator checks
 the visible set. A [direct task test](../../tests/orchestration/run_coordinator/test_task.py)
 lines 759–776 shows a failed validation row prevents the verified-task marker.
-The glossary's unqualified “validate” and “completion” blur native transaction
-completion with verified task completion. Staged checks and receipt-last order
-remain real; a native receipt alone is not verified-task proof. No runtime or
-reporting defect follows from this glossary wording.
+The glossary explicitly says transaction completion, requires re-admission,
+and links the decision that separates native publication from task completion.
+It makes no verified-task promise; no useful DOCS-01 correction or reduction
+is established by this wording.
 
 ### F132 — Benchmark timing scope in the Runbook
 
@@ -441,6 +442,7 @@ filesystem fault was run here.
 
 ### F157 — CV-U33 current usage policy beside correction evidence
 
+**Dismissed after recheck at `71ac2272`.**
 The [CV-U33 card](cluster_verification_backlog.md) lines 2095–2098 repeat
 selected-cluster terminal accounting and local-only live `sstat` limits held
 by [SCHED-USAGE-01](backlog_matrix.md) line 88, the
@@ -451,7 +453,8 @@ Preserve the card's original request and September 17 negative finding at
 unknown usage, and display rules, its focused-check account, and pending
 hosted and institutional accounting/display acceptance. The surrounding
 21-line span at 2082–2102 contains that distinct evidence; its length is not
-a saving estimate. This audit ran no scheduler command.
+a saving estimate. The concise current-scope paragraph also explains the
+card's pending acceptance; a useful reduction is not established. No scheduler command ran.
 F149 covers watch selection across other CV cards, not this usage policy.
 
 ### F158 — Campaign delivery prose beside the closure checklist
@@ -538,4 +541,10 @@ The configuration guide's guided-Init account at lines 77–94 overlaps the
 lines 103–124, but Project authors may need its strandedness, comparison,
 default, and inactive-background explanation. No safe saving was established.
 All 49 test/fixture READMEs were reread against selected source and CI; F28,
-F69, F77, F78, F82, F107, and F147 retain their stated evidence limits.
+F69, F82, F107, and F147 retain their stated evidence limits. F77/F78's
+indexes made no complete-roster claim. A static eight-word paragraph screen
+of 1,382 longer prose paragraphs flagged 95 cross-file pairs; short and
+paraphrased repetition was outside that scan. The exact four-line Java thread
+rule at [Step 04](../../src/emrys/stages/duplicate_marking/CONTRACT.md) 43–46
+and [Step 05](../../src/emrys/stages/split_n_cigar/CONTRACT.md) 45–48 serves
+two separate stage contracts; no extra useful reduction was established.

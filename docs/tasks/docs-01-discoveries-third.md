@@ -259,6 +259,7 @@ finding, not an observed Step 07 execution or scientific defect.
 
 ### F77 — Omitted application-model test suite
 
+**Dismissed for DOCS-01 at `71ac2272`.** The index makes no complete-roster claim.
 The [orchestration contract test index](../../tests/contracts/orchestration/README.md)
 lines 3–10 describes `test_orchestration_contracts.py` and
 `test_reporting_ledger_contracts.py` but omits the present
@@ -270,6 +271,7 @@ the test file exists, and no test result was inferred.
 
 ### F78 — Omitted Python shard-duration baseline
 
+**Dismissed for DOCS-01 at `71ac2272`.** The snapshot guide makes no all-baselines claim.
 The [test-baselines index](../../tests/baselines/README.md) lines 1–9
 describes only `python_coverage.json`. Its sibling
 [`python_test_durations.json`](../../tests/baselines/python_test_durations.json)

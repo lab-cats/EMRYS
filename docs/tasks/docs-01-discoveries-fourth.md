@@ -79,6 +79,7 @@ in the optimization campaign. This review establishes no deletable span or savin
 
 ### F104 — Automatic reports after successful computation
 
+**Dismissed after recheck at `71ac2272`.**
 The [Runbook](../operations/RUNBOOK.md) lines 274–278 says successful
 computation generates both reports automatically. For a full Run, the
 [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
@@ -89,9 +90,10 @@ lines 1514–1536 handles reporting failure after scientific Results complete.
 The Runbook's own [recovery route](../operations/RUNBOOK.md#inspect-and-open-reports)
 at lines 437–447 handles skipped, partial, and blocked reporting, while
 [Quickstart](../../quickstart.md) lines 188–205 requires separate Reporting
-admission after Scientific Results completion. “Generates both reports” can read as a
-completion guarantee stronger than these independent checks. This is an
-operator-wording question, not evidence of a reporting behavior defect.
+admission after Scientific Results completion. The Runbook immediately says
+to check completion or finish incomplete reporting, so the sentence does not
+promise admitted reports after every scientific completion. No separate
+reader conflict or useful DOCS-01 reduction is established.
 
 ### F105 — Retired scheduler wrapper in the stage map
 
@@ -306,6 +308,7 @@ measured.
 
 ### F116 — CV-10 current protocol beside cancellation evidence
 
+**Dismissed after recheck at `71ac2272`.** The delegated card needs its protocol beside acceptance evidence.
 The [CV-10 card](cluster_verification_backlog.md#cv-10-external-cancellation-and-recovery)
 lines 2732–2979 retains original E09 cancellation acceptance at 2734–2746.
 Its current retry and prepared-finalization protocol at 2799–2814, 2886–2912,
@@ -326,6 +329,7 @@ No evidence was moved and no safe reduction was established.
 
 ### F117 — CV-20 current inspection beside submission history
 
+**Dismissed after recheck at `71ac2272`.** The delegated card needs request and reconnect context.
 The [CV-20 card](cluster_verification_backlog.md#cv-20-submission-state-before-run-creation)
 lines 3332–3469 keeps original pre-Run submission, queue, reconnect, and
 duplicate-risk acceptance at 3334–3341. Its current request and inspection
@@ -411,6 +415,7 @@ assessed or changed, and the distribution test was read rather than run.
 
 ### F122 — Step 06 optimization source after publication moved to the runner
 
+**Dismissed after recheck at `71ac2272`.** The campaign pins all cited source to its dated audit.
 [Optimization candidate 1](optimization_campaign.md#1-consolidate-step-06-scans-and-subgroup-materialization)
 lines 72–88 cites a pinned producer for both “Extraction and publication” and
 asks to preserve the five-file publication/recovery transaction. Its audit
@@ -423,12 +428,10 @@ lines 140–208 still performs the flag-selected extraction, merge, index, count
 and output checks, while its [contract](../../src/emrys/stages/mechanical_orientation/CONTRACT.md)
 lines 49–57 assigns execution, publication, and recovery to the
 [runner](../../src/emrys/orchestration/run_coordinator/task.py) lines 1491–1629.
-The campaign's dated source comparison is valid, and it does not claim a
-current performance measurement. Its ongoing proposal nevertheless routes
-publication through an older owner, so a reader selecting current work needs
-the producer/runner distinction. The five declared outputs, transaction
-safety, and historical cost observation remain distinct; no saving or speedup
-was established by this review.
+The campaign's dated comparison is valid, makes no current-owner or current
+performance claim, and explicitly requires rechecking before selection. The
+five declared outputs, transaction safety, and historical cost observation
+remain distinct; no DOCS-01 correction, saving, or speedup follows.
 
 ### F123 — Repeated stage resource defaults in the configuration guide
 
