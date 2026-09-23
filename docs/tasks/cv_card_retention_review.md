@@ -45,7 +45,7 @@ commit; no candidate is approved for removal by this review.
 | CV-23 · Deferred · 3595–3633 | CLEANUP-01 owns future scope; retain six-class ownership/consequence table, unknown-is-not-unused rule, and separate evidence-deletion authority. | No safe short form until the decision and candidate-class boundary have a durable owner. |
 | CV-24 · Completed · 3634–3679 | Watch handoffs only to supported CLI operations; no action authority from inspected state, and new analysis stays in the explicit Run CLI. Site watch use remains CV-16. | Implementation/test narrative at 3648–3665 may condense after selected action scope survives. |
 | CV-25 · Completed · 3680–3751 | Admitted Task and application log discovery, bounded selected-Run scope, no implicit scan, started-streams-not-liveness rule, and no recovery proof from association. | Staged test narration may condense after diagnostic contract and CI identity transfer. |
-| CV-26 · Open · 3752–4061 | Original complete-operation attribution/comparable-measurement requirement; the [September 15 record](../history/2026-09-15-cv26-doctor-measurements.md) retains hosted setup, probes, trials/hashes, fresh-check and serial-R decisions, and failed-prototype limit. The card alone retains some byte/probe counters and logging limits, the September 16 negative Viking report, and the September 21 five-to-four change without speedup proof. | Instrumentation/prototype prose at 3765–3788, 3814–3849 and 3881–3904 is an evidence-transfer project; retain card-only counters and later decisions before shortening. |
+| CV-26 · Open · 3752–4061 | Original complete-operation attribution/comparable-measurement requirement; the [September 15 record](../history/2026-09-15-cv26-doctor-measurements.md) retains hosted setup, probes, trials/hashes, fresh-check and serial-R decisions, and failed-prototype limit. A [later record](../history/2026-09-21-cv26-doctor-followup.md) retains the September 16 negative Viking report and September 21 five-to-four change without speedup proof. The card alone retains some September 15 byte/probe counters and logging limits. | Instrumentation/prototype prose at 3765–3788, 3814–3849 and 3881–3904 is an evidence-transfer project; retain remaining card-only counters before shortening. |
 | CV-27 · VP · 4064–4095 | Direct Quickstart-to-Runbook transfer path, tiny local copy-fixture limit, generated-bundle links/rendering and institutional visual acceptance. | Short card offers little safe reduction. |
 
 ## CV-U01–16
@@ -125,12 +125,13 @@ preserves the charter observations. Additive dated records now preserve
 [CV-10 containment and retry](../history/2026-09-15-cv10-containment-retry.md),
 [job 621154's distinct timeout](../history/2026-09-16-cv10-timeout.md),
 [CV-26 hosted measurements](../history/2026-09-15-cv26-doctor-measurements.md),
+the [later Doctor decision](../history/2026-09-21-cv26-doctor-followup.md),
 and [CV-U28 fixed-policy provenance](../history/2026-09-15-cv-u28-resource-provenance.md).
 The [CV-UX-01 collision record](../history/2026-09-16-cvux01-doctor-collision.md)
 preserves job 621172's separate presentation observation and bounded software
 checks. Its historical Open checkpoint is date-bound in the source card. Later
-CV-10/CV-26/CV-U28 decisions have not been fully
-transferred. The detailed card records remain untouched; no shortening is
+Later CV-10/CV-U28 decisions and CV-26's September 15 counters/logging limits
+have not been fully transferred. The detailed card records remain untouched; no shortening is
 authorized by these partial transfers.
 
 Historically approved product-line caps and exceptions within cards are

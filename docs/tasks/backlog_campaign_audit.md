@@ -70,7 +70,7 @@ discovery below and names the next evidence needed before changing authority.
 | 1. Status vocabulary and placement | The baseline matrix left `Needs decision` undefined, the delegated backlog used `Discard`, and two Completed rows sat under Active backlog. | Both terms are now defined narrowly; the completed rows moved without status or acceptance changes. |
 | 2. `INIT-02` and dependent onboarding claims | Automatic maintained-study selection is Open, but CV summaries called `INIT-01`–`INIT-03` source-complete. Quickstart supplies a manifest path explicitly. | Summaries are corrected; installed study-file delivery and no-argument selection remain before hosted and novice acceptance. |
 | 3. `CV-U22` runtime reuse | The card remains Open for compatible-donor discovery before installation; the documented known-smoke route is narrower. | Retain Open and the no-silent-donor rule; distinguish known-smoke evidence from the undecided general selection design. |
-| 4. `CV-26` Doctor cost | One redundant full diagnosis was removed; original complete-operation attribution and comparable measurements remain Open. | September 15 measurements have a dated home; transfer card-only September 16/21 evidence before shortening and retain the unmeasured whole-operation limit. |
+| 4. `CV-26` Doctor cost | One redundant full diagnosis was removed; original complete-operation attribution and comparable measurements remain Open. | September 15 measurements and later September 16/21 decisions have dated homes; card-only counters/log limits still need transfer before shortening. |
 | 5. Dashboard retirement | The matrix says the standalone entry point and callers are retired; several CV summaries still say that retirement remains. | Current-sounding text is corrected in this branch; keep shared watch code, historical readers, and pending visual verification. |
 | 6. Repeated cluster closure instructions | The main checklist, cluster backlog summary, and charter repeat remaining work. | The charter now links to the operative sequence while retaining its unique disposition, site-combination, and evidence custody rules. |
 | 7. Viking walkthrough chronology | The main matrix holds dated jobs, a qualification identity, capacity observations, approvals, and a last-supplied Run state. | The [dated record](../history/2026-09-14-viking-walkthrough.md) now preserves source-only journey and safety details; settle the allocation-account evidence need and owner homes before any shortening. |
@@ -179,12 +179,13 @@ is structural; it has no measured Viking speedup.
 **Partial transfer:** The [September 15 record](../history/2026-09-15-cv26-doctor-measurements.md)
 retains the 175.681-second hosted setup, probe/trial tables, artifact hashes,
 failed-suite distinction, fresh-check decision, and serial-R decision. The
-CV card alone retains some byte/probe counters and logging/failure limits,
-the September 16 negative Viking duration report, and the September 21
-five-to-four change with its safety rationale, exact local checks, and CI
-identity. Transfer those distinct facts with their dates before shortening
-the card; the [workflow guide](../../.github/workflows/README.md) is only a
-summary. Neither record supplies comparable complete-operation measurements,
+[later record](../history/2026-09-21-cv26-doctor-followup.md) preserves the
+September 16 negative Viking duration report and September 21 five-to-four
+change, safety rationale, and source-recorded checks. The CV card alone still
+retains some September 15 byte/probe counters and logging/failure limits;
+transfer those before shortening it. The
+[workflow guide](../../.github/workflows/README.md) is only a summary.
+Neither record supplies comparable complete-operation measurements,
 institutional E11 acceptance, or scientific speedup proof.
 
 ### 5. Dashboard retirement
@@ -377,13 +378,14 @@ real-Slurm acceptance. No current card status changed.
 [CV-10 containment/retry](../history/2026-09-15-cv10-containment-retry.md),
 the separate [job 621154 timeout](../history/2026-09-16-cv10-timeout.md),
 [CV-26 hosted measurements](../history/2026-09-15-cv26-doctor-measurements.md),
+the [later Doctor decision](../history/2026-09-21-cv26-doctor-followup.md),
 and [CV-U28 fixed-policy provenance](../history/2026-09-15-cv-u28-resource-provenance.md).
 The separate [CV-UX-01 job 621172 collision](../history/2026-09-16-cvux01-doctor-collision.md)
 now has an indexed dated record with its ordinary-CI limit. The card's original
 Open checkpoint is date-bound against its final Verification pending status.
 Their original cards remain intact. These records do not transfer the later
-prepared-finalization, structural Doctor, or allocation-aware decisions in
-full, and they authorize no source evidence deletion.
+prepared-finalization or allocation-aware decisions in full, nor all CV-26
+September 15 counters and limits. They authorize no source evidence deletion.
 
 **Checkpoint classification sample:** In the six reviewed cards (CV-10,
 CV-26, CV-U06, CV-U22, CV-U28, and CV-UX-01), each final disposition agrees

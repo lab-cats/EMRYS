@@ -45,6 +45,13 @@ steady-ready trials, failed prototype checks, and the decision to retain
 serial R namespace checks and fresh content admission. It does not establish
 Viking or comparable whole-operation speedup; CV-26 remains Open.
 
+## September 16–21 CV-26 Doctor follow-up
+
+The [later checkpoint record](2026-09-21-cv26-doctor-followup.md) preserves
+the negative Viking duration report, the bounded elapsed-time display change,
+and the five-to-four Slurm diagnosis decision with its exact source-recorded
+checks. It claims no measured Doctor or institutional speedup.
+
 ## September 16 CV-UX-01 Doctor terminal collision
 
 The [source-bound collision and repair record](2026-09-16-cvux01-doctor-collision.md)
