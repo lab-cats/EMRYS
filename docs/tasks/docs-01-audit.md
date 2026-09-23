@@ -63,17 +63,11 @@ permission to change or delete the source.
   still need deeper caller/evidence checks. Task-record comparison and a
   targeted schema/code-comment scan added F46–F47 and refined F44; neither
   executed product behavior.
-- The sixth read-only pass rechecked selected claims against the same source
-  after audit-only commit `c093c696`. It corrected F26's provider path and
-  removed an unsupported clause from F36, refined F07, F13, and F26, and added
-  F48. Discovery notes were split at F30 to keep both temporary files below
-  the 600-line review threshold. No source or runtime behavior changed.
-- The seventh source-comparison pass checked operator recovery, coordinator contract
-  navigation, and evidence-authority overlap at the same source after
-  audit-only commit `d977e055`. It added F49–F51 and refined F08, F18, and
-  F21. A tiny source-bound `--version` fixture could not reach the CLI because
-  the available Python lacks `jsonschema`; it supplies no behavioral result
-  for F08. No dependency was installed and no product behavior was verified.
+- At audit commits `c093c696` and `d977e055`, source-only rechecks refined
+  F07/F08/F13/F18/F21/F26/F36 and added F48–F51. They corrected F26's provider
+  path and withdrew an unsupported F36 clause. A tiny `--version` fixture
+  could not import `jsonschema`, so F08 has no behavioral result. No dependency
+  was installed or product behavior verified.
 - The eighth source-comparison pass checked maintenance-surface candidates
   against current tests, owner documents, and Git provenance at the same source
   after audit-only commit `b4356f48`. It refined F16, F20, F25, and F28. The
@@ -336,6 +330,7 @@ permission to change or delete the source.
 - At `2398f144` and `f347216d`, read-only review revisited F01–F153 against
   cited docs and selected source/tests. F45/F79 were dismissed;
   F38, F40, F75, F86, F96, F129, and F143 narrowed. No execution ran.
+- At `3ea9c2b1`, F154–F158 followed a full coordinator-contract and operator/campaign reread; no execution ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -364,7 +359,7 @@ had a static read; claim-to-source and retained-evidence checks remain selective
 
 ## Findings matrix
 
-Of 153 numbered records, F41, F43, F45, F79, F87, F130, and F138 were dismissed;
+Of 158 numbered records, F41, F43, F45, F79, F87, F130, and F138 were dismissed;
 their claims and corrections remain traceable. The last column records
 an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -524,6 +519,11 @@ Discovery notes give source references and the boundary for each row.
 | [F151](docs-01-discoveries-fifth.md#f151-synthetic-artifact-inventory-example-without-a-named-owner-route) | Example placement | A 74-row tracked artifact inventory under `configs/` has only test and fixture callers found; its synthetic source-path prefix is rewritten by the fixture builder. | It feeds adapter-roster, inventory-validation, and reporting-fixture checks; its rows/order and external use need review before any reduction. |
 | [F152](docs-01-discoveries-fifth.md#f152-local-profile-promise-in-the-config-inventory) | Inventory wording | Config guide labels `execution_profile*.yaml` as local-or-Slurm examples, but both matching tracked examples select Slurm; the packaged default selects direct execution. | The direct placement capability and later guide text remain accurate; this is a one-line wording/route issue. |
 | [F153](docs-01-discoveries-fifth.md#f153-schema-owner-rules-repeated-in-version-indexes) | Version-index repetition | Three orchestration schema version READMEs repeat parts of the parent index's roster and canonical-validation ownership within a 23-line review span. | Their distinct Draft, receipt, and allocation-resolution semantics remain; the span is not a net saving estimate. |
+| [F154](docs-01-discoveries-fifth.md#f154-runtime-inventory-mechanics-in-the-runbook) | Operator-detail overlap | Runbook's discovery route repeats in-memory freshness and inventory-column/policy mechanics already owned by coordinator and runtime guides. | Keep preview, consent, printed path, no-install boundary, and legacy-inventory migration; six lines are under review, not a saving. |
+| [F155](docs-01-discoveries-fifth.md#f155-runtime-failure-field-roster-in-troubleshooting) | Recovery-detail overlap | Troubleshooting lists failed runtime-check event fields already specified in the coordinator contract. | Keep exact maintenance-log and scheduler-stderr routes, qualification limit, and current `doctor --verbose` diagnosis. |
+| [F156](docs-01-discoveries-fifth.md#f156-substitution-regression-narration-in-the-coordinator-contract) | Test-detail overlap | Coordinator contract narrates the distinct-inode substitution regression and its evidence limit already held by the test guide and CV-10. | Keep exact-byte/device/inode checks and the trusted-workspace/recycled-inode limit; roughly two lines are under review. |
+| [F157](docs-01-discoveries-fifth.md#f157-cv-u33-current-usage-policy-beside-correction-evidence) | Card-policy overlap | CV-U33 repeats selected-cluster accounting and local-only live-usage rules held by matrix, coordinator, and Runbook. | Preserve the dated defect/correction, exact fault-check limits, and pending hosted/institutional acceptance; 21 lines are a review span. |
+| [F158](docs-01-discoveries-fifth.md#f158-campaign-delivery-prose-beside-the-closure-checklist) | Checklist overlap | CV campaign's Delivery approach restates parts of the single remaining-closure checklist in the main matrix. | Preserve distinctive institutional combinations, charter-owned completion criteria, E01–E12 and evidence boundaries; 25 lines are a review span. |
 
 ## Discovery notes
 

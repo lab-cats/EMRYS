@@ -1,10 +1,11 @@
 # DOCS-01 discovery notes, fifth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F130–F153. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
+holds F130–F158. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
 F132–F133 use `935adf06`, F134–F139 use `ebc0012d`, and F140 uses `f239a91d`
 on that date. F141–F143 use `1eb562f0`; F144–F145 use `f91b8303` on that
 date; F146–F148 use `cc5c1f58`; F149–F153 use `a3310af6`.
+F154–F158 use `3ea9c2b1`, read on 2026-09-23.
 F138 was dismissed on
 adversarial recheck at `f239a91d`.
 F130 was dismissed as a duplicate on recheck at local head `935adf06`.
@@ -370,3 +371,65 @@ Preserve v1's Draft 2020-12 and packaged-resource distinction, v2's scientific
 Attempt receipt independent of reporting, and v3's declared-versus-resolved
 resource policy. These current semantics are different from F96's unrouted
 artifact-version notes. The span is not a verified net saving.
+
+### F154 — Runtime inventory mechanics in the Runbook
+
+At local audit head `3ea9c2b1`, the [Runbook](../operations/RUNBOOK.md)
+lines 353–363 tell the operator how to approve runtime discovery, then
+describes in-memory freshness checks and the 12-path, two-column inventory
+policy. The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 153–159 owns preview, confirmation, freshness, and publication; the
+[runtime owner](../../src/emrys/evidence/runtime_availability/README.md)
+lines 8–15 owns the inventory columns and derived checks. The six Runbook
+lines at 355–356 and 360–363 are a review span, not a verified saving.
+Preserve the operator's consent/refusal, `--execute`, success message and path,
+no-install boundary, and eight-column migration/recovery at 365–369. This is
+distinct from F22's cross-owner overlap and F23's Init detail.
+
+### F155 — Runtime failure field roster in Troubleshooting
+
+The [Troubleshooting guide](../operations/TROUBLESHOOTING.md) lines 171–179
+lists `runtime_check_failed` field names that the
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 350–357 already owns. Retain that event name as a log-search route, the
+exact maintenance-log and scheduler-stderr paths, package-versus-qualification
+distinction, log preservation, and `emrys doctor --verbose` for current checks.
+The field enumeration at 173–174 is a small review span, not a proved saving or
+reason to weaken recovery. F07 and F126 address different Doctor claims.
+
+### F156 — Substitution regression narration in the coordinator contract
+
+The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 1021–1027 correctly retains exact-byte/device/inode checks and the
+trusted-workspace, recycled-inode, and same-UID limits. Its test-specific
+clause at 1025–1027 repeats the distinct-inode regression ceiling in the
+[coordinator test guide](../../tests/orchestration/run_coordinator/README.md)
+line 14 and [CV-10](cluster_verification_backlog.md) lines 2968–2979. The
+[test source](../../tests/orchestration/run_coordinator/test_lifecycle.py)
+lines 3088–3131 exercises a distinct-inode equal-byte substitution. Roughly
+two lines are under review; the contract's accepted residual limit and
+required observations must remain. No test or filesystem fault was run here.
+
+### F157 — CV-U33 current usage policy beside correction evidence
+
+The [CV-U33 card](cluster_verification_backlog.md) lines 2082–2102 repeats
+current exact-root `sstat`/`sacct`, selected-cluster, unknown-usage, and
+display rules held by [SCHED-USAGE-01](backlog_matrix.md) line 88, the
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 594–602, and the [Runbook](../operations/RUNBOOK.md) lines 90–94.
+Preserve the card's original request and September 17 negative finding at
+2073–2080, its September 18 correction and focused-check account, and pending
+hosted and institutional accounting/display acceptance. The 21-line span is
+for review, not an estimate of safe removal; this audit ran no scheduler command.
+F149 covers watch selection across other CV cards, not this usage policy.
+
+### F158 — Campaign delivery prose beside the closure checklist
+
+The [CV campaign charter](cluster_verification_campaign.md) lines 126–150
+repeats much of the [main matrix's closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+at 125–152 even while routing readers there. Preserve the charter's three
+distinct institutional combinations at 135–140, its
+[E01–E12 register](cluster_verification_campaign.md) at 88–124, and charter-owned
+completion criteria at 11–17 and 173–190. The 25-line span is a placement
+review, not a measured saving or authority to retire the campaign or delete
+evidence.
