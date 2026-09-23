@@ -231,6 +231,10 @@ permission to change or delete the source.
   the same head added F112 for the R check's unqualified report-support claim.
   Other apparent overlaps were existing findings or distinct owner routes.
   No report, R check, test, CI, or cluster command was run.
+- A read-only entry-route, architecture, and task-evidence comparison at local
+  head `ac14392e` added F113 for CV-26's mixed current and dated record.
+  Existing findings covered the other apparent guide and diagram discrepancies.
+  No product, test, CI, or cluster command was run.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -258,7 +262,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 112 numbered records include F87, dismissed after recheck so its original
+The 113 numbered records include F87, dismissed after recheck so its original
 claim and correction remain traceable. The last column records an evidence
 limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -377,6 +381,7 @@ Discovery notes give source references and the boundary for each row.
 | [F110](docs-01-discoveries-fourth.md#f110-unrouted-study-pairs-configuration-file) | Configuration inventory | Tracked three-column EV/PUM1 pairing roster is unindexed, with no pre-audit reader or caller reference found; current Step 09 uses the six-column sample manifest. | Historical use is unverified; neither deletion nor current Step 09 admission is inferred. |
 | [F111](docs-01-discoveries-fourth.md#f111-current-resource-claim-with-old-profile-citations) | Citation provenance | Optimization campaign describes current allocation-aware defaults but links to the fixed-policy profiles from its older audit revision. | Old links remain valid historical citations; no resource performance or runtime result was inferred. |
 | [F112](docs-01-discoveries-fourth.md#f112-r-environment-checks-report-support-claim) | Check-scope overclaim | Scripts index says the R environment checker verifies report support; it checks R dependencies and a headless PDF device, not current HTML report rendering. | PDF readiness is relevant to Step 09 scientific outputs; no report failure or runtime result is inferred. |
+| [F113](docs-01-discoveries-fourth.md#f113-cv-26-mixed-current-rules-and-measurement-history) | Evidence placement | CV-26's 309-line card mixes open acceptance, current Doctor rules, repeated checkpoint status, and four distinct hosted measurement blocks. | Current rules have an owner and status has a delegated card; unique measurements, failed-suite limits, and operator report remain evidence. No saving is established. |
 
 ## Discovery notes
 

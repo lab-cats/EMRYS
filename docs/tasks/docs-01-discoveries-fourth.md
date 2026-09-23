@@ -1,9 +1,9 @@
 # DOCS-01 discovery notes, fourth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F100–F112. F100–F104 use local audit head `e1771d21`; F105–F108 use
-`b65e8fb8`; F109–F110 use `26898b5e`; F111 uses `cd45bd51` and F112 uses
-`b62e207b`, all read on 2026-09-22. These are documentation observations, not
+holds F100–F113. F100–F104 use local audit head `e1771d21`; F105–F108 use
+`b65e8fb8`; F109–F110 use `26898b5e`; F111 uses `cd45bd51`, F112 uses
+`b62e207b`, and F113 uses `ac14392e`, all read on 2026-09-22. These are documentation observations, not
 runtime results, accepted changes, or permission to alter retained evidence.
 
 ## Discovery notes
@@ -217,6 +217,31 @@ lines 208–231 uses Python/Matplotlib SVG. The R PDF device is relevant to
 but this check alone does not verify current
 report support. This is a guide-scope overclaim, not evidence that rendering
 fails; neither the R check nor a report ran in this audit.
+
+### F113 — CV-26 mixed current rules and measurement history
+
+The [delegated CV-26 card](cluster_verification_backlog.md#cv-26-repeated-doctor-input-reads)
+spans lines 3748–4056: its original full-operation measurement acceptance is
+at 3750–3759 and the current Open disposition at 4053–4056. Current Doctor
+timing, fresh-read, and logging rules recur at 3761–3775, 3827–3844, and
+4016–4039; the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 220–287 owns related current timing and logging behavior, while the
+[campaign summary](cluster_verification_campaign.md) lines 203–206 and
+[main matrix](backlog_matrix.md) lines 104–110 state the structural reduction's
+current limit. Earlier Open checkpoint labels also recur at CV-26 lines 3900,
+4000–4002, 4014, and 4021–4022. This mixes live acceptance with dated progress
+inside a 309-physical-line card; the count is a review scope, not a saving.
+
+The hosted phase timings at 3785–3808, probe attribution at 3846–3875,
+invocation counters at 3902–3947, and four-trial serial/two-worker comparison
+at 3949–3977 each retain distinct revisions, artifacts, numbers, and evidence
+limits. The local hash-reuse fixture and cache decision at 3810–3825, failed
+prototype suites and retirement CI at 3989–4002, September 16 operator report
+at 4004–4014, and September 21 source/check results at 4044–4052 also retain
+distinct context. The [closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+requires exact CV-26 evidence and limits before temporary-card retirement.
+No evidence was moved, no net reduction was established, and no Doctor or CI
+operation ran in this audit.
 
 ## Reviewed overlaps without a saving claim
 

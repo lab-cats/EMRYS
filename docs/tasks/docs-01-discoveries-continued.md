@@ -2,7 +2,7 @@
 
 This companion to the [findings matrix](docs-01-audit.md#findings-matrix)
 holds F30–F61; the [third file](docs-01-discoveries-third.md) holds F62–F99,
-and the [fourth file](docs-01-discoveries-fourth.md) holds F100–F112.
+and the [fourth file](docs-01-discoveries-fourth.md) holds F100–F113.
 Unless a subsection names another revision, source line
 references are pinned to `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`.
 These are observations, not accepted changes or a task-status registry.
