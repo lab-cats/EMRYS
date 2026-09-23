@@ -242,6 +242,11 @@ permission to change or delete the source.
   scan of the 170 non-audit Markdown files found eight cross-file signatures,
   mostly shifted windows of F28/F91 repetition or owner-specific worker detail;
   it does not detect paraphrases. No test, CI, product, or cluster command ran.
+- A task-record comparison at local head `b72b03c0` added F114–F117 for an
+  outdated novice-acceptance route, repeated resource-policy summary, and
+  mixed current/evidence roles in CV-10 and CV-20. Pinned optimization source
+  paths were checked for existence at their cited commit, not for semantic
+  support of later prose. No guide, product, test, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -269,7 +274,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 113 numbered records include F87, dismissed after recheck so its original
+The 117 numbered records include F87, dismissed after recheck so its original
 claim and correction remain traceable. The last column records an evidence
 limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -389,6 +394,10 @@ Discovery notes give source references and the boundary for each row.
 | [F111](docs-01-discoveries-fourth.md#f111-current-resource-claim-with-old-profile-citations) | Citation provenance | Optimization campaign describes current allocation-aware defaults but links to the fixed-policy profiles from its older audit revision. | Old links remain valid historical citations; no resource performance or runtime result was inferred. |
 | [F112](docs-01-discoveries-fourth.md#f112-r-environment-checks-report-support-claim) | Check-scope overclaim | Scripts index says the R environment checker verifies report support; it checks R dependencies and a headless PDF device, not current HTML report rendering. | PDF readiness is relevant to Step 09 scientific outputs; no report failure or runtime result is inferred. |
 | [F113](docs-01-discoveries-fourth.md#f113-cv-26-mixed-current-rules-and-measurement-history) | Evidence placement | CV-26's 309-line card mixes open acceptance, current Doctor rules, repeated checkpoint status, and four distinct hosted measurement blocks. | Current rules have an owner and status has a delegated card; unique measurements, failed-suite limits, and operator report remain evidence. No saving is established. |
+| [F114](docs-01-discoveries-fourth.md#f114-older-novice-route-in-site-parity-item) | Acceptance-route drift | Polish item 10 still describes the SITE-PARITY-01 novice walkthrough through site modules, profile selection, and manual storage phases; current acceptance calls for the Quickstart's one Viking head-node route. | Institutional novice proof remains open; this is wording/placement, not a demonstrated site result. |
+| [F115](docs-01-discoveries-fourth.md#f115-current-resource-policy-repeated-in-optimization-candidate) | Compression candidate | Optimization candidate 3 repeats current allocation-aware policy, fixed-policy provenance, and CV-U28 evidence limits already owned by resource and CV guides. | Its future measurement proposal is distinct; the 11-line repeated review span is not a verified saving. |
+| [F116](docs-01-discoveries-fourth.md#f116-cv-10-current-protocol-beside-cancellation-evidence) | Evidence placement | CV-10 interleaves current retry/finalization protocol, open cancellation acceptance, and dated hosted and Viking observations already separated by coordinator ownership. | Original acceptance, exact artifacts, failed-suite limits, and the trusted-workspace boundary remain distinct; no saving is established. |
+| [F117](docs-01-discoveries-fourth.md#f117-cv-20-current-inspection-beside-submission-history) | Evidence placement | CV-20 interleaves current submission/inspection mechanics with open reconnect/queue acceptance and dated test and CI checkpoints. | Request safety and pending institutional evidence remain; current owner rules and historical evidence have separate roles, with no saving established. |
 
 ## Discovery notes
 
@@ -439,3 +448,11 @@ but retain different exact-hosted, site, and blocked-state limits. Reporting
 publication summaries recur at the reporting index and private package owners,
 yet their transaction members, reuse rules, and original-Run attribution differ;
 neither overlap supplies a defensible deletion on this pass.
+
+The safety guard's compression, tools-first, and evidence-deletion rules
+([`AGENTS.md`](../../AGENTS.md) lines 17–26, 34–42, 82–87) recur in the
+[workflow](../operations/WORKFLOW.md) lines 32–45 and 53–62 and the
+[permanent architecture guardrails](../design/decisions/platform-direction.md)
+lines 73–114. The guard, delivery process, and lasting decision address
+different readers and authority boundaries. This conceptual overlap supplies
+no verified line saving or reason to weaken the safety instructions.

@@ -1,9 +1,10 @@
 # DOCS-01 discovery notes, fourth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F100–F113. F100–F104 use local audit head `e1771d21`; F105–F108 use
+holds F100–F117. F100–F104 use local audit head `e1771d21`; F105–F108 use
 `b65e8fb8`; F109–F110 use `26898b5e`; F111 uses `cd45bd51`, F112 uses
-`b62e207b`, and F113 uses `ac14392e`, all read on 2026-09-22. These are documentation observations, not
+`b62e207b`, F113 uses `ac14392e`, and F114–F117 use `b72b03c0`, all read on
+2026-09-22. These are documentation observations, not
 runtime results, accepted changes, or permission to alter retained evidence.
 
 ## Discovery notes
@@ -242,6 +243,67 @@ distinct context. The [closure checklist](backlog_matrix.md#cluster-verification
 requires exact CV-26 evidence and limits before temporary-card retirement.
 No evidence was moved, no net reduction was established, and no Doctor or CI
 operation ran in this audit.
+
+### F114 — Older novice route in SITE-PARITY item
+
+[Polish item 10](polish-campaign.md) lines 360–376 says the maintained novice
+walkthrough includes site modules, explicit profile selection, and both storage
+qualification phases. The current [Quickstart](../../quickstart.md) lines 1–5,
+54–61, 92–103, and 142–174 instead gives one Viking head-node route: `emrys
+setup` saves the Viking site, guided Init creates the Project, and Doctor
+coordinates readiness before Run submission. The [Runbook](../operations/RUNBOOK.md)
+lines 532–548 says Doctor handles compute-side runtime/storage checks and head
+finalization. The current [`SITE-PARITY-01` row](backlog_matrix.md) line 170
+requires a novice to follow only that Quickstart path. Item 10's named manual
+steps describe an older reader route while its open institutional proof and
+exact-revision requirement remain valid. No novice or site walkthrough ran.
+
+### F115 — Current resource policy repeated in optimization candidate
+
+[Optimization candidate 3](optimization_campaign.md) lines 107–117 restates
+allocation-aware CPU/RAM resolution, automatic repeated-stage shares, native
+allowances, the retired fixed 12-core policy, and the CV-U28 evidence limit.
+The current [resource owner](../../src/emrys/orchestration/run_coordinator/resources/README.md)
+lines 3–26 already owns the defaults, provenance, and capacity-versus-utilization
+boundary. The [CV-U28 card](cluster_verification_backlog.md#cv-u28-allocation-aware-resource-policy-and-historical-provenance)
+lines 1847–1861 retains the superseding policy decision and pending institutional
+acceptance. Candidate lines 119–126 uniquely propose future concurrency,
+reservation, queue, and storage measurements; those are not current-policy
+restatement. The 11 physical lines at 107–117 are a review span, not a verified
+saving. F111 separately records that this paragraph's linked old-profile
+citations do not support its newer current-policy wording. No resources were
+measured.
+
+### F116 — CV-10 current protocol beside cancellation evidence
+
+The [CV-10 card](cluster_verification_backlog.md#cv-10-external-cancellation-and-recovery)
+lines 2732–2979 retains original E09 cancellation acceptance at 2734–2746.
+Its current retry and prepared-finalization protocol at 2799–2814, 2886–2912,
+and 2949–2961 also belongs to the
+[coordinator lifecycle contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
+lines 957–1036. The card separately retains Viking timeout job `621154` at
+2783–2797, exact hosted revisions/artifacts and failed-suite limits at
+2853–2873 and 2914–2947, pending hosted/site acceptance at 2963–2966, and the
+owner-accepted recycled-inode trust limit at 2968–2979. F102 concerns the E09
+example inside the current contract, not this card's mixed roles. The
+[closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+requires exact evidence and limits to survive any temporary-card retirement.
+No evidence was moved and no safe reduction was established.
+
+### F117 — CV-20 current inspection beside submission history
+
+The [CV-20 card](cluster_verification_backlog.md#cv-20-submission-state-before-run-creation)
+lines 3332–3469 keeps original pre-Run submission, queue, reconnect, and
+duplicate-risk acceptance at 3334–3341. Its current request and inspection
+mechanics at 3357–3398 and 3422–3462 overlap the
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries)
+lines 420–520. The card also preserves the installed-watch prerequisite at
+3343–3355; product-size and test checkpoints at 3357–3366, 3385–3387, and
+3400–3418; and exact hosted CI `34977917662` with pending institutional
+observations at 3463–3469. A scheduler record remains observational and does
+not grant scientific or recovery authority. This is a placement question, not
+proof that any of those dated results can be discarded or that a line saving
+exists. No scheduler, Run, test, or CI command ran.
 
 ## Reviewed overlaps without a saving claim
 
