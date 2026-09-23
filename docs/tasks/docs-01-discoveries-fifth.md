@@ -1,12 +1,13 @@
 # DOCS-01 discovery notes, fifth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F130–F159. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
+holds F130–F160. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
 F132–F133 use `935adf06`, F134–F139 use `ebc0012d`, and F140 uses `f239a91d`
 on that date. F141–F143 use `1eb562f0`; F144–F145 use `f91b8303` on that
 date; F146–F148 use `cc5c1f58`; F149–F153 use `a3310af6`.
 F154–F158 use `3ea9c2b1`, read on 2026-09-23 and rechecked at `238e8035`.
 F159 uses `688f7117`, read on 2026-09-23.
+F160 uses `60ec53e1`, read on 2026-09-23.
 At `d55baa91`, read on 2026-09-23, adversarial review dismissed
 F144–F146/F148–F149/F153 and narrowed F150/F159. Selected test/CI guides
 yielded no separate high-confidence finding.
@@ -474,3 +475,32 @@ CS-20/22 correction and exact hosted revision at 117–118 recur at 286–293;
 retain that evidence and 119–120's remaining-owner boundary. Git retains
 routine PR ancestry; neither span is a net line saving estimate.
 No CI or product test ran in this audit.
+
+### F160 — Accepted follow-up scope repeated in the polish introduction
+
+At local audit head `60ec53e1`, [polish campaign](polish-campaign.md) lines
+22–33 has a “Current follow-up scope” section. Lines 24–32 enumerate the same
+seven accepted cards, 600-line and 25% targets, and non-cluster-closure status
+as the [main matrix](backlog_matrix.md#maintainability-and-release) lines 54–71.
+The matrix at line 58 and [cluster campaign](cluster_verification_campaign.md)
+lines 78–80 both link to the heading. Lines 32–33 also preserve the distinct
+novice-guide/INIT-01–03 pre-closure tranche. Preserve those links and that
+separate cluster boundary; the matrix remains the sole status authority.
+The nine-line span is a review surface, not a verified deletion or saving.
+
+## Additional reviewed overlaps without a saving claim
+
+The [Runbook](../operations/RUNBOOK.md) lines 106–111 repeats palette and
+log-styling detail from the [logging contract](../design/LOGGING_CONTRACT.md)
+lines 57–64 and [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 628–635. Its Watch legend may help operators, and plain/`NO_COLOR`
+labels remain important; no useful reduction was established. The
+[Troubleshooting guide](../operations/TROUBLESHOOTING.md) lines 222–240 keeps
+the distinct `/local/tmp` and `memory_mb: null` site-evidence limits. A full
+coordinator-contract reread found no separate compression beyond recorded rows.
+
+The [polish capability inventory](polish-campaign.md) lines 976–982 records
+what already existed at its dated audit. Current owner, operator, test, and CI
+routes cover those mechanisms, but the negative baseline explains selection.
+It belongs with [F16](docs-01-discoveries.md#f16-polish-merged-pr-tables)'s
+overlap review; this pass found no separate deletion or saving.

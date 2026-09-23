@@ -329,8 +329,8 @@ permission to change or delete the source.
   non-audit Markdown files found 59 matches; paraphrases could escape.
 - At `2398f144`/`f347216d`, F01–F153 were rechecked against cited owners;
   F45/F79 were dismissed and F38/F40/F75/F86/F96/F129/F143 narrowed.
-- At `3ea9c2b1`, F154–F158 followed coordinator/operator/campaign rereads;
-  `688f7117` added F159/F94; `d55baa91` dismissed F144–F146/F148–F149/F153. No product/CI ran.
+- At `3ea9c2b1`–`d55baa91`, F154–F159/F94 were added or refined;
+  F144–F146/F148–F149/F153 were dismissed. No product/CI ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -344,9 +344,8 @@ separate commit.
 
 ### Coverage so far
 
-At `f347216d`, 581 tracked files include 176 Markdown (six audit notes),
-three Mermaid, and 282 Python. All 170 non-audit Markdown and three Mermaid
-had a static read; claim-to-source and retained-evidence checks remain selective.
+At `f347216d`, 581 tracked files included 176 Markdown (six audit notes), three Mermaid and 282 Python.
+All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence checks remain selective.
 
 | Area | Compared to date | Further reading needed |
 | --- | --- | --- |
@@ -359,7 +358,7 @@ had a static read; claim-to-source and retained-evidence checks remain selective
 
 ## Findings matrix
 
-Of 159 records, 15 were dismissed after recheck: F41, F43, F45, F79, F87,
+Of 160 records, 15 were dismissed after recheck: F41, F43, F45, F79, F87,
 F113, F130, F138, F144–F146, F148–F149, F153, and F155. Their corrections
 remain traceable; the final column states evidence limits, not work orders.
 
@@ -493,7 +492,7 @@ remain traceable; the final column states evidence limits, not work orders.
 | [F126](docs-01-discoveries-fourth.md#f126-doctor-plan-detail-and-timing-display-in-the-runbook) | Display-scope drift | Runbook does not qualify when Doctor prints `Runtime work` or full invocation timing; the field requires verbose repair, while normal elapsed output requires `--repair`. | Plan heading still distinguishes repair from verification, and package-manager output owns actual reuse evidence. No Doctor behavior defect is inferred. |
 | [F127](docs-01-discoveries-fourth.md#f127-older-local-checks-inside-active-cv-acceptance-cards) | Evidence placement | CV-U08 and CV-U20 carry older local-check totals beside later active acceptance wording without naming the checked source revision. | Historical check outcomes are not disproved; excluded cases, environment, and evidence-ceiling limits remain material and cannot be deleted by this audit. |
 | [F128](docs-01-discoveries-fourth.md#f128-tool-specific-thread-effects-in-the-coordinator-contract) | Compression candidate | Coordinator contract repeats five lines of worker-specific STAR, samtools, and Java flag effects already held by their stage and evidence contracts. | Central resource derivation and refusal remain coordinator-owned; no safe saving is established by the overlap alone. |
-| [F129](docs-01-discoveries-fourth.md#f129-unrouted-workflow-profile-index) | Navigation and compression candidate | The 11-line workflow-profile index has no inbound non-audit Markdown link while parent and local-profile guides carry most of its current orientation. | Its selectable-profile approval rule is unique; filesystem routes were not assessed and no deletion scope is established. |
+| [F129](docs-01-discoveries-fourth.md#f129-unrouted-workflow-profile-index) | Navigation and compression candidate | The 11-line workflow-profile index has no inbound non-audit Markdown link while parent and local-profile guides carry most of its current orientation. | Forty-one README indexes lack such links, so link absence alone is weak; the approval rule is unique and no deletion scope is established. |
 | [F130](docs-01-discoveries-fifth.md#f130-repeated-test-scope-paragraph-across-eight-owner-guides) | Dismissed duplicate | The eight-guide test paragraph was already recorded with its 40 repeated physical lines in F28. | Retained number traces the correction; F130 adds no independent candidate or saving estimate. |
 | [F131](docs-01-discoveries-fifth.md#f131-receipt-validation-scope-in-the-glossary) | Validation-scope ambiguity | Glossary says receipt follows validation and marks transaction completion without distinguishing staged native checks from later independent task validation. | Native checks and receipt-last publication remain real; receipt presence alone does not verify a scientific task. No runtime defect is inferred. |
 | [F132](docs-01-discoveries-fifth.md#f132-benchmark-timing-scope-in-the-runbook) | Measurement-scope ambiguity | Runbook implies the resource helper measures setup, producer, and validator commands, while its timing and resource fields cover only the producer. | Setup and validation still execute and gate trial success; no benchmark was run or performance result inferred. |
@@ -524,6 +523,7 @@ remain traceable; the final column states evidence limits, not work orders.
 | [F157](docs-01-discoveries-fifth.md#f157-cv-u33-current-usage-policy-beside-correction-evidence) | Card-policy overlap | CV-U33's current-scope paragraph repeats selected-cluster accounting and local-only live-usage rules held by matrix, coordinator, and Runbook. | The 21-line surrounding span includes dated correction, fault checks, and pending acceptance; repetition is chiefly 2095–2098. No saving proved. |
 | [F158](docs-01-discoveries-fifth.md#f158-campaign-delivery-prose-beside-the-closure-checklist) | Checklist overlap | CV campaign's Delivery approach restates parts of the single remaining-closure checklist in the main matrix. | Repetition centers on 128–133 and parts of 135–142; preserve unique institutional combinations, charter completion criteria, E01–E12 and evidence limits. |
 | [F159](docs-01-discoveries-fifth.md#f159-polish-integration-genealogy-repeated-in-its-introduction) | Compression candidate | Polish campaign repeats PR integration genealogy and hosted-CI references in its opening and later selection account, beside its merged-work map and the main matrix's accepted evidence. | Spans 68–76 and 109–118 are under review, not savings; retain exact audit/test-tree identity, CS-20/22 evidence, the map route, and remaining-owner limits. |
+| [F160](docs-01-discoveries-fifth.md#f160-accepted-follow-up-scope-repeated-in-the-polish-introduction) | Scope repetition | Polish campaign introduction repeats seven accepted follow-up IDs, the 600-line and 25% targets, and cluster-closure exclusion already in the main matrix. | Two live links target its heading; novice-guide/INIT pre-closure scope is distinct. The nine-line span is a review surface, not a verified saving. |
 
 ## Discovery notes
 

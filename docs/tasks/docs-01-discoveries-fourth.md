@@ -554,6 +554,11 @@ of this orientation while uniquely stating that another selectable engine
 profile requires approval. Its lack of an inbound non-audit Markdown route is a
 navigation and compression candidate, not proof that its whole 11 lines can
 go; filesystem browsing and non-Markdown routes were not checked.
+At `60ec53e1`, a second simple inbound-Markdown path scan found 41 of 170
+non-audit Markdown files without an explicit inbound Markdown link; all 41
+were `README.md` indexes. Link absence alone is weak evidence here. The
+overlap with parent/local guidance, not orphan status, is F129's compression
+question; directory and non-Markdown readers remain unverified.
 
 ## Reviewed overlaps without a saving claim
 
