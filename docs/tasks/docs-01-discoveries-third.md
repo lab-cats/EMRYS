@@ -491,21 +491,25 @@ separate supplied-manifest exclusions remain distinct. No Init command ran.
 
 ### F94 — Dashboard retirement closeout tense
 
-The [main backlog](backlog_matrix.md) lines 327–331 ends the PR #169
-integration account in present tense: the dashboard remains and its retirement
-“still requires a validated replacement.” Git attributes that paragraph to
-`550b54025` on 2026-09-14. At local audit head `3cfe4eff`, the
+The [main backlog](backlog_matrix.md) lines 327–331 says the dashboard remains
+and retirement “still requires a validated replacement” (`550b54025`,
+September 14). At local audit head `3cfe4eff`, the
 [CV backlog](cluster_verification_backlog.md) line 79 also assigns coordinated
 standalone entry-point/caller/name retirement to `DASHBOARD-RETIRE-01` in its
 current “Remaining acceptance” table; its CV-16 account at lines 3173–3184
-retains the old not-retired state. The authoritative [main backlog](backlog_matrix.md)
-line 180 records the institutional owner's 2026-09-17 acceptance of installed
-watch as the replacement and retirement of the wrapper/callers. The
-[CV campaign](cluster_verification_campaign.md) lines 198–201 and
-[polish account](polish-campaign.md) lines 437–446 corroborate that later
-disposition. The old account is a historical checkpoint; the live table can
-misroute a reader. Standard CI and institutional visual verification remain
-open, distinct from retirement. No dashboard was run.
+retains the older checkpoint. The authoritative [main backlog](backlog_matrix.md)
+line 180 records the institutional owner's September 17 acceptance of installed
+watch and wrapper/caller retirement.
+The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 498–499 still claims direct loading under isolated system Python. Shared
+scheduler mechanics remain, but [dashboard.py](../../src/emrys/orchestration/run_coordinator/dashboard.py)
+line 20 uses a package-relative import, [entry points](../../pyproject.toml)
+lines 39–40 expose only `emrys`, and [CV-20](cluster_verification_backlog.md)
+lines 3378–3384 says isolated standalone loading was retired later. The old
+account is a historical checkpoint; the current table and contract can misroute
+a reader. This does not prove installed-package isolated import fails. Preserve
+the contract's scheduler identity rules; standard CI and institutional visual
+verification remain open. No dashboard was run.
 
 ### F95 — Executed stop missing from logging adopter roster
 

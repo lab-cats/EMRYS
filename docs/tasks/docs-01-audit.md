@@ -327,10 +327,10 @@ permission to change or delete the source.
   and added F140; CV-23/Slurm-preview/operator rereads found no new candidate.
 - At `d18470c8`, five-word shingles across 1,515 paragraphs in 170
   non-audit Markdown files found 59 matches; paraphrases could escape.
-- At `2398f144` and `f347216d`, read-only review revisited F01–F153 against
-  cited docs and selected source/tests. F45/F79 were dismissed;
-  F38, F40, F75, F86, F96, F129, and F143 narrowed. No execution ran.
-- At `3ea9c2b1`, F154–F158 followed a full coordinator-contract and operator/campaign reread; no execution ran.
+- At `2398f144`/`f347216d`, F01–F153 were rechecked against cited owners;
+  F45/F79 were dismissed and F38/F40/F75/F86/F96/F129/F143 narrowed.
+- At `3ea9c2b1`, F154–F158 followed coordinator/operator/campaign rereads;
+  `688f7117` source/test review extended F94 and added F159. No product/CI ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -359,10 +359,9 @@ had a static read; claim-to-source and retained-evidence checks remain selective
 
 ## Findings matrix
 
-Of 158 numbered records, F41, F43, F45, F79, F87, F113, F130, F138, and F155 were dismissed;
-their claims and corrections remain traceable. The last column records
-an evidence limit, uncertainty, or preservation boundary. It is not a work order.
-Discovery notes give source references and the boundary for each row.
+Of 159 numbered records, F41, F43, F45, F79, F87, F113, F130, F138, and F155 were dismissed;
+their corrections remain traceable. The last column records an evidence limit
+or preservation boundary, not a work order.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -459,7 +458,7 @@ Discovery notes give source references and the boundary for each row.
 | [F91](docs-01-discoveries-third.md#f91-repeated-stage-and-evidence-contract-openings) | Compression candidate | Twelve stage/evidence contract openings use 48 lines to restate aliases and stage-map ownership alongside distinct local command roles. | Only an illustrative 12–24-line net opportunity remains after local roles; no edit or saving was verified. |
 | [F92](docs-01-discoveries-third.md#f92-python-lock-checks-before-institutional-r-restoration) | Audience and prerequisite question | Runbook places Python lock checks before institutional R restoration; developer guidance owns similar checks, while the shown R Make targets do not invoke uv. | Whether this is an independent operator gate remains unverified; the R procedure is unique. |
 | [F93](docs-01-discoveries-third.md#f93-repeated-partition-selector-rule) | Small duplication | Config guide twice states that `--region` and `--regions-file` can combine only with unique partition IDs. | The intervening coordinate examples and separate manifest exclusions remain distinct. |
-| [F94](docs-01-discoveries-third.md#f94-dashboard-retirement-closeout-tense) | Temporal framing | PR #169/CV-16 accounts retain the prior dashboard state, and the CV backlog's live acceptance table still assigns standalone retirement as pending; the main matrix says the wrapper/callers are retired. | Preserve the older checkpoint; standard CI and institutional visual verification remain pending and distinct from retirement. |
+| [F94](docs-01-discoveries-third.md#f94-dashboard-retirement-closeout-tense) | Temporal framing | PR #169/CV-16 accounts retain the prior dashboard state, the CV backlog's live table still assigns standalone retirement as pending, and the coordinator contract retains an isolated standalone-loading guarantee; the main matrix says the wrapper/callers are retired. | Preserve older checkpoints and current shared scheduler mechanics; standard CI and institutional visual verification remain pending. No installed-package import failure is inferred. |
 | [F95](docs-01-discoveries-third.md#f95-executed-stop-missing-from-logging-adopter-roster) | Owner-index omission | Source topology calls its logging-adopter roster complete but omits executed `stop`, which opens a maintenance attempt after admission. | Terminal targets and previews open no log; admitted execution opens one. |
 | [F96](docs-01-discoveries-third.md#f96-unrouted-artifact-schema-version-notes) | Navigation and compression question | Artifact schema index links current JSON schemas, while four adjacent version READMEs have no inbound non-audit Markdown route. | Their 32 lines include active v1 compatibility, Run/Attempt separation, absent historical readers, and receipt evidence limits; no saving is established. |
 | [F97](docs-01-discoveries-third.md#f97-past-audit-priority-order-in-polish-campaign) | Historical selection order | Polish campaign keeps nine lines of second/third-pass priorities whose proposals and accepted status are recorded elsewhere. | Nine lines are a review surface; measurement prerequisites and dated decisions remain distinct. |
@@ -524,6 +523,7 @@ Discovery notes give source references and the boundary for each row.
 | [F156](docs-01-discoveries-fifth.md#f156-substitution-regression-narration-in-the-coordinator-contract) | Test-detail overlap | Coordinator contract narrates the distinct-inode substitution regression and its evidence limit already held by the test guide and CV-10. | Keep exact-byte/device/inode checks and the trusted-workspace/recycled-inode limit; roughly two lines are under review. |
 | [F157](docs-01-discoveries-fifth.md#f157-cv-u33-current-usage-policy-beside-correction-evidence) | Card-policy overlap | CV-U33's current-scope paragraph repeats selected-cluster accounting and local-only live-usage rules held by matrix, coordinator, and Runbook. | The 21-line surrounding span includes dated correction, fault checks, and pending acceptance; repetition is chiefly 2095–2098. No saving proved. |
 | [F158](docs-01-discoveries-fifth.md#f158-campaign-delivery-prose-beside-the-closure-checklist) | Checklist overlap | CV campaign's Delivery approach restates parts of the single remaining-closure checklist in the main matrix. | Repetition centers on 128–133 and parts of 135–142; preserve unique institutional combinations, charter completion criteria, E01–E12 and evidence limits. |
+| [F159](docs-01-discoveries-fifth.md#f159-polish-integration-genealogy-repeated-in-its-introduction) | Compression candidate | Polish campaign repeats PR integration genealogy and hosted-CI reference before its own merged-work map and the main matrix's accepted evidence. | Nine lines are under review, not an estimated saving; preserve exact audit/test-tree identity, the map route, and distinct evidence ceilings. |
 
 ## Discovery notes
 

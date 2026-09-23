@@ -1,11 +1,12 @@
 # DOCS-01 discovery notes, fifth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F130–F158. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
+holds F130–F159. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
 F132–F133 use `935adf06`, F134–F139 use `ebc0012d`, and F140 uses `f239a91d`
 on that date. F141–F143 use `1eb562f0`; F144–F145 use `f91b8303` on that
 date; F146–F148 use `cc5c1f58`; F149–F153 use `a3310af6`.
 F154–F158 use `3ea9c2b1`, read on 2026-09-23 and rechecked at `238e8035`.
+F159 uses `688f7117`, read on 2026-09-23.
 F138 was dismissed on
 adversarial recheck at `f239a91d`.
 F130 was dismissed as a duplicate on recheck at local head `935adf06`.
@@ -437,3 +438,20 @@ distinct institutional combinations at 135–140, its
 completion criteria at 11–17 and 173–190. The surrounding 25-line span at
 126–150 is a placement review, not a measured saving or authority to retire
 the campaign or delete evidence.
+
+### F159 — Polish integration genealogy repeated in its introduction
+
+At local audit head `688f7117`, the [polish campaign](polish-campaign.md)
+lines 68–76 recount PR #139/#140/#141–147/#169 integration and hosted run
+`34301289787` immediately before linking its own [merged-work map](polish-campaign.md#existing-capabilities-and-overlapping-work)
+at 991–1025. The [main matrix](backlog_matrix.md) lines 345–350 already
+records that run and the PR #140/169 integration outcome. This nine-line
+review span is distinct from F16's two tables, F90's completed tooling
+sections, F97's former selection order, and F140's generic policy list.
+
+Preserve the exact audit/test-tree identity at 68–69: local Git gives the
+same tree for `2fb8f5ef` and `8034c211`. Keep the merged-work route at 76
+and the no-new-test/hosted evidence limit at 77–79. Lines 37–66 retain the
+source baseline, pass-specific changes, and original test provenance. Git
+retains routine PR ancestry; no transfer or net line saving was verified.
+No CI or product test ran in this audit.
