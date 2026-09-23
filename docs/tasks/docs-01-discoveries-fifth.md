@@ -515,7 +515,7 @@ and planning-minimum limits at 285–286 and 326–328. The
 “HPC resource research,” although the section is only a short summary. The
 [Runbook benchmark link](../operations/RUNBOOK.md#resource-benchmarking) at
 388–389 is a distinct reader route to preserve, as may be context after the
-placement table. This nine-line span is under review, not a verified saving.
+placement table. No useful DOCS-01 reduction is established for this span.
 [F123](docs-01-discoveries-fourth.md#f123-repeated-stage-resource-defaults-in-the-configuration-guide)
 covers the separate stage-default table.
 
@@ -548,3 +548,18 @@ paraphrased repetition was outside that scan. The exact four-line Java thread
 rule at [Step 04](../../src/emrys/stages/duplicate_marking/CONTRACT.md) 43–46
 and [Step 05](../../src/emrys/stages/split_n_cigar/CONTRACT.md) 45–48 serves
 two separate stage contracts; no extra useful reduction was established.
+
+## Current static link check
+
+At local head `7d29a132`, a standard-library scan of all 176 tracked Markdown
+files inspected 1,837 inline-link and reference-definition destinations outside
+backtick fences. No local file target or Markdown heading anchor was missing.
+The extraction is narrower than the repository's CommonMark-based checker;
+no dependency installation, product command, or CI ran.
+
+At the same head, full read-only rereads of the 734-line Runbook, 271-line
+Troubleshooting guide, and 1,248-line coordinator contract found no additional
+high-confidence documentation issue. F09's reader-order effect remains untested;
+F31's older-install recovery value is not bounded to a fixed release. F21 and
+F50 remain source-backed reader/contract discrepancies, while F136 is a narrow
+private-helper compression candidate. No command or runtime behavior was tested.
