@@ -71,13 +71,13 @@ lines 75–101 and its [closure checklist](backlog_matrix.md#cluster-verificatio
 at 103–152 own selected outcomes, while the [CV backlog](cluster_verification_backlog.md)
 lines 24–30 and 70–79 owns delegated card status. [F03](docs-01-discoveries.md#f03-init-02-in-cluster-summaries)
 separately records that the summary's INIT-01–03 source-complete claim exceeds
-INIT-02's Open status and explicit-manifest behavior. A nine-to-twelve-line
-scope and owner route might save 16–19 lines. It must preserve the campaign's
-no-new-execution claim at 68–73, the CV-U06 accounting and CV-10 trusted-workspace
-exceptions, and the separate authority warning at 84–86. Its E01–E12 evidence
-register and completion criteria remain distinct. The section heading is an
-inbound destination from the main matrix at line 76 and CV backlog at line 24.
-No drafted replacement or link check has verified a saving.
+INIT-02's Open status and explicit-manifest behavior. A private 12-line
+scope/owner sketch accounts for 16 possible local lines from the 28-line body.
+It must correct F03's overclaim and retain the no-new-execution limit at 68–73,
+CV-U06 accounting, CV-10 trusted-workspace, and the separate authority warning
+at 84–86. The E01–E12 register and completion criteria remain distinct. The
+heading has inbound links from the main matrix at line 76 and CV backlog at
+line 24. No guide edit, link check, or repository net saving is verified.
 
 ### F168 — Scheduler stream names repeated in the logging contract
 

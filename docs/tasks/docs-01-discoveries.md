@@ -572,12 +572,14 @@ worker, and validator rules live in the
 [test evidence limits](../../tests/README.md#evidence-limits).
 The paragraph also appears in [canonical BAM QC](../../tests/evidence/canonical_bam_qc/README.md)
 and [RSeQC](../../tests/evidence/rseqc_orientation/README.md) at lines 5–9
-(`c0cdceb1`). Eight test and six production copies repeat 58 physical lines. The
-preliminary 31–32-line net estimate covers only the original 12 stage files:
-48 repeated lines become 12 one-line local routes plus 4–5 shared lines.
-The shared test indexes lack full runner, scratch, interruption, recovery, and
-shell-worker versus validator distinctions. Six two-line routes yield 25–26
-potential saved lines; all twelve yield 19–20. Neither scenario is verified.
+(`c0cdceb1`). Eight test and six production copies repeat 58 physical lines.
+The shared indexes lack runner, scratch, interruption, recovery, command-help,
+and shell-worker versus validator distinctions; a simple link would lose them.
+An illustrative shared-context allowance is eight test-index lines plus one
+stage-index line. With 14 one-line routes, 58 repeated lines minus 14 routes
+and nine shared lines leaves 35; with two-line routes it leaves 21. For the
+original 12 stage files, zero/six/twelve two-line routes yield 27/21/15.
+No saving is verified.
 At `651d60d5`, nine stage, two evidence, and one analysis contract use the
 same two-line opening routing to the [test index](../../tests/README.md),
 which contains the shared evidence ceiling:

@@ -299,20 +299,18 @@ requirement remain valid. No novice or site walkthrough ran.
 
 ### F115 — Current resource policy repeated in optimization candidate
 
-[Optimization candidate 3](optimization_campaign.md) lines 107–113 restates
-allocation-aware CPU/RAM resolution, repeated-stage shares, and native
-allowances; lines 114–117 repeat fixed-policy provenance, CV-U28's pending
-institutional boundary, and capacity-versus-utilization limits.
-The current [resource owner](../../src/emrys/orchestration/run_coordinator/resources/README.md)
-lines 3–26 already owns the defaults, provenance, and capacity-versus-utilization
-boundary. The [CV-U28 card](cluster_verification_backlog.md#cv-u28-allocation-aware-resource-policy-and-historical-provenance)
-lines 1847–1861 retains the superseding policy decision and pending institutional
-acceptance. Candidate lines 119–126 uniquely propose future concurrency,
-reservation, queue, and storage measurements. The 11 lines at 107–117 are a
-review span, not verified savings. F111 shows that its old-profile links do not
-support the newer current-policy wording; any shorter owner route must correct
-that provenance while retaining the future-tuning context. No resources were
-measured.
+[Optimization candidate 3](optimization_campaign.md) lines 107–117 repeats
+allocation-aware CPU/RAM, workload shares, native allowances, retired fixed
+policy, CV-U28 acceptance, and capacity-versus-utilization limits. The
+[resource owner](../../src/emrys/orchestration/run_coordinator/resources/README.md)
+lines 3–26 and [CV-U28](cluster_verification_backlog.md#cv-u28-allocation-aware-resource-policy-and-historical-provenance)
+1847–1861 own those current facts; candidate lines 119–126 uniquely retain
+future concurrency, reservation, queue, and storage measurements. Replacing
+the 11-line repetition with a four-line owner route would save seven physical
+lines within the candidate. This assumes its two old-profile link definitions
+are replaced one-for-one and audit-basis lines 22–23 distinguish original
+pinned citations from later current-owner routes (F111). No edit, repository
+net saving, or resource measurement is verified.
 
 ### F116 — CV-10 current protocol beside cancellation evidence
 
