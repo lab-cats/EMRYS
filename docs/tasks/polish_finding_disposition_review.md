@@ -91,6 +91,18 @@ Run/resume re-admission does not identify a live module-tree hash. No controlled
 same-version mutation or end-to-end escape was demonstrated. Choose the needed
 content guarantee before selecting a caller-complete change.
 
+**Item 9 placement recheck:** The current selected execution profile determines
+Doctor's storage requirement. For Slurm placement,
+[`_build_repair_plan`](../../src/emrys/orchestration/run_coordinator/doctor.py)
+skips direct-storage planning; the repair path submits compute runtime/storage
+checks through Slurm and finalizes storage on the head node. The
+[Runbook](../operations/RUNBOOK.md#slurm-setup-and-submission) gives one
+head-node `emrys doctor --repair` route after site Project creation. Existing
+simulated Slurm Doctor cases exercise delegated checks and finalization; this
+source/fixture review does not establish a Viking outcome. The old predicted
+direct-plan failure has no current source basis, while selected-profile and
+institutional qualification still need their own acceptance.
+
 **First complete item inventory:** Each line below maps one numbered
 [polish discussion](polish-campaign.md) at `3a672fdf`. "Delivered" means its
 described source capability exists at this revision; it is not independent
@@ -109,7 +121,7 @@ durable disposition is decided.
 | 6 | Public v3 Attempt receipt admission accepted `finished_at: "not-a-time"` in a source-bound local probe under the locked checker closure. Artifact Run summary and report receipt have source-indicated exposure, not a direct probe. | Select timestamp policy and maintained checker; test malformed and valid historical/current fields through public orchestration and artifact admission. |
 | 7 | Init previews major choices; when unset, two STAR values are explicitly deferred until FASTQ admission, so final Project bytes can differ from provisional preview bytes. | Replace the old missing-preview premise; define and verify semantic agreement for displayed exact and deferred choices without preview input reads or writes. |
 | 8 | Doctor `--profile` supports default, named, and absolute selections in source and focused tests. | Mark source delivery; keep site acceptance with CV-07. |
-| 9 | Current Slurm repair planning skips the formerly alleged direct-storage plan. | Re-evaluate full placement behavior and site evidence; do not claim the old source-predicted failure persists. |
+| 9 | Selected Slurm placement skips direct-storage planning; Doctor delegates compute checks and returns to head finalization. The current Runbook uses that route. | Treat the September 7 predicted direct-plan failure as historical. Simulated cases support the source path; institutional qualification remains with its owner. |
 | 10 | Novice institutional walkthrough remains accepted under `SITE-PARITY-01`. | Keep its exact site evidence requirement. |
 | 11 | Quickstart excludes default `dev`; managed golden CI includes it. The offline locked graph has 17 CI-only package names, while shared versions agree. | Verify an operator-minimal golden journey separately from the later `pytest` containment check; assert group selection. No install-speed or site claim. |
 | 12 | Draft FASTQ physical-identity refusal differs from Project admission's same-row path check; cross-row or hard-linked reuse is source-permitted, with no Run reproduction. | Decide per-Dataset physical-reuse policy apart from the explicit-name proposal; retain legitimate cross-Analysis Dataset reuse and distinct symlink boundaries. |
@@ -178,6 +190,7 @@ and commit boundary.
 **Next:** Select item 6's timestamp policy and contract checks; verify an
 installed operator-minimal journey for item 11 while retaining its later test
 step. Decide and test any merge policy for item 33 separately. Resolve items 7,
-9, 12 and 35 with direct checks or policy decisions. The campaign's old PR
+12 and 35 with direct checks or policy decisions; item 9 still needs its
+institutional qualification. The campaign's old PR
 chronology can be shortened only after unique decisions and dated evidence
 have a verified owner.

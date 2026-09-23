@@ -348,22 +348,23 @@ proposal is adjacent to, but distinct from, the storage-repair issue below.
 
 ### 9. Make Doctor's proposed storage repair match placement
 
-**Finding:** Doctor diagnoses storage against direct or Slurm placement, but
-constructs a direct qualification plan when storage is unready. Source predicts
-that this cannot satisfy the Slurm qualification requirement; this audit did
-not reproduce a site failure.
-The runbook now documents the supported route: retain a direct default during
-initial preparation, perform compute/finalize storage qualification, and select
-the separate Slurm profile. PR #136 consolidated readiness-result construction;
-it did not change the storage repair plan or resolve this finding.
+**September 7 finding:** Doctor diagnosed storage against direct or Slurm
+placement but constructed a direct qualification plan when storage was
+unready. Source predicted a Slurm mismatch; the audit did not reproduce a
+site failure. The former Runbook route used a direct default for initial
+preparation before separate Slurm selection. PR #136 consolidated readiness
+construction without resolving that then-current plan.
 
-**Outcome and acceptance:** Reassess the remaining command-level problem against
-that documented route and verify it through the existing plan and admission
-paths before selecting a repair change. Any selected correction must make
-repair intent and qualification requirements agree without duplicating setup
-machinery. Preserve profile ownership and the preview/execute boundary. Local
-plan proof and institutional execution are separate. This remains a proposed
-bounded defect investigation owned by this item.
+**September 22 source recheck:** The selected Slurm profile now suppresses
+direct-storage planning; Doctor delegates compute checks through Slurm and
+finishes storage qualification on the head node. The current Runbook gives
+that single head-node `doctor --repair` route. Simulated cases cover the
+delegated path; institutional placement remains unproved by this review.
+
+**Disposition:** Do not select the old predicted failure as a current defect
+without a new source or site reproduction. Preserve profile ownership and the
+preview/execute boundary. Local plan proof and institutional execution remain
+separate; any new failure belongs to its current Doctor/site owner.
 
 ### 10. Complete a novice institutional walkthrough
 

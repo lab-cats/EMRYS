@@ -70,7 +70,7 @@ discovery below and names the next evidence needed before changing authority.
 | 1. Status vocabulary and placement | The baseline matrix left `Needs decision` undefined, the delegated backlog used `Discard`, and two Completed rows sat under Active backlog. | Both terms are now defined narrowly; the completed rows moved without status or acceptance changes. |
 | 2. `INIT-02` and dependent onboarding claims | Automatic maintained-study selection is Open, but CV summaries called `INIT-01`–`INIT-03` source-complete. Quickstart supplies a manifest path explicitly. | Summaries are corrected; installed study-file delivery and no-argument selection remain before hosted and novice acceptance. |
 | 3. `CV-U22` runtime reuse | The card remains Open for compatible-donor discovery before installation; the documented known-smoke route is narrower. | Retain Open and the no-silent-donor rule; distinguish known-smoke evidence from the undecided general selection design. |
-| 4. `CV-26` Doctor cost | One redundant full diagnosis was removed; original complete-operation attribution and comparable measurements remain Open. | Separate exact retained measurements and the serial-probe decision from implementation checkpoints and unmeasured speedup claims. |
+| 4. `CV-26` Doctor cost | One redundant full diagnosis was removed; original complete-operation attribution and comparable measurements remain Open. | September 15 measurements have a dated home; transfer card-only September 16/21 evidence before shortening and retain the unmeasured whole-operation limit. |
 | 5. Dashboard retirement | The matrix says the standalone entry point and callers are retired; several CV summaries still say that retirement remains. | Current-sounding text is corrected in this branch; keep shared watch code, historical readers, and pending visual verification. |
 | 6. Repeated cluster closure instructions | The main checklist, cluster backlog summary, and charter repeat remaining work. | The charter now links to the operative sequence while retaining its unique disposition, site-combination, and evidence custody rules. |
 | 7. Viking walkthrough chronology | The main matrix holds dated jobs, a qualification identity, capacity observations, approvals, and a last-supplied Run state. | The [dated record](../history/2026-09-14-viking-walkthrough.md) now preserves source-only journey and safety details; settle the allocation-account evidence need and owner homes before any shortening. |
@@ -171,27 +171,21 @@ retain the known-smoke route and its pending institutional acceptance.
 
 ### 4. `CV-26` Doctor cost
 
-**Observed:** The [CV-26 card](cluster_verification_backlog.md) lines
-3750–3759 requires complete Doctor attribution across phases, reads, hashes,
-probes, and queue time, plus comparable before/after measurements. The main
-matrix line 107 and charter lines 202–207 distinguish the completed structural
-reduction from the Open original measurement outcome. The card holds exact
-hosted artifacts and timing observations after line 3785; those are retained
-evidence, not routine progress to delete.
+**Observed:** [CV-26](cluster_verification_backlog.md#cv-26-repeated-doctor-input-reads)
+remains Open for complete Doctor phase/read/hash/probe/queue attribution and
+comparable before/after measurements. The five-to-four full-diagnosis change
+is structural; it has no measured Viking speedup.
 
-**Next:** Inventory the exact revisions, artifacts, raw counters, failure
-distinctions, and accepted serial-probe decision. Keep them source-bound if
-later moved to [validation history](../history/validation-evidence.md). State
-the remaining experiment without implying a measured speedup.
-
-**Evidence boundary:** The card's lines 3785–3808 retain one hosted
-complete-setup timing with its artifact identity and limits. Lines 4024–4056
-record the five-to-four diagnosis reduction and exact CI, but neither
-comparable complete-operation before/after data nor Viking speedup. The
-[GitHub workflow guide](../../.github/workflows/README.md) lines 24–39 also
-summarizes a serial/concurrent probe experiment whose fuller evidence and
-failed-suite distinction remain in the CV card at lines 3949–3998. Use one
-durable evidence record if this material moves.
+**Partial transfer:** The [September 15 record](../history/2026-09-15-cv26-doctor-measurements.md)
+retains the 175.681-second hosted setup, probe/trial tables, artifact hashes,
+failed-suite distinction, fresh-check decision, and serial-R decision. The
+CV card alone retains some byte/probe counters and logging/failure limits,
+the September 16 negative Viking duration report, and the September 21
+five-to-four change with its safety rationale, exact local checks, and CI
+identity. Transfer those distinct facts with their dates before shortening
+the card; the [workflow guide](../../.github/workflows/README.md) is only a
+summary. Neither record supplies comparable complete-operation measurements,
+institutional E11 acceptance, or scientific speedup proof.
 
 ### 5. Dashboard retirement
 
@@ -325,6 +319,12 @@ closeout shortening. The closeout figures entered the matrix in
 
 ### 9. CV card checkpoint narratives
 
+Numeric CV card ranges below refer to the
+[a009037b snapshot](https://github.com/lab-cats/EMRYS/blob/a009037beb3a073738945472b6cffcbe31b834ee/docs/tasks/cluster_verification_backlog.md);
+charter ranges refer to the
+[3a672fdf baseline](https://github.com/lab-cats/EMRYS/blob/3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d/docs/tasks/cluster_verification_campaign.md),
+not changing current files.
+
 **Observed:** The [cluster backlog](cluster_verification_backlog.md) held 4,107
 lines at the named baseline. CV-U06, CV-U22, CV-U28, CV-10, and CV-26 include dated implementation,
 adversarial-review, and verification checkpoints before their current
@@ -349,7 +349,7 @@ E06 causal reconstruction while retaining current reporting truthfulness and
 site acceptance. The four Completed cards are scoped outcomes, not campaign
 closure or Viking qualification.
 
-| Evidence-bearing region in the [CV backlog](cluster_verification_backlog.md) | Preserve before shortening |
+| Evidence-bearing region in the pinned CV backlog or charter | Preserve before shortening |
 | --- | --- |
 | CV-10, lines 2740–2752, 2789–2803, and 2920–2985 | Strict prepared-finalization acceptance; job `621154` TIMEOUT, lock/no-receipt/no-recovery observation; exact CI/artifact hashes; the failed first-suite distinction; prepared recovery boundary; and accepted equal-byte recycled-inode limitation. |
 | CV-26, lines 3754–3763, 3789–3829, and 3949–4056 | Original complete-operation attribution and comparable-measurement acceptance; bounded 175.681-second hosted setup; four trial measurements and artifact identity/hash; failed prototype-suite distinction; serial-probe decision; and five-to-four structural reduction without a measured whole-operation or Viking speedup. |
@@ -499,7 +499,7 @@ maps all 44 numbered findings and five architecture options to current
 source, accepted owners, and remaining evidence. Several old missing-feature
 premises are superseded. Item 6's malformed timestamp admission is locally
 reproduced; item 11's locked dependency graph confirms a CI/operator group
-gap. Items 7, 9, 12 and 35 still need direct checks or policy decisions, while
+gap. Items 7, 12 and 35 still need direct checks or policy decisions, while
 item 33's current rules were read but its policy remains unselected. Delivered
 source capability does not by itself close a larger backlog outcome or
 institutional acceptance.
@@ -512,15 +512,16 @@ Further source tracing separates item 7's explicitly deferred STAR values,
 item 12's per-Dataset physical-file reuse policy, and item 35's unbound
 Snakemake module content from demonstrated Run or site failures. Item 6's
 artifact timestamp exposure is source-indicated and awaits its own probe.
+Item 9's Slurm Doctor path now has a source/fixture recheck; site proof remains.
 
-**Next:** Resolve items 7, 9, 12 and 35 against direct tests or policy; select
+**Next:** Resolve items 7, 12 and 35 against direct tests or policy; select
 separate corrections for 6 and 11 and a hosted decision for 33 if approved.
 Transfer unique decisions and dated evidence before shortening campaign
 chronology. The companion review proposes no deletion.
 
 ### 14. `HARNESS-01` status versus source gap
 
-**Observed:** The [main matrix](backlog_matrix.md) line 161 marks
+**Observed:** The [main matrix](backlog_matrix.md) line 167 marks
 `HARNESS-01` Verification pending while its acceptance explicitly requires
 reconciling a remaining `local-science-tools` naming/admission mismatch.
 The [workflow fixture](../../tests/orchestration/run_coordinator/fixtures/workflow.py)
@@ -543,15 +544,16 @@ Do not rename the production mode or remove the schema's `test-double` value
 without a separate compatibility review. This review changes no status.
 
 **Boundary check:** The production [contract](../../src/emrys/contracts/orchestration/api.py)
-lines 483–494 requires Python and storage qualification for local science
-mode, and [lifecycle](../../src/emrys/orchestration/run_coordinator/lifecycle.py)
-lines 1343–1366 uses actual admission callbacks. The fixture emits the same
-mode while its test callback checks the name without doing that admission.
-The schema also accepts `test-double` at line 145, but this checkout has no
-production writer for it; its observed uses are a contract fixture and test
-diagnostics. This makes it a contract-retirement *candidate*, not proof that
-retained Attempts or compatible readers permit removal. The partial-failure
-and resume tests remain useful at their stated fixture level.
+lines 483–494 requires Python/storage qualification for local science mode;
+[lifecycle](../../src/emrys/orchestration/run_coordinator/lifecycle.py) lines
+1343–1366 performs actual admission. The fixture writes a fake storage
+qualification, emits the same mode, and injects callbacks that assert names
+without semantic admission; test-owned producers/validators prove controlled
+failure and resume, not scientific runtime. Separately, the schema accepts
+`test-double` at line 145 with weaker mode-specific identity requirements,
+but no production writer was found. Retained Attempt readers include schema
+admission and immutable mode equality. This is a contract-retirement candidate,
+not permission to rename/remove a mode without compatibility review.
 
 ## Retention boundary for later edits
 
