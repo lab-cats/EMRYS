@@ -5,7 +5,8 @@ holds F62 onward. F62–F64 use PR head `b67e0eeb`; F65–F66 began at
 `cf94af08`, with F66 extended at `9c4fafdc`; F67–F70 use `c0a6027a`;
 F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`; F74–F77 use `ab25ea9b`;
 F78–F83 use PR head `7a07d502`; F84–F88 use `ce9a3289`;
-F89 uses local head `39a21034`; F90–F93 and the F85 extension use `9c0264d3`,
+F89 uses local head `39a21034`; F90–F93 and the F85 extension use `9c0264d3`;
+F94–F96 and the F22/F53 extensions use local head `e90c85f4`,
 all read on 2026-09-22.
 These are documentation observations, not runtime results or accepted changes.
 
@@ -461,3 +462,45 @@ Lines 212–215 repeat the same combination and uniqueness rule after the
 coordinate examples. The repeated statement spans about two physical lines;
 the intervening BED versus one-based region semantics, examples, and the
 separate supplied-manifest exclusions remain distinct. No Init command ran.
+
+### F94 — Dashboard retirement closeout tense
+
+The [main backlog](backlog_matrix.md) lines 327–331 ends the PR #169
+integration account in present tense: dashboard retirement “still requires a
+validated replacement.” Git attributes that paragraph to `550b54025` on
+2026-09-14. The same backlog at line 180 records the institutional owner's
+2026-09-17 acceptance of installed watch as the replacement and retirement of
+the standalone wrapper/callers. The [CV campaign](cluster_verification_campaign.md)
+lines 198–201 and [polish account](polish-campaign.md) lines 437–446 corroborate
+that later disposition. The old sentence can describe its earlier checkpoint,
+but without a date cue a current reader can take it as the remaining task.
+Standard CI and institutional visual verification remain open in the later row;
+acceptance of the replacement is not those proofs. No dashboard was run.
+
+### F95 — Executed stop missing from logging adopter roster
+
+The [source topology](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) line 57
+calls its application-logging adopter list complete and names executing
+`run`/`resume`, automatic and standalone reporting, and confirmed Doctor
+repair, but no `stop`. The [logging contract](../design/LOGGING_CONTRACT.md)
+lines 12–23, 88–90, and 193–200 owns an executed exact-request stop's single
+maintenance attempt. The [current stop path](../../src/emrys/orchestration/run_coordinator/control.py)
+lines 2441–2466 returns without a new log for an already-terminal target or
+preview, then opens the attempt for admitted execution. This is index drift,
+not evidence of a runtime logging defect. No stop was issued.
+
+### F96 — Unrouted artifact schema version notes
+
+The [artifact schema index](../../src/emrys/contracts/schemas/artifacts/README.md)
+lines 3–8 links four current JSON schemas directly. Its adjacent
+[v1](../../src/emrys/contracts/schemas/artifacts/v1/README.md),
+[v2](../../src/emrys/contracts/schemas/artifacts/v2/README.md),
+[v3](../../src/emrys/contracts/schemas/artifacts/v3/README.md), and
+[v5](../../src/emrys/contracts/schemas/artifacts/v5/README.md) READMEs have
+no inbound Markdown link outside this temporary audit in a repository link
+scan, including directory links to their README targets. Those four files
+occupy 32 physical lines and partly repeat the index. They also record
+distinct shared-definition compatibility and test routes, Run/Attempt
+separation, module-policy and historical-reader bounds, and rendering
+provenance versus scientific validation. Thirty-two lines describe the review
+surface, not a verified saving or grounds to delete those caveats.

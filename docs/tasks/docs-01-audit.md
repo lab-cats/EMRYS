@@ -174,6 +174,12 @@ permission to change or delete the source.
   and evidence authorities. It added F90–F93 and extended F85 to the delegated
   CV index. The measured 77- and 48-line surfaces are review scopes, not
   approved savings. No guide, source, test, CI, or cluster action was run.
+- The following read-only pass at local head `e90c85f4` checked task closeout
+  chronology, application-log ownership, schema reader routes, and selected
+  cross-owner overlap against current source. It added F94–F96 and deepened
+  F22 and F53. Repeated CV-10 acceptance rows and reporting transaction
+  summaries retained distinct limits, so no saving was inferred. No product
+  command, test, CI, or cluster operation was run.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -259,7 +265,7 @@ and the boundary for each row.
 | [F50](docs-01-discoveries-continued.md#f50-submission-request-version-in-the-coordinator-contract) | Contract wording | Coordinator inspection prose describes selected requests as v2/v3 and new requests as v3 while current requests are v4. | Name current v4 and preserve exact v2/v3 compatibility rules. |
 | [F51](docs-01-discoveries-continued.md#f51-viking-walkthrough-history-in-the-active-backlog) | Evidence placement | Backlog mixes unique historical Viking observations and a former allowance with current policy; the campaign lacks exact installed/runtime bindings for a lossless transfer. | Keep current owner routes, historical attribution, acceptance authority, and inbound anchor distinct. |
 | [F52](docs-01-discoveries-continued.md#f52-report-regeneration-wording) | Recovery wording | Root guide and platform decision say reports can be “regenerated”; current reporting creates from empty owned state or reuses a complete bundle. | Clarify generation versus reuse without implying partial-bundle repair or overwrite. |
-| [F53](docs-01-discoveries-continued.md#f53-dependent-project-in-shared-runtime-replacement) | Recovery instruction | Troubleshooting replacement commands omit the borrower selector; the adjacent Runbook names an unqualified source-Project Doctor command. | Show exact borrower and source Project selection while preserving preview and admission checks. |
+| [F53](docs-01-discoveries-continued.md#f53-dependent-project-in-shared-runtime-replacement) | Recovery instruction | Troubleshooting and Doctor diagnostics print replacement commands without the borrower selector; the adjacent Runbook names an unqualified source-Project Doctor command. | Preserve the current-directory and source-admission distinctions during review. |
 | [F54](docs-01-discoveries-continued.md#f54-analysis-reporter-return-shape) | API description | Two report guides say the analysis provider returns HTML bytes; the admitted return is a structured carrier containing bytes and provenance inputs. | Compare both descriptions with `AnalysisScientificReportV1`; provider behavior is unchanged. |
 | [F55](docs-01-discoveries-continued.md#f55-ci-lane-selection-route) | Navigation overclaim | Workflow README says the test baseline defines each CI lane; that section gives broad categories, while exact jobs and selection live in the workflow. | Route precise lane selection to `ci.yml` and retain the baseline's evidence ceiling. |
 | [F56](docs-01-discoveries-continued.md#f56-synthetic-driver-dependency-mutation-claim) | Mutation-scope wording | Test-tool and engineering guides imply tests do not install dependencies; the opt-in synthetic driver invokes confirmed Doctor repair in each disposable Project. | Ordinary tests and opt-in Doctor repair have different mutation scopes; no installation was observed. |
@@ -300,6 +306,9 @@ and the boundary for each row.
 | [F91](docs-01-discoveries-third.md#f91-repeated-stage-and-evidence-contract-openings) | Compression candidate | Twelve stage/evidence contract openings use 48 lines to restate aliases and stage-map ownership alongside distinct local command roles. | Only an illustrative 12–24-line net opportunity remains after local roles; no edit or saving was verified. |
 | [F92](docs-01-discoveries-third.md#f92-python-lock-checks-before-institutional-r-restoration) | Audience and prerequisite question | Runbook places Python lock checks before institutional R restoration; developer guidance owns similar checks, while the shown R Make targets do not invoke uv. | Whether this is an independent operator gate remains unverified; the R procedure is unique. |
 | [F93](docs-01-discoveries-third.md#f93-repeated-partition-selector-rule) | Small duplication | Config guide twice states that `--region` and `--regions-file` can combine only with unique partition IDs. | The intervening coordinate examples and separate manifest exclusions remain distinct. |
+| [F94](docs-01-discoveries-third.md#f94-dashboard-retirement-closeout-tense) | Temporal framing | A PR #169 closeout paragraph says dashboard retirement still needs a validated replacement; a later row records installed watch accepted as that replacement. | Preserve the dated closeout and remaining CI/visual verification without making the older checkpoint sound current. |
+| [F95](docs-01-discoveries-third.md#f95-executed-stop-missing-from-logging-adopter-roster) | Owner-index omission | Source topology calls its logging-adopter roster complete but omits executed `stop`, which opens a maintenance attempt after admission. | Keep terminal-target and preview no-log cases distinct; no runtime defect is inferred. |
+| [F96](docs-01-discoveries-third.md#f96-unrouted-artifact-schema-version-notes) | Navigation and compression question | Artifact schema index links current JSON schemas, while four adjacent version READMEs have no inbound Markdown route. | Their 32 lines overlap the index but retain unique compatibility, identity, and evidence limits; no saving is established. |
 
 ## Discovery notes
 
@@ -346,3 +355,8 @@ boundaries that the accepted `EXTENSION-01` and `RELEASE-01` rows summarize.
 The test-tool guide overlaps CV-01's selected journey but uniquely states
 request-token stream matching and its guarded emergency-cancellation limit;
 those current driver rules have no demonstrated net reduction.
+CV-10's nearby remaining-acceptance rows repeat prepared-finalization status
+but retain different exact-hosted, site, and blocked-state limits. Reporting
+publication summaries recur at the reporting index and private package owners,
+yet their transaction members, reuse rules, and original-Run attribution differ;
+neither overlap supplies a defensible deletion on this pass.

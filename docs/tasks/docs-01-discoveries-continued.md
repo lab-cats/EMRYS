@@ -445,22 +445,23 @@ still govern the boundary.
 
 ### F53 — Dependent Project in shared-runtime replacement
 
-[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 149–159 says to
-preview and apply a sealed-runtime replacement from each dependent Project,
-but both pasteable commands specify only `--from-project` and omit the
-borrower's `--project`. Runtime discovery resolves an omitted Project to
-`project.yaml` in the current working directory
-([onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
-lines 270–285 and 2304–2321). From outside the dependent Project, those
-commands can fail or select another current Project for inspection; the
-separate source-selection and admission checks still govern any mutation.
+[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 149–159 gives two
+pasteable replacement commands with `--from-project` but no borrower
+`--project`. Runtime discovery defaults an omitted Project to the current
+directory's `project.yaml` ([onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+lines 270–285, 2304–2321). Outside the borrower, either command may fail or
+select another Project for inspection; separate source-selection and admission
+checks still govern mutation.
 The [Runbook](../operations/RUNBOOK.md) baseline lines 683–693 (PR head
 `0cb5d507` lines 643–650) shows the exact dependent
 `--project /absolute/dependent/project.yaml` selector for the same
 replacement. Baseline lines 683–685 (PR head lines 643–646) describe
 source-Project repair with bare `emrys doctor --repair`, after a borrower
 example. Doctor also defaults to the current directory's Project
-(`doctor.py:2041–2046`), leaving the source Project implicit. Preview,
+(`doctor.py:2041–2046`), leaving the source Project implicit. Doctor's own
+borrower diagnostics at `doctor.py:654–659`, `698–707`, and `949–954` print
+replacement commands with `--from-project` but no borrower `--project`;
+the same current-directory dependency applies. Preview,
 exact-source checks, the old generation, seals, and blocked-state evidence
 remain protective boundaries. No runtime replacement was exercised.
 

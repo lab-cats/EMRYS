@@ -453,7 +453,10 @@ event shape and flushing. Coordinator runtime orchestration at lines 326–339
 overlaps the
 [runtime owner](../../src/emrys/evidence/runtime_availability/README.md)
 lines 85–104 on generation replacement, exact selectors, and fixed-content
-limits. Coordinator lines 313–325 separately explain cross-Project publication,
+limits. The [Runbook](../operations/RUNBOOK.md) lines 643–654 repeats the
+replacement lifecycle but supplies the operator's selector and commands;
+the three passages are a review scope, not a measured saving. Coordinator
+lines 313–325 separately explain cross-Project publication,
 no-write behavior, prompts, and output; runtime-owner lines 70–83 define the
 seal and selector formats. Watch
 keys at contract lines 622–624 also appear in the Runbook table at lines
