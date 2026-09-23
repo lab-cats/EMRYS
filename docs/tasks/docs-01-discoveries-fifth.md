@@ -73,15 +73,14 @@ no performance result follows.
 
 ### F133 — Fourteen workflow owners labeled scientific
 
-The [architecture guide](../architecture/ARCHITECTURE.md) line 54 calls all
-fourteen owners in the built-in path “scientific.” Its responsibility table at
-lines 41–43 separates scientific stages/analyses from operational evidence,
-and its phase table at lines 64–68 calls alignment evidence non-gating. The
-[stage map](../../src/emrys/contracts/STAGE_MAP.md) lines 19–34 lists fourteen
-identities: ten stages, two analyses, and two evidence collectors (canonical
-BAM QC and RSeQC orientation). The total is accurate, but the adjective blurs
-the guide's own evidence boundary. This is a reader-label ambiguity only; it
-does not show a graph, scheduling, or scientific-result defect.
+**Dismissed for DOCS-01 at `3335b7d1`.** The [architecture guide](../architecture/ARCHITECTURE.md)
+line 54 calls the built-in path's fourteen owners “scientific,” but its
+responsibility table at 41–43 separates operational evidence and its nearby
+phase table at 64–68 names non-gating alignment evidence. The
+[stage map](../../src/emrys/contracts/STAGE_MAP.md) 19–34 confirms ten stages,
+two analyses and two evidence collectors. In context the phrase is broad path
+shorthand; removing one adjective saves no physical line or useful separate
+correction. It implies no graph, scheduling or scientific-result defect.
 
 ### F134 — CV-25 implementation account beside current log owners
 
