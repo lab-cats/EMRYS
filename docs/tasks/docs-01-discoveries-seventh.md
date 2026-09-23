@@ -377,3 +377,48 @@ authority to delete dated evidence.
 The local documentation structure check passed on this audit draft (178
 Markdown files, three Mermaid sources). It validates these links, not any
 hypothetical shortened CV-21 prose or product behavior.
+
+## Cross-owner negative rescreen at `33f91ee1`
+
+The complete 734-line [Runbook](../operations/RUNBOOK.md) and 271-line
+[Troubleshooting guide](../operations/TROUBLESHOOTING.md) were reread against
+F01–F195 and selected owners. The chosen-revision install procedure, terminal
+report transfer, and second-terminal Doctor-log route retain distinct operator
+steps; their apparent overlap yielded no new compression finding. The complete
+1,248-line [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+was re-screened against its README, logging, runtime, configuration, Runbook,
+and selected source/tests. Its presentation, resource, request-stream,
+probe, recovery, and reporting overlaps are covered by existing findings or
+state distinct coordinator authority. No additional lossless saving was found.
+
+The complete 392-line [main matrix](backlog_matrix.md), 174-line
+[validation-evidence record](../history/validation-evidence.md), CV charter's
+scope/closure, optimization campaign's measurement account, and the CV
+backlog's index and reconciliation map were reread. Current acceptance,
+negative measurements, and dated evidence have distinct roles; F17/F18/F51/
+F158/F167 already cover the apparent repetitions. This was a static source
+review, not an executed operator, cluster, scientific, or CI check.
+
+### F196 — Reporting decision repeats current manifest mechanics
+
+At `33f91ee1`, the [reporting decision](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression)
+lines 234–257 spends 24 physical lines on the combined manifest/TSV
+publication, artifact-entry fields, retired duplicate state, and the source
+compatibility transition. The current mechanics are also in the
+[reporting owner](../../src/emrys/reporting/README.md#implementation),
+[artifact-index owner](../../src/emrys/reporting/_artifact_index/README.md#inputs-and-responsibilities),
+and [summary owner](../../src/emrys/reporting/_run_summary/README.md).
+This is separate from F25's adjacent retired-private-symbol inventory at
+decision lines 216–225; F25's whole-section dismissal still stands.
+
+A shorter decision-level account must keep the single owner, completion
+marker, and recovery scope; direct checked-context handoff and distinct
+publication/reuse input checks; artifact-local metrics and parameters; and
+the reason execution history, tools, supplemental lists, and proof labels do
+not become second reporting authorities. It must retain that those retired
+fields were never populated in production, current closed formats reject
+them without rewriting evidence, shared source remains fully hashed, and the
+one-time fingerprint transition did not make earlier Runs compatible. A
+17–19-line account with owner routes suggests only five to seven conditional
+local lines saved. No replacement, link check, net saving, or evidence
+deletion was verified or authorized.
