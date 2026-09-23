@@ -229,11 +229,12 @@ lines 753–760; and optional smoke/readiness in
 [CV-U08](cluster_verification_backlog.md#cv-u08-quickstart-scope-and-language)
 lines 592–603 and 621–625 and [CV-U09](cluster_verification_backlog.md#cv-u09-synthetic-project-explanation)
 lines 692–701. CV-06 uniquely records that these gaps failed as one guided
-journey. A dated, linked 9–12-line account might save 9–12 lines, conditional
-on actual wrapping. It must retain the four-gap grouping, negative
-institutional evidence, and **Open** status at that checkpoint. The September
-18 correction and later status at 2562–2570 are separate. The priority index
-links to the CV-06 heading; no replacement or net saving was verified.
+journey. A private 12-line, five-link accounting sketch suggests nine local
+lines; the former 12-line upper saving lacks support. Retain the four-gap
+grouping, negative institutional acceptance, and **Open** checkpoint. The
+September 18 correction and later status at 2562–2570 are separate. The
+priority index links to the CV-06 heading. No guide edit or net saving was
+verified; earlier E01–E12 records do not replace this combined observation.
 
 ### F178 — CV-16 watch failure detail repeated across cards
 
@@ -247,12 +248,12 @@ lines 943–948; navigation and bounded-tail limits in
 and the contradictory `36/36` screenshot in
 [CV-U17](cluster_verification_backlog.md#cv-u17-completion-communication)
 lines 1090–1101. CV-16 uniquely says these failures together returned the
-integrated card to **Open** after hosted parity. A linked account might save
-6–9 lines from this 17-line span, conditional on wrapping, while keeping the
-combined operator failure and the screenshot's diagnostic, not scientific,
+integrated card to **Open** after hosted parity. A private nine-line, four-link
+accounting sketch suggests eight local lines from this 17-line span. Retain
+the combined operator failure and the screenshot's diagnostic, not scientific,
 evidence ceiling. The September 18 correction at 3204–3214 stays separate;
-the priority index links to the CV-16 heading. No replacement or net saving
-was verified.
+the priority index links to the CV-16 heading. Earlier E01–E12 records do not
+replace this combined observation. No guide edit or net saving was verified.
 
 ### F179 — CV-01 integrated journey account under review
 
