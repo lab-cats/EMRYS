@@ -1,7 +1,7 @@
 # DOCS-01 discovery notes, third file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F62–F99; [fourth notes](docs-01-discoveries-fourth.md) hold F100–F110.
+holds F62–F99; [fourth notes](docs-01-discoveries-fourth.md) hold F100–F111.
 F62–F64 use pinned revision `b67e0eeb`; F65–F66 began at
 `cf94af08`, with F66 extended at `9c4fafdc`; F67–F70 use `c0a6027a`;
 F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`; F74–F77 use `ab25ea9b`;
@@ -52,11 +52,12 @@ lines 17–34 restates how named Init derives three STAR index settings, handles
 the >5,000-sequence case, freezes overrides, and normalizes an absent legacy
 `genome_chr_bin_nbits`. The [configuration guide](../../configs/README.md)
 lines 62–75 and [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 124–134 already own those current mechanics. The decision also records
-the original EV/PUM1 values, the mechanical-versus-biological boundary, and a
-pinned STAR manual citation. This is a narrow duplication observation; those
-distinct rationale and provenance elements remain relevant. No STAR operation
-was run.
+lines 124–134 already own those current mechanics. The decision at lines
+29–34 also states that validation inspects the three configured values in
+`genomeParameters.txt`; the [STAR-index contract](../../src/emrys/stages/star_index/CONTRACT.md)
+lines 96–99 owns that current check. The decision's original EV/PUM1 values,
+mechanical-versus-biological boundary, and pinned STAR manual citation remain
+distinct rationale and provenance. No STAR operation was run.
 
 ### F65 — Report template owner description
 
@@ -313,16 +314,18 @@ establish test independence or a runtime result; no test ran.
 
 ### F83 — Direct-host study versus allocation-only rule
 
-The [delivery decision](../design/decisions/repository-and-delivery.md) lines
-12–17 says heavy scientific work runs only in an approved whole-Run Slurm
-allocation. The [root environment summary](../../README.md) lines 44–47
-supports direct execution on one host, and the [Runbook](../operations/RUNBOOK.md)
-lines 223–230 and 267–283 describes an own-data Run on an approved non-Slurm
-compute host. The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 3–5 and 365–375 also defines direct placement. The decision does not
-state where a direct study ceases to be local development and becomes the
-“heavy” work it reserves for Slurm. This is an operator scope question, not
-a claim that direct execution is unsafe or that either route was exercised.
+The [repository safety guard](../../AGENTS.md) lines 62–64 and
+[delivery decision](../design/decisions/repository-and-delivery.md) lines
+12–17 reserve heavy alignment, sorting, mpileup, and analysis for an approved
+grouped whole-Run Slurm allocation. The [Runbook](../operations/RUNBOOK.md)
+lines 223–230 and 267–283 offer an own-data full Run on an approved non-Slurm
+compute host without limiting that route to tiny or light work. The admitted
+[stage map](../../src/emrys/contracts/STAGE_MAP.md#direct-dag-edges) includes
+the named heavy stages in the full workflow. This is a documentation
+policy-route conflict. The [root environment summary](../../README.md) lines
+44–47 and [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 3–5 and 365–375 still support direct placement and tiny synthetic
+fixtures; no direct or institutional Run was exercised in this audit.
 
 ### F84 — Copied Init manifest path fields
 

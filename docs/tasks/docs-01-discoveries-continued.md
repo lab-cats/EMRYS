@@ -2,7 +2,7 @@
 
 This companion to the [findings matrix](docs-01-audit.md#findings-matrix)
 holds F30–F61; the [third file](docs-01-discoveries-third.md) holds F62–F99,
-and the [fourth file](docs-01-discoveries-fourth.md) holds F100–F110.
+and the [fourth file](docs-01-discoveries-fourth.md) holds F100–F111.
 Unless a subsection names another revision, source line
 references are pinned to `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`.
 These are observations, not accepted changes or a task-status registry.
@@ -445,25 +445,21 @@ still govern the boundary.
 
 ### F53 — Dependent Project in shared-runtime replacement
 
-[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 149–159 gives two
-pasteable replacement commands with `--from-project` but no borrower
-`--project`. Runtime discovery defaults an omitted Project to the current
-directory's `project.yaml` ([onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
-lines 270–285, 2304–2321). Outside the borrower, either command may fail or
-select another Project for inspection; separate source-selection and admission
-checks still govern mutation.
-The [Runbook](../operations/RUNBOOK.md) baseline lines 683–693 (pinned revision
-`0cb5d507` lines 643–650) shows the exact dependent
-`--project /absolute/dependent/project.yaml` selector for the same
-replacement. Baseline lines 683–685 (pinned revision lines 643–646) describe
-source-Project repair with bare `emrys doctor --repair`, after a borrower
-example. Doctor also defaults to the current directory's Project
-(`doctor.py:2041–2046`), leaving the source Project implicit. Doctor's own
+[Troubleshooting](../operations/TROUBLESHOOTING.md) lines 149–159 gives
+selector-free `--from-project` commands but tells readers to run them from each
+dependent Project. Under that precondition they select the borrower: runtime
+discovery defaults an omitted Project to the current directory's `project.yaml`
+([onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+lines 270–285, 2304–2321). Outside the borrower, a command may fail or select
+another Project; source-selection and admission checks still govern mutation.
+The [Runbook](../operations/RUNBOOK.md) at pinned `0cb5d507` lines 643–650
+shows an explicit dependent selector, then a bare source-Project Doctor command.
+Doctor also defaults to the current Project (`doctor.py:2041–2046`). Its own
 borrower diagnostics at `doctor.py:654–659`, `698–707`, and `949–954` print
-replacement commands with `--from-project` but no borrower `--project`;
-the same current-directory dependency applies. Preview,
-exact-source checks, the old generation, seals, and blocked-state evidence
-remain protective boundaries. No runtime replacement was exercised.
+replacement commands with no borrower selector or working-directory instruction,
+including after invocation with `--project` elsewhere. Preview, exact-source
+checks, old generations, seals, and blocked-state evidence remain protective;
+no runtime replacement was exercised.
 
 ### F54 — Analysis reporter return shape
 

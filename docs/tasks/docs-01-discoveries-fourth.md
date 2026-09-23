@@ -1,8 +1,9 @@
 # DOCS-01 discovery notes, fourth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F100–F110. F100–F104 use local audit head `e1771d21`; F105–F108 use
-`b65e8fb8`; F109–F110 use `26898b5e`, all read on 2026-09-22. These are
+holds F100–F111. F100–F104 use local audit head `e1771d21`; F105–F108 use
+`b65e8fb8`; F109–F110 use `26898b5e`; F111 uses `cd45bd51`, all read on
+2026-09-22. These are
 documentation observations, not runtime results, accepted changes, or
 permission to alter retained evidence.
 
@@ -31,8 +32,10 @@ lines 845–847 records rejection of the retired `resources.reporting_memory_mb`
 field and `--reporting-memory-mb` flag, then gives the operator action of
 removing the field from a selected profile. The
 [profile guide](../../configs/README.md) lines 233–264 owns profile authoring
-and current options but does not mention that retired field; a tracked guide
-search found no other operator route to the advice. The source tests at
+and current options; lines 357–364 warn generically that retired reporting-
+memory settings are rejected, without naming this field or its removal. A
+tracked guide search found no other exact operator route to that advice. The
+source tests at
 `tests/orchestration/run_coordinator/test_execution_profile.py:698–703` and
 `test_resource_policy.py:529–532` cover the rejections. Exact rejection
 behavior belongs to the coordinator owner. The removal advice has a different
@@ -181,6 +184,23 @@ lines 1–17 requires six columns absent from this file. Local Git places the
 file at `e4371de5` on 2026-07-25, but its historical use is unverified.
 This is an unrouted, apparently legacy study artifact; neither safe deletion
 nor executable current Step 09 input follows from the comparison.
+
+### F111 — Current resource claim with old profile citations
+
+The [optimization campaign](optimization_campaign.md#audit-basis-and-evidence-limits)
+lines 19–24 says its source citations are pinned to `fdf7676` on 2026-09-07.
+Candidate 3 at lines 105–117 now describes the current allocation-aware
+CV-U06/CV-U28 policy and cites `[default-profile]` and `[viking-profile]`,
+whose definitions at lines 426–427 still point to that old revision. Local
+`git show` of those cited files gives fixed `workflow_cores: 4` or `12`,
+numeric stage concurrency, and Viking `cpus_per_task: 256` with
+`memory_mb: null`. The [current default](../../src/emrys/orchestration/run_coordinator/resources/default_execution.yaml)
+lines 4–15 uses `allocation` and `auto`; the [current Viking example](../../configs/execution_profile.csu_viking_ev_pum1.yaml)
+lines 46–55 requests `node` CPUs and all node memory. Git attributes the
+candidate's current-policy paragraph to `593f6e728` on 2026-09-21, after the
+audit snapshot. The old links remain valid for historical claims, but do not
+support this later current-policy description. This is citation provenance,
+not a measured resource or runtime result.
 
 ## Reviewed overlaps without a saving claim
 
