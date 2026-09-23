@@ -1,7 +1,9 @@
 # DOCS-01 discovery notes, fifth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F130–F131. Both use local audit head `3ebfb2bf`, read on 2026-09-23.
+holds F130–F133. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
+F132–F133 use local head `935adf06` on the same date.
+F130 was dismissed as a duplicate on recheck at local head `935adf06`.
 Source and direct tests were read, not executed. These are documentation
 observations, not runtime results, accepted changes, or permission to alter
 retained evidence.
@@ -10,23 +12,11 @@ retained evidence.
 
 ### F130 — Repeated test-scope paragraph across eight owner guides
 
-The [BAM-QC](../../tests/evidence/canonical_bam_qc/README.md) and
-[RSeQC](../../tests/evidence/rseqc_orientation/README.md) test guides and six
-stage test guides—[STAR index](../../tests/stages/star_index/README.md),
-[STAR alignment](../../tests/stages/star_alignment/README.md),
-[canonical BAM](../../tests/stages/canonical_bam/README.md),
-[duplicate marking](../../tests/stages/duplicate_marking/README.md),
-[FASTA sidecars](../../tests/stages/fasta_sidecars/README.md), and
-[split-N-cigar](../../tests/stages/split_n_cigar/README.md)—repeat the same
-five physical lines at 5–9. Those 40 lines say worker cases use runner staging,
-the [common runner suite](../../tests/orchestration/run_coordinator/test_task.py)
-owns publication/recovery checks, validator cases keep the grouped CLI, and
-shared evidence limits apply. The [stage](../../tests/stages/README.md) and
-[evidence](../../tests/evidence/README.md) indexes already route to common
-evidence limits; each owner's first paragraph gives its distinct coverage and
-limit. The repeated paragraph is a concrete compression review surface, not
-40 demonstrated deletable lines: local test scope and reader routes still
-need to remain clear. Test files were inspected, not run.
+**Dismissed duplicate.** [F28](docs-01-discoveries.md#f28-repeated-owner-boilerplate)
+already records the identical five-line paragraph in the same six stage and
+two evidence test guides (40 physical lines), plus six production README copies.
+F130 adds no independent finding or saving estimate. Its number remains to
+trace this correction; no documentation deletion follows.
 
 ### F131 — Receipt validation scope in the glossary
 
@@ -45,3 +35,32 @@ The glossary's unqualified “validate” and “completion” blur native trans
 completion with verified task completion. Staged checks and receipt-last order
 remain real; a native receipt alone is not verified-task proof. No runtime or
 reporting defect follows from this glossary wording.
+
+### F132 — Benchmark timing scope in the Runbook
+
+The [Runbook](../operations/RUNBOOK.md) lines 730–733 says the resource helper
+measures explicitly listed setup, production, and validation commands, then
+mentions wall time and peak child memory without assigning their scope. The
+[helper](../../scripts/benchmark_stage_resources.py) lines 427–466 executes
+setup and validation with `_run`, but times only the producer with `_run_timed`.
+Its result fields at lines 41–57 and 484–499 retain setup and validator exit
+codes, while elapsed, CPU, RSS, and block counts are producer-specific. The
+[optimization campaign](optimization_campaign.md#measurement-and-adoption)
+lines 364–374 explicitly says validator time is excluded and a producer-only
+benchmark does not establish complete public-command latency. The Runbook
+wording can give an operator a broader measurement expectation. Setup and
+validation still execute and gate trial success; this is a documentation-scope
+observation, distinct from F62's value-label issue. No benchmark was run and
+no performance result follows.
+
+### F133 — Fourteen workflow owners labeled scientific
+
+The [architecture guide](../architecture/ARCHITECTURE.md) line 54 calls all
+fourteen owners in the built-in path “scientific.” Its responsibility table at
+lines 41–43 separates scientific stages/analyses from operational evidence,
+and its phase table at lines 64–68 calls alignment evidence non-gating. The
+[stage map](../../src/emrys/contracts/STAGE_MAP.md) lines 19–34 lists fourteen
+identities: ten stages, two analyses, and two evidence collectors (canonical
+BAM QC and RSeQC orientation). The total is accurate, but the adjective blurs
+the guide's own evidence boundary. This is a reader-label ambiguity only; it
+does not show a graph, scheduling, or scientific-result defect.

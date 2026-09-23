@@ -167,6 +167,11 @@ reconnection at 260–269 hard-code `$EMRYS_SOURCE_ROOT/Projects/pum1-study`.
 `Projects` directory and saves the selected path; named Init at 1261–1269
 creates under it. With an inherited alternate home, pressing Enter makes the
 documented later `cd` miss the Project, although Init prints the actual path.
+The [Smoke Test](../operations/SMOKE_TEST.md) lines 8–11 and 23–30 also routes
+readers through the Quickstart but creates its disposable synthetic Project at
+an explicit repository `Projects/emrys-smoke` path. That synthetic command does
+not use the saved home; returning to the real-study Quickstart still inherits
+the named-Init versus hard-coded-`cd` mismatch when a different home was saved.
 The same Quickstart lines say to leave the optional log root empty, while an
 inherited `EMRYS_LOG_ROOT` is saved without prompting at onboarding lines
 237–250. These are conditional reader-route mismatches, not failures in a

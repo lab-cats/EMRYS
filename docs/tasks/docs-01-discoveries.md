@@ -107,16 +107,16 @@ smoke guide.
 
 ### F05 — Generic study versus named EV/PUM1 route
 
-The [Runbook](../operations/RUNBOOK.md) lines 280–293 calls the EV/PUM1
-Quickstart the path for “your own study” and “your own data.” Quickstart lines
+At baseline `3a672fdf`, the [Runbook](../operations/RUNBOOK.md) lines 280–293
+called the EV/PUM1 Quickstart the path for “your own study” and “your own data.” Quickstart lines
 77–115 supplies particular sample assignments, comparison, target change,
 thresholds, and a primary-contig manifest. The [configuration guide](../../configs/README.md)
 lines 31–124 and 144–215 explains generic Project choices. Carrying the
 named study’s choices into unrelated data is a plausible reader risk, not an
 observed misuse. Generic choice guidance is in the configuration guide;
 EV/PUM1 is a named-study example.
-This handoff occurs in both the standalone-host route at Runbook 280–286 and
-the general “own data” route at 289–301. Quickstart lines 83–115 fixes six
+That handoff occurred in both baseline Runbook routes: standalone host (280–286)
+and “own data” (289–301). Quickstart lines 83–115 fixes six
 sample assignments, `reverse` strand, `EV -> PUM1`, `A>G`, thresholds, and
 the primary-contig manifest; its title and opening identify the named study.
 The [configuration guide](../../configs/README.md) lines 62–63 explicitly
@@ -152,11 +152,11 @@ missing-child Init recovery.
 
 ### F07 — Doctor repair does not always install
 
-The [Runbook](../operations/RUNBOOK.md) lines 585–587 and 654–656, the
+The [Runbook](../operations/RUNBOOK.md) lines 545–547, the
 [reporting decision](../design/decisions/execution-evidence-and-reporting.md)
 lines 44–53, and the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 164–166 speak of Doctor installing tools on the head node as a certainty.
-The same Runbook lines 700–706 and the
+The same Runbook lines 660–665 and the
 coordinator contract lines 217–233 distinguish a repair-and-verification plan from a
 verification-only plan. A direct Doctor source test at
 `tests/orchestration/run_coordinator/test_doctor.py:2956–2960,3046–3054`
@@ -487,7 +487,7 @@ additional overlap establishes no safe saving.
 
 ### F23 — Init details in the Runbook
 
-The [Runbook](../operations/RUNBOOK.md) lines 303–335 mixes useful Init
+At baseline `3a672fdf`, [Runbook](../operations/RUNBOOK.md) lines 303–335 mixed useful Init
 choices and safe prompts with exact hashing, inode, STAR derivation, and
 publication mechanics also covered by the
 [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)

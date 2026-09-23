@@ -328,6 +328,16 @@ permission to change or delete the source.
   three current owner contracts' distinct retired-writer histories. Other
   bounded tooling and schema-index comparisons found no additional distinct
   claim. No product, test, CI, or cluster command ran.
+- An adversarial read-only recheck at local head `935adf06` found that F130
+  repeats F28 and dismissed it. F05 and F23 now mark their opening Runbook
+  descriptions as pre-compression baseline; F07 cites the current categorical
+  Doctor sentence and its conditional qualification. A separate tooling-guide
+  comparison added F132 for producer-only benchmark timing; an architecture
+  comparison added F133 for a fourteen-owner label that includes two evidence
+  collectors. F71 now records the Smoke Test's explicit synthetic path as a
+  limit on its saved-home mismatch. Selected early, middle, and later rows
+  otherwise retained their cited limits. No product, test, CI, or cluster
+  command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -356,7 +366,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 131 numbered records include F41, F43, and F87, dismissed after recheck so
+The 133 numbered records include F41, F43, F87, and F130, dismissed after recheck so
 their original claims and corrections remain traceable. The last column records
 an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -369,7 +379,7 @@ Discovery notes give source references and the boundary for each row.
 | [F04](docs-01-discoveries.md#f04-root-quickstart-description) | Reader route | Root README calls Quickstart a synthetic first Run; Quickstart leads with real EV/PUM1 and makes smoke optional. | Quickstart leads with EV/PUM1; smoke is optional. |
 | [F05](docs-01-discoveries.md#f05-generic-study-versus-named-evpum1-route) | Reader route | At baseline, two “own study” Runbook routes point into fixed EV/PUM1 choices. At pinned revision `0cb5d507`, the choice route is clearer, but the Quickstart continuation still uses the named Project and Slurm. | The generic route remains unverified as a reader journey. |
 | [F06](docs-01-discoveries.md#f06-existing-project-and-new-project-recovery) | Reader route | Troubleshooting mixes existing-Project lookup with absent-child Init recovery. | Existing-Project lookup and absent-child creation have distinct preconditions. |
-| [F07](docs-01-discoveries.md#f07-doctor-repair-does-not-always-install) | Contradiction | Guides imply Doctor always installs and the decision assigns it uv; verified Slurm plans can skip package work while still submitting checks. | Package work, preview, and confirmed verification have different effects. |
+| [F07](docs-01-discoveries.md#f07-doctor-repair-does-not-always-install) | Contradiction | One Runbook sentence states Doctor installs, although its later status guidance allows verification only; the decision also assigns Doctor uv. Verified Slurm plans can skip package work while still submitting checks. | Package work, preview, and confirmed verification have different effects. |
 | [F08](docs-01-discoveries.md#f08---version-and-local-env) | Source-ordering limit | Runbook promises `--version` from any directory; malformed marked `.env` is rejected before version dispatch. | Source inference and unrun installed-command behavior remain separate. |
 | [F09](docs-01-discoveries.md#f09-runbook-entry-order) | Reader route | Advanced request/watch/stop procedures precede Runbook orientation. | The entry-order usability effect is untested; recovery commands remain necessary. |
 | [F10](docs-01-discoveries.md#f10-contract-location-claim) | Filename overclaim | Two global indexes imply an adjacent `CONTRACT.md` for every component; many README locations use another contract form. | Two global routes overstate `CONTRACT.md` coverage; stage-owner wording remains accurate. |
@@ -433,7 +443,7 @@ Discovery notes give source references and the boundary for each row.
 | [F68](docs-01-discoveries-third.md#f68-slurm-diagnostic-artifact-bounds) | Evidence-scope overclaim | CI guide calls uploaded Slurm diagnostics bounded and redacted; setup and terminal capture write full status and journals without those transformations. | Private accounting files are excluded; no artifact contents or disclosure were assessed. |
 | [F69](docs-01-discoveries-third.md#f69-python-shard-inventory-scope) | Test-scope overclaim | Baseline and test-tool guide call shard receipts complete, but two test files are excluded from their inventory. | Ordinary CI runs them separately; scheduled or selected-only shards do not establish all-test coverage. |
 | [F70](docs-01-discoveries-third.md#f70-omitted-site-does-not-always-mean-direct) | Conditional reader-route error | Runbook says omitting `--site` creates a direct profile; `EMRYS_SITE=viking` from process or saved settings makes both Init parsers select Slurm. | This does not affect the no-default case; no command was run. |
-| [F71](docs-01-discoveries-third.md#f71-quickstart-projects-home-default-and-later-path) | Conditional reader-route error | Quickstart says later commands use the Projects home accepted during setup, but validation and reconnect hard-code the repository Projects path. | An inherited alternate home changes the saved destination; no command was run. |
+| [F71](docs-01-discoveries-third.md#f71-quickstart-projects-home-default-and-later-path) | Conditional reader-route error | Quickstart says later commands use the Projects home accepted during setup, but validation and reconnect hard-code the repository Projects path. | An inherited alternate home changes the saved real-study destination; the Smoke Test uses an explicit synthetic path. No command was run. |
 | [F72](docs-01-discoveries-third.md#f72-automatic-reporting-scope-for-processing-only-runs) | Run-scope wording | Reporting owner README says Run/resume report automatically unless disabled; successful processing-only Runs have reporting not applicable. | The owner contract and direct fixture distinguish full from partial Runs. |
 | [F73](docs-01-discoveries-third.md#f73-profile-create-explicit-placement-requirement) | Conditional CLI wording | Coordinator contract says profile creation requires explicit site or placement; the parser accepts inherited `EMRYS_SITE` as the selection. | Explicit selection remains required with no site default. |
 | [F74](docs-01-discoveries-third.md#f74-final-check-command-omits-r-library-prerequisite) | Command prerequisite | Engineering guide's displayed `all-checks` command supplies Rscript but not the existing `RENV_LIBRARY` required by its guarded-R lane. | The command can pass that gate only when the library variable is already supplied. |
@@ -492,8 +502,10 @@ Discovery notes give source references and the boundary for each row.
 | [F127](docs-01-discoveries-fourth.md#f127-older-local-checks-inside-active-cv-acceptance-cards) | Evidence placement | CV-U08 and CV-U20 carry older local-check totals beside later active acceptance wording without naming the checked source revision. | Historical check outcomes are not disproved; excluded cases, environment, and evidence-ceiling limits remain material and cannot be deleted by this audit. |
 | [F128](docs-01-discoveries-fourth.md#f128-tool-specific-thread-effects-in-the-coordinator-contract) | Compression candidate | Coordinator contract repeats five lines of worker-specific STAR, samtools, and Java flag effects already held by their stage and evidence contracts. | Central resource derivation and refusal remain coordinator-owned; no safe saving is established by the overlap alone. |
 | [F129](docs-01-discoveries-fourth.md#f129-unrouted-workflow-profile-index) | Navigation and compression candidate | The 11-line workflow-profile index has no inbound tracked Markdown link while parent and local-profile guides carry most of its current orientation. | Its selectable-profile approval rule is unique; filesystem routes were not assessed and no deletion scope is established. |
-| [F130](docs-01-discoveries-fifth.md#f130-repeated-test-scope-paragraph-across-eight-owner-guides) | Compression candidate | Eight stage and evidence test guides repeat one identical five-line worker/runner/validator/evidence-scope paragraph. | Their owner-specific coverage and local reader context remain distinct; 40 repeated physical lines are a review surface, not a proved saving. |
+| [F130](docs-01-discoveries-fifth.md#f130-repeated-test-scope-paragraph-across-eight-owner-guides) | Dismissed duplicate | The eight-guide test paragraph was already recorded with its 40 repeated physical lines in F28. | Retained number traces the correction; F130 adds no independent candidate or saving estimate. |
 | [F131](docs-01-discoveries-fifth.md#f131-receipt-validation-scope-in-the-glossary) | Validation-scope ambiguity | Glossary says receipt follows validation and marks transaction completion without distinguishing staged native checks from later independent task validation. | Native checks and receipt-last publication remain real; receipt presence alone does not verify a scientific task. No runtime defect is inferred. |
+| [F132](docs-01-discoveries-fifth.md#f132-benchmark-timing-scope-in-the-runbook) | Measurement-scope ambiguity | Runbook implies the resource helper measures setup, producer, and validator commands, while its timing and resource fields cover only the producer. | Setup and validation still execute and gate trial success; no benchmark was run or performance result inferred. |
+| [F133](docs-01-discoveries-fifth.md#f133-fourteen-workflow-owners-labeled-scientific) | Reader-label ambiguity | Architecture guide calls all fourteen built-in workflow owners scientific, while its own boundary and the stage map classify two as evidence collectors. | The count is correct; this wording alone implies no graph, execution, or scientific-result defect. |
 
 ## Discovery notes
 
