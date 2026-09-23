@@ -1,15 +1,15 @@
 # DOCS-01 discovery notes, sixth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F164–F184 and a recheck of F158. F164–F167 compare local head `f79bc435`; F168 and the
+holds F164–F187 and a recheck of F158. F164–F167 compare local head `f79bc435`; F168 and the
 F19/F64/F92 refinements compare `5aaa17f0`; F97/F107/F169 use `25f62591`;
 F170 uses `8ef78400`, F171–F172 use `c6ec1562`, and F173–F175 use
 `286f646a`; F158/F176 use `3de8366b`, F124/F172 rechecks use
 `35668cc8`, F166/F169/F175/F177–F178 rechecks use `8489836c`, and F179 uses
-`ce4d22f8`, F180–F181 use `619e60b7`, and F182–F184 use `c1969b84`,
-read on 2026-09-23. The
-full coordinator contract and root/operator/owner history sweeps found no
-other substantial reduction. Counts are
+`ce4d22f8`, F180–F181 use `619e60b7`, F182–F184 use `c1969b84`, and
+F185–F187 use `f8c49f9e`, read on 2026-09-23. The full coordinator contract
+and root/operator/owner history sweeps found no other substantial reduction.
+Counts are
 review spans and conditional arithmetic, not verified savings or approval to
 alter guides, accepted status, or evidence. No product, test, CI, or cluster
 command was run.
@@ -305,11 +305,13 @@ The real-Snakemake and local-versus-cluster limits at lines 7–14 must remain.
 At local audit head `c1969b84`, the [Runbook](../operations/RUNBOOK.md)
 line 589 says batch scratch is removed when the wrapper exits. The
 [submission owner](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
-lines 756–773 creates private scratch and installs a Bash `EXIT` trap; lines
-783–798 forward TERM and exit after the child. The [direct test](../../tests/orchestration/run_coordinator/test_slurm_submission.py)
-lines 2027–2105 observes cleanup after normal wrapper completion. SIGKILL or
-node loss cannot run that trap, so the unqualified lifetime claim exceeds the
-source and test guarantee. Residue is possible, not observed; site epilog
+lines 756–773 creates private scratch, checks/chmods it, then installs a Bash
+`EXIT` trap; lines 783–798 forward TERM and exit after the child. The
+[direct test](../../tests/orchestration/run_coordinator/test_slurm_submission.py)
+lines 2027–2105 observes cleanup after normal wrapper completion. Failure
+between creation and trap installation, SIGKILL, or node loss can bypass it,
+so the unqualified lifetime claim exceeds the source and test guarantee.
+Residue is possible, not observed; site epilog
 cleanup was not checked. Keep the scratch path, `TMPDIR`, no-fallback rule,
 and site-capacity/lifetime warning at Runbook lines 584–598. A wording
 qualification is under review; no physical-line saving is established.
@@ -338,6 +340,49 @@ The coordinator's head diagnosis, compute qualification, execution-preflight
 placement and head-success limit are unique here. A concise owner route might
 save two to four physical lines from this six-line span, conditional on a
 lossless draft and link check. No product defect or net saving is established.
+
+### F185 — Canonical BAM producer LB and PL exactness overclaimed
+
+At local audit head `f8c49f9e`, the [canonical BAM contract](../../src/emrys/stages/canonical_bam/CONTRACT.md)
+lines 50–54 requires exact `ID`, `SM`, `LB` and `PL:ILLUMINA` fields. The
+[worker](../../src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh)
+lines 69–74 and 94–107 instead search for substrings in one `@RG` line.
+An otherwise valid coordinate-sorted input with `ID:sample`, `SM:sample`,
+`LB:sample-extra`, `PL:ILLUMINA-extra`, and positive `RG:sample` records
+appears able to take the hard-link reuse path at line 125 and pass the final
+worker check. The [grouped BAM check](../../src/emrys/libraries/alignments/bam.py)
+lines 56–65 requires exact `ID`/`SM` fields but omits `LB`/`PL`, as the contract
+acknowledges at lines 142–147. Unlike F173's Step 05 prefix case, this mismatch
+is not caught by that grouped field check. This is source inference; no
+malformed Run, ordinary STAR output, or product execution was observed.
+
+### F186 — CV-U21 superseded STAR heuristic chronology
+
+At local audit head `f8c49f9e`, [CV-U21](cluster_verification_backlog.md#cv-u21-technical-parameter-assistance)
+lines 1341–1387 spends 47 physical lines on the initial first-record FASTQ
+heuristic, its local checks, the contig-selector extension, and the September
+17 reversal. The current repair and STAR-default account follows at
+1389–1422. A shorter dated account might save roughly 10–15 lines if it
+retains the later-record failure, source-derived selector names versus
+biological choice, fresh publication admission, initial local-test limits,
+and the Verification pending → Open → Verification pending chronology.
+The sampled origin commits `b6d2b3d50`, `d249fc5e2`, `3dc98a301`,
+`0f3e1725a`, and `482f795e0` resolve locally; this does not verify the
+operator walkthrough. F119/F120 concern current default or replay wording,
+not this within-card history. No lossless draft or net saving was verified.
+
+### F187 — CV campaign post-checklist context under review
+
+At local audit head `f8c49f9e`, the [campaign Delivery approach](cluster_verification_campaign.md#delivery-approach)
+lines 135–150 follow the checklist overlap at 128–133 already recorded as F158.
+This distinct 16-line span reiterates [CV-01](cluster_verification_backlog.md#cv-01-managed-golden-path-coverage)
+acceptance and site-evidence limits. A shorter account might save four to six
+physical lines, conditional on retaining the missing-memory-plus-UID,
+reuse-plus-node, and native-publication-cancellation combinations; the E01/E06
+unexplained-cause boundary; INIT-02/CV-U22 original-intent decisions; and
+simulation, hosted and institutional evidence ceilings. This estimate does not
+include F158's separate opening. F167 covers Remaining delivery scope; F179
+covers CV-01's later hosted journey. No net saving is verified.
 
 ## Other focused source comparisons at `8ef78400`
 
@@ -537,3 +582,13 @@ repeated stage-test/execution material is already F28; other apparent overlap
 retains owner-specific commands, contracts, or evidence limits. No new
 substantial DOCS-01 candidate emerged from this bounded pass. Source and
 tests were read, not executed; retained evidence was not validated.
+
+## Contract and architecture rescreen at `f8c49f9e`
+
+All 14 non-coordinator contracts (1,817 lines) were reread against selected
+workers, validators and direct test source; F185 was the distinct new claim.
+Architecture decisions and three Mermaid diagrams were rescreened. The
+[stage map](../../src/emrys/contracts/STAGE_MAP.md) processing edges matched
+the profile descriptor's 12 direct edges; its analysis tail is projected by
+the analysis registry. F66 still covers the Step 08/09 QC-summary mismatch.
+These are static comparisons, not executed behavior or rendered diagrams.

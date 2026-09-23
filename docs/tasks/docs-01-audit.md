@@ -259,13 +259,10 @@ permission to change or delete the source.
   links resolve to 46 local commit/path targets, and all 62 line fragments
   fall within their cited files; this checks link targets, not claim semantics
   or hosted artifacts. No product, test, CI or cluster command ran.
-- A further read-only pass at local head `dc44861b` rechecked root and operator
-  routes, selected scientific and evidence owner contracts, architecture and
-  schema wording, and campaign chronology. It added F120 for a superseded Init
-  replay description in the active CV backlog. The other selected claims
-  matched their current owners or were already covered by F01–F119; a scoped
-  polish-campaign sentence did not establish another contradiction. No product,
-  test, CI, or cluster command ran.
+- At `dc44861b`, selected operator, scientific, architecture, schema and
+  campaign claims were rechecked. F120 records the superseded Init replay
+  account; other sampled claims matched owners or F01–F119, and the polish
+  sentence was not a contradiction. No product/test/CI/cluster ran.
 - A non-Markdown notice and package-route pass at local head `f538efe4`
   compared the root license notice with tracked resources and the package
   distribution inventory. It added F121 for the activation-script location
@@ -303,15 +300,14 @@ permission to change or delete the source.
   destinations resolved statically. No execution ran.
 - At `54f7b756`, F125–F126 addressed producer/publication and Doctor timing; Step 07/10, CI, and test-guide reads found no further finding.
 - At `777345b6`, coordinator/CV/workflow review added F127–F129
-  (validation chronology, worker flags, unrouted guide); sampled root,
-  Quickstart, operations, reference, and glossary claims held. Source/tests
-  were read; prior checks were not replayed and no product/CI/cluster ran.
+  (validation chronology, worker flags, unrouted guide); sampled reader routes
+  held. Source/tests were read; no product/CI/cluster ran.
 - At `3ebfb2bf`, test/evidence/schema review added F130–F131 and extended F107;
   at `935adf06`, F130 was dismissed as F28 overlap, F05/F07/F23/F71 refined,
-  and F132–F133 added. Other sampled limits held; no execution ran.
+  and F132–F133 added. No execution ran.
 - At `ebc0012d`, coordinator/owner/CV review added F134–F139; F52 gained
   “regeneration.” At `f239a91d`, recheck dismissed F138, narrowed F134/F136/F137,
-  and added F140; CV-23/Slurm-preview/operator rereads found no new candidate.
+  and added F140; further selected reads found no new candidate.
 - At `d18470c8`, five-word shingles across 1,515 paragraphs found 59 matches; paraphrases could escape.
 - At `2398f144`–`d55baa91`, F01–F153 were rechecked, F154–F159/F94 added or refined, and F45/F79/F144–F146/F148–F149/F153 dismissed; no product/CI ran.
 - At `286f646a`, static stage-owner and schema checks added F173–F175; no product, test, CI, or cluster command ran.
@@ -330,15 +326,15 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 | Area | Compared to date | Further reading needed |
 | --- | --- | --- |
 | Scientist and operator paths | All nine root and operations Markdown files, configuration guide, and all three reference guides; selected routes compared with CLI source and direct tests | Remaining claim-to-source paths and an executed operator journey are unverified. |
-| Architecture and decisions | All 19 architecture, design, and reference Markdown/Mermaid files, including all three diagrams; selected provider and schema claims compared with source | Remaining source implications and visual rendering are unverified. |
+| Architecture and decisions | All 19 architecture, design, and reference Markdown/Mermaid files, including all three diagrams; selected provider/schema claims and stage-map edges compared with source | Remaining source implications and visual rendering are unverified. |
 | Task and evidence records | All eight baseline task/history Markdown files (excluding this audit's seven files); 60 CV index entries reconciled to card endings; 55 commit-like refs screened locally | Object presence does not verify historical claims; three hosted objects and artifact-to-claim bindings remain unverified. |
-| Product owners | All 62 `src/emrys/` READMEs and all 15 owner contracts, including a full recheck of the 1,248-line coordinator contract and focused production comparisons | Remaining code and schema claims beyond selected owner paths. |
+| Product owners | All 62 `src/emrys/` READMEs and all 15 owner contracts, including full rechecks of the 1,248-line coordinator and 14 other contracts (1,817 lines) with selected production comparisons | Remaining code and schema claims beyond selected owner paths. |
 | Tests, scripts, and CI | All 53 Markdown files in these trees, plus selected source assertions, direct test cases, and documentation-check code | Executable checks were not run; compare remaining code, fixtures, and retained evidence. |
 | Non-Markdown notices | Root `LICENSE` and `NOTICE` plus the bundled renv MIT text were inspected for file-location references | License meaning and third-party compliance were not evaluated. |
 
 ## Findings matrix
 
-Of 184 records, 70 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 187 records, 70 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -523,9 +519,12 @@ Of 184 records, 70 were dismissed after recheck; linked notes give reasons. The 
 | [F179](docs-01-discoveries-sixth.md#f179-cv-01-integrated-journey-account-under-review) | Within-card compression question | CV-01's 37-line selected hosted journey account contains a unique integrated sequence alongside resource and fixture detail covered by test and recovery owners. | No net saving is established; preserve three Slurm Attempts, direct parity, controlled versus site evidence, pending exact-commit CI, and institutional limits. |
 | [F180](docs-01-discoveries-sixth.md#f180-analysis-provider-validator-independence-wording) | Wording ambiguity | Analysis owner guide says EMRYS checks a provider's independent validator; admission requires validator argv and the runner executes it separately, without proving semantic independence. | “Independent” may describe separate execution; distinguish that from the trusted provider's semantic obligation. No defect or saving was shown. |
 | [F181](docs-01-discoveries-sixth.md#f181-removed-publisher-test-history-in-the-runtime-test-guide) | Dismissed as duplicate | The runtime test guide's retired-publisher sentence is already F36. | Removing it alone saves no physical line; F36 owns any future placement review. |
-| [F182](docs-01-discoveries-sixth.md#f182-slurm-scratch-cleanup-wording) | Cleanup-scope wording | Runbook says batch scratch is removed on wrapper exit; source relies on an `EXIT` trap, and the direct test covers normal completion. | Uncatchable termination can bypass the trap; site cleanup was not checked and no line saving is established. |
+| [F182](docs-01-discoveries-sixth.md#f182-slurm-scratch-cleanup-wording) | Cleanup-scope wording | Runbook says batch scratch is removed on wrapper exit; source installs an `EXIT` trap after creation/checks, and the direct test covers normal completion. | Pre-trap failure or uncatchable termination can bypass cleanup; site cleanup and line saving remain unverified. |
 | [F183](docs-01-discoveries-sixth.md#f183-historical-change-scope-in-the-coordinator-contract) | Historical-scope candidate | Coordinator contract says CLI/log/refusal/exit behavior remains unchanged; the dated CV-19 card retains the change scope. | Keep current Doctor and timing rules; a one-line trim is conditional on reflow and evidence preservation. |
 | [F184](docs-01-discoveries-sixth.md#f184-runtime-probe-mechanics-in-the-coordinator-contract) | Cross-owner detail candidate | Coordinator contract repeats Snakemake startup mechanics owned by the runtime guide. | Keep head/compute/execution-preflight boundaries and the head-success limit; two to four lines are conditional. |
+| [F185](docs-01-discoveries-sixth.md#f185-canonical-bam-producer-lb-and-pl-exactness-overclaimed) | Producer-contract overclaim | Canonical BAM contract requires exact `LB` and `PL` read-group fields; shell producer's reuse and final checks use substring matching, while grouped validation checks exact `ID`/`SM` but omits `LB`/`PL`. | An otherwise valid input with extended `LB`/`PL` values appears able to pass the hard-link path. This is source inference, not an observed malformed Run or a claim about normal STAR output. |
+| [F186](docs-01-discoveries-sixth.md#f186-cv-u21-superseded-star-heuristic-chronology) | Dated-account compression candidate | CV-U21 retains a 47-line initial first-record STAR heuristic, tests, selector extension and adversarial reversal ahead of its current repair. | Roughly 10–15 lines may be available; preserve the later-record defect, selector authority, publication boundary, dated tests and Open-to-pending chronology. Saving is unverified. |
+| [F187](docs-01-discoveries-sixth.md#f187-cv-campaign-post-checklist-context-under-review) | Campaign-summary compression candidate | CV campaign's Delivery approach lines 135–150 repeat CV-01 and site-evidence boundaries after F158's separate checklist overlap. | Four to six lines may be available within this distinct span; retain the three institutional combinations, E01/E06 and INIT-02/CV-U22 limits, and evidence ceilings. Saving is unverified. |
 
 ## Discovery notes
 
