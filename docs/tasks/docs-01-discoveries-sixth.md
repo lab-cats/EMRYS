@@ -1,9 +1,10 @@
 # DOCS-01 discovery notes, sixth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F164–F172. F164–F167 compare local head `f79bc435`; F168 and the
+holds F164–F175. F164–F167 compare local head `f79bc435`; F168 and the
 F19/F64/F92 refinements compare `5aaa17f0`; F97/F107/F169 use `25f62591`;
-F170 uses `8ef78400`, and F171–F172 use `c6ec1562`, read on 2026-09-23. The
+F170 uses `8ef78400`, F171–F172 use `c6ec1562`, and F173–F175 use
+`286f646a`, read on 2026-09-23. The
 full coordinator contract and root/operator/owner history sweeps found no
 other substantial reduction. Counts are
 review spans and conditional arithmetic, not verified savings or approval to
@@ -140,6 +141,53 @@ the shared CSS and presentation-only limit. Both existing glossary statements
 retain their evidence ceilings. This is link ownership, not a format or report
 behavior defect; no file or rendered report was changed.
 
+### F173 — Step 05 producer read-group exactness overclaimed
+
+At local audit head `286f646a`, the [Step 05 contract](../../src/emrys/stages/split_n_cigar/CONTRACT.md)
+lines 35–38 says the producer requires exactly one matching `ID`/`SM` read
+group. The [shell worker](../../src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh)
+lines 87–101 counts one `@RG` line but uses substring patterns for both fields.
+For sample `sample`, an `SM:sample-other` field can satisfy its `SM:sample`
+pattern. The separate [BAM readiness check](../../src/emrys/libraries/alignments/bam.py)
+lines 56–65 splits the header into tab-separated fields and requires exact
+`ID:sample` and `SM:sample`; the [grouped validator](../../src/emrys/stages/split_n_cigar/validator.py)
+lines 94–95 calls it. The [direct worker test](../../tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh)
+lines 114–119 and 223–242 uses matching fields and no prefix challenge. The
+contract overstates producer-local exactness; this does not establish that a
+full Run admits malformed output or that GATK normally emits it. No worker or
+validator was run in this audit.
+
+### F174 — Step 06 verified-marker contents overstated
+
+At local audit head `286f646a`, the [Step 06 contract](../../src/emrys/stages/mechanical_orientation/CONTRACT.md)
+lines 56–57 says tool versions and final hashes belong in the workflow
+verified record. The [verified-task schema](../../src/emrys/contracts/schemas/orchestration/v1/verified_task.schema.json)
+lines 7–17 and [publisher](../../src/emrys/orchestration/run_coordinator/task.py)
+lines 2885–2893 put only the terminal task-attempt path and hash in that
+marker. The terminal attempt's output snapshots carry hashes (same source,
+lines 2406–2425); its task-start record links to the workflow Attempt, whose
+`required_tools` entries contain tool versions
+([workflow Attempt schema](../../src/emrys/contracts/schemas/orchestration/v1/workflow_attempt.schema.json)
+lines 170–175 and [tool identity schema](../../src/emrys/contracts/schemas/orchestration/v1/common.schema.json)
+lines 191–206). The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 966–972 already describes the small marker and linked attempt. This is
+an evidence-location ambiguity across linked records, not missing hashes or
+versions. Records were read from source definitions, not generated or checked.
+
+### F175 — STAR gzip test scope ambiguous
+
+At local audit head `286f646a`, the [Step 01 test guide](../../tests/stages/star_alignment/README.md)
+line 3 says both compression modes are covered. Its [direct worker test](../../tests/stages/star_alignment/test_step_01_star_align.sh)
+lines 48–49 and 68–72 copies plain FASTQ bytes into `.gz`-named files; fake
+STAR at lines 20–44 records arguments and writes stand-in outputs without
+reading the FASTQs. The test checks selection of the gunzip command and mixed
+suffix rejection. Genuine gzip data appears in separate [FASTQ admission](../../tests/ingestion/sample_manifest_admission/test_check_fastq_pairs.py)
+lines 25–39 and 85–105 and [onboarding](../../tests/orchestration/run_coordinator/test_onboarding.py)
+lines 1264–1307 tests, which have different owners. The guide's phrase may mean
+both suffix branches, which are covered; it could also be read as claiming
+decoding through STAR, which this test does not exercise. No missing product
+behavior or real-run failure is established, and no test was executed here.
+
 ## Other focused source comparisons at `8ef78400`
 
 The current root and operator guides were reread against CLI/coordinator source
@@ -163,3 +211,14 @@ rechecked nine destination/anchor pairs; it does not account for external
 bookmarks or non-Markdown readers. Focused operator, design, owner, task,
 history, test, and CI routes found F171–F172 and already recorded F21/F59/F161.
 Existing links were read at their destinations, not rendered or exercised.
+
+## Stage and schema source recheck at `286f646a`
+
+Step 00a–02 and Step 07–10 owner guides were compared with selected producers,
+validators, planners, and direct tests without another distinct finding. A
+standard-library structural scan found 20 packaged JSON schemas with unique
+IDs and 388 internal or registered references resolving to an ID and pointer.
+Artifact and orchestration registries were read against that inventory. This
+checks the static reference graph, not runtime validation, historical schema
+compatibility, scientific correctness, or a complete caller audit. No test,
+product, CI, or cluster operation ran.

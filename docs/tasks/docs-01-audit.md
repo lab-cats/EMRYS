@@ -298,17 +298,12 @@ permission to change or delete the source.
   1,613 relative destinations and 524 fragments with no unresolved local
   target; this is narrower than the official documentation gate. No product
   command, test, CI, or cluster operation ran.
-- A diagram, script-guidance, and decision-prose pass at local head `663da8ed`
-  added F124 for the reliability diagram's single validation order versus the
-  runner's two orders. F32 now states that the checker accepts a canonical H1
-  anywhere, regardless of heading order. A separate static scan found six
-  relative reference-style link definitions, all with resolved local targets.
-  Source and tests were read, not executed; no CI or cluster work ran.
-- A shared-contract and operator-display pass at local head `54f7b756` added
-  F125 for a present-tense producer/publication ownership claim and F126 for
-  Doctor detail/timing wording. Focused Step 07, Step 10, CI, and test-guide
-  comparisons found no further distinct claim. These were source and test
-  readings only; no product, test, CI, or cluster command ran.
+- At `663da8ed`, F124 compared the reliability diagram's one validation order
+  with the runner's two; F32 clarified H1 order. Six reference-style link
+  destinations resolved statically. No execution ran.
+- At `54f7b756`, F125–F126 addressed producer/publication ownership and Doctor
+  detail/timing. Step 07, Step 10, CI, and test guides yielded no other claim.
+  No execution ran.
 - A coordinator-contract, CV-card, and workflow-profile pass at local head
   `777345b6` added F127–F129 for mixed validation chronology, duplicated
   worker flag detail, and an unrouted intermediate guide. Bounded root,
@@ -327,6 +322,8 @@ permission to change or delete the source.
 - At `d18470c8`, five-word shingles across 1,515 paragraphs found 59 matches; paraphrases could escape.
 - At `2398f144`–`d55baa91`, F01–F153 were rechecked; F154–F159/F94
   added or refined; F45/F79/F144–F146/F148–F149/F153 dismissed. No product/CI ran.
+- At `286f646a`, stage-owner and schema source comparisons added F173–F175.
+  These were static checks only; no product, test, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 owns placement. DOCS-01 remains open until findings have an authoritative
@@ -350,7 +347,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 172 records, 67 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 175 records, 67 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -526,6 +523,9 @@ Of 172 records, 67 were dismissed after recheck; linked notes give reasons. The 
 | [F170](docs-01-discoveries-sixth.md#f170-first-watch-log-controls-before-a-run-exists) | Conditional reader ambiguity | Quickstart names Up/G as log controls immediately after watch; a queued request without a Run initially opens overview. | The existing Runbook gives `3`/`v` for evidence/log view; explicit Run selection already opens that view. Source checked, not exercised. |
 | [F171](docs-01-discoveries-sixth.md#f171-processing-reuse-link-opens-the-contract-at-its-top) | Link precision | Optimization campaign's “Processing reuse” link opens the top of the 1,248-line coordinator contract. | The exact reuse section has an existing anchor; this is reader navigation, not a reuse or performance defect. |
 | [F172](docs-01-discoveries-sixth.md#f172-glossary-format-links-bypass-exact-owners) | Owner route | Glossary PDF and CSS entries send readers to broad reporting guidance that names neither format. | Step 09 owns the scientific PDFs; report styles own CSS. The referenced behavior and evidence limits remain unchanged. |
+| [F173](docs-01-discoveries-sixth.md#f173-step-05-producer-read-group-exactness-overclaimed) | Producer-contract overclaim | Step 05 contract credits the producer with exact read-group ID/SM matching; its shell check accepts a sample-ID prefix, while grouped validation checks exact fields. | This is a producer-local claim mismatch, not evidence that a full Run admits malformed output. |
+| [F174](docs-01-discoveries-sixth.md#f174-step-06-verified-marker-contents-overstated) | Evidence-location ambiguity | Step 06 owner places tool versions and final hashes in the workflow verified record; the verified marker contains only a terminal-attempt reference. | Output hashes and tool versions remain reachable in separate linked records; no missing evidence is shown. |
+| [F175](docs-01-discoveries-sixth.md#f175-star-gzip-test-scope-ambiguous) | Test-scope ambiguity | Step 01 test guide says both compression modes are covered; its direct fake-STAR test uses plain bytes under `.gz` names and checks suffix-selected gunzip routing. | That test does not exercise gzip decoding through STAR; separate ingestion tests use genuine gzip data. |
 
 ## Discovery notes
 
