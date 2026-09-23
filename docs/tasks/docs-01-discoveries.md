@@ -384,15 +384,16 @@ procedural sequence. Their overlap does not justify deleting either wholesale.
 
 [Workflow README](../../.github/workflows/README.md) lines 26–39 has 13 prose
 lines plus one blank in its completed Doctor experiment: run, four trials, mean
-time/RSS, limits, retirement, and the surviving driver. The
-[CV backlog](cluster_verification_backlog.md) lines 3949–3999 holds these facts
-plus the artifact identity and trial-level measurements. Workflow lines 3–22
-own current CI lanes; the experiment section gives no active lane instruction.
-The [optimization campaign](optimization_campaign.md) lines 302–315 records
-serial policy and future comparison, but CV-26 at 3979–3987 uniquely explains
-resource/cancellation rationale. That rationale lacks a durable owner route.
-The 14-line span is not measured savings;
-exact results, cache, shared-page and missed-peak limits remain evidence.
+time/RSS, limits, retirement, and the surviving driver. [CV-26](cluster_verification_backlog.md#cv-26-repeated-doctor-input-reads)
+lines 3949–3999 already records each claim with the artifact identity, trial
+values, failed-suite limits, serial decision, and retired apparatus. Workflow
+lines 3–22 own current CI lanes; this section gives no active lane instruction
+and has no inbound heading link found in tracked Markdown. The
+[optimization campaign](optimization_campaign.md) lines 302–315 retains serial
+policy and future comparison, but CV-26 at 3979–3987 alone explains the
+one-CPU and cancellation rationale. A two-to-three-line route could remove
+roughly 11–12 local lines. Net saving awaits durable CV-26 evidence, including
+its artifact, cache, shared-page, missed-peak and cancellation limits.
 
 ### F20 — Independent golden migration comparisons
 

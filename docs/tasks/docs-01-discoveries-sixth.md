@@ -1,9 +1,9 @@
 # DOCS-01 discovery notes, sixth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F164–F167. It compares current documents at local audit head `f79bc435`,
-read on 2026-09-23. The candidate counts are physical review spans and
-conditional shorter-route arithmetic, not verified net savings or approval to
+holds F164–F168. F164–F167 compare local head `f79bc435`; F168 and the
+F19/F64/F92 refinements compare `5aaa17f0`, read on 2026-09-23. Counts are
+review spans and conditional arithmetic, not verified savings or approval to
 alter guides, accepted status, or evidence. No product, test, CI, or cluster
 command was run.
 
@@ -67,3 +67,19 @@ exceptions, and the separate authority warning at 84–86. Its E01–E12 evidenc
 register and completion criteria remain distinct. The section heading is an
 inbound destination from the main matrix at line 76 and CV backlog at line 24.
 No drafted replacement or link check has verified a saving.
+
+### F168 — Scheduler stream names repeated in the logging contract
+
+The [logging contract](../design/LOGGING_CONTRACT.md) lines 202–213 spends
+12 physical lines on Slurm stream names, legacy readers, and application-log
+separation. The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 420–429 already owns the exact v4 Run/resume/report and Doctor names,
+stream patterns, and v1–v3 `emrys-local-pilot` compatibility. Logging line 202
+locates streams under Project logs; 210–213 explain their separation from the
+application log, that dry-run opens neither, and that the delegate opens one
+application attempt with scheduler identity as correlation only. The later
+`submission_context` and selected-request rules at 215–235 remain distinct.
+A compact owner route might save five to seven lines from this span, conditional
+on a usable coordinator link: its current broad heading does not land near
+420–429. No tracked Markdown link targets the logging section heading, but
+the heading remains a useful boundary. No draft or net saving was verified.

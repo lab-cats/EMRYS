@@ -58,8 +58,11 @@ lines 124–134 already own those current mechanics. The decision at lines
 29–34 also states that validation inspects the three configured values in
 `genomeParameters.txt`; the [STAR-index contract](../../src/emrys/stages/star_index/CONTRACT.md)
 lines 96–99 owns that current check. The decision's original EV/PUM1 values,
-mechanical-versus-biological boundary, and pinned STAR manual citation remain
-distinct rationale and provenance. No STAR operation was run.
+STAR scaling rationale, mechanical-versus-biological boundary, and pinned
+STAR manual citation remain distinct rationale and provenance. Fifteen body
+lines might become nine to eleven after owner routing, a conditional four-to-six
+line saving. The heading has no tracked inbound link but remains a decision
+destination. No draft, link check, or STAR operation was run.
 
 ### F65 — Report template owner description
 
@@ -475,9 +478,11 @@ the [restore script](../../src/emrys/resources/runtime/restore_r_environment.R)
 at 43–82 requires `RENV_PROJECT`, R 4.6.1, and a selected renv lock. The
 [R owner](../../src/emrys/renv/README.md) lines 16–25 routes operator
 restoration to the Runbook but does not name Python checks. This source path
-does not establish them as direct R prerequisites. The prelude is a compression
-review span; an independent institutional gate remains unverified. Preserve
-R commands, library/cache, checks and recovery at 696–726. No restore ran.
+does not establish them as direct R prerequisites. Quickstart lines 43–45
+initializes the workflow environment earlier, while the R targets do not use it.
+The ten-line prelude could yield roughly seven fewer local lines; a separate
+institutional gate remains unverified. Preserve R commands, library/cache,
+checks and recovery at 696–726. No restore ran.
 
 ### F93 — Repeated partition selector rule
 
