@@ -4,7 +4,8 @@ This temporary companion to the [findings matrix](docs-01-audit.md#findings-matr
 holds F164–F176 and a recheck of F158. F164–F167 compare local head `f79bc435`; F168 and the
 F19/F64/F92 refinements compare `5aaa17f0`; F97/F107/F169 use `25f62591`;
 F170 uses `8ef78400`, F171–F172 use `c6ec1562`, and F173–F175 use
-`286f646a`; F158 and F176 use `3de8366b`, read on 2026-09-23. The
+`286f646a`; F158/F176 use `3de8366b`, and F124/F172 rechecks use
+`35668cc8`, read on 2026-09-23. The
 full coordinator contract and root/operator/owner history sweeps found no
 other substantial reduction. Counts are
 review spans and conditional arithmetic, not verified savings or approval to
@@ -127,7 +128,7 @@ This is a reader route into the wrong part of a large owner contract, not a
 claim that reuse or performance is defective. No guide was changed or Run
 executed.
 
-### F172 — Glossary format links bypass exact owners
+### F172 — Glossary detail links bypass exact owners
 
 At local audit head `c6ec1562`, the [glossary](../reference/GLOSSARY.md) line 61
 defines PDF as a Step 09 scientific plot, but its “reporting owner” link opens
@@ -137,9 +138,16 @@ lines 8–11 names the two PDFs; its [contract](../../src/emrys/analyses/paired_
 lines 56–72 fixes the six-output roster. Glossary line 33 similarly sends CSS
 readers to the broad report guide, which names no stylesheet; the
 [styles owner](../../src/emrys/reporting/styles/README.md) lines 3–6 describes
-the shared CSS and presentation-only limit. Both existing glossary statements
-retain their evidence ceilings. This is link ownership, not a format or report
-behavior defect; no file or rendered report was changed.
+the shared CSS and presentation-only limit. At `35668cc8`, the glossary's
+introduction at lines 3–4 promises that each entry links the detailed owner,
+but BED12 at line 22, FAI at line 43 and RG at line 72 link brief sections of
+the [scientific decision](../design/decisions/scientific-pipeline.md) at 36–49.
+Their exact checks instead live in the [BED12](../../src/emrys/stages/gtf_to_bed12/CONTRACT.md)
+contract at 22–68, [FASTA-sidecar](../../src/emrys/stages/fasta_sidecars/CONTRACT.md)
+contract at 34–45, and [canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md)
+contract at 41–54. The decisions remain useful rationale; the definitions and
+evidence ceilings remain valid. This is link and introductory-scope precision,
+not a format, report or validation defect. No guide or output was changed.
 
 ### F173 — Step 05 producer read-group exactness overclaimed
 
@@ -227,6 +235,25 @@ bookmarks or non-Markdown readers. Focused operator, design, owner, task,
 history, test, and CI routes found F171–F172 and already recorded F21/F59/F161.
 Existing links were read at their destinations, not rendered or exercised.
 
+## Step 02 decision recheck for F124 at `35668cc8`
+
+The [scientific-pipeline decision](../design/decisions/scientific-pipeline.md)
+lines 45–49 calls Step 02 publication “validation-first and
+rollback-protected.” That has a valid worker-local reading: the [worker](../../src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh)
+lines 114–131 validates its staged BAM/BAI before the runner publishes them,
+as the [owner contract](../../src/emrys/stages/canonical_bam/CONTRACT.md)
+lines 10–12 and 74–80 states. The independent grouped validator follows
+native publication for Step 02, while Steps 08/09 validate working files
+first; [runner source](../../src/emrys/orchestration/run_coordinator/task.py)
+lines 1742–1747 and 2732–2782 and the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 1117–1130 establish both orders. After native commit, validation failure
+preserves native outputs and failed evidence rather than rolling them back.
+The decision's unqualified phrase can be read as claiming a different grouped
+validation order and rollback scope. Its heading currently has glossary BAI
+and RG inbound links; F172 reviews those owner routes separately. This is a
+source-reading ambiguity, not an observed runtime defect or verified saving;
+no worker, validator, or diagram renderer ran.
+
 ## Completion-criteria recheck for F158 at `3de8366b`
 
 The [CV charter](cluster_verification_campaign.md) lines 173–190 spends 18
@@ -267,3 +294,19 @@ this pass. Selected runtime-owner claims were crosschecked with the installed
 policy: 12 choices, 26 unique fixed checks, and 30/120-second probe limits
 match source constants. This is static comparison, not runtime, CI, site, or
 scientific proof.
+
+## Prose and owner-route recheck at `35668cc8`
+
+A five-word overlap scan across non-audit Markdown found mainly the already
+recorded stage-test boilerplate (F28), local resource/tool details (F128), and
+owner-specific validation and recovery language. The scan can miss paraphrases
+and does not prove any safe deletion. All 19 architecture, design and reference
+files were reread; F124/F172 gained the only distinct audit refinements.
+Non-stage test, script, and CI guides were
+compared with selected direct assertions and workflow wiring without a new
+strong finding. Fifteen evidence, ingestion and reporting owner READMEs were
+compared with adjacent source; their relative links resolved, and apparent
+overlaps were already recorded or carried distinct owner details. A broad
+runtime-owner link to the Runbook was retained on review because Project
+readiness spans several operator sections. No test, CI, site, or scientific
+validation ran.
