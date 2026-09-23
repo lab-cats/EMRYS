@@ -1,11 +1,11 @@
 # DOCS-01 discovery notes, fourth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F100–F123. F100–F104 use local audit head `e1771d21`; F105–F108 use
+holds F100–F124. F100–F104 use local audit head `e1771d21`; F105–F108 use
 `b65e8fb8`; F109–F110 use `26898b5e`; F111 uses `cd45bd51`, F112 uses
 `b62e207b`, F113 uses `ac14392e`, F114–F117 use `b72b03c0`, and F118–F119 use
 `24579272`; F120 uses `dc44861b`, F121–F122 use `f538efe4`, and F123 uses
-`7e7c364c`, all read on
+`7e7c364c`, and F124 uses `663da8ed`, all read on
 2026-09-22. These are documentation observations, not runtime results,
 accepted changes, or permission to alter retained evidence.
 
@@ -428,6 +428,26 @@ CPU descriptions also include tool behavior that is not just a YAML value.
 The repeated current defaults create an audit-time duplication and drift
 surface, but the table's explanation and reader route are distinct. Its full
 15 lines are a review scope, not a demonstrated saving or capacity result.
+
+### F124 — Reliability diagram collapses two validation orders
+
+The [reliability diagram](../architecture/diagrams/reliability.mmd) lines 7–10
+routes every task through staging, output validation, publication, and a
+verified-task record in that order. Its line 18 sends validation failure to
+“Owner rollback or retained recovery evidence.” The
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 1099–1104 gives publication and recovery to the runner; lines 1117–1130
+distinguish Steps 08/09, which validate working files before publication, from
+other owners, which publish native finals before validation. The
+[runner](../../src/emrys/orchestration/run_coordinator/task.py) lines 1742–1747
+and 2732–2782 implements those two orders. A direct
+[test](../../tests/orchestration/run_coordinator/test_task.py) lines 3102–3135
+asserts that a Step 08 fixture's finals do not exist during validation or after
+a validation failure. The diagram collapses the two orders and leaves the
+runner's recovery ownership ambiguous. It is a non-authoritative schematic:
+after native commit, a validation failure preserves native outputs and failed
+evidence; both paths still require semantic all-pass and publish verification
+last. Source and tests were read, not executed; rendering was not checked.
 
 ## Reviewed overlaps without a saving claim
 

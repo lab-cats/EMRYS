@@ -304,6 +304,12 @@ permission to change or delete the source.
   1,613 relative destinations and 524 fragments with no unresolved local
   target; this is narrower than the official documentation gate. No product
   command, test, CI, or cluster operation ran.
+- A diagram, script-guidance, and decision-prose pass at local head `663da8ed`
+  added F124 for the reliability diagram's single validation order versus the
+  runner's two orders. F32 now states that the checker accepts a canonical H1
+  anywhere, regardless of heading order. A separate static scan found six
+  relative reference-style link definitions, all with resolved local targets.
+  Source and tests were read, not executed; no CI or cluster work ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -332,7 +338,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 123 numbered records include F41, F43, and F87, dismissed after recheck so
+The 124 numbered records include F41, F43, and F87, dismissed after recheck so
 their original claims and corrections remain traceable. The last column records
 an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -370,7 +376,7 @@ Discovery notes give source references and the boundary for each row.
 | [F29](docs-01-discoveries.md#f29-library-subowner-navigation) | Navigation mismatch | Tests point to a library index that does not route readers to six documented Python subowners. | Six documented subowners are not routed by the test index. |
 | [F30](docs-01-discoveries-continued.md#f30-dashboard-reporting-stage-text) | Product-facing text | Dashboard places final target after reporting and, with a test fixture, retains three reporting operations; current target precedes two reporting operations. | Current reporting-stage and fixture wording conflicts with target order; FINAL and historical rules differ. |
 | [F31](docs-01-discoveries-continued.md#f31-historical-slurm-username-recovery-advice) | Recovery wording | Troubleshooting gives an undated upgrade instruction for a Slurm username incident whose submission fix is already present. | Incident evidence remains dated; current recovery wording is unqualified. |
-| [F32](docs-01-discoveries-continued.md#f32-mermaid-checks-stated-ceiling) | Evidence ceiling | Documentation guides overstate Mermaid syntax and all-file heading checks; checker covers declarations/fences and canonical H1s. | Both README claims exceed structural-check coverage. |
+| [F32](docs-01-discoveries-continued.md#f32-mermaid-checks-stated-ceiling) | Evidence ceiling | Documentation guides overstate Mermaid syntax and all-file heading checks; checker covers declarations/fences and canonical H1 presence, regardless of heading order. | Both README claims exceed structural-check coverage. |
 | [F33](docs-01-discoveries-continued.md#f33-report-receipt-version-in-the-scientist-diagram) | Diagram contradiction | Scientist diagram groups summary with HTML, names a v4 report receipt, and calls create-only reporting “read-only”; test baseline and glossary echo that ambiguity. | Summary and HTML publication are distinct; report output creation and input immutability differ. |
 | [F34](docs-01-discoveries-continued.md#f34-prepared-finalization-in-the-reliability-diagram) | Diagram omission | Reliability diagram sends every resume to a new Attempt; prepared finalization may complete the old Attempt. | Prepared finalization and eligible continuation have different Attempt paths. |
 | [F35](docs-01-discoveries-continued.md#f35-fastq-pairing-language) | Wording ambiguity | Glossary and engineering guide say names never infer pairing; guided Init detects R1/R2 mates from names. | Mechanical mate discovery and authored biological pairing differ. |
@@ -462,6 +468,7 @@ Discovery notes give source references and the boundary for each row.
 | [F121](docs-01-discoveries-fourth.md#f121-renv-activation-path-in-the-root-notice) | Path wording | Root `NOTICE` describes a tracked activation script as `renv/activate.R`; the source-tree path is `src/emrys/renv/activate.R` and the wheel member is `emrys/renv/activate.R`. | This is a source-location observation only; no license interpretation or package result follows. |
 | [F122](docs-01-discoveries-fourth.md#f122-step-06-optimization-source-after-publication-moved-to-the-runner) | Historical source routing | Optimization candidate 1 cites a pinned Step 06 producer for both extraction and publication; the current worker still extracts and checks outputs, while the runner owns publication and recovery. | The pinned historical mechanism is valid and the five-output transaction remains required; current-owner attribution and performance must be assessed separately. |
 | [F123](docs-01-discoveries-fourth.md#f123-repeated-stage-resource-defaults-in-the-configuration-guide) | Compression candidate | The configuration guide's stage table repeats eight numeric memory minimums and workflow/shared settings from the packaged default and Viking example profiles. | The table also explains stage and tool behavior and has an inbound owner link; no safe line saving or runtime capacity conclusion follows. |
+| [F124](docs-01-discoveries-fourth.md#f124-reliability-diagram-collapses-two-validation-orders) | Diagram sequence drift | Reliability diagram routes every task through validation before publication and labels validation-failure recovery as an owner action; the runner validates Steps 08/09 before publication but other owners after native publication. | The runner owns recovery; post-commit validation failure preserves native outputs. The diagram is non-authoritative and no runtime defect is inferred. |
 
 ## Discovery notes
 

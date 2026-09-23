@@ -57,9 +57,9 @@ fences; its [tests](../../tests/documentation/test_validate_structure.py)
 lines 290–323 exercise those refusals. The
 [tool README](../../scripts/documentation/README.md) lines 3–7 correctly
 describes declarations and fences but broadly says it checks first headings.
-The checker at lines 199–206 checks H1 only for required canonical pages;
-other Markdown files receive link checks, not an H1 requirement. The gate
-does not parse Mermaid grammar or verify rendering.
+At lines 120–126 it finds an H1 anywhere, not necessarily the first
+heading; lines 199–206 apply that test only to canonical pages. Other files
+receive link checks. The gate neither parses Mermaid grammar nor renders it.
 
 ### F33 — Report receipt version in the scientist diagram
 
