@@ -328,7 +328,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 189 records, 71 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 190 records, 71 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -521,6 +521,7 @@ Of 189 records, 71 were dismissed after recheck; linked notes give reasons. The 
 | [F187](docs-01-discoveries-sixth.md#f187-cv-campaign-post-checklist-context-under-review) | Conditional boundary-routing candidate | Parts of CV campaign's Delivery approach lines 135–150 restate CV-01 and site-evidence limits; its three institutional combinations and dated owner decisions carry distinct detail. | Preserve the combined scenarios, E01/E06 and INIT-02/CV-U22 limits, and evidence ceilings. No lossless draft or line saving is established. |
 | [F188](docs-01-discoveries-seventh.md#f188-retired-storage-publisher-history-in-polish-item-2) | Retired-feature chronology candidate | Polish item 2 spends 13 lines on a retired capacity-and-retention publisher and the PR sequence that preceded its removal. | Four to six lines may be available; retain the three recovery risks, retirement without repair, exact retirement provenance, and surviving storage qualification. Saving is unverified. |
 | [F189](docs-01-discoveries-seventh.md#f189-cv-campaign-related-work-repeats-current-owner-map) | Conditional owner-map candidate | CV campaign's Related work section repeats selected SITE-PARITY, SCHED/CV-11, watch and CV-26 status detail; its optimization and polish relationships add distinct context. | Preserve those relationships, September 17 watch acceptance, pending site evidence, CV-26/E11 no-speedup limit, and evidence-deletion boundary. No lossless draft or line saving is established. |
+| [F190](docs-01-discoveries-seventh.md#f190-source-topology-reporting-internal-import-boundary) | Source-topology wording contradiction | The import guide says no functional owner imports reporting internals, while its own exact exception table permits seven Run coordinator imports that current source uses. | Scope the blanket rule to owners outside the listed exceptions; retain every import pair and justification. This is documentation accuracy, not an unauthorized import or executed checker result. |
 
 ## Discovery notes
 
