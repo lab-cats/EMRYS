@@ -273,6 +273,21 @@ permission to change or delete the source.
   matched their current owners or were already covered by F01–F119; a scoped
   polish-campaign sentence did not establish another contradiction. No product,
   test, CI, or cluster command ran.
+- A non-Markdown notice and package-route pass at local head `f538efe4`
+  compared the root license notice with tracked resources and the package
+  distribution inventory. It added F121 for the activation-script location
+  named in `NOTICE`. This checks a repository path, not license validity or
+  package execution. A separate read-only history pass matched selected
+  figures and evidence-register wording to retained Git documents; their
+  original VM, operator, and hosted artifacts remain unverified. No product,
+  test, CI, or cluster command ran.
+- A read-only optimization-campaign pass at the same head compared the pinned
+  Step 06 scan narrative with its historical producer and current worker/runner
+  split. It added F122 as a source-owner routing boundary for that candidate;
+  the dated cost mechanism and five-output safety requirement remain intact.
+  A selected test-guide pass compared reporting, stage, analysis, evidence,
+  and contract claims with direct assertions without a further distinct
+  finding. No measurement, product, test, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -297,10 +312,11 @@ remaining repository-wide work visible without claiming file-by-file completion.
 | Task and evidence records | All eight task/history Markdown files; 61 CV index entries reconciled to card endings | Original evidence origins and retained artifacts still need independent verification. |
 | Product owners | All 62 source READMEs and all 15 owner contracts, including a full recheck of the 1,248-line coordinator contract and focused production comparisons | Remaining code and schema claims beyond selected owner paths. |
 | Tests, scripts, and CI | All 53 Markdown files in these trees, plus selected source assertions, direct test cases, and documentation-check code | Executable checks were not run; compare remaining code, fixtures, and retained evidence. |
+| Non-Markdown notices | Root `LICENSE` and `NOTICE` plus the bundled renv MIT text were inspected for file-location references | License meaning and third-party compliance were not evaluated. |
 
 ## Findings matrix
 
-The 120 numbered records include F41, F43, and F87, dismissed after recheck so
+The 122 numbered records include F41, F43, and F87, dismissed after recheck so
 their original claims and corrections remain traceable. The last column records
 an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -427,6 +443,8 @@ Discovery notes give source references and the boundary for each row.
 | [F118](docs-01-discoveries-fourth.md#f118-cv-21-reporting-table-detail-level) | Output-scope drift | CV-21 says normal inspection shows reporting transaction rows and the table appears at each detail level; current inspection shows the table only with `--verbose`. | Normal Reporting admission and blockers remain, while verbose rows retain the three transaction states; E06 cause and institutional proof remain separate. |
 | [F119](docs-01-discoveries-fourth.md#f119-cv-u20-inline-study-value-claim-after-automatic-defaults) | Guide-description drift | CV-U20 says Quickstart supplies fixed STAR values and `0.01` inline; the current guide names the five active CMH values while Init derives STAR values and displays the inactive background maximum. | The original all-known-values requirement and dated selected values remain provenance; this is not evidence of a missing user input or product defect. |
 | [F120](docs-01-discoveries-fourth.md#f120-superseded-init-replay-in-the-active-cv-backlog) | Temporal framing | CV-U18's selected-implementation paragraph describes a generated creation command as current, while its later current correction and INIT-03 record direct yes/no confirmation; CV-U21 also retains a dated replay detail. | Earlier replay fixtures and STAR automatic-value reasoning remain historical evidence; current guided behavior is separately established by source and tests. |
+| [F121](docs-01-discoveries-fourth.md#f121-renv-activation-path-in-the-root-notice) | Path wording | Root `NOTICE` describes a tracked activation script as `renv/activate.R`; the source-tree path is `src/emrys/renv/activate.R` and the wheel member is `emrys/renv/activate.R`. | This is a source-location observation only; no license interpretation or package result follows. |
+| [F122](docs-01-discoveries-fourth.md#f122-step-06-optimization-source-after-publication-moved-to-the-runner) | Historical source routing | Optimization candidate 1 cites a pinned Step 06 producer for both extraction and publication; the current worker still extracts and checks outputs, while the runner owns publication and recovery. | The pinned historical mechanism is valid and the five-output transaction remains required; current-owner attribution and performance must be assessed separately. |
 
 ## Discovery notes
 

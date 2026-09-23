@@ -1,12 +1,12 @@
 # DOCS-01 discovery notes, fourth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F100–F120. F100–F104 use local audit head `e1771d21`; F105–F108 use
+holds F100–F122. F100–F104 use local audit head `e1771d21`; F105–F108 use
 `b65e8fb8`; F109–F110 use `26898b5e`; F111 uses `cd45bd51`, F112 uses
 `b62e207b`, F113 uses `ac14392e`, F114–F117 use `b72b03c0`, and F118–F119 use
-`24579272`; F120 uses `dc44861b`, all read on 2026-09-22. These are
-documentation observations, not runtime results, accepted changes, or
-permission to alter retained evidence.
+`24579272`; F120 uses `dc44861b` and F121–F122 use `f538efe4`, all read on
+2026-09-22. These are documentation observations, not runtime results,
+accepted changes, or permission to alter retained evidence.
 
 ## Discovery notes
 
@@ -370,6 +370,43 @@ and reference-freshness reasoning remains distinct. The CV chronology does
 record the supersession, so this is a current-reader framing and compression
 candidate, not evidence of an Init behavior defect or permission to discard
 the older fixtures and observations. No Init command or test ran in this pass.
+
+### F121 — renv activation path in the root notice
+
+The root [`NOTICE`](../../NOTICE) lines 7–11 says the source repository includes
+`renv/activate.R`. Git tracks the activation script at
+[`src/emrys/renv/activate.R`](../../src/emrys/renv/activate.R), with no tracked
+root `renv/activate.R`. The [package-data roster](../../pyproject.toml)
+lines 74–80 names `renv/activate.R` relative to the `emrys` package, while
+the [distribution test source](../../tests/test_package_distribution.py)
+lines 46–51 expects wheel member `emrys/renv/activate.R` and lines 238–242
+compare packaged bytes with the `src/` resource. The [renv owner guide](../../src/emrys/renv/README.md)
+lines 1–5 also uses `renv/` relative to that package. In the root notice,
+“source repository” makes the shorter path read as a repository location;
+the relative package meaning is not stated there. This is a path-clarity
+finding only. The copyright, attribution, and licensing terms were not
+assessed or changed, and the distribution test was read rather than run.
+
+### F122 — Step 06 optimization source after publication moved to the runner
+
+[Optimization candidate 1](optimization_campaign.md#1-consolidate-step-06-scans-and-subgroup-materialization)
+lines 72–88 cites a pinned producer for both “Extraction and publication” and
+asks to preserve the five-file publication/recovery transaction. Its audit
+basis at lines 19–24 explicitly identifies the 2026-09-07 source snapshot and
+asks for rechecking before selection. That historical
+[`fdf7676` producer](https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/stages/mechanical_orientation/producer.py#L390-L449)
+does acquire, publish, and recover its own transaction. The current
+[Step 06 producer](../../src/emrys/stages/mechanical_orientation/producer.py)
+lines 140–208 still performs the flag-selected extraction, merge, index, count,
+and output checks, while its [contract](../../src/emrys/stages/mechanical_orientation/CONTRACT.md)
+lines 49–57 assigns execution, publication, and recovery to the
+[runner](../../src/emrys/orchestration/run_coordinator/task.py) lines 1491–1629.
+The campaign's dated source comparison is valid, and it does not claim a
+current performance measurement. Its ongoing proposal nevertheless routes
+publication through an older owner, so a reader selecting current work needs
+the producer/runner distinction. The five declared outputs, transaction
+safety, and historical cost observation remain distinct; no saving or speedup
+was established by this review.
 
 ## Reviewed overlaps without a saving claim
 
