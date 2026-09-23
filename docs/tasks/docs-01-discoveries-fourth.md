@@ -96,16 +96,19 @@ operator-wording question, not evidence of a reporting behavior defect.
 
 The [stage map](../../src/emrys/contracts/STAGE_MAP.md) lines 81–86 explains
 the absence of `00a -> 00b` and `00a -> 00c` edges through a retired Step 00a
-scheduler wrapper. Its current [edge semantics](../../src/emrys/contracts/STAGE_MAP.md#edge-semantics)
+scheduler wrapper under a “Current operational coupling” heading. Its current
+[edge semantics](../../src/emrys/contracts/STAGE_MAP.md#edge-semantics)
 at lines 36–43, external FASTA/GTF declarations at 45–56, and complete
 direct-edge table at 58–79 already describe the present relationship. The
 [admitted profile](../../src/emrys/workflow/contracts/local_cmh_v2.json)
 lists no 00a-to-00b/00c edge, and the [Snakefile](../../src/emrys/workflow/Snakefile)
 lines 400–424 schedules profile predecessors. The paragraph combines a
 retired-wrapper explanation with the durable fact that 00b/00c do not consume
-the STAR index and that their current references are external. This mixture
-raises a documentation-placement question; no safe saving or graph behavior
-was established here.
+the STAR index and that their current references are external. The
+[00b contract](../../src/emrys/stages/gtf_to_bed12/CONTRACT.md) lines 12–20 and
+[00c contract](../../src/emrys/stages/fasta_sidecars/CONTRACT.md) lines 13–21
+independently preserve that live rule. The heading/history mixture raises a
+placement question; no safe saving or graph behavior was established here.
 
 ### F106 — Doctor storage-plan proposal after Slurm routing changed
 
@@ -132,12 +135,16 @@ The [shared-library test guide](../../tests/libraries/README.md) lines 9–20
 explains a TERM/link and inode-check cleanup gap in retired RSeQC, BAM-QC,
 and duplicate-marking shell writers, then points to the current runner suite.
 The cited `88522d0a` commit and `tests/libraries/` path survive in local Git;
-that revision's guide describes the old shared shell cleanup. The current
-guide's validation-recovery section at lines 22–30 instead describes live
-tests and known current limits. The shell passage is historical defect
-characterization inside a present test index, with a unique pointer to its
-original test tree. No current runner test was executed here; a lossless
-evidence home and any saving remain unverified.
+that revision's [Step 02b shell test](https://github.com/lab-cats/EMRYS/blob/88522d0a/tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh#L331-L355)
+injects a dropped second hard link and asserts retained staging anchors and
+lock. The [current runner test](../../tests/orchestration/run_coordinator/test_task.py)
+at 810–845 covers analogous link, ownership, residue and input faults in a
+different publisher. That current case does not by itself reproduce the old
+TERM probe or prove one-to-one test equivalence. The current guide's
+validation-recovery section at lines 22–30 describes live tests and known
+limits. This shell passage is historical defect characterization inside a
+present test index; a lossless
+evidence home and any saving remain unverified. No test ran in this audit.
 
 ### F108 — Scientific completion in the run-summary guide
 
@@ -177,7 +184,11 @@ at lines 1–7 is absent from the [config inventory](../../configs/README.md#wha
 at lines 7–16 and had no non-audit reader or caller reference in a tracked-text
 search before this finding was recorded.
 Its six assignments match the [Quickstart table](../../quickstart.md#2-gather-the-study-inputs-and-scientific-choices)
-at lines 83–90. Current [Step 09 contract](../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md)
+at lines 83–90, so the roster adds no distinct current assignment value found
+in this pass. Named Init creates the Project `samples.tsv` through the
+[onboarding owner](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+at lines 1114–1159 and 1376–1387. Current
+[Step 09 contract](../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md)
 lines 22–24 makes the sample manifest the sole pairing authority, and its
 [validator](../../src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_validation.R)
 lines 1–17 requires six columns absent from this file. Local Git places the

@@ -245,15 +245,19 @@ this audit did not run it.
 
 ### F12 — Init preview proposal
 
-[Polish campaign](polish-campaign.md) lines 313–327 says Init preview showed only
-destination, directories, and no-copy policy at its dated September 7 audit. Current
+[Polish campaign](polish-campaign.md) lines 313–327 says the September 7 Init
+preview showed only destination, directories and no-copy policy. Current
 [onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py) lines
-1208–1242 shows strand summary, comparison, target, thresholds, background,
-and STAR values normally. GTF and per-sample detail remain behind `--verbose`
-at lines 1243–1256. Several requested preview fields and
-preview/publication agreement remain unverified, so the entire proposal is
-not established complete. Suggested values have scientific meaning; source
-inspection is not proof that displayed and published bytes agree.
+1208–1256 shows strand summary, comparison, target, thresholds, background and
+STAR values normally; GTF and per-sample detail need `--verbose`. Direct
+[source tests](../../tests/orchestration/run_coordinator/test_onboarding.py)
+at 327–375 check no-write preview and selected fields; 558–664 compare reviewed
+comparison, target, thresholds and background with published values. The full
+requested field set and full agreement are not established by those fixtures:
+onboarding previews automatic `sjdb_overhang` at 1302–1312, then resolves STAR
+values after FASTQ reading at 1332–1347 before publication at 1383–1391.
+Those values intentionally differ between preview and created bytes. The dated
+proposal is partly addressed; suggestions are not universal scientific truth.
 
 ### F13 — Doctor profile proposal
 
@@ -499,12 +503,17 @@ closure or proof of a generic end-to-end reader journey; F05 remains open.
 
 ### F24 — Named-profile procedure placement
 
-[Config guide](../../configs/README.md) lines 239–305 contains a long
-named-profile creation walkthrough. The [Runbook](../operations/RUNBOOK.md)
-routes operators there around lines 569–576 while retaining its own site and
-Doctor steps. The actual user path and inbound anchors remain unmeasured;
-command routing and field/YAML meaning have different audiences. No
-relocation is selected by this finding.
+[Config guide](../../configs/README.md) lines 239–279 contains the actual
+named-profile preview, creation and selection commands; its lines 281–340
+also explain placement, resource policy and document fields. The
+[Runbook](../operations/RUNBOOK.md) links that operator route at 532–536 and
+links the general execution-profile section at 557–565, while retaining the
+head-node Doctor and Run route. The
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 828–837 owns exact no-write, absent-file and admission behavior. No
+duplicate Runbook procedure or verified line saving follows from this placement
+alone. The two Runbook anchors serve different readers and the named-profile
+link is an inbound route to preserve; no relocation is selected.
 
 ### F25 — Reporting decision versus migration history
 
@@ -544,12 +553,16 @@ content. No standalone compression is selected by this observation.
 ### F27 — Old fixed-resource provenance
 
 [Resource defaults README](../../src/emrys/orchestration/run_coordinator/resources/README.md)
-lines 3–12 accurately describes the allocation-aware policy. Lines 14–21
-also narrate where the old fixed 12-core policy entered and moved in Git.
-The same origin commits are retained in the [CV backlog](cluster_verification_backlog.md)
-around line 1772. The value of duplicate origin prose to a maintainer is
-unknown. The present admission/capacity caveat is distinct from measured
-utilization or speedup.
+lines 3–12 owns the current allocation-aware defaults and profile route. Its
+four-line historical span at 14–17 repeats the fixed 12-core policy's origin
+commits `92863824` and `d6e54aff`, which the
+[CV-U28 card](cluster_verification_backlog.md#cv-u28-allocation-aware-resource-policy-and-historical-provenance)
+retains at 1766–1779 alongside the recovery review. The README's lines 18–26
+still route current policy and distinguish configured capacity from measured
+utilization. The four historical lines are a review span, not a verified saving;
+the September 21 superseding decision at CV-U28 lines 1847–1861 makes the old
+policy provenance, with institutional admission still pending. No restoration
+or speedup conclusion follows from the duplicate origin text.
 
 ### F28 — Repeated owner boilerplate
 

@@ -113,12 +113,14 @@ demonstrated scientific-inference defect.
 ### F36 — Cross-owner history in runtime test guidance
 
 [Runtime test README](../../tests/evidence/runtime_availability/README.md)
-lines 3–13 describes runtime probes, Snakemake startup, and their site limit.
-Line 14 then says tests solely for a retired report publisher were removed;
-that sentence does not describe a runtime test in this directory. Whether it
-preserves unique evidence is unverified; runtime test scope and durable
-reporting context have different owners. This is a placement question, not
-permission to discard evidence.
+lines 3–13 owns current probes, Snakemake startup and site limits, but line 14
+records retired report-publisher tests. Git commit `ddc828171` introduced that
+sentence while removing the tests; [polish item 4](polish-campaign.md) lines
+276–282 retains PR #160, the unresolved defects and preserved old reports.
+The retired optional publisher differs from current public `emrys report`,
+registered in [`__main__.py`](../../src/emrys/__main__.py) lines 264–267. This is a
+one-line cross-owner history candidate, not measured saving or evidence-deletion
+authority; the runtime guide's current scope and site limits remain distinct.
 
 ### F37 — BED12 dependency in the scientist diagram
 

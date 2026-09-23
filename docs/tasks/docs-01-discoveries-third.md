@@ -239,7 +239,11 @@ lines 9–12 says its linked
 owns “dataset-promotion criteria.” That contract's inputs, output, validation,
 consumer, and evidence-ceiling sections (lines 24–119) state no such criteria;
 a repository documentation search found the phrase only in the test guide.
-The link therefore does not deliver the named authority. This is a reader-route
+The contract's lines 47–64 instead define mechanical VCF publication and
+validation; passing those checks cannot promote candidates to validated
+variants or editing sites. The test guide's own lines 10–12 retain that caveat.
+No current dataset-promotion owner was identified by this documentation pass,
+so the link does not deliver the named authority. This is a reader-route
 finding, not an observed Step 07 execution or scientific defect.
 
 ### F77 — Omitted application-model test suite
@@ -515,10 +519,13 @@ scan, including directory links to their README targets. By comparison, the
 [orchestration schema index](../../src/emrys/contracts/schemas/orchestration/README.md)
 lines 6–11 routes through each of its three version READMEs. The four artifact files
 occupy 32 physical lines and partly repeat the index. They also record
-distinct shared-definition compatibility and test routes, Run/Attempt
-separation, module-policy and historical-reader bounds, and rendering
-provenance versus scientific validation. Thirty-two lines describe the review
-surface, not a verified saving or grounds to delete those caveats.
+distinct limits: v1's shared definitions remain active and link compatibility
+checks; v2 separates shared Run identity from original Attempt history; v3
+binds module policy and says no historical summary/receipt reader is
+registered; v5 limits the receipt to rendering and publication, not scientific
+validation. The direct JSON links bypass those explanations. Thirty-two lines
+describe the review surface, not a verified saving or grounds to delete the
+caveats.
 
 ### F97 — Past audit priority order in polish campaign
 
