@@ -348,15 +348,15 @@ operation and omit that flag when it promises no writes.
 ### F50 — Submission-request version in the coordinator contract
 
 The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 487–490 describes selected scheduler binding as “v2/v3” and calls new
-requests v3. Its own lines 410–424 define new `emrys.submission-request.v4`
-requests. The [submission owner](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
-lines 54–59 declares v4 current and v3/v4 named requests; lines 110–111,
-182–185, and 239–243 require and observe the bound job name for both. A
+lines 487–490 calls selected scheduler binding “v2/v3” and new requests v3;
+lines 682–685 says stop admits only v3. Its lines 410–424 define current v4.
+The [submission owner](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
+lines 54–59 declares v4 current and v3/v4 named; `plan_stop` at 303–313
+admits both. Its job-name observation at 239–243 covers both. A
 [source test](../../tests/orchestration/run_coordinator/test_slurm_submission.py)
-lines 925–934 likewise exercises both versions. Align the present-tense
-inspection wording with v4 while preserving the v2/v3 historical observation
-rules. This is a documentation discrepancy, not a request-format migration.
+lines 925–934 checks both observations; its stop fixture at 113–123 uses v3,
+so that fixture alone does not prove v4 stop execution. This is contract
+wording and test-scope drift, not a format migration or runtime conclusion.
 
 ### F51 — Viking walkthrough history in the active backlog
 
@@ -506,20 +506,19 @@ The [test-tool guide](../../tests/tools/README.md) lines 11–12 says
 installing or cleaning dependencies.” The
 [driver](../../tests/tools/real_synthetic_e2e.py) lines 1701–1736 invokes
 `emrys doctor --project … --repair --execute` for each disposable Project.
-Confirmed Doctor repair may install Project-owned dependencies through the
-selected package managers
-([coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 159–166). The driver's retained summary at lines 2244–2252 says no
-*post-run* cleanup or repair; the failed summary at 2268–2277 makes the
-same post-failure claim. Narrow the guide to the actual controlled Doctor
-repair and no-post-run-cleanup boundaries so an operator does not infer the
-long lane is dependency read-only. Preserve explicit repair, disposable
-Project ownership, and retained partial evidence. This static comparison
-does not establish that an installation occurred in any particular run.
-The [engineering guide](../operations/ENGINEERING_CONVENTIONS.md) lines 44–52
-also says tests never install packages. Ordinary validation remains separate
-from this opt-in driver, but its explicit Doctor repair route makes that
-unqualified sentence too broad. No installation was observed in this pass.
+Confirmed Doctor repair may install Project-owned dependencies through
+package managers ([coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 159–166); the driver summaries at 2244–2252 and 2268–2277 promise
+no *post-run* cleanup or repair. The [engineering guide](../operations/ENGINEERING_CONVENTIONS.md)
+lines 50–51 separately says tests never install packages. The ordinary
+`validation-wheel-smoke` [Make target](../../scripts/make_quality.mk) lines
+83–85 runs [a test](../../tests/test_package_distribution.py) that creates
+a temporary installer and calls `uv lock` plus offline `uv sync` into its
+`.venv` (lines 250–308, 341–359); the [CI workflow](../../.github/workflows/ci.yml)
+uses that target at 182–186 and 1014–1021. These are distinct controlled
+installation scopes, not dependency read-only tests. Preserve disposable
+Project ownership, isolated wheel installation, and retained partial evidence.
+No test or installation was run in this audit.
 
 ### F57 — Make fixture public target label
 

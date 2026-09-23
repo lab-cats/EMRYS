@@ -7,6 +7,7 @@ F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`; F74–F77 use `ab25ea9b`;
 F78–F83 use PR head `7a07d502`; F84–F88 use `ce9a3289`;
 F89 uses local head `39a21034`; F90–F93 and the F85 extension use `9c0264d3`;
 F94–F96 and the F22/F53 extensions use local head `e90c85f4`,
+F97–F99 and the F50/F56/F69/F86 extensions use local head `7adde22a`,
 all read on 2026-09-22.
 These are documentation observations, not runtime results or accepted changes.
 
@@ -126,9 +127,13 @@ that filtered set. Ordinary CI runs those tests separately through
 [Make targets](../../scripts/make_quality.mk) lines 83–85 and 211–219 and
 [static/wheel jobs](../../.github/workflows/ci.yml) lines 164–186. Scheduled
 Python 3.11 runs skip those ordinary jobs at workflow lines 164–169 and
-993–997 while running filtered shards at 1023–1097. The baseline's unqualified
-“complete Python inventory” exceeds the shard and nightly evidence scope;
-this does not establish a failed test or broken merge gate.
+993–997 while running filtered shards at 1023–1097. Manually selected
+Python 3.14 or 3.11 shards can likewise run without `static-wheel` because
+its dispatch flag at 164–169 is independent. The [test-tool guide](../../tests/tools/README.md)
+lines 7–8 also calls the receipts the “exact test inventory” without stating
+the two-file filter. The baseline's unqualified “complete Python inventory”
+exceeds these shard-only evidence scopes; this does not establish a failed
+test or broken merge gate.
 
 ### F70 — Omitted site does not always mean direct
 
@@ -365,6 +370,7 @@ validates and checks semantic all-pass at lines 2763–2779 before publishing
 that marker at 2883–2920. Thus an ordinary Run cannot overlap 02b with Step
 02 validation. This is a timing statement about the admitted Run graph, not
 an observed execution defect or a claim about a standalone worker invocation.
+F99 records the related Step 06→07 data-input versus Run-scheduling distinction.
 
 ### F87 — Step 05 scratch owner in optimization candidate
 
@@ -506,3 +512,47 @@ distinct shared-definition compatibility and test routes, Run/Attempt
 separation, module-policy and historical-reader bounds, and rendering
 provenance versus scientific validation. Thirty-two lines describe the review
 surface, not a verified saving or grounds to delete those caveats.
+
+### F97 — Past audit priority order in polish campaign
+
+The [polish campaign](polish-campaign.md) lines 122–130 narrates second- and
+third-pass priorities in present tense: installed-package and runtime identity,
+report review, merge checks, FASTQ parity, command checks, and output discovery.
+Its detailed proposals at lines 393–427, 620–711, 735–756, 775–834, and
+874–911 retain the underlying subjects; the [main backlog](backlog_matrix.md)
+lines 52–71 owns current accepted priorities and status. The
+[documentation decision](../design/decisions/repository-and-delivery.md)
+lines 91–94 places routine progress chronology in Git. These nine physical
+lines are a review surface rather than a verified saving: the complete-command
+measurement prerequisite and the boundary against parallel initiatives still
+need to remain intelligible. No task status or performance claim changed.
+
+### F98 — Worker prerequisites inside validation sections
+
+The [Step 00c contract](../../src/emrys/stages/fasta_sidecars/CONTRACT.md)
+lines 101–108 and [Step 05 contract](../../src/emrys/stages/split_n_cigar/CONTRACT.md)
+lines 87–95 place similar absolute hash-Python, selected Java, and scrubbed
+GATK-environment requirements inside their validation-interface sections.
+The grouped [00c validator](../../src/emrys/stages/fasta_sidecars/validator.py)
+lines 47–108 parses FASTA/FAI/DICT; the [05 validator](../../src/emrys/stages/split_n_cigar/validator.py)
+lines 39–100 adds BAM/BAI and samtools checks. Their internal shell workers
+probe and invoke Java/GATK at [00c](../../src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh)
+lines 153–168 and [05](../../src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh)
+lines 113–124. The requirements describe worker execution, while placement
+under validator prose can blur the public validator's prerequisites. This is
+a repeated contract-placement issue, not evidence that a validator ran GATK.
+The worker environment and each validator's independent checks remain distinct.
+
+### F99 — Step 07 data inputs versus Run gate
+
+The [Step 07 contract](../../src/emrys/stages/partitioned_cohort_mpileup/CONTRACT.md)
+lines 12–18 says it checks only Step 06 BAM/BAI presence and nonemptiness and
+does not require Step 06 counts, validation evidence, or native marker. The
+[Step 06 contract](../../src/emrys/stages/mechanical_orientation/CONTRACT.md)
+lines 12–18 likewise describes the pairs as downstream data inputs. The
+[processing profile](../../src/emrys/workflow/contracts/local_cmh_v2.json)
+lines 160–164 declares the 06→07 edge; the [Run graph](../../src/emrys/workflow/Snakefile)
+lines 402–420 waits for each predecessor's verified marker. Thus Step 07's
+worker data admission is narrower than its scheduling prerequisite in an
+ordinary Run. This extends F86's input-versus-order distinction to a separate
+stage; no worker or Run was executed.
