@@ -338,14 +338,12 @@ permission to change or delete the source.
   limit on its saved-home mismatch. Selected early, middle, and later rows
   otherwise retained their cited limits. No product, test, CI, or cluster
   command ran.
-- At `ebc0012d`, full coordinator/owner/CV review added F134–F139; F52 gained
-  “regeneration.” At `f239a91d`, recheck dismissed F138, narrowed
-  F134/F136/F137 and added F140. CV-23/Slurm-preview and operator-guide
-  rereads found no new candidate. No product, test, CI, or cluster command ran.
+- At `ebc0012d`, coordinator/owner/CV review added F134–F139; F52 gained
+  “regeneration.” At `f239a91d`, recheck dismissed F138, narrowed F134/F136/F137,
+  and added F140; CV-23/Slurm-preview/operator rereads found no new candidate.
 - At `d18470c8`, a five-word-shingle scan of 1,515 paragraphs in 170
-  non-audit Markdown files found 59 cross-file near matches, already F28/F91
-  or owner-specific; paraphrases can escape. F71/F107 gained scope limits,
-  and F127's count was pinned. No product, test, CI, or cluster command ran.
+  non-audit Markdown files found 59 near matches (F28/F91 or owner-specific);
+  paraphrases could escape. F71/F107 gained limits; F127's count was pinned.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -374,7 +372,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 143 numbered records include F41, F43, F87, F130, and F138, dismissed after recheck so
+The 145 numbered records include F41, F43, F87, F130, and F138, dismissed after recheck so
 their original claims and corrections remain traceable. The last column records
 an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -387,7 +385,7 @@ Discovery notes give source references and the boundary for each row.
 | [F04](docs-01-discoveries.md#f04-root-quickstart-description) | Reader route | Root README calls Quickstart a synthetic first Run; Quickstart leads with real EV/PUM1 and makes smoke optional. | Quickstart leads with EV/PUM1; smoke is optional. |
 | [F05](docs-01-discoveries.md#f05-generic-study-versus-named-evpum1-route) | Reader route | At baseline, two “own study” Runbook routes point into fixed EV/PUM1 choices. At pinned revision `0cb5d507`, the choice route is clearer, but the Quickstart continuation still uses the named Project and Slurm. | The generic route remains unverified as a reader journey. |
 | [F06](docs-01-discoveries.md#f06-existing-project-and-new-project-recovery) | Reader route | Troubleshooting mixes existing-Project lookup with absent-child Init recovery. | Existing-Project lookup and absent-child creation have distinct preconditions. |
-| [F07](docs-01-discoveries.md#f07-doctor-repair-does-not-always-install) | Contradiction | One Runbook sentence states Doctor installs, although its later status guidance allows verification only; the decision also assigns Doctor uv. Verified Slurm plans can skip package work while still submitting checks. | Package work, preview, and confirmed verification have different effects. |
+| [F07](docs-01-discoveries.md#f07-doctor-repair-does-not-always-install) | Contradiction | Runbook states Doctor installs, the decision assigns it uv, and Troubleshooting labels qualification failure “after installation”; verification-only Slurm plans can still submit checks. | Package work, preview, and confirmed verification have different effects. |
 | [F08](docs-01-discoveries.md#f08---version-and-local-env) | Source-ordering limit | Runbook promises `--version` from any directory; malformed marked `.env` is rejected before version dispatch. | Source inference and unrun installed-command behavior remain separate. |
 | [F09](docs-01-discoveries.md#f09-runbook-entry-order) | Reader route | Advanced request/watch/stop procedures precede Runbook orientation. | The entry-order usability effect is untested; recovery commands remain necessary. |
 | [F10](docs-01-discoveries.md#f10-contract-location-claim) | Filename overclaim | Two global indexes imply an adjacent `CONTRACT.md` for every component; many README locations use another contract form. | Two global routes overstate `CONTRACT.md` coverage; stage-owner wording remains accurate. |
@@ -524,6 +522,8 @@ Discovery notes give source references and the boundary for each row.
 | [F141](docs-01-discoveries-fifth.md#f141-retired-alpha-renderer-name-in-the-report-owner) | One-line history candidate | Paired-CMH report guide names retired `render_report_view` after describing the surviving template, view and provider roles. | Current repository callers are absent and Git retains the migration; external use and the value of this warning remain unverified. |
 | [F142](docs-01-discoveries-fifth.md#f142-collaborator-acceptance-repeated-in-the-polish-campaign) | Acceptance duplication | Polish item 29 repeats external provider/reporter acceptance in two adjacent blocks and the authoritative `EXTENSION-01` row. | The sampled composition-test limit and no-conformance-service nuance remain distinct; 31 lines are under review, not a saving estimate. |
 | [F143](docs-01-discoveries-fifth.md#f143-unrouted-reporting-run-contract-example) | Unrouted example | Eight-line run-contract example has no filename-specific tracked link or call site found; current coordinator projects the six-field record. | The config guide generically routes specialist examples; external readers and safe deletion or saving remain unverified. |
+| [F144](docs-01-discoveries-fifth.md#f144-shared-runtime-replacement-repeated-in-adjacent-recovery-cases) | Recovery repetition | Troubleshooting repeats the shared-selection and same-source `--replace` restriction in adjacent failure cases. | Each case has distinct inspection, fresh-verification, and evidence-preservation guidance; nine lines are a review span, not a saving estimate. |
+| [F145](docs-01-discoveries-fifth.md#f145-downstream-reporting-role-repeated-in-stage-contracts) | Contract repetition | Five stage contracts repeat two-line artifact-indexing and reporting consumption prose after their unique adapter lists. | Current adapter IDs, consumer edges, and the no-rerun rule remain; ten lines are a review span, not a saving estimate. |
 
 ## Discovery notes
 

@@ -168,15 +168,16 @@ The decision at lines 44–50 additionally names `uv` among Doctor's
 installation delegates. The [root README](../../README.md) lines 53–56 and
 [Runbook](../operations/RUNBOOK.md) lines 258–263 assign Doctor Project-owned
 native/R work through Pixi and `renv`, with Python dependencies left to
-separate package-manager setup. The Doctor implementation's manager commands
-in `doctor.py` lines 1235–1265 call Pixi and Rscript, not `uv`. The decision's
-owner list therefore overstates Doctor's Python package authority.
+separate package-manager setup. Doctor's manager calls (`doctor.py:1235–1265`)
+use Pixi and Rscript, not `uv`; the decision overstates its Python authority.
 Verification-only means no package-manager work, not necessarily a read-only
 operation. A ready runtime produces a plan with `runtime=None`
 (`doctor.py:835–870`), but confirmed Slurm repair/verification opens a
 maintenance log (`doctor.py:1657–1676`) and calls compute-side qualification
 (`doctor.py:1902–1908`). The source test at `test_doctor.py:2956–2963,3046–3054`
 expects a submitted qualification job while asserting no native/R installation.
+The [Troubleshooting](../operations/TROUBLESHOOTING.md) heading at 171 labels
+qualification failure “after installation,” obscuring the verification-only route.
 Plain diagnosis and declined preview remain no-write (`doctor.py:2089–2119`);
 ready direct execution returns without a repair plan. Describe both the
 possible Pixi/renv work and separate verification effects; manager output

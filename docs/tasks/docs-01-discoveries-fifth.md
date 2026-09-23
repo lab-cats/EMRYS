@@ -1,9 +1,10 @@
 # DOCS-01 discovery notes, fifth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F130–F143. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
+holds F130–F145. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
 F132–F133 use `935adf06`, F134–F139 use `ebc0012d`, and F140 uses `f239a91d`
-on that date. F141–F143 use `1eb562f0` on that date. F138 was dismissed on
+on that date. F141–F143 use `1eb562f0`; F144–F145 use `f91b8303` on that
+date. F138 was dismissed on
 adversarial recheck at `f239a91d`.
 F130 was dismissed as a duplicate on recheck at local head `935adf06`.
 Source and direct tests were read, not executed. These are documentation
@@ -204,3 +205,36 @@ in a static standard-library calculation. The
 at 3–7 describes direct indexing as private. No external-reader inventory or
 example-file usage was established; neither deletion nor an eight-line saving
 follows from the missing filename route.
+
+### F144 — Shared-runtime replacement repeated in adjacent recovery cases
+
+At local audit head `f91b8303`, [Troubleshooting](../operations/TROUBLESHOOTING.md)
+lines 161–163 say `--replace` accepts only an existing shared selection from
+the same source Project. The adjacent “Runtime inventory already exists” case
+at 165–169 repeats that restriction while adding fresh verification and a
+separate migration/recovery boundary. [Onboarding](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+at 2121–2128 and 2231–2239 implements the refusal; the
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+at 326–335 and [Runbook](../operations/RUNBOOK.md) at 643–654 route the
+full replacement. These nine lines are a review span, not a verified saving.
+The two failure headings may need independent instructions; preserve the
+existing-inventory refusal, Doctor inspection, fresh generation verification,
+old/partial evidence, and explicit migration/recovery rule.
+
+### F145 — Downstream reporting role repeated in stage contracts
+
+At local audit head `f91b8303`, five stage contracts repeat a two-line
+downstream-consumption bullet immediately after their unique artifact-adapter
+lists: [GTF to BED12](../../src/emrys/stages/gtf_to_bed12/CONTRACT.md) 91–92,
+[STAR index](../../src/emrys/stages/star_index/CONTRACT.md) 117–118,
+[STAR alignment](../../src/emrys/stages/star_alignment/CONTRACT.md) 127–128,
+[canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md) 172–173,
+and [FASTA sidecars](../../src/emrys/stages/fasta_sidecars/CONTRACT.md) 121–122.
+The [architecture inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
+at 18 routes shared reporting ownership; the
+[reporting guide](../../src/emrys/reporting/README.md) at 10–20 describes
+summary and report operations, while the
+[artifact-index owner](../../src/emrys/reporting/_artifact_index/README.md)
+at 30–36 binds artifact inputs. This ten-line review span is not
+a verified saving: the stage-specific adapter IDs and consumer edges remain,
+and readers must still find the promise that reports do not rerun stages.
