@@ -431,20 +431,20 @@ contract.
 The [root README](../../README.md) lines 72–75 says reporting can be
 “regenerated” with `emrys report [RUN] --execute`. The ratified
 [platform decision](../design/decisions/platform-direction.md) lines 183–188
-also calls Report “regenerable” and says it can regenerate independently;
-that may mean generation after an opted-out Run, but does not specify the
-current create-only boundary. The
-[reporting owner](../../src/emrys/reporting/README.md) lines 3–16 says
-`--execute` publishes only from empty owned state, while a complete bundle is
-revalidated and reused (lines 102–112). The [Runbook](../operations/RUNBOOK.md)
+also calls Report “regenerable”; the
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 1203–1208 says reporting “regeneration” cannot invalidate science.
+These may mean generation after an opted-out Run but omit the create-only
+boundary. The [reporting owner](../../src/emrys/reporting/README.md) lines
+3–16 says `--execute` publishes only from empty owned state; a complete bundle
+is revalidated and reused (lines 102–112). The [Runbook](../operations/RUNBOOK.md)
 distinguishes these cases at baseline lines 477–490 (lines 437–450 at pinned
 revision `0cb5d507`): generation after skipped reporting,
 reuse of complete bundles, and refusal of partial or blocked bundles.
 [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 74–80 explicitly
 forbids treating `report` as a repair or overwrite route. “Regenerated” could
 imply replacement of an existing or partial bundle; no misuse is observed.
-The open wording gap concerns empty-state generation versus complete-bundle
-reuse. Existing recovery guidance, Run/Attempt identity, and retained evidence
+Existing recovery guidance, Run/Attempt identity, and retained evidence
 still govern the boundary.
 
 ### F53 — Dependent Project in shared-runtime replacement
