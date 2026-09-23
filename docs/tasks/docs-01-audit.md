@@ -327,20 +327,15 @@ permission to change or delete the source.
   “regeneration.” At `f239a91d`, recheck dismissed F138, narrowed F134/F136/F137,
   and added F140; CV-23/Slurm-preview/operator rereads found no new candidate.
 - At `d18470c8`, five-word shingles across 1,515 paragraphs found 59 matches; paraphrases could escape.
-- At `2398f144`/`f347216d`, F01–F153 were rechecked against cited owners;
-  F45/F79 were dismissed and F38/F40/F75/F86/F96/F129/F143 narrowed.
-- At `3ea9c2b1`–`d55baa91`, F154–F159/F94 were added or refined;
-  F144–F146/F148–F149/F153 were dismissed. No product/CI ran.
+- At `2398f144`–`d55baa91`, F01–F153 were rechecked and F154–F159/F94
+  added or refined; F45/F79/F144–F146/F148–F149/F153 were dismissed,
+  with other narrowing in their notes. No product/CI ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
-guides placement: scientist journey in root guides, operator action and recovery
-in operations, exact behavior beside owners, durable rationale in decisions,
-and dated retained observations in history or retained artifacts. DOCS-01
-remains open while findings lack a documented correction, transfer, dismissal,
-or explicit deferral at an authoritative owner. Backlog and live-link
-reconciliation and disposition of this temporary record are likewise open.
-Exact evidence deletion requires its own proposal, explicit approval, and
-separate commit.
+owns placement. DOCS-01 remains open until findings have an authoritative
+correction, transfer, dismissal, or deferral; backlog/link reconciliation and
+this record's disposition are also open. Exact evidence deletion requires a
+separate proposal, approval, and commit.
 
 ### Coverage so far
 
@@ -358,14 +353,14 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 163 records, 66 were dismissed after recheck; their reasons remain in the
+Of 167 records, 65 were dismissed after recheck; their reasons remain in the
 linked notes. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
 | [F01](docs-01-discoveries.md#f01-public-stop-in-the-platform-decision) | Contradiction | Platform decision denies public stop and limits resume to failed/interrupted Runs; exact-request stop and prepared finalization exist, while top-level resume help retains the narrow label. | Decision and help scope differ from current source; CV-18's evidence limit remains. |
 | [F02](docs-01-discoveries.md#f02-standalone-capacity-wording) | Sizing ambiguity | Runbook says 12 CPUs/240 GiB retain concurrent-stage allowances without naming the workload or concurrency shape; the default policy resolves a smaller fixture with one concurrent STAR task. | The fixture does not refute the qualified concurrency claim or prove real-study capacity; institutional execution remains unverified. |
-| [F03](docs-01-discoveries.md#f03-init-02-in-cluster-summaries) | Summary overclaim | Grouped CV summaries call INIT-01–03 source-complete while INIT-02 remains Open; detailed cards describe explicit manifest selection. | Explicit-manifest proof and dated cards remain distinct from INIT-02 acceptance. |
+| [F03](docs-01-discoveries.md#f03-init-02-in-cluster-summaries) | Summary overclaim | Grouped CV summaries call INIT-01–03 source-complete while INIT-02 remains Open; detailed cards describe explicit manifest selection. | Explicit-manifest proof and dated cards remain distinct from INIT-02 acceptance; F167 reviews the larger campaign summary. |
 | [F04](docs-01-discoveries.md#f04-root-quickstart-description) | Reader route | Root README calls Quickstart a synthetic first Run; Quickstart leads with real EV/PUM1 and makes smoke optional. | Quickstart leads with EV/PUM1; smoke is optional. |
 | [F05](docs-01-discoveries.md#f05-generic-study-versus-named-evpum1-route) | Reader route | At baseline, two “own study” Runbook routes point into fixed EV/PUM1 choices. At pinned revision `0cb5d507`, the choice route is clearer, but the Quickstart continuation still uses the named Project and Slurm. | The generic route remains unverified as a reader journey. |
 | [F06](docs-01-discoveries.md#f06-existing-project-and-new-project-recovery) | Reader route | Troubleshooting mixes existing-Project lookup with absent-child Init recovery. | Existing-Project lookup and absent-child creation have distinct preconditions. |
@@ -490,7 +485,7 @@ linked notes. The final column states evidence limits, not work orders.
 | [F125](docs-01-discoveries-fourth.md#f125-producer-publication-claim-in-the-shared-contract-index) | Owner-routing drift | Shared-contract index says producers own computation and publication; current first-party scientific tasks separate producer computation from runner publication and recovery. | Reporting and other record publication have their own owners; this wording alone implies no runtime defect. |
 | [F126](docs-01-discoveries-fourth.md#f126-doctor-plan-detail-and-timing-display-in-the-runbook) | Display-scope drift | Runbook does not qualify when Doctor prints `Runtime work` or full invocation timing; the field requires verbose repair, while normal elapsed output requires `--repair`. | Plan heading still distinguishes repair from verification, and package-manager output owns actual reuse evidence. No Doctor behavior defect is inferred. |
 | [F127](docs-01-discoveries-fourth.md#f127-older-local-checks-inside-active-cv-acceptance-cards) | Dismissed for DOCS-01 | CV-U08 and CV-U20 place older local-check totals within dated correction histories; neither card names their checked SHA. | That provenance gap supplies no safe reduction, and the excluded-case, environment, and evidence limits remain material. |
-| [F128](docs-01-discoveries-fourth.md#f128-tool-specific-thread-effects-in-the-coordinator-contract) | Dismissed after recheck | Coordinator's five-line tool-effects passage links central allowance resolution to worker behavior and uniquely names `addreplacerg`. | Seven owner links could erase nominal savings while losing that exact mapping; no useful reduction is established. |
+| [F128](docs-01-discoveries-fourth.md#f128-tool-specific-thread-effects-in-the-coordinator-contract) | Local-owner compression candidate | Coordinator's five-line tool-effects passage retains a useful central mapping; four stage preambles span 36 lines and each repeats a short planner route. | Keep central policy and unique stage effects; shorter local routes might save roughly 11 lines, unverified. |
 | [F129](docs-01-discoveries-fourth.md#f129-unrouted-workflow-profile-index) | Dismissed after recheck | The 11-line workflow-profile index has no inbound non-audit Markdown link while adjacent guides share some orientation. | Forty-one README indexes lack such links; this index keeps a unique approval rule, and no useful compression is shown. |
 | [F130](docs-01-discoveries-fifth.md#f130-repeated-test-scope-paragraph-across-eight-owner-guides) | Dismissed duplicate | The eight-guide test paragraph was already recorded with its 40 repeated physical lines in F28. | Retained number traces the correction; F130 adds no independent candidate or saving estimate. |
 | [F131](docs-01-discoveries-fifth.md#f131-receipt-validation-scope-in-the-glossary) | Dismissed after recheck | Glossary says receipt follows transaction-member validation, marks transaction completion, and still requires re-admission. | It makes no verified-task promise; the linked decision and owner contract distinguish native publication from task completion. |
@@ -526,6 +521,10 @@ linked notes. The final column states evidence limits, not work orders.
 | [F161](docs-01-discoveries-fifth.md#f161-final-resource-summary-repeated-in-the-configuration-guide) | Dismissed after recheck | Config guide's short final Slurm/tool resource section repeats an earlier coordinator-policy route. | It gives the precise utilization/performance limit, a benchmark route, and the destination of an inbound CV link; no useful saving is established. |
 | [F162](docs-01-discoveries-fifth.md#f162-synthetic-e2e-help-overstates-one-run-parity) | Tool help scope | Synthetic E2E driver help promises direct/Slurm parity on one Run, but profile 130 uses distinct Runs and profile 100000 selects Slurm alone. | The test-tool guide gives 130's separate histories; no driver or hosted lane ran in this audit. |
 | [F163](docs-01-discoveries-fifth.md#f163-optional-worker-threads-shown-as-required) | Internal help ambiguity | Four shell-worker usage blocks show `--threads` among required-looking options, while parsers and owner contracts default it to one. | Internal help wording differs from admitted arguments; Run resource policy and execution are unchanged and untested here. |
+| [F164](docs-01-discoveries-sixth.md#f164-optimization-bounded-delivery-repeats-workflow) | Process compression candidate | Optimization campaign's 14-line Bounded delivery section repeats workflow and backlog rules already linked in its opening. | A shorter campaign-specific account might save six to eight lines; retain exact benchmark binding and no parallel status ledger. Unverified. |
+| [F165](docs-01-discoveries-sixth.md#f165-cv-campaign-priority-history-repeats-delegated-index) | Chronology compression candidate | CV campaign's ten-line priority history repeats the delegated priority index and CV-05 correction. | A short route might save about six lines; retain later-added CV-11/12/22 and unprioritized CV-U/UX distinction. Unverified. |
+| [F166](docs-01-discoveries-sixth.md#f166-final-source-resource-policy-repeated-in-main-checklist) | Checklist compression candidate | Main closure checklist has a nine-line resource-policy review span that overlaps CV-U06. | Five to six lines might be available only with a durable owner route, exact selected-profile identity, and the checklist's evidence ceiling intact. Unverified. |
+| [F167](docs-01-discoveries-sixth.md#f167-cv-campaign-remaining-delivery-summary-repeats-matrix) | Summary compression candidate | CV campaign's 28-line remaining-delivery block restates accepted matrix rows and delegated CV status; F03 covers its INIT-02 overclaim. | A 9–12-line owner route might save 16–19 lines; preserve inbound heading links, the no-new-execution limit, CV-U06/CV-10 exceptions, and distinct campaign authority. Unverified. |
 
 ## Discovery notes
 

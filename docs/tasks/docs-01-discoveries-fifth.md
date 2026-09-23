@@ -1,13 +1,13 @@
 # DOCS-01 discovery notes, fifth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F130–F163. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
+holds F130–F163; [sixth notes](docs-01-discoveries-sixth.md) begin at F164.
+F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
 F132–F133 use `935adf06`, F134–F139 use `ebc0012d`, and F140 uses `f239a91d`
 on that date. F141–F143 use `1eb562f0`; F144–F145 use `f91b8303` on that
 date; F146–F148 use `cc5c1f58`; F149–F153 use `a3310af6`.
 F154–F158 use `3ea9c2b1`, read on 2026-09-23 and rechecked at `238e8035`.
-F159 uses `688f7117`, read on 2026-09-23.
-F160 uses `60ec53e1`, read on 2026-09-23.
+F159 uses `688f7117`; F160 uses `60ec53e1`, read on 2026-09-23.
 F161 uses `22972af4`, read on 2026-09-23.
 F162–F163 use `f2e719c0`, read on 2026-09-23.
 At `d55baa91`, read on 2026-09-23, adversarial review dismissed

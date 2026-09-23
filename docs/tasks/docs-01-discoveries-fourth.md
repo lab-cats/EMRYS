@@ -528,26 +528,24 @@ remain material evidence.
 
 ### F128 — Tool-specific thread effects in the coordinator contract
 
-**Dismissed after recheck at `f67410cb`.** The
-[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 781–785 partly repeat STAR sorting threads, samtools worker counts and sort
-memory, and Java helper-pool behavior already specified in the
-[STAR](../../src/emrys/stages/star_alignment/CONTRACT.md) lines 67–77,
-[canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md) lines 61–71,
-and [duplicate-marking](../../src/emrys/stages/duplicate_marking/CONTRACT.md)
-lines 40–51 owner contracts. The same samtools worker rule sits with
-[orientation](../../src/emrys/stages/mechanical_orientation/CONTRACT.md) lines
-101–103 and [BAM QC](../../src/emrys/evidence/canonical_bam_qc/CONTRACT.md)
-lines 142–144; [FASTA sidecars](../../src/emrys/stages/fasta_sidecars/CONTRACT.md)
-lines 53–63 and [split-N-cigar](../../src/emrys/stages/split_n_cigar/CONTRACT.md)
-lines 42–53 own the other Java-worker detail. Current
-[materialization](../../src/emrys/orchestration/run_coordinator/materialization.py)
-lines 371–379 derives the native allowance and rejects impossible budgets.
-The central section joins allocation resolution to tool effects and uniquely
-names `addreplacerg` among samtools calls at line 783; the canonical BAM owner
-says only “other samtools operations.” Seven replacement owner links could
-erase the nominal five-line reduction. No useful saving is demonstrated;
-source and tests were read, not executed.
+**Central deletion dismissed at `f67410cb`; local overlap rechecked at
+`f79bc435`.** The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 765–789 owns resolved native memory, samtools and Java CPU effects, and
+optional-thread defaults. Its lines 781–785 connect allowance resolution to
+tool behavior and uniquely name `addreplacerg`; replacing them with seven
+stage links would erase a nominal five-line saving. The central passage stays.
+
+Four local resource preambles span 36 physical lines and each repeats a short
+planner-derived CPU/memory route: [FASTA sidecars](../../src/emrys/stages/fasta_sidecars/CONTRACT.md)
+56–63, [canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md)
+64–72, [duplicate marking](../../src/emrys/stages/duplicate_marking/CONTRACT.md)
+43–51, and [split-N-cigar](../../src/emrys/stages/split_n_cigar/CONTRACT.md)
+45–54. Each must retain its worker argument and local effect: serial faidx and
+GATK dictionary with `-Xmx`; sort `-m` per thread and the canonical hard-link
+bypass; Picard `-Xmx`, serial traversal and samtools index; GATK `-Xmx`/tmp,
+serial traversal and samtools index. The relevant shell workers confirm these
+flags. Shorter local routes might save roughly 11 lines across the four
+contracts, contingent on drafts and links. No net saving or runtime behavior was verified.
 
 ### F129 — Unrouted workflow-profile index
 
