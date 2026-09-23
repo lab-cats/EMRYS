@@ -203,18 +203,17 @@ report was executed.
 
 ### F73 — Profile create explicit placement requirement
 
-The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 828–830 says `emrys profile create NAME` requires an explicit built-in
-site or direct/Slurm placement. Its [parser](../../src/emrys/orchestration/run_coordinator/onboarding.py)
-lines 311–317 makes the choice optional when `EMRYS_SITE` is set, and the
+**Dismissed for DOCS-01 at `1db7a88d`.** The
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 828–830 requires a selected built-in site or direct/Slurm placement,
+not necessarily a CLI flag. The
 [shared site argument](../../src/emrys/orchestration/run_coordinator/execution_profile.py)
-lines 57–62 defaults from that environment. Profile creation at onboarding
-lines 349–375 uses the resulting site when `--placement` is absent. The
-[source test](../../tests/orchestration/run_coordinator/test_onboarding.py)
-lines 285–298 confirms `profile create cluster` selects `viking` without a
-placement flag when `EMRYS_SITE=viking`. The requirement is conditional:
-explicit selection is still required with no site default. This is a parser
-and source-test comparison; no profile was created.
+lines 57–62 accepts `EMRYS_SITE` as that selection; the
+[parser](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+lines 311–317 and [source test](../../tests/orchestration/run_coordinator/test_onboarding.py)
+lines 285–298 confirm it. With no site default, explicit selection remains
+required. There is no contract conflict or useful compression here. This was
+a static source/test comparison; no profile was created.
 
 ### F74 — Final-check command omits R library prerequisite
 

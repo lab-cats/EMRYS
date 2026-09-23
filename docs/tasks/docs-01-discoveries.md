@@ -292,12 +292,11 @@ revision, and the current byte/build-origin boundaries must be preserved.
 
 ### F15 — CV-U22 interim status prose
 
-The [CV backlog](cluster_verification_backlog.md) lines 1472–1511 dates a
-known-smoke correction, labels “Verification pending” as that checkpoint,
-then explains the unsolved general donor requirement and returns CV-U22 to
-Open. The chronology preserves why the card reopened. No concrete confusion
-or safe reduction was established in the second pass. The causal record and
-the CV backlog's current status authority remain distinct.
+**Dismissed for DOCS-01 at `1db7a88d`.** The
+[CV backlog](cluster_verification_backlog.md) lines 1472–1511 retains the
+September 17 reopening, September 18 known-smoke correction, and still-open
+general donor requirement. That sequence explains CV-U22's Open status. No reader
+conflict or useful reduction was found; retain the causal record and status.
 
 ### F16 — Polish merged-PR tables
 
@@ -504,17 +503,15 @@ closure or proof of a generic end-to-end reader journey; F05 remains open.
 
 ### F24 — Named-profile procedure placement
 
-[Config guide](../../configs/README.md) lines 239–279 contains the actual
-named-profile preview, creation and selection commands; its lines 281–340
-also explain placement, resource policy and document fields. The
-[Runbook](../operations/RUNBOOK.md) links that operator route at 532–536 and
-links the general execution-profile section at 557–565, while retaining the
-head-node Doctor and Run route. The
-[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 828–837 owns exact no-write, absent-file and admission behavior. No
-duplicate Runbook procedure or verified line saving follows from this placement
-alone. The two Runbook anchors serve different readers and the named-profile
-link is an inbound route to preserve; no relocation is selected.
+**Dismissed for DOCS-01 at `1db7a88d`.** The
+[config guide](../../configs/README.md) lines 239–279 owns named-profile
+preview, creation and selection; lines 281–340 explain its fields. The
+[Runbook](../operations/RUNBOOK.md) links that route at 532–536 and retains
+the separate head-node Doctor/Run and advanced placement paths at 557–565.
+The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 828–837 owns exact admission and no-write behavior. Both Runbook
+anchors serve distinct readers. No duplicate procedure or useful saving was
+found; preserve the inbound link.
 
 ### F25 — Reporting decision versus migration history
 
@@ -591,9 +588,9 @@ established, and no contract deletion is approved.
 
 ### F29 — Library subowner navigation
 
-[Tests library index](../../tests/libraries/README.md) lines 3–6 directs
-readers to the production [library index](../../src/emrys/libraries/README.md),
-but that index lists only three shell helpers and a runner link. Six documented
-subpackages—alignments, application logging, evidence, quality, references,
-and validation—have no route from it. The gap concerns navigation to existing
-contracts; its reader benefit and any added lines are unmeasured.
+**Dismissed for DOCS-01 at `1db7a88d`.** The
+[test library index](../../tests/libraries/README.md) lines 3–6 points to the
+[production index](../../src/emrys/libraries/README.md), which lists three
+shell helpers but does not route to six documented Python subowners. That is
+an added-navigation question, with no duplicate prose or reduction identified.
+Preserve the source-topology boundary and existing subowner guides.

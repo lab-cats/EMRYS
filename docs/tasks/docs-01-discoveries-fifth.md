@@ -344,6 +344,7 @@ pending hosted/Viking checks.
 
 ### F151 — Synthetic artifact inventory example without a named owner route
 
+**Dismissed for DOCS-01 at `1db7a88d`.**
 At local audit head `a3310af6`, the 75-line
 [artifact inventory example](../../configs/artifact_inventory.example.tsv)
 contains 74 synthetic rows. The [config inventory](../../configs/README.md)
@@ -359,9 +360,9 @@ inventory instead projects rows from admitted profile templates in
 [orchestration projection](../../src/emrys/contracts/orchestration/projection.py)
 at 116–129 and [artifact inventory](../../src/emrys/contracts/orchestration/artifact_inventory.py)
 at 211–269. The file feeds adapter-roster, inventory-validation, and
-reporting-fixture checks; its rows and order need preservation review.
-External readers and safe relocation or reduction are unverified. Seventy-five
-lines are review scope, not a saving estimate.
+reporting-fixture checks. It is an active fixture, not duplicate documentation
+prose; preserve its rows, order, and test roles. External readers remain
+unverified.
 
 ### F152 — Local profile promise in the config inventory
 
@@ -392,15 +393,16 @@ only a brief owner/back-link formula repeats. This concern is dismissed: the
 
 ### F154 — Runtime inventory mechanics in the Runbook
 
+**Dismissed for DOCS-01 at `1db7a88d`.**
 At local audit head `3ea9c2b1`, the [Runbook](../operations/RUNBOOK.md)
 lines 353–363 explain approval, freshness checks, and the 12-path,
 two-column inventory. The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 153–159 owns preview, confirmation, freshness, and publication; the
 [runtime owner](../../src/emrys/evidence/runtime_availability/README.md)
-lines 8–15 owns the inventory columns and derived checks. The policy roster
-at 360–363 and internal phrasing at 355–356 are a review span, not a saving.
-Preserve freshness reassurance, consent/refusal, `--execute`, success and path,
-no-install boundary, and eight-column migration/recovery at 365–369. This is
+lines 8–15 owns exact inventory columns and checks. The brief operator text
+at the discovery command explains consent, freshness, no-install behavior,
+and inventory meaning; no useful reduction was found. Preserve `--execute`,
+success and path, and eight-column migration/recovery at 365–369. This is
 distinct from F22's cross-owner overlap and F23's Init detail.
 
 ### F155 — Runtime diagnostic contents in Troubleshooting

@@ -31,21 +31,18 @@ safe saving is established by this comparison alone.
 
 ### F101 — Retired reporting-memory recovery advice in the contract
 
+**Dismissed for DOCS-01 at `1db7a88d`.**
 The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 845–847 records rejection of the retired `resources.reporting_memory_mb`
-field and `--reporting-memory-mb` flag, then gives the operator action of
-removing the field from a selected profile. The
-[profile guide](../../configs/README.md) lines 233–264 owns profile authoring
-and current options; lines 357–364 warn generically that retired reporting-
-memory settings are rejected, without naming this field or its removal. A
-tracked guide search found no other exact operator route to that advice. The
-source tests at
-`tests/orchestration/run_coordinator/test_execution_profile.py:698–703` and
-`test_resource_policy.py:529–532` cover the rejections. Exact rejection
-behavior belongs to the coordinator owner. The removal advice has a different
-operator audience and currently resides only in that contract. The historical
-claim that the old control never constrained reporting was not independently
-replayed in this pass.
+lines 845–849 owns rejection of `resources.reporting_memory_mb` and
+`--reporting-memory-mb`, with removal advice. The
+[profile guide](../../configs/README.md) lines 357–364 warns that retired
+reporting-memory settings are rejected; current options are at 233–264. The
+[polish card](polish-campaign.md) lines 429–435 records the old control's
+ineffective behavior. Direct rejection tests are at
+`tests/orchestration/run_coordinator/test_execution_profile.py:697–703` and
+`test_resource_policy.py:529–532`. Exact recovery belongs with the rejecting
+owner; moving one sentence to the guide would add prose without an identified
+reduction. The historical claim was not replayed in this audit.
 
 ### F102 — Historical E09 example in current lifecycle rules
 
@@ -172,18 +169,17 @@ loss has retained old source and a fault oracle. No safe saving follows.
 
 ### F108 — Scientific completion in the run-summary guide
 
+**Dismissed for DOCS-01 at `1db7a88d`.**
 The [run-summary guide](../../src/emrys/reporting/_run_summary/README.md)
-lines 28–29 says candidate review, adjudication, biological interpretation,
-and “scientific completion” are external processes. The
-[architecture](../architecture/ARCHITECTURE.md) line 45 says scientific
-completion and recovery belong to the runner; the
+lines 28–29 explicitly describes computational manifest state before naming
+external candidate review, adjudication, biological interpretation, and
+scientific completion. The
 [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 1157–1164 defines `Scientific Results: complete`, and public
+lines 1157–1164 defines the named computational `Scientific Results: complete`
+state, displayed by public
 [inspection](../../src/emrys/orchestration/run_coordinator/control.py)
-lines 2833–2837 displays that state. External scientific review and biological
-interpretation remain outside EMRYS. The unqualified phrase “scientific
-completion” can conflate that external work with computational Results
-completion; no report or runtime behavior defect is inferred.
+lines 2833–2837. The two meanings are already distinguished; no useful
+correction or compression is shown. No report or runtime behavior was run.
 
 ### F109 — Runtime discovery's interactive publication
 
@@ -542,23 +538,18 @@ tool behavior remain distinct. Source and tests were read, not executed.
 
 ### F129 — Unrouted workflow-profile index
 
-At recheck head `f347216d`, a limited link scan over 170 non-audit Markdown
-files found no inbound local link to the 11-line
+**Dismissed for DOCS-01 at `1db7a88d`.** At `f347216d`, a limited scan
+over 170 non-audit Markdown files found no inbound local link to the 11-line
 [profile index](../../src/emrys/workflow/profiles/README.md). The
 [workflow overview](../../src/emrys/workflow/README.md) lines 3–4 and 16–19
-already distinguishes the processing graph, links directly to the
-[local profile](../../src/emrys/workflow/profiles/local/README.md), and names
-the one-host and planner boundaries. That local guide lines 3–13 explains the
-exact YAML and admitted-package binding. The intermediate index repeats much
-of this orientation while uniquely stating that another selectable engine
-profile requires approval. Its lack of an inbound non-audit Markdown route is a
-navigation and compression candidate, not proof that its whole 11 lines can
-go; filesystem browsing and non-Markdown routes were not checked.
-At `60ec53e1`, a second simple inbound-Markdown path scan found 41 of 170
-non-audit Markdown files without an explicit inbound Markdown link; all 41
-were `README.md` indexes. Link absence alone is weak evidence here. The
-overlap with parent/local guidance, not orphan status, is F129's compression
-question; directory and non-Markdown readers remain unverified.
+links directly to the
+[local profile](../../src/emrys/workflow/profiles/local/README.md), whose
+lines 3–13 explain YAML and package binding. The intermediate index keeps
+the unique rule that a new selectable engine profile requires approval.
+At `60ec53e1`, 41 of 170 non-audit Markdown files lacked an inbound Markdown
+link, all `README.md` indexes. Thus link absence is weak evidence and the
+shared orientation offers no useful reduction. Filesystem and non-Markdown
+reader routes remain unverified.
 
 ## Reviewed overlaps without a saving claim
 
