@@ -157,103 +157,144 @@ def test_python311_full_suite_is_nightly_or_explicitly_selected() -> None:
         )
 
 
-def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
-    job = _workflow_jobs()["synthetic-e2e"]
-    assert job["runs-on"] == "ubuntu-26.04"
-    assert job["timeout-minutes"] == 360
-    condition = _expression(job["if"])
-    assert "github.event_name == 'schedule'" in condition
-    assert "inputs.synthetic_130 || inputs.synthetic_100000" in condition
+def test_synthetic_jobs_use_isolated_real_runtime_and_real_slurm() -> None:
+    jobs = _workflow_jobs()
+    preparation = jobs["prepare-synthetic-e2e-runtime"]
+    smoke = jobs["synthetic-e2e-130"]
+    production = jobs["synthetic-e2e-100000"]
+    assert preparation["runs-on"] == "ubuntu-26.04"
+    assert preparation["timeout-minutes"] == 90
+    preparation_condition = _expression(preparation["if"])
+    assert "github.event_name == 'schedule'" in preparation_condition
+    assert "inputs.synthetic_130 || inputs.synthetic_100000" in preparation_condition
+    assert "env" not in preparation
+    preparation_paths = _named_step(preparation, "Select shared preparation paths")
+    assert "${RUNNER_TEMP}" in preparation_paths["run"]
+    assert "${{ runner.temp }}" not in preparation_paths["run"]
+    assert "PIXI_WORKSPACE=%s/emrys-managed-runtime" in preparation_paths["run"]
+    assert "RENV_PATHS_LIBRARY=%s/emrys-renv/library" in preparation_paths["run"]
 
-    seed = _named_step(job, "Seed external evidence roots for selected profiles")
-    assert "${RUNNER_TEMP}/emrys-synthetic-e2e" in seed["run"]
-    assert "${GITHUB_WORKSPACE}" not in seed["run"]
-
-    paths = _named_step(job, "Select managed-runtime paths")
-    assert "PIXI_WORKSPACE=%s/emrys-managed-runtime" in paths["run"]
-    assert "PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml" in paths["run"]
-    assert "${RUNNER_TEMP}" in paths["run"]
-    stage = _named_step(job, "Stage the reviewed runtime lock outside the checkout")
-    assert "src/emrys/resources/runtime/pixi.toml" in stage["run"]
-    assert "src/emrys/resources/runtime/pixi.lock" in stage["run"]
-    tools = _named_step(job, "Restore locked native and R base environments")
-    assert tools["uses"] == (
-        "prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e"
+    prepared_python = _named_step(preparation, "Prepare locked Python dependency cache")
+    assert "uv sync --locked --group workflow" in prepared_python["run"]
+    prepared_pixi = _named_step(
+        preparation, "Prepare locked native and R base dependency cache"
     )
-    assert tools["with"]["pixi-version"] == "${{ env.PIXI_VERSION }}"
-    assert tools["with"]["manifest-path"] == "${{ env.PIXI_MANIFEST }}"
-    assert tools["with"]["environments"] == "native r"
-    assert tools["with"]["activate-environment"] == "r"
-    assert tools["with"]["locked"] is True
+    assert prepared_pixi["with"]["cache-write"] is True
+    assert prepared_pixi["with"]["cache-key"] == (
+        "emrys-real-e2e-runtime-v2-ubuntu-26.04-"
+    )
+    prepared_renv = _named_step(preparation, "Restore prepared R dependency cache")
+    prepared_restore = _named_step(
+        preparation, "Restore locked R dependencies on cache miss"
+    )
+    prepared_verify = _named_step(
+        preparation, "Select and verify prepared R dependencies"
+    )
+    prepared_save = _named_step(preparation, "Publish prepared R dependency cache")
+    assert prepared_renv["id"] == "shared-renv-cache"
+    assert "v2-ubuntu-26.04" in prepared_renv["with"]["key"]
+    assert "make -s r-restore" in prepared_restore["run"]
+    assert "steps.shared-renv-cache.outputs.cache-hit != 'true'" in _expression(
+        prepared_restore["if"]
+    )
+    assert "make -s r-check" in prepared_verify["run"]
+    assert prepared_save["with"]["path"] == prepared_renv["with"]["path"]
+    assert prepared_save["with"]["key"] == (
+        "${{ steps.shared-renv-cache.outputs.cache-primary-key }}"
+    )
+
+    for job in (smoke, production):
+        assert job["needs"] == "prepare-synthetic-e2e-runtime"
+        assert job["runs-on"] == "ubuntu-26.04"
+        assert job["timeout-minutes"] == 360
+        assert "github.event_name == 'schedule'" in _expression(job["if"])
+
+        paths = _named_step(job, "Select isolated runtime and evidence paths")
+        assert "PIXI_WORKSPACE=%s/emrys-managed-runtime" in paths["run"]
+        assert "PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml" in paths["run"]
+        assert "${RUNNER_TEMP}" in paths["run"]
+        assert "scenario" in paths["run"]
+        assert "E2E_EVIDENCE_ROOT" not in job["env"]
+        assert (
+            'evidence_root="${RUNNER_TEMP}/emrys-synthetic-e2e/'
+            '${E2E_PROFILE}-${E2E_SCENARIO}"' in paths["run"]
+        )
+        assert "E2E_EVIDENCE_ROOT=%s" in paths["run"]
+
+        stage = _named_step(job, "Stage the reviewed runtime lock outside the checkout")
+        assert "src/emrys/resources/runtime/pixi.toml" in stage["run"]
+        assert "src/emrys/resources/runtime/pixi.lock" in stage["run"]
+        tools = _named_step(job, "Restore locked native and R base environments")
+        assert tools["uses"] == (
+            "prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e"
+        )
+        assert tools["with"]["pixi-version"] == "${{ env.PIXI_VERSION }}"
+        assert tools["with"]["manifest-path"] == "${{ env.PIXI_MANIFEST }}"
+        assert tools["with"]["environments"] == "native r"
+        assert tools["with"]["activate-environment"] == "r"
+        assert tools["with"]["locked"] is True
+        assert tools["with"]["cache-write"] is False
+        assert tools["with"]["cache-key"] == prepared_pixi["with"]["cache-key"]
+
+        provision = _named_step(job, "Install disposable Slurm")
+        slurm = _named_step(job, "Configure and prove one disposable Slurm node")
+        journey = _named_step(job, "Run the selected real synthetic E2E scenario")
+        step_names = [step.get("name") for step in job["steps"]]
+        assert "slurm-wlm" in provision["run"]
+        assert "slurmdbd" in provision["run"]
+        assert "tests/tools/configure_ci_slurm.sh" in slurm["run"]
+        assert step_names.index(provision["name"]) < step_names.index(slurm["name"])
+        assert step_names.index(slurm["name"]) < step_names.index(journey["name"])
+
+        authorities = _named_step(
+            job, "Record exact runtime authorities outside the checkout"
+        )
+        assert "pixi-native-packages.json" in authorities["run"]
+        assert "pixi-r-packages.json" in authorities["run"]
+        assert "uv.lock" in authorities["run"]
+        assert "src/emrys/renv.lock" in authorities["run"]
+        assert "picard-slim-3.1.1-*/picard.jar" in authorities["run"]
+        assert "*/picard-3.1.1-*/picard.jar" not in authorities["run"]
+
+        renv_restore = _named_step(job, "Restore exact R dependency cache")
+        assert renv_restore["id"] == "renv-cache"
+        assert renv_restore["uses"] == (
+            "actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25"
+        )
+        assert renv_restore["with"]["key"] == prepared_renv["with"]["key"]
+        assert renv_restore["with"]["path"] == prepared_renv["with"]["path"]
+        assert renv_restore["with"]["fail-on-cache-miss"] is True
+        assert not any(
+            step.get("name") == "Save exact R dependency cache after successful restore"
+            for step in job["steps"]
+        )
+        selected_r = _named_step(job, "Select and verify shared locked R environment")
+        assert "make -s r-restore" not in selected_r["run"]
+        assert "make -s r-check" in selected_r["run"]
+
+        assert journey["continue-on-error"] is True
+        assert "tests/tools/real_synthetic_e2e.py" in journey["run"]
+        assert '--profile "${E2E_PROFILE}"' in journey["run"]
+        assert '--scenario "${E2E_SCENARIO}"' in journey["run"]
+        assert "--slurm-partition emrys-ci" in journey["run"]
+        assert "--slurm-cpus" not in journey["run"]
+        assert "--slurm-memory" not in journey["run"]
+        assert "--execute" in journey["run"]
+
     assert "setup-micromamba" not in WORKFLOW_PATH.read_text(encoding="utf-8")
-
-    slurm = _named_step(job, "Configure and prove one disposable Slurm node")
-    assert "tests/tools/configure_ci_slurm.sh" in slurm["run"]
-    provision = _named_step(job, "Install disposable Slurm")
-    assert "slurm-wlm" in provision["run"]
-    assert "slurmdbd" in provision["run"]
-    step_names = [step.get("name") for step in job["steps"]]
-    assert step_names.index(provision["name"]) < step_names.index(slurm["name"])
-    for journey in (
-        "Run the selected 130-pair real synthetic E2E",
-        "Run the selected 100,000-pair real synthetic E2E",
-    ):
-        assert step_names.index(slurm["name"]) < step_names.index(journey)
-
-    authorities = _named_step(
-        job, "Record exact runtime authorities outside the checkout"
-    )
-    assert "pixi-native-packages.json" in authorities["run"]
-    assert "pixi-r-packages.json" in authorities["run"]
-    assert "uv.lock" in authorities["run"]
-    assert "src/emrys/renv.lock" in authorities["run"]
-    assert "picard-slim-3.1.1-*/picard.jar" in authorities["run"]
-    assert "*/picard-3.1.1-*/picard.jar" not in authorities["run"]
-
-    renv_restore = _named_step(job, "Restore exact R dependency cache")
-    assert renv_restore["id"] == "renv-cache"
-    assert renv_restore["uses"] == (
-        "actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25"
-    )
-    renv_save = _named_step(
-        job, "Save exact R dependency cache after successful restore"
-    )
-    assert _expression(renv_save["if"]) == (
-        "steps.renv-cache.outputs.cache-hit != 'true'"
-    )
-    assert renv_save["uses"] == (
-        "actions/cache/save@caa296126883cff596d87d8935842f9db880ef25"
-    )
-    assert renv_save["with"]["path"] == renv_restore["with"]["path"]
-    assert renv_save["with"]["key"] == (
-        "${{ steps.renv-cache.outputs.cache-primary-key }}"
-    )
-
-    profile_expectations = (
-        (
-            "Run the selected 130-pair real synthetic E2E",
-            "--profile 130",
-            "inputs.synthetic_130",
-        ),
-        (
-            "Run the selected 100,000-pair real synthetic E2E",
-            "--profile 100000",
-            "inputs.synthetic_100000",
-        ),
-    )
-    for name, profile_argument, selector in profile_expectations:
-        step = _named_step(job, name)
-        assert step["continue-on-error"] is True
-        assert selector in _expression(step["if"])
-        assert profile_argument in step["run"]
-        assert "tests/tools/real_synthetic_e2e.py" in step["run"]
-        assert "--slurm-partition emrys-ci" in step["run"]
-        assert "--slurm-cpus" not in step["run"]
-        assert "--slurm-memory" not in step["run"]
-        assert "--execute" in step["run"]
-
-    weekly = _named_step(job, "Run the selected 100,000-pair real synthetic E2E")
-    assert "github.event.schedule == '17 5 * * 0'" in _expression(weekly["if"])
+    assert smoke["strategy"] == {
+        "fail-fast": False,
+        "max-parallel": 3,
+        "matrix": {"scenario": ["success-parity", "failure-resume", "stop-resume"]},
+    }
+    assert smoke["env"]["E2E_PROFILE"] == "130"
+    assert "E2E_CACHE_WRITER" not in smoke["env"]
+    assert "inputs.synthetic_130" in _expression(smoke["if"])
+    assert production["env"]["E2E_PROFILE"] == "100000"
+    assert production["env"]["E2E_SCENARIO"] == "production-like"
+    assert "E2E_CACHE_WRITER" not in production["env"]
+    assert "inputs.synthetic_100000" in _expression(production["if"])
+    assert "github.event.schedule == '17 5 * * 0'" in _expression(production["if"])
 
 
 def test_safely_parallel_lanes_use_every_process_visible_cpu_without_nested_blas() -> (
@@ -783,41 +824,66 @@ def test_doctor_measurement_uses_real_controlled_public_parser(tmp_path: Path) -
 
 
 def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:
-    job = _workflow_jobs()["synthetic-e2e"]
-    upload_names = (
-        "Upload retained 130-pair evidence",
-        "Upload retained 100,000-pair evidence",
-        "Upload shared runtime and Slurm evidence",
-    )
-    for name in upload_names:
-        step = _named_step(job, name)
+    for job_id in ("synthetic-e2e-130", "synthetic-e2e-100000"):
+        job = _workflow_jobs()[job_id]
+        step = _named_step(job, "Upload retained scenario evidence")
         assert "always()" in _expression(step["if"])
         assert step["continue-on-error"] is True
         assert step["uses"] == (
-            "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
+            "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
         )
+        assert step["with"]["path"] == "${{ env.E2E_EVIDENCE_ROOT }}"
         assert step["with"]["if-no-files-found"] == "error"
         assert step["with"]["include-hidden-files"] is True
         assert step["with"]["retention-days"] == 14
 
-    shared = _named_step(job, "Upload shared runtime and Slurm evidence")
-    assert shared["with"]["path"].splitlines() == [
-        "${{ runner.temp }}/emrys-synthetic-e2e/runtime",
-        "${{ runner.temp }}/emrys-synthetic-e2e/slurm",
-    ]
-    # Accounting credentials and database files are runner-local, not artifacts.
-    terminal = _named_step(job, "Retain terminal scheduler diagnostics")
-    assert "systemctl show --property=" in terminal["run"]
-    assert "mysql slurmdbd" in terminal["run"]
-    assert "-u mysql" not in terminal["run"]
-    assert "-u slurmdbd" not in terminal["run"]
+        # Accounting credentials and database files remain runner-local.
+        terminal = _named_step(job, "Retain terminal scheduler diagnostics")
+        assert "systemctl show --property=" in terminal["run"]
+        assert "mysql slurmdbd" in terminal["run"]
+        assert "-u mysql" not in terminal["run"]
+        assert "-u slurmdbd" not in terminal["run"]
+        assert "/var/log/slurm/slurmctld.log" in terminal["run"]
+        assert "/var/log/slurm/slurmd.log" in terminal["run"]
+        assert "/var/log/slurm/slurmdbd.log" not in terminal["run"]
+        assert "final-slurmctld.log" in terminal["run"]
+        assert "final-slurmd.log" in terminal["run"]
 
-    final = _named_step(
-        job, "Require every selected synthetic lane and evidence upload to pass"
+        final = _named_step(job, "Require the scenario and retained evidence to pass")
+        assert "steps.synthetic.outcome" in final["env"]["SYNTHETIC_OUTCOME"]
+        assert "steps.upload-synthetic.outcome" in final["env"]["UPLOAD_OUTCOME"]
+        assert "steps.checkout-unchanged.outcome" in final["env"]["CHECKOUT_OUTCOME"]
+
+
+def test_external_javascript_actions_are_reviewed_node24_releases() -> None:
+    workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
+    reviewed_node24_pins = {
+        "actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25",
+        "actions/cache/save@caa296126883cff596d87d8935842f9db880ef25",
+        "actions/cache@caa296126883cff596d87d8935842f9db880ef25",
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+        "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+        "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+        "astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d",
+        "prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e",
+        "r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6",
+    }
+    for pin in reviewed_node24_pins:
+        assert f"uses: {pin}" in workflow
+
+    upload = "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
+    download = "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
+    assert workflow.count(upload) == 4
+    assert workflow.count(download) == 2
+    assert (
+        "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
+        not in workflow
     )
-    assert "steps.synthetic-130.outcome" in final["env"]["OUTCOME_130"]
-    assert "steps.synthetic-100000.outcome" in final["env"]["OUTCOME_100000"]
-    assert "UPLOAD_INFRASTRUCTURE" in final["run"]
+    assert (
+        "actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0"
+        not in workflow
+    )
 
 
 def test_ci_slurm_setup_is_guarded_real_and_diagnostic() -> None:
@@ -828,6 +894,7 @@ def test_ci_slurm_setup_is_guarded_real_and_diagnostic() -> None:
     assert "CryptoType=crypto/munge" not in script
     assert "ProctrackType=proctrack/linuxproc" in script
     assert "TaskPlugin=task/none" in script
+    assert "KillWait=300" in script
     assert "PartitionName=emrys-ci" in script
     assert "node_record=\"${node_probe%%$'\\n'*}\"" in script
     assert "node_probe%% UpTime=" not in script
@@ -836,6 +903,12 @@ def test_ci_slurm_setup_is_guarded_real_and_diagnostic() -> None:
     assert "idle([*~+#-])?" not in script
     assert "single-node CI Slurm partition/accounting did not become ready" in script
     assert "journalctl" in script
+    assert (
+        'sudo cat /var/log/slurm/slurmctld.log > "$evidence_dir/slurmctld.log"'
+        in script
+    )
+    assert 'sudo cat /var/log/slurm/slurmd.log > "$evidence_dir/slurmd.log"' in script
+    assert "sudo cat /var/log/slurm/slurmdbd.log" not in script
     assert "slurmdbd" in script
     assert "AccountingStorageType=accounting_storage/slurmdbd" in script
     assert "squeue --clusters=emrys-ci" in script

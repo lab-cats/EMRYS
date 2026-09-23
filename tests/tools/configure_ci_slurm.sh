@@ -41,6 +41,10 @@ collect_diagnostics() {
         > "$evidence_dir/debian-packages.tsv" 2>&1
     # shellcheck disable=SC2024 # Privileged read; the runner owns the destination.
     sudo cat /etc/slurm/slurm.conf > "$evidence_dir/slurm.conf" 2>&1
+    # shellcheck disable=SC2024 # Privileged read; the runner owns the destination.
+    sudo cat /var/log/slurm/slurmctld.log > "$evidence_dir/slurmctld.log" 2>&1
+    # shellcheck disable=SC2024 # Privileged read; the runner owns the destination.
+    sudo cat /var/log/slurm/slurmd.log > "$evidence_dir/slurmd.log" 2>&1
     scontrol ping > "$evidence_dir/scontrol-ping.txt" 2>&1
     scontrol show nodes -o > "$evidence_dir/scontrol-nodes.txt" 2>&1
     sinfo --all --long > "$evidence_dir/sinfo.txt" 2>&1
@@ -101,6 +105,7 @@ config_pending="$(mktemp "$RUNNER_TEMP/emrys-slurm-conf.XXXXXX")"
         'ProctrackType=proctrack/linuxproc' \
         'TaskPlugin=task/none' \
         'ReturnToService=2' \
+        'KillWait=300' \
         'SchedulerType=sched/backfill' \
         'SelectType=select/cons_tres' \
         'SelectTypeParameters=CR_Core_Memory' \

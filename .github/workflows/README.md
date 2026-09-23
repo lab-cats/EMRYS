@@ -12,14 +12,32 @@ retains their JUnit results and tiny native outputs beside its existing evidence
 This covers the hosted worker boundary; it does not establish Slurm cancellation,
 lost-worker reconciliation or safe postentry retry.
 
-The selected real-Slurm lane uses a disposable, single-runner controller,
-worker, and accounting service with matching supported Slurm binaries. Setup
-must prove their versions and readiness, cluster registration, and an exact
-`squeue --clusters=emrys-ci` observation before either synthetic journey starts.
-Its private service state stays on the runner; only bounded, redacted setup and
-terminal diagnostics enter the existing infrastructure evidence artifact. This
-is a prerequisite for testing controller-filtered stop, not evidence that an
-active Task was cancelled or that cross-node Viking behavior works.
+The 130-pair real-synthetic lane is three independent matrix jobs:
+clean direct/Slurm parity, controlled failure/resume parity, and fresh active
+Slurm stop/resume. They run in parallel when capacity permits, with fail-fast
+disabled and separate controller, worker, accounting database, workspace, and
+evidence roots. The 100,000-pair production-like Slurm scenario remains a
+separate weekly or manually selected job. One prerequisite job prepares the
+lock-derived uv, Pixi, and renv dependencies for the exact `ubuntu-26.04`
+runtime. Scenario jobs start only after that preparation, restore the same
+image-namespaced caches without writing them, and fail rather than rebuilding a
+missing R cache. A full prepared runner cannot be shared safely: GitHub-hosted
+jobs receive fresh virtual machines, while reusing one runner would couple the
+mutable Slurm controller, worker, accounting database, and whole-node jobs.
+
+Every job configures a disposable single-runner Slurm service with matching
+supported binaries. Setup must prove versions, readiness, cluster registration,
+and exact `squeue --clusters=emrys-ci` observation before its scenario starts.
+The CI-only controller allows the Task cleanup signal horizon before forced
+termination and retains controller and worker file logs; this does not weaken
+the resume boundary or change production Slurm policy. Stop/resume alone limits
+workflow scheduling to one core so the gated native Task has no unrelated active
+Task whose closure could be ambiguous; it retains whole-node exclusive Slurm
+placement. The other scenarios retain allocation-wide workflow parallelism.
+Private service state stays on that runner; the scenario artifact contains only
+bounded operator, runtime, setup, and terminal evidence. Infrastructure
+readiness alone is not proof that an active Task was cancelled or that
+cross-node Viking behavior works.
 
 ## Doctor namespace experiment disposition
 
