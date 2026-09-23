@@ -31,13 +31,12 @@ permission to change or delete the source.
   not executed. A limited pre-draft local-link/heading scan found no missing
   target among 1,006 relative destinations and 369 anchors; that scan does not
   validate this new record and is not the repository's documentation check.
-  The official check could not start here because the checkout has
-  no `.venv` and the available Python lacks `markdown_it`. No dependencies were
-  installed; no CI, Slurm, runtime, or scientific validation was performed.
-  Across later passes, no production workflow, direct test suite, CI job, or
-  cluster operation was run; the tiny failed `--version` fixture is noted below.
-  Retained evidence was not changed. The separately approved Runbook reduction
-  is recorded in the sixth discovery notes.
+  At the initial checkout, the official check could not start: no `.venv`;
+  available Python lacked `markdown_it`. No dependencies were installed.
+  Later passes ran no production workflow, direct suite, CI, cluster, or
+  scientific validation; the failed `--version` fixture is noted below.
+  Retained evidence was unchanged; the approved Runbook reduction is in the
+  sixth discovery notes.
 - Line references below are for the pinned revision. Append the observed
   commit to any later audit pass or newly discovered finding; never silently
   mix revisions in one source claim. “Contradiction” means
@@ -328,7 +327,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 191 records, 77 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 194 records, 77 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -344,7 +343,7 @@ Of 191 records, 77 were dismissed after recheck; linked notes give reasons. The 
 | [F10](docs-01-discoveries.md#f10-contract-location-claim) | Filename overclaim | Two global indexes imply an adjacent `CONTRACT.md` for every component; the decision index gives a less absolute route to that filename, while many owners use READMEs or schemas. | The two explicit filename promises overstate coverage; the decision route is incomplete, and stage-owner wording remains accurate. |
 | [F11](docs-01-discoveries.md#f11-python-hook-scope) | Contradiction | Engineering guide omits root `setup.py` from hook scope. | The guide and hook file disagree on `setup.py` scope. |
 | [F12](docs-01-discoveries.md#f12-init-preview-proposal) | Prior-revision proposal | Polish campaign's dated audit says Init preview shows only destination and directories; normal preview now shows scientific values and selected fields have source-fixture coverage. | The full requested field set is not shown normally; automatic STAR values resolve at creation, so literal preview/published-byte equality is not established. |
-| [F13](docs-01-discoveries.md#f13-doctor-profile-proposal) | Prior-revision proposal | Polish campaign's dated audit says Doctor has no `--profile`; the public option now exists. | The proposal and accepted work/tests have different authority. |
+| [F13](docs-01-discoveries.md#f13-doctor-profile-proposal) | Prior-revision proposal | Polish item 8's dated missing-`--profile` proposal is now covered by CV-07 and the coordinator contract. | A shorter dated owner route may save five to six of 11 lines; preserve original audit tense, selection refusals and no-write limits. No net saving is verified. |
 | [F14](docs-01-discoveries.md#f14-old-source-attestation-cost-candidate) | Historical cost and selection prompt | Dated optimization candidate records 24 former Git calls and still asks future selectors to measure Git and preserve changed-HEAD detection; current task entry observes installed bytes without Git. | Keep the dated count; an 11-to-six-line selection sketch suggests five conditional local lines. Installed bytes and available build origin remain protected, with no measured cost or verified net saving. |
 | [F15](docs-01-discoveries.md#f15-cv-u22-interim-status-prose) | Dismissed after recheck | CV-U22's dated checkpoints explain why the card returned to Open. | The causal sequence has no demonstrated reader conflict or useful DOCS-01 reduction. |
 | [F16](docs-01-discoveries.md#f16-polish-merged-pr-tables) | Compression candidate | Four second-table rows repeat completed polish items; the first table and later #144–147 rows preserve otherwise absent PR-to-slice mappings. | Four physical lines are under review; keep unique mappings, evidence limits, and the linked heading. Net saving is unverified. |
@@ -445,7 +444,7 @@ Of 191 records, 77 were dismissed after recheck; linked notes give reasons. The 
 | [F111](docs-01-discoveries-fourth.md#f111-current-resource-claim-with-old-profile-citations) | Citation provenance | Optimization campaign describes current allocation-aware defaults but links to the fixed-policy profiles from its older audit revision. | Old links remain valid historical citations; no resource performance or runtime result was inferred. |
 | [F112](docs-01-discoveries-fourth.md#f112-r-environment-checks-report-support-claim) | Check-scope overclaim | Scripts index says the R environment checker verifies report support; it checks R dependencies and a headless PDF device, not current HTML report rendering. | PDF readiness is relevant to Step 09 scientific outputs; no report failure or runtime result is inferred. |
 | [F113](docs-01-discoveries-fourth.md#f113-cv-26-mixed-current-rules-and-measurement-history) | Dismissed after recheck | CV-26's 309-line card owns its Open acceptance and four distinct hosted measurement blocks; one optional-E2E caveat repeats at 4011–4012 and 4019–4021. | Earlier Open labels are dated checkpoints; September 21's structural and safety record is unique. No useful compression or saving was established. |
-| [F114](docs-01-discoveries-fourth.md#f114-older-novice-route-in-site-parity-item) | Acceptance-route drift | Polish item 10 routes the novice through site modules and profile selection; current acceptance calls for the Quickstart's one Viking head-node route. | Doctor still coordinates the required storage checks; institutional novice proof remains open. |
+| [F114](docs-01-discoveries-fourth.md#f114-older-novice-route-in-site-parity-item) | Acceptance-route drift | Polish item 10 routes the novice through site modules and profile selection; current acceptance calls for the Quickstart's one Viking head-node route. | A seven-to-nine-line dated route might save eight to ten of 17 lines; retain Doctor's storage checks, exact-revision/site limits and open novice proof. No saving is verified. |
 | [F115](docs-01-discoveries-fourth.md#f115-current-resource-policy-repeated-in-optimization-candidate) | Compression candidate | Optimization candidate 3 repeats current resource policy at 107–113 and CV-U28 provenance/evidence limits at 114–117. | Future measurements at 119–126 are distinct; a seven-line local saving is conditional on correcting F111's stale citations. Repository net saving is unverified. |
 | [F116](docs-01-discoveries-fourth.md#f116-cv-10-current-protocol-beside-cancellation-evidence) | Dismissed after recheck | CV-10 records retry/finalization and Linux subreaper rules beside its open cancellation acceptance and dated evidence. | The delegated card needs that context, exact artifacts, descendant limits, and trust boundary; no separable useful reduction is established. |
 | [F117](docs-01-discoveries-fourth.md#f117-cv-20-current-inspection-beside-submission-history) | Dismissed after recheck | CV-20 records submission/inspection mechanics beside its reconnect/queue acceptance and dated checks. | The delegated card needs request safety and pending institutional evidence in context; no separable useful reduction is established. |
@@ -523,6 +522,9 @@ Of 191 records, 77 were dismissed after recheck; linked notes give reasons. The 
 | [F189](docs-01-discoveries-seventh.md#f189-cv-campaign-related-work-repeats-current-owner-map) | Dismissed after recheck | CV campaign's Related work section gives five distinct relationships and their evidence limits; selected status detail also appears in the main matrix and CV backlog. | A 19-to-16-line sketch saves only three local lines without replacing this relationship map; no useful standalone reduction is established. |
 | [F190](docs-01-discoveries-seventh.md#f190-source-topology-reporting-internal-import-boundary) | Dismissed after recheck | The apparent reporting-import conflict treated Run coordination as a functional owner, but the import guide and checker classify orchestration separately from stage, analysis, and evidence owners. | Seven exact coordinator exceptions are already listed; no unauthorized import or useful documentation correction is established. The checker was not run. |
 | [F191](docs-01-discoveries-seventh.md#f191-console-detail-tiers-in-the-execution-decision) | Console-detail wording drift | An execution decision says verbose and debug progressively expose detail, but `--verbose` is the sole public detail switch and shows both event classes together. | Keep normal/verbose output and durable-log boundaries distinct. This is a static interface comparison, not an observed command failure. |
+| [F192](docs-01-discoveries-seventh.md#f192-release-acceptance-repeated-in-polish-item-30) | Conditional acceptance compression | Polish item 30 restates broad `RELEASE-01` acceptance across 28 lines while adding three distinct alpha support questions. | A 16–18-line owner route could save about 10–12 local lines only if installed-wheel scope, lock/metadata support, old-Run refusal, evidence and publication authority remain. Unverified. |
+| [F193](docs-01-discoveries-seventh.md#f193-r-dependency-closure-repeated-in-polish-item-34) | Conditional acceptance compression | Polish item 34 repeats the accepted `RUNTIME-CLOSURE-01` scope across 15 lines. | A seven-to-nine-line route could save six to eight local lines; retain first-pass omission, namespace-hash limit and the rule that fewer probes do not identify the closure. Unverified. |
+| [F194](docs-01-discoveries-seventh.md#f194-rendered-report-review-repeated-in-polish-item-37) | Conditional review compression | Polish item 37 repeats report review acceptance held by `REPORT-01`–`03` and the shared report criteria, but names extra review cases. | A 12–14-line route could save five to seven local lines only if keyboard, zoom, closed sections, screen-reader, print, copied-bundle and exact-revision limits remain. Unverified. |
 
 ## Discovery notes
 

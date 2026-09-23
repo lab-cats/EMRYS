@@ -242,3 +242,68 @@ records do not establish Viking cancellation, later recovery, scientific or
 biological outcomes. The hosted artifacts have finite retention; future
 availability and any operator-held copies remain unverified. No CI, product
 test, cluster run, push, or dependency installation occurred in this pass.
+
+## Coordinator and polish rescreen at `0985adca`
+
+The full 1,248-line coordinator contract, 734-line Runbook, and 271-line
+Troubleshooting guide were reread against existing DOCS-01 entries and selected
+source. Apparent allocation-ceiling overlap at coordinator lines 721–727 and
+761–764 would save about two local lines only by merging its general capacity
+rule with later exact Slurm-variable behavior; the two locations serve that
+reading sequence, so no useful standalone reduction is established. The
+remaining apparent repeats already have findings or retain distinct admission,
+recovery, and evidence boundaries. This was a static read, not execution.
+
+[F13](docs-01-discoveries.md#f13-doctor-profile-proposal)'s 11-line polish
+item 8 can be reviewed as a five-to-six-line dated owner route: CV-07 and the
+coordinator contract now own default, named, and absolute profile selection,
+binding, no-fallback errors, and no-write diagnosis. The original audit tense
+and heading must remain; no draft, link check or net saving is verified.
+[F114](docs-01-discoveries-fourth.md#f114-older-novice-route-in-site-parity-item)'s
+17-line item 10 might become a seven-to-nine-line dated route to SITE-PARITY-01
+and current Quickstart/Runbook guidance. Keep Doctor's storage checks, separate
+cluster authority, exact-revision site limits, and open novice acceptance.
+Eight to ten local lines are conditional, not a verified saving.
+
+### F192 — Release acceptance repeated in polish item 30
+
+The [polish campaign](polish-campaign.md#30-establish-a-reviewed-alpha-release-path)
+lines 683–710 spends 28 physical lines on release outcome and acceptance already
+summarized by [`RELEASE-01`](backlog_matrix.md#maintainability-and-release) at
+line 71. Its three distinct alpha questions still need a home or concise
+retention: whether the wheel promises full standalone, selected, or paired-
+checkout operation with arbitrary-directory installed-command evidence;
+whether the released lock or wider metadata dependency ranges are supported;
+and how current-format/older-Run refusal preserves data without migration.
+Lines 654–681 separately retain the dated no-release observation, PR #157/#169
+packaging change, dependency-range evidence limit, and approved version policy.
+Publication and new platform support still require separate authority. A
+16–18-line owner route might save about 10–12 local lines from 683–710, but no
+lossless replacement, link check, or net saving was verified.
+
+### F193 — R dependency closure repeated in polish item 34
+
+[Polish item 34](polish-campaign.md#34-cover-the-complete-admitted-r-dependency-closure)
+lines 759–773 spends 15 physical lines restating the accepted
+[`RUNTIME-CLOSURE-01`](backlog_matrix.md#reliability-and-qualification) scope at
+line 163: derive and bind the recursive scientific R package closure, preserve
+normal `renv` cache links, and disable automatic snapshots. Item 34 uniquely
+records its omission from the first campaign pass, that Doctor's namespace-
+tree hashes do not derive recursive roots, and that fewer R probes cannot
+substitute for complete dependency identification. A seven-to-nine-line
+owner route could save about six to eight local lines only with those facts
+retained. No draft, source change, or net saving was verified.
+
+### F194 — Rendered report review repeated in polish item 37
+
+[Polish item 37](polish-campaign.md#37-verify-reports-in-browsers-copied-results-and-print)
+lines 815–833 spends 19 physical lines on review scope also accepted by
+[`REPORT-01`–`03`](backlog_matrix.md#reporting-and-results) and the
+[shared report criteria](backlog_matrix.md#shared-report-acceptance). Its
+structural-test ceiling and absence of an observed defect are distinct; the
+review names keyboard access, zoom/reflow, links into closed sections,
+screen-reader meaning, print completeness, copied-bundle links, supported
+browsers, and evidence bound to an exact revision. Retain the no-third-renderer
+and no-scientific-proof limits. A 12–14-line owner route might save five to
+seven local lines only if those review cases and limits stay accessible.
+No rendered review, guide edit, link check, or net saving occurred here.
