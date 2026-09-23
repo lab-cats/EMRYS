@@ -302,16 +302,13 @@ conflict or useful reduction was found; retain the causal record and status.
 
 [Polish campaign](polish-campaign.md) lines 991–1025 carries two detailed
 tables of merged PRs #116–147: 15 rows and seven rows, about 35 lines. Its
-live purpose is to avoid reselecting finished work; Git already retains
-routine chronology. The first table is not ready for wholesale replacement:
-lines 1008–1009 uniquely map PR #128/#134 and #129/#132/#133 to their slices,
-and the latter trio has no other current Markdown mapping. Their owner and
-evidence crosswalk is unresolved. The second table repeats outcomes at
-450–457, 469–477, and 514–535 for PR #140–143; current owners describe
-#144–147 behavior. Exact #144/#145/#147 PR-to-slice mappings appear only
-in this table; the canonical BAM contract retains #146's create-exclusive
-rule and retired loss boundary. No table saving is verified without those
-mappings. The CodeQL ruleset caveat
+live purpose is to avoid reselecting finished work. The main matrix already
+closes COMPRESS-01 with its evidence ceiling; Git and linked PRs retain the
+routine chronology. Lines 1008–1009 and the #144/#145/#147 rows contain
+PR-to-slice groupings unique in live Markdown, but local commits and current
+owners retain their work and behavior. PR #140–143 outcomes recur at 450–457,
+469–477, and 514–535. Net saving requires a drafted replacement and link
+check. The CodeQL ruleset caveat
 at 984–989, recovery and CS-18 distinctions at 1027–1032, excluded PR #44/#45
 experiments at 1034–1039, and the campaign's evidence ceiling at 35–85 remain
 distinct. The same-file link at line 76 targets the enclosing heading and
@@ -355,9 +352,10 @@ not the date or exact installed package of a reported observation:
 | Architecture hosted CI | `b9cf4767:docs/tasks/architecture_backlog_matrix.md` retains the ARCH-CLOSE records. The current summary omits the ARCH-CLOSE-02 CodeQL run `33640595166` and the explicit limit that the 100,000-pair lane was not selected for ARCH-CLOSE-01/02. |
 | Attempt scale probe | `5511a752:docs/tasks/compression_backlog_matrix.md` is the source dated 2026-09-10; that date identifies the record, not independently the probe execution. |
 
-The current file was created at `fe9f99a5d`, then appended with architecture
-CI at `13983b0f` and the scale probe at `550b5402`. This actual append
-history conflicts with the index's unchanged-record rule. Recoverable Git
+The current file was created at `fe9f99a5d` and appended with architecture
+CI at `13983b0f` before the current record rule was restored; the scale-probe
+append at `550b5402` followed that rule. The live file still conflicts with
+the unchanged-record rule. Recoverable Git
 sources do not make the compendium a lossless replacement: each source has
 unique limits relevant to any future split or transfer.
 The compendium has file-level inbound links from the docs and history indexes
@@ -579,7 +577,9 @@ worker, and validator rules live in the
 The paragraph also appears in [canonical BAM QC](../../tests/evidence/canonical_bam_qc/README.md)
 and [RSeQC](../../tests/evidence/rseqc_orientation/README.md) at lines 5–9
 (`c0cdceb1`). Eight test and six production copies repeat 58 physical lines. The
-preliminary 31–32-line net estimate covers only the original 12 stage files.
+preliminary 31–32-line net estimate covers only the original 12 stage files:
+48 repeated lines become 12 local routes plus 4–5 shared lines. This is a
+conditional layout estimate, not a verified saving.
 At `651d60d5`, nine stage, two evidence, and one analysis contract use the
 same two-line opening routing to the [test index](../../tests/README.md),
 which contains the shared evidence ceiling:
