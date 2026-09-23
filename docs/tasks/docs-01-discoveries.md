@@ -4,7 +4,7 @@ This companion to the [findings matrix](docs-01-audit.md#findings-matrix)
 holds F01–F29 source-backed observations and evidence boundaries. The
 [continued notes](docs-01-discoveries-continued.md) hold F30–F61 and the
 [third file](docs-01-discoveries-third.md) holds F62–F99, and the
-[fourth file](docs-01-discoveries-fourth.md) holds F100–F112. Unless a subsection
+[fourth file](docs-01-discoveries-fourth.md) holds F100–F110. Unless a subsection
 names another revision, all source line references are pinned to
 `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`. These are audit
 observations, not accepted changes or a task-status registry.
@@ -563,10 +563,14 @@ four 12–14, or 18 lines total. The shared Run, worker, and grouped-validator
 rules already live in the [stage index](../../src/emrys/stages/README.md)
 lines 28–40; [stage test index](../../tests/stages/README.md) lines 13–16
 already owns common evidence limits and could route to the common task runner.
-The duplicated generic prose has a preliminary consolidation estimate of
-roughly 31–32 net documentation lines across 12 files; an exact count needs
-a diff. Local commands, coverage, oracle, recovery, and evidence limits are
-distinct from that generic prose. The ten stage
+At local audit head `c0cdceb1`, the same five-line test paragraph also appears
+in [canonical BAM QC](../../tests/evidence/canonical_bam_qc/README.md) and
+[RSeQC](../../tests/evidence/rseqc_orientation/README.md) at lines 5–9. The
+eight test copies total 40 physical lines; with the six stage-owner copies,
+58 physical lines repeat. The preliminary 31–32-line net estimate applies
+only to the original 12-file stage subset; no saving was quantified for the
+two evidence guides. Local commands, coverage, oracle, recovery, and evidence
+limits are distinct from that generic prose. The ten stage
 contracts repeat some map/evidence links, but their local aliases, validators,
 publication, and recovery rules do not justify contract deletion. Step 09 is
 an analysis owner outside this candidate. No reduction is approved or made.

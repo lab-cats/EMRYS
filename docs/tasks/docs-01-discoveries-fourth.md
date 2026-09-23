@@ -1,8 +1,8 @@
 # DOCS-01 discovery notes, fourth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F100–F112. F100–F104 use local audit head `e1771d21`; F105–F108 use
-`b65e8fb8`; F109–F112 use `26898b5e`, all read on 2026-09-22. These are
+holds F100–F110. F100–F104 use local audit head `e1771d21`; F105–F108 use
+`b65e8fb8`; F109–F110 use `26898b5e`, all read on 2026-09-22. These are
 documentation observations, not runtime results, accepted changes, or
 permission to alter retained evidence.
 
@@ -151,41 +151,7 @@ interpretation remain outside EMRYS. The unqualified phrase “scientific
 completion” can conflate that external work with computational Results
 completion; no report or runtime behavior defect is inferred.
 
-### F109 — Repeated runner boundary in test-owner guides
-
-Six stage test guides ([STAR index](../../tests/stages/star_index/README.md),
-[STAR alignment](../../tests/stages/star_alignment/README.md),
-[canonical BAM](../../tests/stages/canonical_bam/README.md),
-[FASTA sidecars](../../tests/stages/fasta_sidecars/README.md),
-[duplicate marking](../../tests/stages/duplicate_marking/README.md), and
-[split N-cigar](../../tests/stages/split_n_cigar/README.md)) plus two evidence
-test guides ([BAM QC](../../tests/evidence/canonical_bam_qc/README.md) and
-[RSeQC](../../tests/evidence/rseqc_orientation/README.md)) repeat the same
-five-line paragraph at lines 5–9. It separates internal worker shell cases,
-shared runner publication/recovery tests, public grouped validator cases, and
-shared evidence limits. The eight copies are 40 physical lines of repeated
-prose. Each guide's first paragraph names unique native coverage, while the
-[test index](../../tests/README.md#evidence-limits) defines common limits and
-the [runner suite](../../tests/orchestration/run_coordinator/test_task.py)
-holds current protection. The 40 lines are a review surface, not a verified
-net saving; local test discoverability remains to be preserved.
-
-### F110 — Repeated Project Run boundary in stage-owner guides
-
-The [STAR index](../../src/emrys/stages/star_index/README.md),
-[STAR alignment](../../src/emrys/stages/star_alignment/README.md),
-[canonical BAM](../../src/emrys/stages/canonical_bam/README.md),
-[FASTA sidecars](../../src/emrys/stages/fasta_sidecars/README.md),
-[duplicate marking](../../src/emrys/stages/duplicate_marking/README.md), and
-[split N-cigar](../../src/emrys/stages/split_n_cigar/README.md) guides each
-repeat a three-line paragraph: use the Project Run, treat the shell command as
-an internal worker, and retain direct grouped validation. The
-[stage index](../../src/emrys/stages/README.md#running-a-stage) lines 32–40
-already owns that shared route. Those 18 physical lines are a duplication
-surface, while each following help block has distinct worker and validator
-commands. No safe reduction or net saving follows from the line count alone.
-
-### F111 — Runtime discovery's interactive publication
+### F109 — Runtime discovery's interactive publication
 
 The [runtime owner guide](../../src/emrys/evidence/runtime_availability/README.md)
 lines 61–63 says `runtime discover --from-project` probes without writing and
@@ -201,11 +167,12 @@ lines 623–631 already describe preview and confirmed publication. A declined
 or noninteractive preview remains no-write. This is owner-guide wording drift;
 no runtime command was executed in the audit.
 
-### F112 — Unrouted study-pairs configuration file
+### F110 — Unrouted study-pairs configuration file
 
 The tracked [three-column pairing roster](../../configs/step_09_pairs.NORAD_EV_PUM1.tsv)
 at lines 1–7 is absent from the [config inventory](../../configs/README.md#what-belongs-here)
-at lines 7–16 and had no path reference in a tracked-text search at audit head.
+at lines 7–16 and had no non-audit reader or caller reference in a tracked-text
+search before this finding was recorded.
 Its six assignments match the [Quickstart table](../../quickstart.md#2-gather-the-study-inputs-and-scientific-choices)
 at lines 83–90. Current [Step 09 contract](../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md)
 lines 22–24 makes the sample manifest the sole pairing authority, and its

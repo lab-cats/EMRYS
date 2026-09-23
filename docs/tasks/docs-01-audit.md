@@ -209,12 +209,13 @@ permission to change or delete the source.
   and extended F22/F33. Matrix and CV evidence repetitions with distinct
   acceptance or measurements were retained as such. No product, test, CI, or
   cluster command was run.
-- A further read-only pass at local head `26898b5e` checked test and stage
-  owner routing, runtime discovery admission, and the EV/PUM1 configuration
-  inventory against current source and tests. It added F109–F112. A proposed
-  Setup/Init conflict was withdrawn because the wording may refer to generic
-  Project setup; the 130-pair test-resource overlap retained distinct owner and
-  acceptance roles. No product, test, CI, or cluster command was run.
+- A further read-only pass at local heads `26898b5e` and `c0cdceb1` checked
+  owner routing, runtime discovery, and the EV/PUM1 configuration inventory.
+  It extended F28 with two evidence test guides and added F109–F110. A
+  proposed Setup/Init conflict was withdrawn as ambiguous, and the 130-pair
+  resource overlap kept distinct owner and acceptance roles. Full rechecks of
+  the coordinator contract and Troubleshooting found no further
+  high-confidence finding. No product, test, CI, or cluster command was run.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -242,7 +243,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 112 numbered records include F87, dismissed after recheck so its original
+The 110 numbered records include F87, dismissed after recheck so its original
 claim and correction remain traceable. The last column records an evidence
 limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -276,7 +277,7 @@ Discovery notes give source references and the boundary for each row.
 | [F25](docs-01-discoveries.md#f25-reporting-decision-versus-migration-history) | Compression candidate | Reporting decision retains predecessor failure provenance and some retired-symbol inventory. | Predecessor and recovery limits are distinct; retired symbols may overlap current owners. |
 | [F26](docs-01-discoveries.md#f26-alpha-carrier-note-in-reporting-readme) | Retained API guidance | Reporting README's five-line carrier note mixes a brief migration phrase with current collaborator API guidance. | Current types and positional guidance remain; isolated trimming has negligible value. |
 | [F27](docs-01-discoveries.md#f27-old-fixed-resource-provenance) | Compression candidate | Resource-profile README repeats old 12-core provenance. | Current resource contract and old fixed-floor provenance have distinct roles. |
-| [F28](docs-01-discoveries.md#f28-repeated-owner-boilerplate) | Compression candidate | Six stage owners and their tests repeat 48 generic lines. | Illustrative 31–32-line saving depends on retaining commands and owner-specific limits. |
+| [F28](docs-01-discoveries.md#f28-repeated-owner-boilerplate) | Compression candidate | Six stage owners and eight stage/evidence test guides repeat 58 generic physical lines. | The illustrative 31–32-line saving covers only the original 12-file stage subset; owner-specific limits remain. |
 | [F29](docs-01-discoveries.md#f29-library-subowner-navigation) | Navigation mismatch | Tests point to a library index that does not route readers to six documented Python subowners. | Six documented subowners are not routed by the test index. |
 | [F30](docs-01-discoveries-continued.md#f30-dashboard-reporting-stage-text) | Product-facing text | Dashboard places final target after reporting and, with a test fixture, retains three reporting operations; current target precedes two reporting operations. | Current reporting-stage and fixture wording conflicts with target order; FINAL and historical rules differ. |
 | [F31](docs-01-discoveries-continued.md#f31-historical-slurm-username-recovery-advice) | Recovery wording | Troubleshooting gives an undated upgrade instruction for a Slurm username incident whose submission fix is already present. | Incident evidence remains dated; current recovery wording is unqualified. |
@@ -357,10 +358,8 @@ Discovery notes give source references and the boundary for each row.
 | [F106](docs-01-discoveries-fourth.md#f106-doctor-storage-plan-proposal-after-slurm-routing-changed) | Stale proposal framing | Polish item 9 describes direct storage planning and a direct-profile workaround for Slurm; current Doctor source and Viking Runbook route differ. | Dated concern survives, but no Doctor run or institutional proof was established. |
 | [F107](docs-01-discoveries-fourth.md#f107-retired-shell-publication-tests-in-a-current-test-guide) | Historical test detail | Shared-library test guide narrates retired shell-publisher faults and links a retained Git revision beside current runner coverage. | Original characterization is unique evidence; current test equivalence and saving unverified. |
 | [F108](docs-01-discoveries-fourth.md#f108-scientific-completion-in-the-run-summary-guide) | Terminology ambiguity | Run-summary guide calls scientific completion external, while inspection and architecture define computational Scientific Results completion. | External review and biological interpretation remain distinct; no behavior defect inferred. |
-| [F109](docs-01-discoveries-fourth.md#f109-repeated-runner-boundary-in-test-owner-guides) | Compression candidate | Eight test-owner guides repeat one five-line internal-worker/runner/validator/evidence paragraph. | Forty repeated physical lines are a review surface, not verified net savings; local coverage remains distinct. |
-| [F110](docs-01-discoveries-fourth.md#f110-repeated-project-run-boundary-in-stage-owner-guides) | Compression candidate | Six stage-owner guides repeat a three-line Project Run/internal-worker/validator route already in the stage index. | Eighteen repeated physical lines exclude distinct owner help commands; no saving established. |
-| [F111](docs-01-discoveries-fourth.md#f111-runtime-discoverys-interactive-publication) | No-write wording | Runtime owner guide says discovery without `--execute` does not write; affirmative terminal confirmation publishes, as source and direct fixture show. | Declined or noninteractive previews remain no-write; no runtime command ran in the audit. |
-| [F112](docs-01-discoveries-fourth.md#f112-unrouted-study-pairs-configuration-file) | Configuration inventory | Tracked three-column EV/PUM1 pairing roster is unindexed, with no tracked text reference found, while current Step 09 uses the six-column sample manifest. | Historical use is unverified; neither deletion nor current Step 09 admission is inferred. |
+| [F109](docs-01-discoveries-fourth.md#f109-runtime-discoverys-interactive-publication) | No-write wording | Runtime owner guide says discovery without `--execute` does not write; affirmative terminal confirmation publishes, as source and direct fixture show. | Declined or noninteractive previews remain no-write; no runtime command ran in the audit. |
+| [F110](docs-01-discoveries-fourth.md#f110-unrouted-study-pairs-configuration-file) | Configuration inventory | Tracked three-column EV/PUM1 pairing roster is unindexed, with no pre-audit reader or caller reference found; current Step 09 uses the six-column sample manifest. | Historical use is unverified; neither deletion nor current Step 09 admission is inferred. |
 
 ## Discovery notes
 
