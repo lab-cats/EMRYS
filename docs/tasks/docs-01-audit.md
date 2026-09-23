@@ -344,8 +344,11 @@ permission to change or delete the source.
   contract. F52 gained a third current use of ambiguous “regeneration.”
   CV-23's unique cleanup rationale and the brief Slurm-preview card crosslinks
   did not establish separate compression candidates. Owner-guide comparison
-  added F138–F139 for fault-test placement and a storage reader route. No
-  product, test, CI, or cluster command ran.
+  added F138–F139 for fault-test placement and a storage reader route. At
+  `f239a91d`, an adversarial recheck dismissed F138 and tightened F134,
+  F136, and F137. No product, test, CI, or cluster command ran.
+- Read-only pass `f239a91d` added F140; full Runbook/Troubleshooting rereads
+  found no distinct operator candidate. No product, test, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -374,7 +377,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 139 numbered records include F41, F43, F87, and F130, dismissed after recheck so
+The 140 numbered records include F41, F43, F87, F130, and F138, dismissed after recheck so
 their original claims and corrections remain traceable. The last column records
 an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -516,10 +519,11 @@ Discovery notes give source references and the boundary for each row.
 | [F133](docs-01-discoveries-fifth.md#f133-fourteen-workflow-owners-labeled-scientific) | Reader-label ambiguity | Architecture guide calls all fourteen built-in workflow owners scientific, while its own boundary and the stage map classify two as evidence collectors. | The count is correct; this wording alone implies no graph, execution, or scientific-result defect. |
 | [F134](docs-01-discoveries-fifth.md#f134-cv-25-implementation-account-beside-current-log-owners) | Evidence placement | Completed CV-25 mixes a roughly 58-line implementation and verification account with current log-discovery mechanics already owned by the coordinator. | Original need, accepted interface, exact checks, hosted-only completion, and institutional/retirement limits remain; no 58-line saving is established. |
 | [F135](docs-01-discoveries-fifth.md#f135-cv-24-repeats-the-current-watch-action-protocol) | Compression candidate | CV-24 repeats current watch `p`/`b`/`s` action rules held by the coordinator contract and operator Runbook. | Selected action scope, new-analysis choice, tests, and institutional limits remain distinct; no safe saving is established. |
-| [F136](docs-01-discoveries-fifth.md#f136-private-planning-helper-narration-in-the-coordinator-contract) | Compression candidate | Coordinator contract names private materialization helpers and their caller's local results inside public planning guidance. | Public composition and path/command/resource guarantees remain; three-line review span is not an approved deletion. |
-| [F137](docs-01-discoveries-fifth.md#f137-reporting-artifact-format-in-the-coordinator-contract) | Ownership candidate | Coordinator contract repeats reporting manifest, receipt, and output-format detail held by the reporting owner. | Two-transaction order, separate science/reporting admission, and Run-root map remain coordinator-owned; no full five-line saving proved. |
-| [F138](docs-01-discoveries-fifth.md#f138-reporting-fault-test-detail-in-the-production-guide) | Evidence placement | Reporting production guide repeats test-specific fault-injection and callback detail held by the reporting test guide. | Production source/input recheck guarantees and test fault coverage remain; six-line review span is not a net saving. |
+| [F136](docs-01-discoveries-fifth.md#f136-private-planning-helper-narration-in-the-coordinator-contract) | Compression candidate | Coordinator contract names private materialization helpers and their caller's local results inside public planning guidance. | Public composition and path/command/resource guarantees remain; four-line review span is not an approved deletion. |
+| [F137](docs-01-discoveries-fifth.md#f137-reporting-artifact-format-in-the-coordinator-contract) | Ownership candidate | Coordinator contract repeats reporting manifest, receipt, and output-format detail held by the reporting owner. | Two-transaction order, validation meaning, separate science/reporting admission, and Run-root map remain; no full four-line saving proved. |
+| [F138](docs-01-discoveries-fifth.md#f138-reporting-fault-test-detail-in-the-production-guide) | Dismissed after recheck | Reporting owner guide links the fault-test guide but does not repeat its monkeypatch mechanics. | Brief source/input recheck guarantees belong with production; no unnecessary detail or saving is established. |
 | [F139](docs-01-discoveries-fifth.md#f139-storage-command-route-in-the-evidence-index) | Reader-route ambiguity | Evidence index lists the manual storage debug command without distinguishing Doctor's normal storage-qualification path. | Index may catalog commands; manual phase and residue limits remain distinct. No command was run. |
+| [F140](docs-01-discoveries-fifth.md#f140-generic-selection-policy-repeated-in-the-polish-campaign) | Compression candidate | Polish campaign repeats a five-bullet generic selection checklist already governed by workflow and architecture guardrails. | Its tooling exception, separate-selection warning, and dated source audit remain; 21-line review span is not a proved saving. |
 
 ## Discovery notes
 

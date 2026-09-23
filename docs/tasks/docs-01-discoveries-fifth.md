@@ -1,8 +1,9 @@
 # DOCS-01 discovery notes, fifth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F130–F139. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
-F132–F133 use `935adf06`, and F134–F139 use `ebc0012d` on that date.
+holds F130–F140. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
+F132–F133 use `935adf06`, F134–F139 use `ebc0012d`, and F140 uses `f239a91d`
+on that date. F138 was dismissed on adversarial recheck at `f239a91d`.
 F130 was dismissed as a duplicate on recheck at local head `935adf06`.
 Source and direct tests were read, not executed. These are documentation
 observations, not runtime results, accepted changes, or permission to alter
@@ -71,8 +72,8 @@ The completed [CV-25 card](cluster_verification_backlog.md#cv-25-log-discovery-a
 lines 3689–3746 spends roughly 58 lines on the Task-log, started-stream, and
 Run-selected log-discovery implementation and verification sequence. The
 [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 532–555 and 663–671 owns current log-root precedence, association,
-Task-stream admission, and diagnostic limits; the [Runbook](../operations/RUNBOOK.md)
+lines 532–555, 663–671, and 1184–1196 owns current log-root precedence,
+association, Task-log admission, and diagnostic limits; the [Runbook](../operations/RUNBOOK.md)
 lines 17–37 gives the operator's selected-Run route. The CV card mixes current
 mechanics with dated test and CI genealogy. Its original E01–E06 discovery
 need, explicit-identity/no-guessed-latest acceptance, hosted-only Completed
@@ -99,38 +100,37 @@ no safe saving is established.
 The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 852–858 states the public planning composition, then names private
 `_tasks` and `_task_commands` helpers and their caller's three local results
-at 854–856. [Materialization source](../../src/emrys/orchestration/run_coordinator/materialization.py)
+at 854–857. [Materialization source](../../src/emrys/orchestration/run_coordinator/materialization.py)
 lines 328, 891, and 1042–1059 confirms the implementation; the
 [coordinator index](../../src/emrys/orchestration/run_coordinator/README.md)
 lines 29–40 already maps `materialization.py` to planning. The helper names
 have no evident public or recovery role. Preserve the planning contract and
-special path, command, and resource guarantees around this three-line span;
+special path, command, and resource guarantees around this four-line span;
 no deletion is approved or measured here.
 
 ### F137 — Reporting artifact format in the coordinator contract
 
 The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 1218–1222 lists manifest fields, JSON-last order, excluded record/index
+lines 1219–1222 lists manifest fields, JSON-last order, excluded record/index
 files, and HTML receipt/output facts. The [reporting owner](../../src/emrys/reporting/README.md)
-lines 10–20 and 38–40 already owns these exact artifact details and its
-publication section at 66–79 owns create-only and receipt-last behavior.
+lines 10–20 and 38–40 owns the manifest and HTML roster; its publication
+section at 66–79 owns create-only and receipt-last behavior. The
+[artifact-index owner](../../src/emrys/reporting/_artifact_index/README.md)
+lines 25–28 and 62–69 adds validation-result meaning and its limits.
 Keep the coordinator's two-transaction sequence and independent science and
 reporting admission at 1203–1218, plus its Run-root location map at 1230–1244.
-The five-line overlap is a placement candidate, not a demonstrated full
+The four-line overlap is a placement candidate, not a demonstrated full
 saving; caller links and recovery boundaries require review before transfer.
 
 ### F138 — Reporting fault-test detail in the production guide
 
-The [reporting owner guide](../../src/emrys/reporting/README.md) lines 114–119
-has an “Implementation and fault tests” section that repeats monkeypatch,
-source-observer, and input-recheck detail in the
-[reporting test guide](../../tests/reporting/README.md#fault-injection)
-lines 11–24. Current source retains the observers and recheck callbacks in
-`_artifact_index/models.py:102`, `_artifact_index/context.py:243–249`, and
-`_run_report/publication.py:91–99`; this is a placement observation, not a
-claim that the protection is obsolete. Preserve the production guarantee
-that source and inputs are rechecked, plus test-specific fault coverage. The
-six-line span is a review surface, not a verified net saving.
+**Dismissed after recheck.** The [reporting owner guide](../../src/emrys/reporting/README.md)
+lines 114–119 links the [test guide](../../tests/reporting/README.md#fault-injection)
+for injection points; it does not repeat monkeypatch mechanics. Its brief
+source-observer and input-recheck statements describe surviving production
+guarantees. The test guide explains how its fixtures exercise them. The
+original six-line overlap claim does not establish unnecessary detail or a
+safe saving; the number remains to trace this correction.
 
 ### F139 — Storage command route in the evidence index
 
@@ -144,3 +144,19 @@ command catalog, but does not distinguish routine qualification from the
 manual two-phase procedure. This is a reader-route ambiguity only. Preserve
 the manual command, its phase and residue cautions, and Doctor's ordinary
 qualification route; no storage command was run.
+
+### F140 — Generic selection policy repeated in the polish campaign
+
+The [polish campaign](polish-campaign.md) lines 87–107 gives a five-bullet,
+21-line generic procedure for each selected slice: scope and caller review,
+existing-owner/tool choice, separate footprint accounting, immutable Run and
+evidence protection, and local/CI evidence levels. The
+[workflow](../operations/WORKFLOW.md) lines 9–18, 29–65, and 69–85 already
+owns this selection and delivery process; the
+[architecture guardrails](../design/decisions/platform-direction.md) lines
+73–108 own its permanent compression and approval boundaries. The
+[REDUCE-01 row](backlog_matrix.md) line 66 owns behavior classification and
+accounting for that accepted work. The campaign's tooling-only footprint
+exception at lines 98–101 and separate-selection warning at 13–20 remain
+specific, as does its dated source audit at 35–80. This 21-line scope is a
+review surface, not a verified saving or permission to remove evidence.
