@@ -198,6 +198,11 @@ permission to change or delete the source.
   F49, and F51 had citation precision corrected. The matrix's final column
   now records audit boundaries rather than implementation directions. No
   product guide, source, test, CI, or cluster operation changed.
+- A further read-only pass at local head `e1771d21` compared the coordinator
+  contract, operator routes, and sample-manifest owner guidance with current
+  sources and prior findings. It added F100–F104. Trusted-workspace and
+  `/local/tmp` warnings were checked as operator-relevant overlaps, with no
+  saving inferred. No product, test, CI, or cluster command was run.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -225,7 +230,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 99 numbered records include F87, dismissed after recheck so its original
+The 104 numbered records include F87, dismissed after recheck so its original
 claim and correction remain traceable. The last column records an evidence
 limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -331,12 +336,18 @@ Discovery notes give source references and the boundary for each row.
 | [F97](docs-01-discoveries-third.md#f97-past-audit-priority-order-in-polish-campaign) | Historical selection order | Polish campaign keeps nine lines of second/third-pass priorities whose proposals and accepted status are recorded elsewhere. | Nine lines are a review surface; measurement prerequisites and dated decisions remain distinct. |
 | [F98](docs-01-discoveries-third.md#f98-worker-prerequisites-inside-validation-sections) | Contract placement | Step 00c and Step 05 validation sections repeat Java/GATK/hash-launcher prerequisites used by internal workers, not their grouped validators. | Worker policy and validator input/evidence limits remain distinct. |
 | [F99](docs-01-discoveries-third.md#f99-step-07-data-inputs-versus-run-gate) | Execution-order wording | Step 07 says it needs only Step 06 BAM/BAI files, while the admitted Run waits for the Step 06 verified marker before starting it. | Worker data inputs and Run scheduling differ; no runtime defect is inferred. |
+| [F100](docs-01-discoveries-fourth.md#f100-gtf-worker-detail-in-the-coordinator-contract) | Owner-detail overlap | Coordinator runner section repeats the GTF worker's shared-normalization fact already in its stage contract. | Runner publication and recovery rules remain distinct; no saving established. |
+| [F101](docs-01-discoveries-fourth.md#f101-retired-reporting-memory-recovery-advice-in-the-contract) | Audience placement | Coordinator contract alone gives operator removal advice for a rejected retired profile field; profile guide owns authoring. | Rejection behavior is current owner detail; the old control's effectiveness was not replayed. |
+| [F102](docs-01-discoveries-fourth.md#f102-historical-e09-example-in-current-lifecycle-rules) | Evidence placement | Lifecycle contract names the historical E09 Run after stating its generic missing-evidence rule; the CV register and card retain E09. | E09 cause and old-Run recovery remain unverified; current eligibility is distinct. |
+| [F103](docs-01-discoveries-fourth.md#f103-unpublished-fastq-experiment-in-the-owner-guide) | Historical owner detail | Sample-manifest guide mixes current helper limits with a described unpublished `awk` draft, exact NUL-header counterexample, and logical-pass count. | The direct test module has no NUL case; no measured I/O, deletable span, or saving established. |
+| [F104](docs-01-discoveries-fourth.md#f104-automatic-reports-after-successful-computation) | Operator wording | Runbook says successful computation generates both reports; full Runs invoke reporting by default, but science can complete while reporting is incomplete. | Quickstart and Runbook require separate reporting admission; no behavior defect inferred. |
 
 ## Discovery notes
 
-The [first discovery notes](docs-01-discoveries.md) and
-[continued notes](docs-01-discoveries-continued.md), plus the
-[third file](docs-01-discoveries-third.md), give sources, uncertainty, and
+The [first discovery notes](docs-01-discoveries.md),
+[continued notes](docs-01-discoveries-continued.md),
+[third file](docs-01-discoveries-third.md), and
+[fourth file](docs-01-discoveries-fourth.md) give sources, uncertainty, and
 preservation boundaries for every matrix row. The temporary split keeps each
 document below the 600-line review threshold.
 

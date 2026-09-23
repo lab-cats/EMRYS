@@ -3,7 +3,8 @@
 This companion to the [findings matrix](docs-01-audit.md#findings-matrix)
 holds F01–F29 source-backed observations and evidence boundaries. The
 [continued notes](docs-01-discoveries-continued.md) hold F30–F61 and the
-[third file](docs-01-discoveries-third.md) holds F62–F99. Unless a subsection
+[third file](docs-01-discoveries-third.md) holds F62–F99, and the
+[fourth file](docs-01-discoveries-fourth.md) holds F100–F104. Unless a subsection
 names another revision, all source line references are pinned to
 `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`. These are audit
 observations, not accepted changes or a task-status registry.
