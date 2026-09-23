@@ -325,8 +325,7 @@ permission to change or delete the source.
 - At `ebc0012d`, coordinator/owner/CV review added F134–F139; F52 gained
   “regeneration.” At `f239a91d`, recheck dismissed F138, narrowed F134/F136/F137,
   and added F140; CV-23/Slurm-preview/operator rereads found no new candidate.
-- At `d18470c8`, five-word shingles across 1,515 paragraphs in 170
-  non-audit Markdown files found 59 matches; paraphrases could escape.
+- At `d18470c8`, five-word shingles across 1,515 paragraphs found 59 matches; paraphrases could escape.
 - At `2398f144`/`f347216d`, F01–F153 were rechecked against cited owners;
   F45/F79 were dismissed and F38/F40/F75/F86/F96/F129/F143 narrowed.
 - At `3ea9c2b1`–`d55baa91`, F154–F159/F94 were added or refined;
@@ -358,7 +357,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 160 records, 15 were dismissed after recheck: F41, F43, F45, F79, F87,
+Of 161 records, 15 were dismissed after recheck: F41, F43, F45, F79, F87,
 F113, F130, F138, F144–F146, F148–F149, F153, and F155. Their corrections
 remain traceable; the final column states evidence limits, not work orders.
 
@@ -524,6 +523,7 @@ remain traceable; the final column states evidence limits, not work orders.
 | [F158](docs-01-discoveries-fifth.md#f158-campaign-delivery-prose-beside-the-closure-checklist) | Checklist overlap | CV campaign's Delivery approach restates parts of the single remaining-closure checklist in the main matrix. | Repetition centers on 128–133 and parts of 135–142; preserve unique institutional combinations, charter completion criteria, E01–E12 and evidence limits. |
 | [F159](docs-01-discoveries-fifth.md#f159-polish-integration-genealogy-repeated-in-its-introduction) | Compression candidate | Polish campaign repeats PR integration genealogy and hosted-CI references in its opening and later selection account, beside its merged-work map and the main matrix's accepted evidence. | Spans 68–76 and 109–118 are under review, not savings; retain exact audit/test-tree identity, CS-20/22 evidence, the map route, and remaining-owner limits. |
 | [F160](docs-01-discoveries-fifth.md#f160-accepted-follow-up-scope-repeated-in-the-polish-introduction) | Scope repetition | Polish campaign introduction repeats seven accepted follow-up IDs, the 600-line and 25% targets, and cluster-closure exclusion already in the main matrix. | Two live links target its heading; novice-guide/INIT pre-closure scope is distinct. The nine-line span is a review surface, not a verified saving. |
+| [F161](docs-01-discoveries-fifth.md#f161-final-resource-summary-repeated-in-the-configuration-guide) | Intra-guide repetition | Config guide's final Slurm/tool resource section repeats its earlier coordinator-policy route and measurement cautions. | Keep the Runbook benchmark link and placement-reader context; nine lines are under review, not a measured saving. |
 
 ## Discovery notes
 

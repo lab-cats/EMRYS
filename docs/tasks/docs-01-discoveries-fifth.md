@@ -1,13 +1,14 @@
 # DOCS-01 discovery notes, fifth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F130–F160. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
+holds F130–F161. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
 F132–F133 use `935adf06`, F134–F139 use `ebc0012d`, and F140 uses `f239a91d`
 on that date. F141–F143 use `1eb562f0`; F144–F145 use `f91b8303` on that
 date; F146–F148 use `cc5c1f58`; F149–F153 use `a3310af6`.
 F154–F158 use `3ea9c2b1`, read on 2026-09-23 and rechecked at `238e8035`.
 F159 uses `688f7117`, read on 2026-09-23.
 F160 uses `60ec53e1`, read on 2026-09-23.
+F161 uses `22972af4`, read on 2026-09-23.
 At `d55baa91`, read on 2026-09-23, adversarial review dismissed
 F144–F146/F148–F149/F153 and narrowed F150/F159. Selected test/CI guides
 yielded no separate high-confidence finding.
@@ -488,6 +489,20 @@ novice-guide/INIT-01–03 pre-closure tranche. Preserve those links and that
 separate cluster boundary; the matrix remains the sole status authority.
 The nine-line span is a review surface, not a verified deletion or saving.
 
+### F161 — Final resource summary repeated in the configuration guide
+
+At local audit head `22972af4`, the [configuration guide](../../configs/README.md)
+lines 381–389 closes with a Slurm/tool resource section. Its coordinator-policy
+route repeats lines 235–237 and 275–279; allocation-aware shares appear at
+281–287 and the native-control owner route at 346–350. Its warning that
+declarations are not measured utilization/performance echoes the no-saturation
+and planning-minimum limits at 285–286 and 326–328. The
+[Runbook benchmark link](../operations/RUNBOOK.md#resource-benchmarking) at
+388–389 is a distinct reader route to preserve, as may be context after the
+placement table. This nine-line span is under review, not a verified saving.
+[F123](docs-01-discoveries-fourth.md#f123-repeated-stage-resource-defaults-in-the-configuration-guide)
+covers the separate stage-default table.
+
 ## Additional reviewed overlaps without a saving claim
 
 The [Runbook](../operations/RUNBOOK.md) lines 106–111 repeats palette and
@@ -504,3 +519,10 @@ what already existed at its dated audit. Current owner, operator, test, and CI
 routes cover those mechanisms, but the negative baseline explains selection.
 It belongs with [F16](docs-01-discoveries.md#f16-polish-merged-pr-tables)'s
 overlap review; this pass found no separate deletion or saving.
+
+The configuration guide's guided-Init account at lines 77–94 overlaps the
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 103–124, but Project authors may need its strandedness, comparison,
+default, and inactive-background explanation. No safe saving was established.
+All 49 test/fixture READMEs were reread against selected source and CI; F28,
+F69, F77, F78, F82, F107, and F147 retain their stated evidence limits.
