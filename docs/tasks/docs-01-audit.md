@@ -338,17 +338,17 @@ permission to change or delete the source.
   limit on its saved-home mismatch. Selected early, middle, and later rows
   otherwise retained their cited limits. No product, test, CI, or cluster
   command ran.
-- A read-only owner and delegated-card pass at local head `ebc0012d` added
-  F134–F137 for current log/action rules repeated inside CV-25/CV-24 and
-  private-helper/report-artifact detail inside the full 1,248-line coordinator
-  contract. F52 gained a third current use of ambiguous “regeneration.”
-  CV-23's unique cleanup rationale and the brief Slurm-preview card crosslinks
-  did not establish separate compression candidates. Owner-guide comparison
-  added F138–F139 for fault-test placement and a storage reader route. At
-  `f239a91d`, an adversarial recheck dismissed F138 and tightened F134,
-  F136, and F137. No product, test, CI, or cluster command ran.
-- Read-only pass `f239a91d` added F140; full Runbook/Troubleshooting rereads
-  found no distinct operator candidate. No product, test, CI, or cluster command ran.
+- At `ebc0012d`, owner/CV review added F134–F139 after a full coordinator
+  contract read; F52 gained another “regeneration” citation. CV-23 and
+  Slurm-preview overlap retained distinct roles. At `f239a91d`, adversarial
+  recheck dismissed F138 and narrowed F134/F136/F137; design/history added
+  F140. Full Runbook/Troubleshooting rereads found no new operator candidate.
+  Source and tests were read; no product, test, CI, or cluster command ran.
+- At `d18470c8`, a five-word-shingle scan of 1,515 qualifying paragraphs in
+  170 non-audit Markdown files found 59 cross-file near-match pairs. Material
+  matches were already F28/F91 or owner-specific; paraphrases can escape this
+  bounded scan. F71/F107 gained scope limits, and F127's count was pinned to
+  its revision. No product, test, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -370,7 +370,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 | --- | --- | --- |
 | Scientist and operator paths | All nine root and operations Markdown files, configuration guide, and all three reference guides; selected routes compared with CLI source and direct tests | Remaining claim-to-source paths and an executed operator journey are unverified. |
 | Architecture and decisions | All 19 architecture, design, and reference Markdown/Mermaid files, including all three diagrams; selected provider and schema claims compared with source | Remaining source implications and visual rendering are unverified. |
-| Task and evidence records | All eight task/history Markdown files; 61 CV index entries reconciled to card endings | Original evidence origins and retained artifacts still need independent verification. |
+| Task and evidence records | All eight baseline task/history Markdown files (excluding this audit's six files); 61 CV index entries reconciled to card endings | Original evidence origins and retained artifacts still need independent verification. |
 | Product owners | All 62 source READMEs and all 15 owner contracts, including a full recheck of the 1,248-line coordinator contract and focused production comparisons | Remaining code and schema claims beyond selected owner paths. |
 | Tests, scripts, and CI | All 53 Markdown files in these trees, plus selected source assertions, direct test cases, and documentation-check code | Executable checks were not run; compare remaining code, fixtures, and retained evidence. |
 | Non-Markdown notices | Root `LICENSE` and `NOTICE` plus the bundled renv MIT text were inspected for file-location references | License meaning and third-party compliance were not evaluated. |
@@ -454,7 +454,7 @@ Discovery notes give source references and the boundary for each row.
 | [F68](docs-01-discoveries-third.md#f68-slurm-diagnostic-artifact-bounds) | Evidence-scope overclaim | CI guide calls uploaded Slurm diagnostics bounded and redacted; setup and terminal capture write full status and journals without those transformations. | Private accounting files are excluded; no artifact contents or disclosure were assessed. |
 | [F69](docs-01-discoveries-third.md#f69-python-shard-inventory-scope) | Test-scope overclaim | Baseline and test-tool guide call shard receipts complete, but two test files are excluded from their inventory. | Ordinary CI runs them separately; scheduled or selected-only shards do not establish all-test coverage. |
 | [F70](docs-01-discoveries-third.md#f70-omitted-site-does-not-always-mean-direct) | Conditional reader-route error | Runbook says omitting `--site` creates a direct profile; `EMRYS_SITE=viking` from process or saved settings makes both Init parsers select Slurm. | This does not affect the no-default case; no command was run. |
-| [F71](docs-01-discoveries-third.md#f71-quickstart-projects-home-default-and-later-path) | Conditional reader-route error | Quickstart says later commands use the Projects home accepted during setup, but validation and reconnect hard-code the repository Projects path. | An inherited alternate home changes the saved real-study destination; the Smoke Test uses an explicit synthetic path. No command was run. |
+| [F71](docs-01-discoveries-third.md#f71-quickstart-projects-home-default-and-later-path) | Conditional reader-route error | Quickstart and the Projects index imply the checkout Projects home, while later real-study paths hard-code it. | An inherited alternate home changes the saved real-study destination; the Smoke Test uses an explicit synthetic path. No command was run. |
 | [F72](docs-01-discoveries-third.md#f72-automatic-reporting-scope-for-processing-only-runs) | Run-scope wording | Reporting owner README says Run/resume report automatically unless disabled; successful processing-only Runs have reporting not applicable. | The owner contract and direct fixture distinguish full from partial Runs. |
 | [F73](docs-01-discoveries-third.md#f73-profile-create-explicit-placement-requirement) | Conditional CLI wording | Coordinator contract says profile creation requires explicit site or placement; the parser accepts inherited `EMRYS_SITE` as the selection. | Explicit selection remains required with no site default. |
 | [F74](docs-01-discoveries-third.md#f74-final-check-command-omits-r-library-prerequisite) | Command prerequisite | Engineering guide's displayed `all-checks` command supplies Rscript but not the existing `RENV_LIBRARY` required by its guarded-R lane. | The command can pass that gate only when the library variable is already supplied. |
@@ -490,7 +490,7 @@ Discovery notes give source references and the boundary for each row.
 | [F104](docs-01-discoveries-fourth.md#f104-automatic-reports-after-successful-computation) | Operator wording | Runbook says successful computation generates both reports; full Runs invoke reporting by default, but science can complete while reporting is incomplete. | Quickstart and Runbook require separate reporting admission; no behavior defect inferred. |
 | [F105](docs-01-discoveries-fourth.md#f105-retired-scheduler-wrapper-in-the-stage-map) | Historical graph explanation | Stage map opens its “Current operational coupling” section with a retired Step 00a wrapper while also stating durable no-edge semantics for 00b/00c. | External-input and no-index dependencies remain current owner rules; no graph defect or safe saving is established. |
 | [F106](docs-01-discoveries-fourth.md#f106-doctor-storage-plan-proposal-after-slurm-routing-changed) | Stale proposal framing | Polish item 9 describes direct storage planning and a direct-profile workaround for Slurm; current Doctor source and Viking Runbook route differ. | Dated concern survives, but no Doctor run or institutional proof was established. |
-| [F107](docs-01-discoveries-fourth.md#f107-retired-shell-publication-tests-in-a-current-test-guide) | Historical detail placement | Shared-library test guide and three current owner contracts retain distinct failures from retired direct-write publishers beside current runner coverage. | Original characterization and runner tests cover different publishers; TERM equivalence, evidence transfer, and any saving remain unverified. |
+| [F107](docs-01-discoveries-fourth.md#f107-retired-shell-publication-tests-in-a-current-test-guide) | Historical detail placement | Shared-library test guide and six current owner contracts retain distinct failures from retired direct-write publishers beside current runner coverage. | Old fault oracles remain; TERM equivalence, transfer, and saving remain unverified. |
 | [F108](docs-01-discoveries-fourth.md#f108-scientific-completion-in-the-run-summary-guide) | Terminology ambiguity | Run-summary guide calls scientific completion external, while inspection and architecture define computational Scientific Results completion. | External review and biological interpretation remain distinct; no behavior defect inferred. |
 | [F109](docs-01-discoveries-fourth.md#f109-runtime-discoverys-interactive-publication) | No-write wording | Runtime owner guide says discovery without `--execute` does not write; affirmative terminal confirmation publishes, as source and direct fixture show. | Declined or noninteractive previews remain no-write; no runtime command ran in the audit. |
 | [F110](docs-01-discoveries-fourth.md#f110-unrouted-study-pairs-configuration-file) | Configuration inventory | Tracked three-column EV/PUM1 roster is unindexed and repeats Quickstart's six pairings; current Init writes the six-column sample manifest that Step 09 admits. | Historical use is unverified; matching values do not authorize deletion or make the old roster a current Step 09 input. |

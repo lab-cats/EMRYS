@@ -172,6 +172,12 @@ readers through the Quickstart but creates its disposable synthetic Project at
 an explicit repository `Projects/emrys-smoke` path. That synthetic command does
 not use the saved home; returning to the real-study Quickstart still inherits
 the named-Init versus hard-coded-`cd` mismatch when a different home was saved.
+
+At local audit head `d18470c8`, the [Projects index](../../Projects/README.md)
+lines 3–6 also says named Init from the repository root creates each Project
+there. That route has the same inherited-home exception; it is accurate when
+setup actually selected the checkout's `Projects` directory.
+
 The same Quickstart lines say to leave the optional log root empty, while an
 inherited `EMRYS_LOG_ROOT` is saved without prompting at onboarding lines
 237–250. These are conditional reader-route mismatches, not failures in a

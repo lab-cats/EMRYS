@@ -160,6 +160,16 @@ staging. The shared [publication decision](../design/decisions/execution-evidenc
 states the lasting runner boundary but not these distinct old failure modes.
 This expands the placement review, not the authority to remove evidence.
 
+At local audit head `d18470c8`, three more current contracts retain distinct
+retired-writer history: [scientific context](../../src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/CONTRACT.md)
+lines 107–112 record a link/anchor interruption gap;
+[SplitNCigarReads](../../src/emrys/stages/split_n_cigar/CONTRACT.md) lines 62–69
+record ignored restoration failure; and
+[canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md) lines 82–120
+record cleanup limits and a characterized lost-predecessor sequence. Their
+current refusal and residue guidance remains owner-specific; the canonical
+loss has retained old source and a fault oracle. No safe saving follows.
+
 ### F108 — Scientific completion in the run-summary guide
 
 The [run-summary guide](../../src/emrys/reporting/_run_summary/README.md)
@@ -502,15 +512,16 @@ blocks, one macOS skip, and six excluded isolated child cases. The
 [CV-U20 card](cluster_verification_backlog.md) lines 1264–1279 records 554
 focused tests but repeats the 169/13 snapshot and six-case environment limit.
 Both cards continue with later acceptance wording at lines
-659–668 and 1315–1329. The current tree has 175 tracked Markdown files and
-14 Quickstart Bash fences. Git blame dates the 169/13 and six-case text to
-September 16 commits `1dcc0ce4b` and `024bd5dbc`, while CV-U20's adjacent
-policy and test-count wording changed September 21. A prose-introduction commit
-does not establish the revision actually checked, and neither card names one
-beside its local totals. This is routine validation chronology beside active
-acceptance, not evidence that those historical checks failed. The skipped-case,
-installed-environment, no-cluster, and no-scientific-proof limits remain
-material evidence; their deletion is not authorized by this finding.
+659–668 and 1315–1329. At audit head `777345b6`, the tree had 175 tracked
+Markdown files and 14 Quickstart Bash fences. Git blame dates the 169/13 and
+six-case text to September 16 commits `1dcc0ce4b` and `024bd5dbc`, while
+CV-U20's adjacent policy and test-count wording changed September 21. A
+prose-introduction commit does not establish the checked revision. Neither
+card names one beside its local totals. This is routine validation chronology
+beside active acceptance, not evidence that those historical checks failed.
+The skipped-case, installed-environment, no-cluster, and no-scientific-proof
+limits remain material evidence; their deletion is not authorized by this
+finding.
 
 ### F128 — Tool-specific thread effects in the coordinator contract
 
