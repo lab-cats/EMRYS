@@ -63,25 +63,25 @@ receive link checks. The gate neither parses Mermaid grammar nor renders it.
 
 ### F33 — Report receipt version in the scientist diagram
 
-The linked [scientist-facing diagram](../architecture/diagrams/current_user_pipeline.mmd)
-line 15 groups summary TSV with two HTML reports and says a validated v4
-receipt comes last. [Reporting](../../src/emrys/reporting/README.md) lines
-10–16 and 29–49 separates summary JSON/TSVs in the artifact-summary
-publication from HTML and `report_outputs.tsv` under Results. The
-[artifact schema index](../../src/emrys/contracts/schemas/artifacts/README.md)
-lines 3–8 identify artifact entries v4, Run result manifest v8, and report
-receipt v8. The diagram's grouping and receipt label conflict with these
-separate formats. The diagram is non-authoritative, but it is the
-architecture's linked reader path at `docs/architecture/ARCHITECTURE.md:56`.
-The same node says “Read-only reporting.” Reporting reads and does not change
-the successful scientific Run, but `emrys report --execute` creates absent
-owned outputs ([reporting owner](../../src/emrys/reporting/README.md) lines
-3–16). Scientific-input immutability and create-only report publication
-are distinct; the diagram can read as if no files are written.
-The [test baseline](../design/TEST_BASELINE.md) lines 108–111 calls this
-“report read-only behavior”; the [glossary](../reference/GLOSSARY.md) line 71
-calls Results a “read-only home.” Both can conflate immutable scientific
-inputs with absent report outputs. No report transaction defect is inferred.
+The linked [scientist diagram](../architecture/diagrams/current_user_pipeline.mmd)
+line 15 groups summary TSV with two HTML reports and labels their receipt v4.
+The [reporting owner](../../src/emrys/reporting/README.md) lines 10–16,
+29–49 separates summary JSON/TSVs under artifact-summary from HTML and
+`report_outputs.tsv` under Results; the [schema index](../../src/emrys/contracts/schemas/artifacts/README.md)
+lines 3–8 names artifact entries v4, Run result manifest v8, and report
+receipt v8. The architecture links this non-authoritative diagram at line 56.
+
+That node also says “Read-only reporting.” Reporting leaves the successful
+Run unchanged, but `emrys report --execute` creates absent owned outputs
+([reporting owner](../../src/emrys/reporting/README.md) lines 3–16).
+The [test baseline](../design/TEST_BASELINE.md) lines 108–111,
+[glossary](../reference/GLOSSARY.md) line 71,
+[architecture](../architecture/ARCHITECTURE.md) lines 19–33, and
+[platform decision](../design/decisions/platform-direction.md) lines
+180–188 also call reporting/Results read-only despite independent or
+regenerable reports. This may mean immutable scientific inputs, but can imply
+no output creation. It is one wording ambiguity, not a transaction defect
+or safe deletion candidate.
 
 ### F34 — Prepared finalization in the reliability diagram
 

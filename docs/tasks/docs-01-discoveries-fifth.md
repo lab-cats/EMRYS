@@ -10,6 +10,11 @@ F159 uses `688f7117`, read on 2026-09-23.
 At `d55baa91`, read on 2026-09-23, adversarial review dismissed
 F144–F146/F148–F149/F153 and narrowed F150/F159. Selected test/CI guides
 yielded no separate high-confidence finding.
+At `1ddd14ea`, a read-only pass compared the ingestion, shared-contract,
+architecture, and decision guides with their source and direct tests. It found
+no distinct new candidate; the architecture and platform decision extend F33's
+existing Results/report-publication wording question. Root, Quickstart,
+configuration, and smoke-guide rereads also found no distinct candidate.
 F138 was dismissed on
 adversarial recheck at `f239a91d`.
 F130 was dismissed as a duplicate on recheck at local head `935adf06`.
