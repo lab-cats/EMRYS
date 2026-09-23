@@ -45,12 +45,15 @@ lines 114–122 is a nine-line review span; line 114 also ends the preceding
 sentence. The span restates the selected test-owned profile,
 allocation-derived CPU/memory, 2048 MiB fixture-only minimum, disposable
 Slurm request, parallelizable-lane policy, and hosted-versus-Viking evidence
-limit. [CV-U06](cluster_verification_backlog.md#cv-u06-available-resources)
-lines 505–521 holds the detailed selected follow-up. A two-to-three-line
-owner route could save roughly five to six checklist lines only if the exact
-selected-profile identity and evidence ceiling remain accessible. The CV
-backlog is delegated and temporary, so durable ownership of those details
-must be settled before any eventual retirement. This is not a verified saving.
+limit. The durable [test-tool guide](../../tests/tools/README.md) lines 25–30
+already owns the fixture floor, allocation-aware defaults, disposable Slurm
+request, and performance ceiling. [CV-U06](cluster_verification_backlog.md#cv-u06-available-resources)
+lines 505–521 adds the selected-profile history and the all-visible-CPU versus
+ordered-serial CI rule; that rule has no identified durable owner outside the
+main checklist. A two-to-three-line checklist route could save roughly five to
+six lines only if it retains that rule or routes to a durable owner, and the
+exact selected-profile identity and evidence ceiling remain accessible. This
+is not a verified saving.
 
 ### F167 — CV campaign remaining-delivery summary repeats matrix
 
@@ -72,19 +75,16 @@ No drafted replacement or link check has verified a saving.
 
 ### F168 — Scheduler stream names repeated in the logging contract
 
-The [logging contract](../design/LOGGING_CONTRACT.md) lines 202–213 spends
-12 physical lines on Slurm stream names, legacy readers, and application-log
-separation. The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 420–429 already owns the exact v4 Run/resume/report and Doctor names,
-stream patterns, and v1–v3 `emrys-local-pilot` compatibility. Logging line 202
-locates streams under Project logs; 210–213 explain their separation from the
-application log, that dry-run opens neither, and that the delegate opens one
-application attempt with scheduler identity as correlation only. The later
-`submission_context` and selected-request rules at 215–235 remain distinct.
-A compact owner route might save five to seven lines from this span, conditional
-on a usable coordinator link: its current broad heading does not land near
-420–429. No tracked Markdown link targets the logging section heading, but
-the heading remains a useful boundary. No draft or net saving was verified.
+**Dismissed after recheck at `65397ad9`.** This overlaps dismissed
+[F22](docs-01-discoveries.md#f22-coordinator-cross-owner-detail), which already
+compared [logging contract](../design/LOGGING_CONTRACT.md) lines 191–235 with
+the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 410–429, 461–468, and 691–698. The 202–213 review span repeats current
+and legacy scheduler names, but also locates Project streams, separates them
+from application logs, says dry-run opens neither, and limits scheduler identity
+to correlation metadata. Coordinator request admission and logging diagnostics
+serve distinct readers. This entry's proposed five-to-seven-line saving added
+no new evidence to reverse F22's conclusion; no useful reduction is established.
 
 ### F169 — Runtime Discover display rule repeated in the coordinator contract
 

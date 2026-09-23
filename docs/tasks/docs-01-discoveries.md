@@ -397,7 +397,7 @@ its artifact, cache, shared-page, missed-peak and cancellation limits.
 
 ### F20 — Independent golden migration comparisons
 
-[Golden README](../../tests/contract_integration/independent_contract_goldens/README.md)
+**Dismissed after recheck at `65397ad9`.** [Golden README](../../tests/contract_integration/independent_contract_goldens/README.md)
 lines 3–10 explains current literal oracles and their evidence ceiling. Lines
 12–57 then record successive schema and renderer migrations, including exact
 byte-identity comparisons. Most comparisons at lines 12–41 do not name the
@@ -421,7 +421,7 @@ At pinned audit revision `b3af5d9e`, a read-only Git comparison of the literal
 scientific digest unchanged across `2fc9e68e`, `8499b75e`, `f4435527`, and
 `4c67b371`, and changed at `ef321aa1` and `8a75f588` where the prose describes
 rendering or link changes. This supports the stated fixture lineage, not an
-independent renderer replay or proof of the original HTML comparison.
+independent renderer replay or proof of the original HTML comparison. No useful DOCS-01 reduction is established.
 
 ### F21 — Coordinator contract's no-write section
 
