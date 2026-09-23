@@ -48,27 +48,28 @@ without submission. These are local fixtures, not hosted or Viking proof.
 The contract's trusted-workspace/equal-byte recycled-inode limit at 1021–1027
 and the CV backlog's pending verification at 70–77 remain in force.
 
-### F02 — Standalone resource floor
+### F02 — Standalone capacity wording
 
-The [Runbook](../operations/RUNBOOK.md) lines 223–230 requires at least 12 CPUs
-and 240 GiB for the default workflow. The packaged
+The [Runbook](../operations/RUNBOOK.md) lines 223–230 says the default workflow
+uses process-visible capacity, then says its “retained concurrent-stage
+allowances” require at least 12 CPUs and 240 GiB. It does not name the workload
+or concurrency shape those numbers preserve. The packaged
 [default profile](../../src/emrys/orchestration/run_coordinator/resources/default_execution.yaml)
-lines 4–14 selects allocation-based cores and automatic concurrency; the
+lines 4–38 selects allocation-based budgets and automatic concurrency; the
 [resource resolver](../../src/emrys/contracts/orchestration/application_model.py)
-lines 842–879 admits what fits and refuses a task that cannot fit. A source
-test at `tests/orchestration/run_coordinator/test_execution_profile.py:66–112`
-shows that direct and Viking defaults share the resource policy and resolves
-it on a synthetic 11-CPU/65,536-MiB allocation. This disproves a fixed
-*policy admission* floor; it is not a standalone-host Run or proof that this
-capacity suits real data. The profile still has per-task planning minima,
-including 40,960 MiB for STAR alignment; singleton stages use the workflow
-envelope. The [config guide](../../configs/README.md) lines 281–286 says fixed
-caps were removed and 324–328 says minima are planning numbers, not dataset
-bounds. The coordinator contract lines 721–727 treats visible RAM as a
-ceiling, not guaranteed free memory, and 788–789 says Snakemake does not
-enforce per-process RSS. CV-U28 institutional resource verification remains
-pending. Actual planned admission, available memory, disk, and study workload
-sizing remain distinct from a fixed policy floor.
+lines 842–891 fits task concurrency to workload count, cores, and memory
+minimums. The [source fixture](../../tests/orchestration/run_coordinator/test_execution_profile.py)
+lines 66–112 shows that direct and Viking defaults share policy; an 11-CPU,
+65,536-MiB six-sample allocation resolves one concurrent STAR task. This
+rules out a fixed 12/240 policy-resolution floor; it does not refute the
+qualified higher-concurrency claim. Six STAR tasks at the declared 40,960-MiB
+minimum need 240 GiB; 12 CPUs yield two threads each. That is a policy
+calculation, not measured capacity. The [config guide](../../configs/README.md)
+says fixed caps are gone (lines 281–286) and minima are planning numbers,
+not dataset bounds (lines 324–328). The coordinator contract treats visible
+RAM as a ceiling, not guaranteed free memory (721–727), and says Snakemake
+does not enforce per-process RSS (788–789). CV-U28's institutional verification
+remains pending.
 
 ### F03 — INIT-02 in cluster summaries
 
@@ -567,26 +568,26 @@ or speedup conclusion follows from the duplicate origin text.
 ### F28 — Repeated owner boilerplate
 
 Six shell-stage test READMEs (`canonical_bam`, `duplicate_marking`,
-`fasta_sidecars`, `split_n_cigar`, `star_alignment`, and `star_index`) repeat
-the same five-line runner/evidence paragraph at lines 5–9: 30 lines total.
-Their first paragraphs state owner-specific coverage and evidence limits.
-Six corresponding production READMEs repeat the same three-line execution
-paragraph: `duplicate_marking` 10–12, `split_n_cigar` 11–13, and the other
-four 12–14, or 18 lines total. The shared Run, worker, and grouped-validator
-rules already live in the [stage index](../../src/emrys/stages/README.md)
-lines 28–40; [stage test index](../../tests/stages/README.md) lines 13–16
-already owns common evidence limits and could route to the common task runner.
-At local audit head `c0cdceb1`, the same five-line test paragraph also appears
-in [canonical BAM QC](../../tests/evidence/canonical_bam_qc/README.md) and
-[RSeQC](../../tests/evidence/rseqc_orientation/README.md) at lines 5–9. The
-eight test copies total 40 physical lines; with the six stage-owner copies,
-58 physical lines repeat. The preliminary 31–32-line net estimate applies
-only to the original 12-file stage subset; no saving was quantified for the
-two evidence guides. Local commands, coverage, oracle, recovery, and evidence
-limits are distinct from that generic prose. The ten stage
-contracts repeat some map/evidence links, but their local aliases, validators,
-publication, and recovery rules do not justify contract deletion. Step 09 is
-an analysis owner outside this candidate. No reduction is approved or made.
+`fasta_sidecars`, `split_n_cigar`, `star_alignment`, `star_index`) repeat a
+five-line runner/evidence paragraph at lines 5–9 (30 lines). Their six
+production READMEs repeat a three-line execution paragraph (18 lines):
+`duplicate_marking` 10–12, `split_n_cigar` 11–13, others 12–14. Shared Run,
+worker, and validator rules live in the
+[stage index](../../src/emrys/stages/README.md) lines 28–40; the
+[stage test index](../../tests/stages/README.md) lines 13–16 owns common
+evidence limits. At `c0cdceb1`, the five-line test paragraph also appeared in
+[canonical BAM QC](../../tests/evidence/canonical_bam_qc/README.md) and
+[RSeQC](../../tests/evidence/rseqc_orientation/README.md) at lines 5–9. Eight
+test copies plus six production copies repeat 58 physical lines. The
+preliminary 31–32-line net estimate covers only the original 12 stage files.
+At `651d60d5`, nine stage, two evidence, and one analysis contract use the
+same two-line opening linked to the shared
+[test evidence ceiling](../../tests/README.md#evidence-limits):
+24 physical lines in the review span. Some second lines continue with unique
+owner limits. [Canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md)
+has a different two-line version at 177–178. Owner-specific coverage, oracles,
+recovery, and scientific limits remain distinct. No additional saving is
+established, and no contract deletion is approved.
 
 ### F29 — Library subowner navigation
 

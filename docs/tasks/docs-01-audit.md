@@ -338,17 +338,17 @@ permission to change or delete the source.
   limit on its saved-home mismatch. Selected early, middle, and later rows
   otherwise retained their cited limits. No product, test, CI, or cluster
   command ran.
-- At `ebc0012d`, owner/CV review added F134–F139 after a full coordinator
-  contract read; F52 gained “regeneration.” At `f239a91d`, recheck dismissed
-  F138, narrowed F134/F136/F137 and added F140. CV-23 and Slurm-preview
-  overlap retained distinct roles; full Runbook/Troubleshooting rereads found
-  no new candidate. No product, test, CI, or cluster command ran.
+- At `ebc0012d`, full coordinator/owner/CV review added F134–F139; F52 gained
+  “regeneration.” At `f239a91d`, recheck dismissed F138, narrowed
+  F134/F136/F137 and added F140. CV-23/Slurm-preview and operator-guide
+  rereads found no new candidate. No product, test, CI, or cluster command ran.
 - At `d18470c8`, a five-word-shingle scan of 1,515 paragraphs in 170
   non-audit Markdown files found 59 cross-file near matches, already F28/F91
   or owner-specific; paraphrases can escape. F71/F107 gained scope limits,
   and F127's count was pinned. No product, test, CI, or cluster command ran.
-- At `3cfe4eff`, focused owner, tooling, and evidence rechecks added no new
-  ID; the live CV table sharpened F94. No product, test, CI, or cluster ran.
+- At `3cfe4eff`/`651d60d5`, owner, tooling, evidence, operator, coordinator,
+  and adversarial finding rechecks added no new ID; F94/F02/F28 were refined.
+  No product, test, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -385,7 +385,7 @@ Discovery notes give source references and the boundary for each row.
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
 | [F01](docs-01-discoveries.md#f01-public-stop-in-the-platform-decision) | Contradiction | Platform decision denies public stop and limits resume to failed/interrupted Runs; exact-request stop and prepared finalization exist, while top-level resume help retains the narrow label. | Decision and help scope differ from current source; CV-18's evidence limit remains. |
-| [F02](docs-01-discoveries.md#f02-standalone-resource-floor) | Contradiction | Runbook gives a fixed 12-CPU/240-GiB standalone floor; defaults resolve against capacity and reject unmet task minima. | The fixed floor is a guide claim; real-data capacity remains unqualified. |
+| [F02](docs-01-discoveries.md#f02-standalone-capacity-wording) | Sizing ambiguity | Runbook says 12 CPUs/240 GiB retain concurrent-stage allowances without naming the workload or concurrency shape; the default policy resolves a smaller fixture with one concurrent STAR task. | The fixture does not refute the qualified concurrency claim or prove real-study capacity; institutional execution remains unverified. |
 | [F03](docs-01-discoveries.md#f03-init-02-in-cluster-summaries) | Summary overclaim | Grouped CV summaries call INIT-01–03 source-complete while INIT-02 remains Open; detailed cards describe explicit manifest selection. | Explicit-manifest proof and dated cards remain distinct from INIT-02 acceptance. |
 | [F04](docs-01-discoveries.md#f04-root-quickstart-description) | Reader route | Root README calls Quickstart a synthetic first Run; Quickstart leads with real EV/PUM1 and makes smoke optional. | Quickstart leads with EV/PUM1; smoke is optional. |
 | [F05](docs-01-discoveries.md#f05-generic-study-versus-named-evpum1-route) | Reader route | At baseline, two “own study” Runbook routes point into fixed EV/PUM1 choices. At pinned revision `0cb5d507`, the choice route is clearer, but the Quickstart continuation still uses the named Project and Slurm. | The generic route remains unverified as a reader journey. |
@@ -411,7 +411,7 @@ Discovery notes give source references and the boundary for each row.
 | [F25](docs-01-discoveries.md#f25-reporting-decision-versus-migration-history) | Compression candidate | Reporting decision retains predecessor failure provenance and some retired-symbol inventory. | Predecessor and recovery limits are distinct; retired symbols may overlap current owners. |
 | [F26](docs-01-discoveries.md#f26-alpha-carrier-note-in-reporting-readme) | Retained API guidance | Reporting README's five-line carrier note mixes a brief migration phrase with current collaborator API guidance. | Current types and positional guidance remain; isolated trimming has negligible value. |
 | [F27](docs-01-discoveries.md#f27-old-fixed-resource-provenance) | Compression candidate | Resource-profile README repeats four lines of old 12-core origin provenance already retained in CV-U28. | Current resource policy and capacity limits remain owner-local; the historical review span is not a verified saving. |
-| [F28](docs-01-discoveries.md#f28-repeated-owner-boilerplate) | Compression candidate | Six stage owners and eight stage/evidence test guides repeat 58 generic physical lines. | The illustrative 31–32-line saving covers only the original 12-file stage subset; owner-specific limits remain. |
+| [F28](docs-01-discoveries.md#f28-repeated-owner-boilerplate) | Compression candidate | Six stage owners and eight stage/evidence test guides repeat 58 generic physical lines; twelve owner-contract evidence-ceiling openings occupy a further 24-line review span. | The illustrative 31–32-line saving covers only the original 12-file stage subset; some contract lines have unique continuations and no further net saving is verified. |
 | [F29](docs-01-discoveries.md#f29-library-subowner-navigation) | Navigation mismatch | Tests point to a library index that does not route readers to six documented Python subowners. | Six documented subowners are not routed by the test index. |
 | [F30](docs-01-discoveries-continued.md#f30-dashboard-reporting-stage-text) | Product-facing text | Dashboard places final target after reporting and, with a test fixture, retains three reporting operations; current target precedes two reporting operations. | Current reporting-stage and fixture wording conflicts with target order; FINAL and historical rules differ. |
 | [F31](docs-01-discoveries-continued.md#f31-historical-slurm-username-recovery-advice) | Recovery wording | Troubleshooting gives an undated upgrade instruction for a Slurm username incident whose submission fix is already present. | Incident evidence remains dated; current recovery wording is unqualified. |
