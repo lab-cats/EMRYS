@@ -1159,7 +1159,7 @@ def _assert_ci_allocation_resources(
     ) != allocation.get("memory_mb"):
         raise DriverError(
             "assert-parity",
-            "Hosted Run did not resolve the selected CPU and observed memory policy",
+            "Hosted Run did not resolve the selected policy against its observed allocation",
         )
     sample_stage_ids = ("01", "02", "02b", "03", "04", "05", "06")
     symbolic_concurrency = symbolic.get("stage_concurrency", {})
