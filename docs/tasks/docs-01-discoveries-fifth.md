@@ -1,10 +1,10 @@
 # DOCS-01 discovery notes, fifth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F130–F145. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
+holds F130–F148. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
 F132–F133 use `935adf06`, F134–F139 use `ebc0012d`, and F140 uses `f239a91d`
 on that date. F141–F143 use `1eb562f0`; F144–F145 use `f91b8303` on that
-date. F138 was dismissed on
+date; F146–F148 use `cc5c1f58`. F138 was dismissed on
 adversarial recheck at `f239a91d`.
 F130 was dismissed as a duplicate on recheck at local head `935adf06`.
 Source and direct tests were read, not executed. These are documentation
@@ -238,3 +238,57 @@ summary and report operations, while the
 at 30–36 binds artifact inputs. This ten-line review span is not
 a verified saving: the stage-specific adapter IDs and consumer edges remain,
 and readers must still find the promise that reports do not rerun stages.
+
+### F146 — Scale-probe interpretation in the current coordinator contract
+
+At local audit head `cc5c1f58`, the
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+at 950–953 states current graph sharing, worker decoding, exact-byte rechecks,
+and the absence of a shared mutable Attempt-manifest evidence cache. The link
+and summary of the dated
+local Attempt-manifest scale probe span 953–955; line 953 also finishes the
+current no-cache rule. The
+[evidence record](../history/validation-evidence.md#immutable-attempt-manifest-scale-probe)
+at 153–174 already holds the measurement method, before/after values, and
+limits. [Graph construction](../../src/emrys/workflow/Snakefile) at 217–250
+and [task admission](../../src/emrys/orchestration/run_coordinator/task.py)
+at 334–355 support graph/worker admission;
+[inspection](../../src/emrys/orchestration/run_coordinator/_inspection_attempts.py)
+at 137–160 and [reuse](../../src/emrys/orchestration/run_coordinator/control.py)
+at 523–543 independently reload evidence. A pure canonical-validation cache
+in the [contract API](../../src/emrys/contracts/orchestration/api.py) at
+720–747 is a different boundary. Review only the historical summary
+within that mixed span; the safety rules and link to retained evidence remain
+useful. No transfer, deletion, or saving is established.
+
+### F147 — Computation scope in the contract-golden guides
+
+At local audit head `cc5c1f58`, the
+[contract-integration index](../../tests/contract_integration/README.md)
+at 6–7 calls its goldens “computational examples,” and the
+[golden guide](../../tests/contract_integration/independent_contract_goldens/README.md)
+at 8–10 says they characterize “serialization and computation.” The current
+[direct cases](../../tests/contract_integration/independent_contract_goldens/test_independent_contract_goldens.py)
+at 178–277 protect literal schemas, headers, canonical JSON/TSV, receipt
+projection, and rendered scientific/evidence HTML. Its
+[rendering input](../../tests/contract_integration/independent_contract_goldens/report_html_input.json)
+at 25 points to a prewritten incomplete Run summary, not a computed Step 09
+result. The [test baseline](../design/TEST_BASELINE.md) at 63–65 separately
+routes Step 09 statistics and estimability to the
+[CMH oracle](../../tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_oracle.py).
+“Computation” could mean HTML rendering, but the broad labels leave the
+numerical boundary unclear. Preserve the literal and rendering protections;
+no test failure or biological proof follows from this wording.
+
+### F148 — Repeated synthetic-fixture guidance in three nested indexes
+
+At local audit head `cc5c1f58`, the [artifact-fixture index](../../tests/contracts/artifacts/fixtures/README.md)
+at 3–7, [historically named schema fixture guide](../../tests/contracts/artifacts/fixtures/artifact_schema_v2/README.md)
+at 3–8, and [valid-example guide](../../tests/contracts/artifacts/fixtures/artifact_schema_v2/valid/README.md)
+at 3–8 restate current-schema, reviewed synthetic-input, and evidence-limit
+guidance across 17 physical content lines. The parent routes artifact and
+receipt fixtures to the contract tests; the middle explains that its directory
+name is historical; the leaf names exact examples and bars expectations
+generated from production serializers. Those reader and independent-oracle
+rules need to survive any compression. The span is not a measured net saving,
+and no fixture or test change is authorized by this audit.

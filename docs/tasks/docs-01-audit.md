@@ -323,11 +323,8 @@ permission to change or delete the source.
   distinct claim. The older local-check totals were not replayed; source and
   tests were read without product, CI, or cluster execution.
 - A test-guide, evidence-owner, and schema-language pass at local head
-  `3ebfb2bf` added F130 for an eight-guide paragraph repetition and F131 for
-  the glossary's unqualified receipt-validation wording. F107 now includes
-  three current owner contracts' distinct retired-writer histories. Other
-  bounded tooling and schema-index comparisons found no additional distinct
-  claim. No product, test, CI, or cluster command ran.
+  `3ebfb2bf` added F130–F131, extended F107 to three owner contracts, and
+  found no other distinct tooling or schema-index claim. No execution ran.
 - An adversarial read-only recheck at local head `935adf06` found that F130
   repeats F28 and dismissed it. F05 and F23 now mark their opening Runbook
   descriptions as pre-compression baseline; F07 cites the current categorical
@@ -372,7 +369,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 145 numbered records include F41, F43, F87, F130, and F138, dismissed after recheck so
+The 148 numbered records include F41, F43, F87, F130, and F138, dismissed after recheck so
 their original claims and corrections remain traceable. The last column records
 an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -524,6 +521,9 @@ Discovery notes give source references and the boundary for each row.
 | [F143](docs-01-discoveries-fifth.md#f143-unrouted-reporting-run-contract-example) | Unrouted example | Eight-line run-contract example has no filename-specific tracked link or call site found; current coordinator projects the six-field record. | The config guide generically routes specialist examples; external readers and safe deletion or saving remain unverified. |
 | [F144](docs-01-discoveries-fifth.md#f144-shared-runtime-replacement-repeated-in-adjacent-recovery-cases) | Recovery repetition | Troubleshooting repeats the shared-selection and same-source `--replace` restriction in adjacent failure cases. | Each case has distinct inspection, fresh-verification, and evidence-preservation guidance; nine lines are a review span, not a saving estimate. |
 | [F145](docs-01-discoveries-fifth.md#f145-downstream-reporting-role-repeated-in-stage-contracts) | Contract repetition | Five stage contracts repeat two-line artifact-indexing and reporting consumption prose after their unique adapter lists. | Current adapter IDs, consumer edges, and the no-rerun rule remain; ten lines are a review span, not a saving estimate. |
+| [F146](docs-01-discoveries-fifth.md#f146-scale-probe-interpretation-in-the-current-coordinator-contract) | History placement | Coordinator contract summarizes a dated local Attempt-manifest scale probe already retained in the evidence record. | Graph sharing, worker decoding, exact-byte rechecks, and the rule against a shared mutable evidence cache remain current; the mixed three-line span is under review, not a proved saving. |
+| [F147](docs-01-discoveries-fifth.md#f147-computation-scope-in-the-contract-golden-guides) | Evidence-scope ambiguity | Contract-golden guides mention “computational examples” and “computation” without naming the protected computation; direct cases cover serialization and HTML rendering, with Step 09 numerical oracles elsewhere. | Literal goldens and rendering checks remain; this is a reader-scope clarification, not evidence that the tests fail. |
+| [F148](docs-01-discoveries-fifth.md#f148-repeated-synthetic-fixture-guidance-in-three-nested-indexes) | Nested-guide repetition | Three artifact-fixture READMEs restate current-schema, synthetic-input, and evidence-limit guidance across a 17-line review span. | Historical directory-name explanation, exact fixture routes, and independent expectation rules remain; no net saving is established. |
 
 ## Discovery notes
 

@@ -475,8 +475,11 @@ workflow-environment checks before its institutional R restore procedure.
 The [engineering guide](../operations/ENGINEERING_CONVENTIONS.md) lines 77–85
 already lists developer lock checks. The displayed `r-restore` and `r-check`
 [Make targets](../../scripts/make_quality.mk) lines 92–110 invoke R without
-uv; this source path does not establish the Python checks as direct command
-prerequisites. The Runbook's R 4.6.1, external `RENV_PROJECT`, library/cache,
+uv; the [restore script](../../src/emrys/resources/runtime/restore_r_environment.R)
+at 43–82 requires `RENV_PROJECT`, R 4.6.1, and an existing selected renv
+lockfile before restoring.
+This path does not establish Python checks as direct command prerequisites.
+The Runbook's R 4.6.1, external `RENV_PROJECT`, library/cache,
 check, and recovery instructions at lines 696–726 serve a separate operator
 need. Whether the preceding Python checks are an independent institutional
 policy gate is unverified; no restoration was run.
