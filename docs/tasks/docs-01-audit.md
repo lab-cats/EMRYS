@@ -169,6 +169,11 @@ permission to change or delete the source.
   their apparent discrepancies were already F01–F88 or were owner-specific
   protections. Operator-route comparison added F89. No command, test, CI run,
   or cluster operation was initiated for this pass.
+- The next read-only compression pass at local head `9c0264d3` compared
+  operator, source-owner, and task/history prose with their distinct audience
+  and evidence authorities. It added F90–F93 and extended F85 to the delegated
+  CV index. The measured 77- and 48-line surfaces are review scopes, not
+  approved savings. No guide, source, test, CI, or cluster action was run.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -286,11 +291,15 @@ and the boundary for each row.
 | [F82](docs-01-discoveries-third.md#f82-reference-provenance-private-test-calls) | Test-scope wording | Reference-provenance test guide says private reconciler calls only inject failures; the suite also calls parsing, rendering, and publication directly. | Direct private coverage and public-command coverage remain distinct; tests were not run. |
 | [F83](docs-01-discoveries-third.md#f83-direct-host-study-versus-allocation-only-rule) | Placement-scope question | Delivery decision limits heavy science to Slurm allocations, while root and Runbook admit own-data Runs on approved non-Slurm compute hosts. | The intended boundary for a direct study is unstated; no runtime safety conclusion follows. |
 | [F84](docs-01-discoveries-third.md#f84-copied-init-manifest-path-fields) | Conditional copy wording | Config guide says named Init copies and retains supplied manifest content; Init resolves relative FASTQ and regions-file paths to absolute paths when publishing the Project manifests. | The path referents are retained, but the persisted path fields can differ; no Run was executed. |
-| [F85](docs-01-discoveries-third.md#f85-undefined-report-roster-status) | Status vocabulary | Main matrix defines six states, but `REPORT-ROSTER-01` uses `Needs decision`; the polish campaign calls it open. | The pending decision remains; this audit does not assign a task status or implementation authority. |
+| [F85](docs-01-discoveries-third.md#f85-status-vocabulary-exceptions) | Status vocabulary | Main matrix defines six states, but `REPORT-ROSTER-01` uses `Needs decision`; the delegated CV index labels CV-12 `Discard` under Status. | CV-12 has an explicit terminal disposition; neither decision nor acceptance is reopened. |
 | [F86](docs-01-discoveries-third.md#f86-step-02b-parallel-validation-claim) | Execution-order wording | Step 02b contract says it may overlap the Step 02 validator; the current Run graph waits for Step 02's verified marker, which follows validation. | An internal worker's local input needs are distinct from the admitted Run order; no Run was executed. |
 | [F87](docs-01-discoveries-third.md#f87-step-05-scratch-owner-in-optimization-candidate) | Historical owner drift | Optimization candidate attributes Step 05 GATK spill placement to its worker; the current runner supplies output-adjacent scratch and binds the worker's temp options. | The candidate's storage and performance question remains unmeasured; no placement change is inferred. |
 | [F88](docs-01-discoveries-third.md#f88-old-slurm-memory-preflight-proposal) | Prior-revision proposal | Polish item 36 calls explicit Slurm memory preflight missing; current `SCHED-01` records the implemented check with verification still pending. | The institutional heterogeneous-node limit remains open; no new software proof is inferred. |
 | [F89](docs-01-discoveries-third.md#f89-one-run-wording-before-run-creation) | Operator precondition ambiguity | Runbook says a ready Project has one Run immediately before `emrys run`; the command plans a new Run and refuses an existing Run with Attempts. | A pristine committed Run without an Attempt is a narrow exception; no command was exercised. |
+| [F90](docs-01-discoveries-third.md#f90-completed-tooling-history-in-polish-campaign) | Compression candidate | Five completed polish sections repeat `CI-01`, `DEV-01`, and `CLI-VERSION-01` status and hosted-CI genealogy already recorded in the main matrix. | Their 77 physical lines include unique fixes, measurements, and evidence limits; 77 is not an estimated saving. |
+| [F91](docs-01-discoveries-third.md#f91-repeated-stage-and-evidence-contract-openings) | Compression candidate | Twelve stage/evidence contract openings use 48 lines to restate aliases and stage-map ownership alongside distinct local command roles. | Only an illustrative 12–24-line net opportunity remains after local roles; no edit or saving was verified. |
+| [F92](docs-01-discoveries-third.md#f92-python-lock-checks-before-institutional-r-restoration) | Audience and prerequisite question | Runbook places Python lock checks before institutional R restoration; developer guidance owns similar checks, while the shown R Make targets do not invoke uv. | Whether this is an independent operator gate remains unverified; the R procedure is unique. |
+| [F93](docs-01-discoveries-third.md#f93-repeated-partition-selector-rule) | Small duplication | Config guide twice states that `--region` and `--regions-file` can combine only with unique partition IDs. | The intervening coordinate examples and separate manifest exclusions remain distinct. |
 
 ## Discovery notes
 
@@ -325,3 +334,15 @@ The canonical BAM, partitioned mpileup, and candidate-preprocessing contracts
 also record exact recovery or evidence limits. Compression must preserve those
 limits and the owner-local check IDs rather than treat all repeated checks as
 redundant.
+
+The Runbook's report-opening summary and terminal-transfer procedure repeat
+eligibility and complete-tree language, but the latter adds exact selection
+and a warning against copying during publication. Troubleshooting repeats
+the coordinator's trusted-workspace limit where a recovery reader needs it.
+The Quickstart output table repeats owner rosters but supplies first-time
+navigation through copied Results. These overlaps alone establish no safe
+reduction. Polish items 29–30 retain external-provider and release evidence
+boundaries that the accepted `EXTENSION-01` and `RELEASE-01` rows summarize.
+The test-tool guide overlaps CV-01's selected journey but uniquely states
+request-token stream matching and its guarded emergency-cancellation limit;
+those current driver rules have no demonstrated net reduction.

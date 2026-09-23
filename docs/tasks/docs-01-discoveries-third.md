@@ -5,7 +5,7 @@ holds F62 onward. F62–F64 use PR head `b67e0eeb`; F65–F66 began at
 `cf94af08`, with F66 extended at `9c4fafdc`; F67–F70 use `c0a6027a`;
 F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`; F74–F77 use `ab25ea9b`;
 F78–F83 use PR head `7a07d502`; F84–F88 use `ce9a3289`;
-F89 uses local head `39a21034`,
+F89 uses local head `39a21034`; F90–F93 and the F85 extension use `9c0264d3`,
 all read on 2026-09-22.
 These are documentation observations, not runtime results or accepted changes.
 
@@ -332,7 +332,7 @@ Project use, while supplied external manifests cross an Init boundary.
 “Copy” preserves the referenced inputs but can change path fields and bytes.
 No Init or Run was executed in this audit.
 
-### F85 — Undefined REPORT-ROSTER status
+### F85 — Status vocabulary exceptions
 
 The [main backlog](backlog_matrix.md) lines 24–29 defines Open, In progress,
 Verification pending, Deferred, Completed, and Closed. Its active
@@ -341,6 +341,13 @@ undefined status among 51 ID rows in a static count. The
 [polish campaign](polish-campaign.md) line 435 calls that outcome open. The
 decision itself remains unresolved; this finding concerns the matrix's
 status vocabulary and assigns no new authority or acceptance state.
+The delegated [CV backlog](cluster_verification_backlog.md) line 13 imports
+those status meanings, yet its Status column calls CV-12 `Discard` at line
+106. The detailed card at 3026–3037 records a deliberate terminal
+disposition to stop causal reconstruction, and the
+[campaign charter](cluster_verification_campaign.md) lines 173–177 permits
+rejection by decision. This is a label-vocabulary distinction; the disposition
+and its unknown original cause remain intact.
 
 ### F86 — Step 02b parallel-validation claim
 
@@ -400,3 +407,57 @@ lines 1566–1617 permits a matching pristine committed Run with no Attempt,
 but refuses an existing Run with Attempt entries at 1588–1597 and directs the
 reader to inspect or resume it. The Runbook may intend the post-command
 cardinality; it does not state that precondition. No command was exercised.
+
+### F90 — Completed tooling history in polish campaign
+
+The [polish campaign](polish-campaign.md) has five completed tooling and
+public-CLI sections at lines 459–468, 479–488, 502–512, 537–560, and
+930–951: 77 physical lines in total. Their repeated disposition and hosted-CI
+facts for `DEV-01`, `CI-01`, and `CLI-VERSION-01` also appear in the current
+[main matrix](backlog_matrix.md) lines 340–356. The [test baseline](../design/TEST_BASELINE.md)
+lines 73–85 owns current validation-lane policy, while the
+[Runbook](../operations/RUNBOOK.md) lines 184–188 owns the public version
+route. The polish sections also retain unique facts: seven ShellCheck fixes,
+the 78-file/2,101-line formatting baseline, staged-hook observations,
+35-task and guarded-R test preservation, timing limits, and version/parser
+rationale. The 77 lines are a review surface, not a demonstrated saving or
+permission to remove evidence.
+
+### F91 — Repeated stage and evidence contract openings
+
+The first paragraphs of all ten stage and both evidence `CONTRACT.md` files
+span 48 physical lines: seven four-line and three three-line stage openings
+(37), plus five- and six-line evidence openings (11). For example,
+[canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md) lines 3–6
+and [Step 02b QC](../../src/emrys/evidence/canonical_bam_qc/CONTRACT.md)
+lines 3–7 restate historical aliases and
+[STAGE_MAP](../../src/emrys/contracts/STAGE_MAP.md) ownership, while
+[RSeQC](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md) lines 3–8
+also names its repository-path producer command. The map already gives
+all identities at lines 19–34, and adjacent owner READMEs identify their
+routes. Each contract still has local worker/validator classification and
+unique dependencies, consumer rules, and evidence limits. Retaining two to
+three local opening lines per contract suggests only an illustrative 12–24
+net-line opportunity; no edit or saving was verified.
+
+### F92 — Python lock checks before institutional R restoration
+
+The [Runbook](../operations/RUNBOOK.md) lines 685–694 places Python lock and
+workflow-environment checks before its institutional R restore procedure.
+The [engineering guide](../operations/ENGINEERING_CONVENTIONS.md) lines 77–85
+already lists developer lock checks. The displayed `r-restore` and `r-check`
+[Make targets](../../scripts/make_quality.mk) lines 92–110 invoke R without
+uv; this source path does not establish the Python checks as direct command
+prerequisites. The Runbook's R 4.6.1, external `RENV_PROJECT`, library/cache,
+check, and recovery instructions at lines 696–726 serve a separate operator
+need. Whether the preceding Python checks are an independent institutional
+policy gate is unverified; no restoration was run.
+
+### F93 — Repeated partition selector rule
+
+The [configuration guide](../../configs/README.md) lines 191–199 says
+`--region` and `--regions-file` can be combined when partition IDs are unique.
+Lines 212–215 repeat the same combination and uniqueness rule after the
+coordinate examples. The repeated statement spans about two physical lines;
+the intervening BED versus one-based region semantics, examples, and the
+separate supplied-manifest exclusions remain distinct. No Init command ran.
