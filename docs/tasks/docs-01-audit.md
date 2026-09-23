@@ -331,11 +331,11 @@ permission to change or delete the source.
 - At `ebc0012d`, coordinator/owner/CV review added F134–F139; F52 gained
   “regeneration.” At `f239a91d`, recheck dismissed F138, narrowed F134/F136/F137,
   and added F140; CV-23/Slurm-preview/operator rereads found no new candidate.
-- At `d18470c8`, a five-word-shingle scan of 1,515 paragraphs in 170
-  non-audit Markdown files found 59 near matches (F28/F91 or owner-specific);
-  paraphrases could escape. F71/F107 gained limits; F127's count was pinned.
-- At `2398f144`, read-only recheck revisited F01–F90 against cited docs and
-  selected source/tests; F45/F79 were dismissed and F38/F40/F75/F86 narrowed.
+- At `d18470c8`, five-word shingles across 1,515 paragraphs in 170
+  non-audit Markdown files found 59 matches; paraphrases could escape.
+- At `2398f144` and `f347216d`, read-only review revisited F01–F153 against
+  cited docs and selected source/tests. F45/F79 were dismissed;
+  F38, F40, F75, F86, F96, F129, and F143 narrowed. No execution ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -349,9 +349,9 @@ separate commit.
 
 ### Coverage so far
 
-The inventory spans tracked Markdown and Mermaid files; the limited link scan
-covered Markdown. Source comparisons are narrower. The following map keeps the
-remaining repository-wide work visible without claiming file-by-file completion.
+At `f347216d`, 581 tracked files include 176 Markdown (six audit notes),
+three Mermaid, and 282 Python. All 170 non-audit Markdown and three Mermaid
+had a static read; claim-to-source and retained-evidence checks remain selective.
 
 | Area | Compared to date | Further reading needed |
 | --- | --- | --- |
@@ -466,7 +466,7 @@ Discovery notes give source references and the boundary for each row.
 | [F93](docs-01-discoveries-third.md#f93-repeated-partition-selector-rule) | Small duplication | Config guide twice states that `--region` and `--regions-file` can combine only with unique partition IDs. | The intervening coordinate examples and separate manifest exclusions remain distinct. |
 | [F94](docs-01-discoveries-third.md#f94-dashboard-retirement-closeout-tense) | Temporal framing | PR #169/CV-16 accounts retain the prior dashboard state, and the CV backlog's live acceptance table still assigns standalone retirement as pending; the main matrix says the wrapper/callers are retired. | Preserve the older checkpoint; standard CI and institutional visual verification remain pending and distinct from retirement. |
 | [F95](docs-01-discoveries-third.md#f95-executed-stop-missing-from-logging-adopter-roster) | Owner-index omission | Source topology calls its logging-adopter roster complete but omits executed `stop`, which opens a maintenance attempt after admission. | Terminal targets and previews open no log; admitted execution opens one. |
-| [F96](docs-01-discoveries-third.md#f96-unrouted-artifact-schema-version-notes) | Navigation and compression question | Artifact schema index links current JSON schemas, while four adjacent version READMEs have no inbound Markdown route. | Their 32 lines include active v1 compatibility, Run/Attempt separation, absent historical readers, and receipt evidence limits; no saving is established. |
+| [F96](docs-01-discoveries-third.md#f96-unrouted-artifact-schema-version-notes) | Navigation and compression question | Artifact schema index links current JSON schemas, while four adjacent version READMEs have no inbound non-audit Markdown route. | Their 32 lines include active v1 compatibility, Run/Attempt separation, absent historical readers, and receipt evidence limits; no saving is established. |
 | [F97](docs-01-discoveries-third.md#f97-past-audit-priority-order-in-polish-campaign) | Historical selection order | Polish campaign keeps nine lines of second/third-pass priorities whose proposals and accepted status are recorded elsewhere. | Nine lines are a review surface; measurement prerequisites and dated decisions remain distinct. |
 | [F98](docs-01-discoveries-third.md#f98-worker-prerequisites-inside-validation-sections) | Contract placement | Step 00c and Step 05 validation sections repeat Java/GATK/hash-launcher prerequisites used by internal workers, not their grouped validators. | Worker policy and validator input/evidence limits remain distinct. |
 | [F99](docs-01-discoveries-third.md#f99-stage-data-inputs-versus-run-gates) | Execution-order wording | Step 01 calls STAR logs and the SJ table non-prerequisites for Step 02; Step 07 calls Step 06 validation and its marker non-prerequisites. The admitted Run waits for each predecessor's verified marker before starting the next stage. | Worker data inputs and Run scheduling differ; no runtime defect is inferred. |
@@ -499,7 +499,7 @@ Discovery notes give source references and the boundary for each row.
 | [F126](docs-01-discoveries-fourth.md#f126-doctor-plan-detail-and-timing-display-in-the-runbook) | Display-scope drift | Runbook does not qualify when Doctor prints `Runtime work` or full invocation timing; the field requires verbose repair, while normal elapsed output requires `--repair`. | Plan heading still distinguishes repair from verification, and package-manager output owns actual reuse evidence. No Doctor behavior defect is inferred. |
 | [F127](docs-01-discoveries-fourth.md#f127-older-local-checks-inside-active-cv-acceptance-cards) | Evidence placement | CV-U08 and CV-U20 carry older local-check totals beside later active acceptance wording without naming the checked source revision. | Historical check outcomes are not disproved; excluded cases, environment, and evidence-ceiling limits remain material and cannot be deleted by this audit. |
 | [F128](docs-01-discoveries-fourth.md#f128-tool-specific-thread-effects-in-the-coordinator-contract) | Compression candidate | Coordinator contract repeats five lines of worker-specific STAR, samtools, and Java flag effects already held by their stage and evidence contracts. | Central resource derivation and refusal remain coordinator-owned; no safe saving is established by the overlap alone. |
-| [F129](docs-01-discoveries-fourth.md#f129-unrouted-workflow-profile-index) | Navigation and compression candidate | The 11-line workflow-profile index has no inbound tracked Markdown link while parent and local-profile guides carry most of its current orientation. | Its selectable-profile approval rule is unique; filesystem routes were not assessed and no deletion scope is established. |
+| [F129](docs-01-discoveries-fourth.md#f129-unrouted-workflow-profile-index) | Navigation and compression candidate | The 11-line workflow-profile index has no inbound non-audit Markdown link while parent and local-profile guides carry most of its current orientation. | Its selectable-profile approval rule is unique; filesystem routes were not assessed and no deletion scope is established. |
 | [F130](docs-01-discoveries-fifth.md#f130-repeated-test-scope-paragraph-across-eight-owner-guides) | Dismissed duplicate | The eight-guide test paragraph was already recorded with its 40 repeated physical lines in F28. | Retained number traces the correction; F130 adds no independent candidate or saving estimate. |
 | [F131](docs-01-discoveries-fifth.md#f131-receipt-validation-scope-in-the-glossary) | Validation-scope ambiguity | Glossary says receipt follows validation and marks transaction completion without distinguishing staged native checks from later independent task validation. | Native checks and receipt-last publication remain real; receipt presence alone does not verify a scientific task. No runtime defect is inferred. |
 | [F132](docs-01-discoveries-fifth.md#f132-benchmark-timing-scope-in-the-runbook) | Measurement-scope ambiguity | Runbook implies the resource helper measures setup, producer, and validator commands, while its timing and resource fields cover only the producer. | Setup and validation still execute and gate trial success; no benchmark was run or performance result inferred. |
@@ -513,7 +513,7 @@ Discovery notes give source references and the boundary for each row.
 | [F140](docs-01-discoveries-fifth.md#f140-generic-selection-policy-repeated-in-the-polish-campaign) | Compression candidate | Polish campaign repeats a five-bullet generic selection checklist already governed by workflow and architecture guardrails. | Its tooling exception, separate-selection warning, and dated source audit remain; 21-line review span is not a proved saving. |
 | [F141](docs-01-discoveries-fifth.md#f141-retired-alpha-renderer-name-in-the-report-owner) | One-line history candidate | Paired-CMH report guide names retired `render_report_view` after describing the surviving template, view and provider roles. | Current repository callers are absent and Git retains the migration; external use and the value of this warning remain unverified. |
 | [F142](docs-01-discoveries-fifth.md#f142-collaborator-acceptance-repeated-in-the-polish-campaign) | Acceptance duplication | Polish item 29 repeats external provider/reporter acceptance in two adjacent blocks and the authoritative `EXTENSION-01` row. | The sampled composition-test limit and no-conformance-service nuance remain distinct; 31 lines are under review, not a saving estimate. |
-| [F143](docs-01-discoveries-fifth.md#f143-unrouted-reporting-run-contract-example) | Unrouted example | Eight-line run-contract example has no filename-specific tracked link or call site found; current coordinator projects the six-field record. | The config guide generically routes specialist examples; external readers and safe deletion or saving remain unverified. |
+| [F143](docs-01-discoveries-fifth.md#f143-unrouted-reporting-run-contract-example) | Unrouted example | Eight-line run-contract example has no filename-specific non-audit Markdown link or call site found; current coordinator projects the six-field record. | The config guide generically routes specialist examples; external readers and safe deletion or saving remain unverified. |
 | [F144](docs-01-discoveries-fifth.md#f144-shared-runtime-replacement-repeated-in-adjacent-recovery-cases) | Recovery repetition | Troubleshooting repeats the shared-selection and same-source `--replace` restriction in adjacent failure cases. | Each case has distinct inspection, fresh-verification, and evidence-preservation guidance; nine lines are a review span, not a saving estimate. |
 | [F145](docs-01-discoveries-fifth.md#f145-downstream-reporting-role-repeated-in-stage-contracts) | Contract repetition | Five stage contracts repeat two-line artifact-indexing and reporting consumption prose after their unique adapter lists. | Current adapter IDs, consumer edges, and the no-rerun rule remain; ten lines are a review span, not a saving estimate. |
 | [F146](docs-01-discoveries-fifth.md#f146-scale-probe-interpretation-in-the-current-coordinator-contract) | History placement | Coordinator contract summarizes a dated local Attempt-manifest scale probe already retained in the evidence record. | Graph sharing, worker decoding, exact-byte rechecks, and the rule against a shared mutable evidence cache remain current; the mixed three-line span is under review, not a proved saving. |

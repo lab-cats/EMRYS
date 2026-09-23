@@ -194,7 +194,7 @@ evidence.
 
 At local audit head `1eb562f0`, the eight-line
 [run-contract example](../../configs/artifact_run_contract.example.json) has no
-filename-specific tracked link or call site found. The
+filename-specific non-audit Markdown link or call site found. The
 [config guide](../../configs/README.md) lines 7–16 groups other `.example.*`
 files, and 391–394 generically mentions artifact/report examples. The
 [coordinator projection](../../src/emrys/contracts/orchestration/projection.py)

@@ -546,8 +546,8 @@ tool behavior remain distinct. Source and tests were read, not executed.
 
 ### F129 — Unrouted workflow-profile index
 
-A limited inline/reference link scan over 175 tracked Markdown files found no
-inbound local Markdown link to the 11-line
+At recheck head `f347216d`, a limited link scan over 170 non-audit Markdown
+files found no inbound local link to the 11-line
 [profile index](../../src/emrys/workflow/profiles/README.md). The
 [workflow overview](../../src/emrys/workflow/README.md) lines 3–4 and 16–19
 already distinguishes the processing graph, links directly to the
@@ -555,7 +555,7 @@ already distinguishes the processing graph, links directly to the
 the one-host and planner boundaries. That local guide lines 3–13 explains the
 exact YAML and admitted-package binding. The intermediate index repeats much
 of this orientation while uniquely stating that another selectable engine
-profile requires approval. Its lack of an inbound Markdown route is a
+profile requires approval. Its lack of an inbound non-audit Markdown route is a
 navigation and compression candidate, not proof that its whole 11 lines can
 go; filesystem browsing and non-Markdown routes were not checked.
 
