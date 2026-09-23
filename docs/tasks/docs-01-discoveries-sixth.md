@@ -45,21 +45,15 @@ No replacement or net saving has been verified.
 
 ### F166 — Final-source resource policy repeated in main checklist
 
-The [main closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
-lines 114–122 is a nine-line review span; line 114 also ends the preceding
-sentence. The span restates the selected test-owned profile,
-allocation-derived CPU/memory, 2048 MiB fixture-only minimum, disposable
-Slurm request, parallelizable-lane policy, and hosted-versus-Viking evidence
-limit. The durable [test-tool guide](../../tests/tools/README.md) lines 25–30
-already owns the fixture floor, allocation-aware defaults, disposable Slurm
-request, and performance ceiling. [CV-U06](cluster_verification_backlog.md#cv-u06-available-resources)
-lines 505–521 adds the selected-profile history and the all-visible-CPU versus
-ordered-serial CI rule; that rule has no identified durable owner outside the
-main checklist. A four-to-five-line checklist route might save only three to
-four lines after retaining that rule, the exact selected-profile identity,
-pending hosted status, and the Viking/institutional evidence ceiling. Line 114
-is shared with the preceding sentence, so this is conditional arithmetic, not
-a verified saving.
+**Dismissed after recheck at `88827e73`.** The [main closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+lines 114–122 owns the selected profile, pending hosted proof, CI parallel/serial
+rule, and Viking/institutional limits. The [test-tool guide](../../tests/tools/README.md)
+lines 25–30 owns fixture resource mechanics but omits that CI rule;
+[CV-U06](cluster_verification_backlog.md#cv-u06-available-resources) lines 505–521
+is a temporary dated status record. The earlier nine-line review span and
+three-to-four-line local sketch did not establish a useful net reduction once
+the closure conditions remain together. Line 114 also ends the preceding
+sentence, so its physical saving was uncertain.
 
 ### F167 — CV campaign remaining-delivery summary repeats matrix
 
@@ -272,6 +266,7 @@ from site evidence, and pending exact-commit hosted from Viking acceptance.
 A private 32-line accounting sketch suggests five local lines from this
 37-line account. Net saving is unverified. Keep **Verification pending** and
 every evidence ceiling; CV-10 or the test guide cannot replace the journey.
+The sketch is within-card copyediting, not an owner transfer.
 
 ### F180 — Analysis provider validator independence wording
 

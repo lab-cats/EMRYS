@@ -153,12 +153,13 @@ missing-child Init recovery.
 
 ### F07 — Doctor repair does not always install
 
-The [Runbook](../operations/RUNBOOK.md) lines 545–547, the
+The [Runbook](../operations/RUNBOOK.md) lines 545–547 uses installation
+shorthand in a first Slurm setup route, then explicitly distinguishes
+verification-only plans at 660–665. The
 [reporting decision](../design/decisions/execution-evidence-and-reporting.md)
-lines 44–53, and the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 164–166 speak of Doctor installing tools on the head node as a certainty.
-The same Runbook lines 660–665 and the
-coordinator contract lines 217–233 distinguish a repair-and-verification plan from a
+lines 44–53 and [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 164–166 describe Slurm repair as installation without that qualifier.
+The coordinator contract at 217–233 distinguishes a repair plan from a
 verification-only plan. A direct Doctor source test at
 `tests/orchestration/run_coordinator/test_doctor.py:2956–2960,3046–3054`
 expects no native/R installation when a ready Slurm runtime is rechecked.

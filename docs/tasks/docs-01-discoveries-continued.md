@@ -72,12 +72,14 @@ receive link checks. The gate neither parses Mermaid grammar nor renders it.
 ### F33 — Report receipt version in the scientist diagram
 
 The linked [scientist diagram](../architecture/diagrams/current_user_pipeline.mmd)
-line 15 groups summary TSV with two HTML reports and labels their receipt v4.
+line 15 labels the report receipt v4 although the current schema is v8. Its
+reporting phase also groups summary TSV with two HTML reports.
 The [reporting owner](../../src/emrys/reporting/README.md) lines 10–16,
 29–49 separates summary JSON/TSVs under artifact-summary from HTML and
 `report_outputs.tsv` under Results; the [schema index](../../src/emrys/contracts/schemas/artifacts/README.md)
 lines 3–8 names artifact entries v4, Run result manifest v8, and report
-receipt v8. The architecture links this non-authoritative diagram at line 56.
+receipt v8. The architecture links this non-authoritative phase diagram at
+line 56; one grouped node does not establish a merged publication transaction.
 
 That node also says “Read-only reporting.” Reporting leaves the successful
 Run unchanged, but `emrys report --execute` creates absent owned outputs

@@ -28,25 +28,16 @@ another polish item; F90 concerns other completed tooling sections.
 
 ### F189 — CV campaign Related work repeats current owner map
 
-The [CV campaign](cluster_verification_campaign.md#related-work) lines
-192–210 spends 19 physical lines on five related-owner routes. The
-[main matrix](backlog_matrix.md#platform-operation-and-portability) lines
-170–172 and 180 retains SITE-PARITY, SCHED/CV-11 and installed-watch
-dispositions, including September 17 acceptance and the evidence-deletion
-limit. The [delegated CV backlog](cluster_verification_backlog.md#verified-scope-and-remaining-evidence)
-lines 72–79 retains CV-26's Open status, original complete-operation
-attribution, E11 timing and no-speedup limit. The optimization and polish
-campaigns own their separate work, but the campaign's statements of those
-relationships are distinct context, not five duplicated routes. Only selected
-status detail repeats. A private 16-line accounting sketch suggests three
-local lines could be saved while retaining all five relationships, September
-17 watch acceptance, pending site verification, CV-26's complete-operation
-attribution and no-speedup limit, and the evidence-deletion boundary.
-This is separate from
-F158's Delivery opening/closure criteria, F187's later Delivery span, F165
-priority history and F167 remaining scope.
-No non-audit Markdown link targets this heading, but outside bookmarks were not
-checked. No guide edit, link check, or net saving was verified.
+**Dismissed after recheck at `88827e73`.** The [CV campaign](cluster_verification_campaign.md#related-work)
+lines 192–210 maps five distinct relationships. The [main matrix](backlog_matrix.md#platform-operation-and-portability)
+and [delegated CV backlog](cluster_verification_backlog.md#verified-scope-and-remaining-evidence)
+retain selected status detail, but do not replace this campaign relationship
+map. The watch acceptance, pending site verification, CV-26 attribution and
+no-speedup limit, and evidence-deletion boundary are all meaningful here.
+The earlier 19-to-16-line sketch suggested only three local lines and no useful
+standalone saving once those limits and all five relationships remain. F158,
+F187, F165, and F167 address separate campaign sections. No guide edit or net
+saving was verified.
 
 ## Focused rescreens at `9aaec3ac`
 
