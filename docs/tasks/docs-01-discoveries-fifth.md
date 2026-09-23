@@ -175,8 +175,9 @@ owns this selection and delivery process; the
 [REDUCE-01 row](backlog_matrix.md) line 66 owns behavior classification and
 accounting for that accepted work. The campaign's tooling-only footprint
 exception at lines 98–101 and separate-selection warning at 13–20 remain
-specific, as does its dated source audit at 35–80. A shorter owner route and
-exception could reduce this 21-line scope; no net saving is verified or evidence deletion authorized.
+specific, as does its dated source audit at 35–80. A five-to-seven-line owner
+route could save 14–16 lines, pending a draft, link check, and retention of the
+exception. Savings remain unverified; evidence deletion needs separate approval.
 
 ### F141 — Retired alpha renderer name in the report owner
 
@@ -201,8 +202,9 @@ The polish finding at 626–632 uniquely explains why its sampled composition
 test does not prove real entry-point discovery. Its ban on a generic workflow
 DSL and test-only production behavior at 638–639, plus the versioned-interface,
 bounded Step 09/optional Step 10, and no-conformance-service limits at 647–649,
-need a destination check before any reduction. The 31-line section is a review
-span, not a verified saving or permission to discard evidence.
+need a destination check before any reduction. Acceptance lines 634–650 form
+a 17-line overlap; a shorter routed account could save about ten lines only
+after those unique limits transfer. The 31-line section is not a saving estimate.
 
 ### F143 — Unrouted reporting run-contract example
 
@@ -485,8 +487,9 @@ Preserve the exact audit/test-tree identity at 68–69 (local Git gives
 reference at 532–533, and the no-new-test/hosted limit at 77–79. Retain source
 baseline, pass changes, and original test provenance at 37–66. The
 CS-20/22 correction and exact hosted revision at 117–118 recur at 286–293;
-retain that evidence and 119–120's remaining-owner boundary. Git retains
-routine PR ancestry; neither span is a net line saving estimate.
+retain that evidence and 119–120's remaining-owner boundary. Item 22 at
+532–533 says “run linked above”; keep its exact `34306975901` target, not the
+different run at 73. The ten-line span might save 8–10; unverified.
 No CI or product test ran in this audit.
 
 ### F160 — Accepted follow-up scope repeated in the polish introduction
@@ -500,7 +503,8 @@ lines 78–80, and [repository decision](../design/decisions/repository-and-deli
 line 64 link to the heading. Lines 32–33 also preserve the distinct
 novice-guide/INIT-01–03 pre-closure tranche. Preserve all three links and that
 separate cluster boundary; the matrix remains the sole status authority.
-The nine-line span is a review surface, not a verified deletion or saving.
+The nine-line span might yield five to six fewer lines after routing, but no
+drafted or verified saving exists.
 
 ### F161 — Final resource summary repeated in the configuration guide
 

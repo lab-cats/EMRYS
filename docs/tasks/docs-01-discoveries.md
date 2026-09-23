@@ -300,29 +300,25 @@ conflict or useful reduction was found; retain the causal record and status.
 
 ### F16 — Polish merged-PR tables
 
-[Polish campaign](polish-campaign.md) lines 991–1025 carries two detailed
-tables of merged PRs #116–147: 15 rows and seven rows, about 35 lines. Its
-live purpose is to avoid reselecting finished work. The main matrix already
-closes COMPRESS-01 with its evidence ceiling; Git and linked PRs retain the
-routine chronology. Lines 1008–1009 and the #144/#145/#147 rows map specific
-PRs to slices only here; Git retains commits but not this convenient selection
-map. PR #140–143 outcomes recur at 450–457, 469–477, and 514–535. A shorter
-record must account for unique mappings and pass a link check. The CodeQL
-ruleset caveat at 984–989, recovery and CS-18 distinctions at 1027–1032,
-excluded PR #44/#45 experiments at 1034–1039, and the campaign's evidence ceiling at 35–85 remain
-distinct. The same-file link at line 76 targets the enclosing heading and
-needs a valid destination if that section is reshaped.
+[Polish campaign](polish-campaign.md) lines 991–1025 has two merged-PR tables
+spanning about 35 lines. Its first table at 998–1012 retains PR-to-slice
+mappings otherwise absent from current docs; Git retains chronology but not
+that convenient selection map. Four second-table rows at 1019–1022 repeat
+items 22, 15, 17, and 21 at 525–535, 450–457, 469–477, and 514–523.
+Those four physical lines are a review target, not verified savings. Keep the
+unique #144–147 rows, CodeQL caveat at 984–989, recovery/CS-18 distinction at
+1027–1032, excluded PR #44/#45 experiments at 1034–1039, and the campaign's
+evidence ceiling at 35–85. The link at line 76 needs its heading preserved.
 
 ### F17 — Main backlog chronology and run repetition
 
+**Dismissed for DOCS-01 after recheck at `31c54ed8`.**
 The [main backlog](backlog_matrix.md) line 313 records 93-commit PR ancestry;
-lines 343 and 349 restate PR #140/#148/#169 integration genealogy. Git and
-the linked PRs retain that routine history. Lines 305–311 preserve the agreed
-baseline and measurement rule; 316–325 retain surface totals; 333–350 bind
-hosted checks and their evidence limit to revisions. Rows 354–356 each cite
-run `34306975901` for distinct accepted outcomes; row-local proof helps
-acceptance stand alone. Only routine genealogy is a compression candidate;
-no line saving or removal of exact validation evidence is established.
+lines 343 and 349 repeat integration genealogy. These brief clauses do not
+establish useful compression. Lines 305–325 retain the agreed baseline
+and totals; 333–350 bind hosted evidence to revisions. Rows 354–356 cite run
+`34306975901` for three distinct accepted outcomes, whose row-local proof helps
+each stand alone. No useful reduction or removal of exact evidence is shown.
 
 ### F18 — History filing rule and existing compendium
 
@@ -386,14 +382,16 @@ procedural sequence. Their overlap does not justify deleting either wholesale.
 
 ### F19 — Doctor experiment evidence in workflow README
 
-[Workflow README](../../.github/workflows/README.md) lines 26–39 has 14 lines
-of completed Doctor experiment prose: run and revision, four trials, mean
+[Workflow README](../../.github/workflows/README.md) lines 26–39 has 13 prose
+lines plus one blank in its completed Doctor experiment: run, four trials, mean
 time/RSS, limits, retirement, and the surviving driver. The
 [CV backlog](cluster_verification_backlog.md) lines 3949–3999 holds these facts
 plus the artifact identity and trial-level measurements. Workflow lines 3–22
 own current CI lanes; the experiment section gives no active lane instruction.
-Its serial-probe decision and resource/cancellation rationale lack a separate
-durable owner route in this pass. The 14 lines are not measured savings;
+The [optimization campaign](optimization_campaign.md) lines 302–315 records
+serial policy and future comparison, but CV-26 at 3979–3987 uniquely explains
+resource/cancellation rationale. That rationale lacks a durable owner route.
+The 14-line span is not measured savings;
 exact results, cache, shared-page and missed-peak limits remain evidence.
 
 ### F20 — Independent golden migration comparisons
@@ -525,7 +523,9 @@ lines 210–212 support the retired overwrite and replacement-failure account,
 not merely routine genealogy. Their date and origin, and the nondeletion limit
 at 212–214, are material to [history's](../history/README.md) rules. A narrower
 compression candidate is the retired symbol enumeration at 216–218 and
-223–225 after checking current owners.
+223–225. Exact names such as `ReceiptValidationOps` and `RunSummaryBuildDeps`
+occur only here in current Markdown, so their removal would rely on Git history,
+not a duplicate current owner account.
 The logical `emrys.reporting.report` producer at line 220 still has current
 compatibility meaning in `_run_report/README.md:31–36` and `models.py:19`;
 surviving callbacks are described in reporting README 114–119 and its tests
@@ -575,8 +575,10 @@ The paragraph also appears in [canonical BAM QC](../../tests/evidence/canonical_
 and [RSeQC](../../tests/evidence/rseqc_orientation/README.md) at lines 5–9
 (`c0cdceb1`). Eight test and six production copies repeat 58 physical lines. The
 preliminary 31–32-line net estimate covers only the original 12 stage files:
-48 repeated lines become 12 local routes plus 4–5 shared lines. This is a
-conditional layout estimate, not a verified saving.
+48 repeated lines become 12 one-line local routes plus 4–5 shared lines.
+The shared test indexes do not yet carry the full runner, scratch, interruption,
+recovery, and shell-worker versus grouped-validator distinctions. A two-line
+local route would cut that estimate by six; no saving is verified.
 At `651d60d5`, nine stage, two evidence, and one analysis contract use the
 same two-line opening routing to the [test index](../../tests/README.md),
 which contains the shared evidence ceiling:

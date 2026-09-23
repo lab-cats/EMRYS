@@ -295,18 +295,19 @@ requirement remain valid. No novice or site walkthrough ran.
 
 ### F115 — Current resource policy repeated in optimization candidate
 
-[Optimization candidate 3](optimization_campaign.md) lines 107–117 restates
-allocation-aware CPU/RAM resolution, automatic repeated-stage shares, native
-allowances, the retired fixed 12-core policy, and the CV-U28 evidence limit.
+[Optimization candidate 3](optimization_campaign.md) lines 107–113 restates
+allocation-aware CPU/RAM resolution, repeated-stage shares, and native
+allowances; lines 114–117 repeat fixed-policy provenance, CV-U28's pending
+institutional boundary, and capacity-versus-utilization limits.
 The current [resource owner](../../src/emrys/orchestration/run_coordinator/resources/README.md)
 lines 3–26 already owns the defaults, provenance, and capacity-versus-utilization
 boundary. The [CV-U28 card](cluster_verification_backlog.md#cv-u28-allocation-aware-resource-policy-and-historical-provenance)
 lines 1847–1861 retains the superseding policy decision and pending institutional
 acceptance. Candidate lines 119–126 uniquely propose future concurrency,
-reservation, queue, and storage measurements; those are not current-policy
-restatement. The 11 physical lines at 107–117 are a review span, not a verified
-saving. F111 separately records that this paragraph's linked old-profile
-citations do not support its newer current-policy wording. No resources were
+reservation, queue, and storage measurements. The 11 lines at 107–117 are a
+review span, not verified savings. F111 shows that its old-profile links do not
+support the newer current-policy wording; any shorter owner route must correct
+that provenance while retaining the future-tuning context. No resources were
 measured.
 
 ### F116 — CV-10 current protocol beside cancellation evidence

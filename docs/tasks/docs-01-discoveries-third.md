@@ -433,20 +433,18 @@ cardinality; it does not state that precondition. No command was exercised.
 
 ### F90 — Completed tooling history in polish campaign
 
+**Dismissed as a separate DOCS-01 reduction after recheck at `31c54ed8`.**
 The [polish campaign](polish-campaign.md) has five completed tooling and
 public-CLI sections at lines 459–468, 479–488, 502–512, 537–560, and
 930–951: 77 physical lines in total. Repeated hosted-CI/status clauses at 461,
-481, 504, 539–540, and 935–936 for `DEV-01`, `CI-01`, and `CLI-VERSION-01` appear in the current
-[main matrix](backlog_matrix.md) lines 340–356. The [test baseline](../design/TEST_BASELINE.md)
-lines 73–85 owns current validation-lane policy, while the
-[Runbook](../operations/RUNBOOK.md) lines 184–188 owns the public version
-route. Those status clauses occupy seven physical lines under review, but
-line reflow and item-specific proof may erase any saving. The sections retain
-unique facts: seven ShellCheck fixes, the 78-file/2,101-line formatting
-baseline, staged-hook observations,
-35-task and guarded-R test preservation, timing limits, and version/parser
-rationale. The 77 lines are a review surface, not a demonstrated saving or
-permission to remove evidence.
+481, 504, 539–540, and 935–936 also appear in the
+[main matrix](backlog_matrix.md) lines 340–356. Those seven physical lines
+could yield only zero to two lines after reflow. The sections retain unique
+ShellCheck fixes, the 78-file/2,101-line formatting baseline, hook observations,
+35-task and guarded-R preservation, timing limits, and version/parser rationale.
+The [test baseline](../design/TEST_BASELINE.md) and
+[Runbook](../operations/RUNBOOK.md) own current lane and version routes.
+No useful independent reduction of the 77-line review span is established.
 
 ### F91 — Repeated stage and evidence contract openings
 
@@ -461,9 +459,10 @@ lines 3–7 restate historical aliases and
 also names its repository-path producer command. The map already gives
 all identities at lines 19–34, and adjacent owner READMEs identify their
 routes. Each contract still has a useful local alias and worker/validator role,
-plus unique dependencies, consumer rules, and evidence limits. The repeated
-two-line map-authority clauses occupy about 24 physical lines; the full 48-line
-openings are not a saving estimate. No replacement or net saving was verified.
+plus unique dependencies, consumer rules, and evidence limits. All twelve have
+a three-line alias/map preamble; a two-line form might save about one line per
+contract. The 24 map-authority lines and full 48-line openings are review spans,
+not savings estimates. No replacement or net saving was verified.
 
 ### F92 — Python lock checks before institutional R restoration
 
