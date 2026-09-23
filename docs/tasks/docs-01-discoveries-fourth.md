@@ -1,9 +1,9 @@
 # DOCS-01 discovery notes, fourth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F100–F104. Sources were read at local audit head `e1771d21` on
-2026-09-22. These are documentation observations, not runtime results,
-accepted changes, or permission to alter retained evidence.
+holds F100–F108. F100–F104 use local audit head `e1771d21`; F105–F108 use
+`b65e8fb8`, all read on 2026-09-22. These are documentation observations,
+not runtime results, accepted changes, or permission to alter retained evidence.
 
 ## Discovery notes
 
@@ -84,11 +84,78 @@ lines 1514–1536 handles reporting failure after scientific Results complete.
 The Runbook's own [recovery route](../operations/RUNBOOK.md#inspect-and-open-reports)
 at lines 437–447 handles skipped, partial, and blocked reporting, while
 [Quickstart](../../quickstart.md) lines 188–205 requires separate Reporting
-admission after scientific completion. “Generates both reports” can read as a
+admission after Scientific Results completion. “Generates both reports” can read as a
 completion guarantee stronger than these independent checks. This is an
 operator-wording question, not evidence of a reporting behavior defect.
 
+### F105 — Retired scheduler wrapper in the stage map
+
+The [stage map](../../src/emrys/contracts/STAGE_MAP.md) lines 81–86 explains
+the absence of `00a -> 00b` and `00a -> 00c` edges through a retired Step 00a
+scheduler wrapper. Its current [edge semantics](../../src/emrys/contracts/STAGE_MAP.md#edge-semantics)
+at lines 36–43, external FASTA/GTF declarations at 45–56, and complete
+direct-edge table at 58–79 already describe the present relationship. The
+[admitted profile](../../src/emrys/workflow/contracts/local_cmh_v2.json)
+lists no 00a-to-00b/00c edge, and the [Snakefile](../../src/emrys/workflow/Snakefile)
+lines 400–424 schedules profile predecessors. The paragraph combines a
+retired-wrapper explanation with the durable fact that 00b/00c do not consume
+the STAR index and that their current references are external. This mixture
+raises a documentation-placement question; no safe saving or graph behavior
+was established here.
+
+### F106 — Doctor storage-plan proposal after Slurm routing changed
+
+The [polish campaign](polish-campaign.md) item 9 at lines 341–358 says Doctor
+constructs a direct storage-qualification plan for an unready Slurm Project,
+that PR #136 did not change the plan, and that the defect investigation remains
+proposed. Current [`_build_repair_plan`](../../src/emrys/orchestration/run_coordinator/doctor.py)
+at lines 847–867 sets direct storage planning to `None` for selected Slurm
+placement even when storage is unready. Execution selects `_qualify_slurm` at
+1902–1908; its compute path calls storage qualification at 1550–1568. Git
+attributes the Slurm exclusion to `7f4396f8` on 2026-09-14, after the
+campaign's dated audit. Item 9 also recommends retaining a direct default
+then selecting a separate Slurm profile at lines 347–349; current
+[Runbook](../operations/RUNBOOK.md#slurm-setup-and-submission) lines 534–548
+uses a Viking default and head-node Doctor route. The original concern remains
+historical context, but its present-tense plan, proposed investigation, and
+operator route no longer match these current sources.
+No Doctor operation or institutional qualification was run, and a direct test
+of this exact plan shape was not identified in this pass.
+
+### F107 — Retired shell-publication tests in a current test guide
+
+The [shared-library test guide](../../tests/libraries/README.md) lines 9–20
+explains a TERM/link and inode-check cleanup gap in retired RSeQC, BAM-QC,
+and duplicate-marking shell writers, then points to the current runner suite.
+The cited `88522d0a` commit and `tests/libraries/` path survive in local Git;
+that revision's guide describes the old shared shell cleanup. The current
+guide's validation-recovery section at lines 22–30 instead describes live
+tests and known current limits. The shell passage is historical defect
+characterization inside a present test index, with a unique pointer to its
+original test tree. No current runner test was executed here; a lossless
+evidence home and any saving remain unverified.
+
+### F108 — Scientific completion in the run-summary guide
+
+The [run-summary guide](../../src/emrys/reporting/_run_summary/README.md)
+lines 28–29 says candidate review, adjudication, biological interpretation,
+and “scientific completion” are external processes. The
+[architecture](../architecture/ARCHITECTURE.md) line 45 says scientific
+completion and recovery belong to the runner; the
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 1157–1164 defines `Scientific Results: complete`, and public
+[inspection](../../src/emrys/orchestration/run_coordinator/control.py)
+lines 2833–2837 displays that state. External scientific review and biological
+interpretation remain outside EMRYS. The unqualified phrase “scientific
+completion” can conflate that external work with computational Results
+completion; no report or runtime behavior defect is inferred.
+
 ## Reviewed overlaps without a saving claim
+
+The [scientific-pipeline decision](../design/decisions/scientific-pipeline.md)
+lines 80–92 states lasting cohort, selector, receipt, and count/exclusion
+safety choices. Step 07 and Step 08 owner contracts give their detailed
+mechanics. This concise decision-to-owner overlap establishes no saving.
 
 [Troubleshooting](../operations/TROUBLESHOOTING.md) lines 52–56 repeats the
 coordinator's exact byte/device/inode and same-UID limitation at contract

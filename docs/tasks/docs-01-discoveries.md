@@ -4,7 +4,7 @@ This companion to the [findings matrix](docs-01-audit.md#findings-matrix)
 holds F01–F29 source-backed observations and evidence boundaries. The
 [continued notes](docs-01-discoveries-continued.md) hold F30–F61 and the
 [third file](docs-01-discoveries-third.md) holds F62–F99, and the
-[fourth file](docs-01-discoveries-fourth.md) holds F100–F104. Unless a subsection
+[fourth file](docs-01-discoveries-fourth.md) holds F100–F108. Unless a subsection
 names another revision, all source line references are pinned to
 `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`. These are audit
 observations, not accepted changes or a task-status registry.
@@ -472,6 +472,14 @@ mouse handling, and sanitized evidence-view guarantees. These are narrow
 summary overlaps across distinct trust boundaries. Command handoff, runtime
 admission, logging event rules, and operator keys have separate owners;
 cross-owner summaries can explain a real handoff.
+At pinned revision `b65e8fb8`, the [logging contract](../design/LOGGING_CONTRACT.md)
+lines 191–235 also repeats current/legacy Slurm request and stream names and
+stop-intent details from coordinator lines 410–429, 461–468, and 691–698.
+The logging contract describes pre-mutation log sync, event fields, redaction,
+and association event and diagnostic limits; the coordinator owns request
+admission, the association reader, scheduler transport, and cancellation.
+The compatibility names and diagnostic limits have distinct readers, so this
+additional overlap establishes no safe saving.
 
 ### F23 — Init details in the Runbook
 

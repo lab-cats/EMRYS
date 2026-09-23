@@ -203,6 +203,12 @@ permission to change or delete the source.
   sources and prior findings. It added F100–F104. Trusted-workspace and
   `/local/tmp` warnings were checked as operator-relevant overlaps, with no
   saving inferred. No product, test, CI, or cluster command was run.
+- A read-only audience and history pass at local head `b65e8fb8` compared the
+  stage map, scientific decision, polish campaign, test and reporting guides,
+  and logging/coordinator boundaries with current owners. It added F105–F108
+  and extended F22/F33. Matrix and CV evidence repetitions with distinct
+  acceptance or measurements were retained as such. No product, test, CI, or
+  cluster command was run.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -230,7 +236,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 104 numbered records include F87, dismissed after recheck so its original
+The 108 numbered records include F87, dismissed after recheck so its original
 claim and correction remain traceable. The last column records an evidence
 limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -258,7 +264,7 @@ Discovery notes give source references and the boundary for each row.
 | [F19](docs-01-discoveries.md#f19-doctor-experiment-evidence-in-workflow-readme) | Evidence placement | CI workflow README repeats a shorter Doctor experiment summary already detailed in the CV backlog. | The CV card retains detailed evidence; the workflow README repeats a summary. |
 | [F20](docs-01-discoveries.md#f20-independent-golden-migration-comparisons) | Evidence placement | Independent-golden README mixes current oracle use with successive migration history. | Comparison evidence is unique beside current oracle guidance. |
 | [F21](docs-01-discoveries.md#f21-coordinator-contracts-no-write-section) | Navigation candidate | Coordinator contract has a 632-line no-write section without subheadings; one owner-index link names watch selection but lands on the later Run/Results section. | Both contract sections contain distinct selection, admission, and recovery rules; no deletion inferred. |
-| [F22](docs-01-discoveries.md#f22-coordinator-cross-owner-detail) | Ownership question | Coordinator, logging, runtime, and Runbook descriptions have narrow overlaps across distinct trust boundaries; coordinator publication details and runtime seal formats are unique. | Summary overlaps coexist with unique prompt, diagnostic, and action rules. |
+| [F22](docs-01-discoveries.md#f22-coordinator-cross-owner-detail) | Ownership question | Coordinator, logging, runtime, and Runbook descriptions overlap across distinct trust boundaries, including request/stream names; coordinator publication and runtime seal formats are unique. | Summary overlaps coexist with unique prompt, diagnostic, and action rules. |
 | [F23](docs-01-discoveries.md#f23-init-details-in-the-runbook) | Compression candidate | Baseline Runbook Init guidance mixes operator choices with hashing and file-identity internals; the approved PR slice removed 40 net lines from that section. | The generic route remains open with F05; DOCS-01 is not closed. |
 | [F24](docs-01-discoveries.md#f24-named-profile-procedure-placement) | Audience question | Config guide holds a long named-profile operator procedure while Runbook routes there. | Operator command path and format ownership remain an audience question. |
 | [F25](docs-01-discoveries.md#f25-reporting-decision-versus-migration-history) | Compression candidate | Reporting decision retains predecessor failure provenance and some retired-symbol inventory. | Predecessor and recovery limits are distinct; retired symbols may overlap current owners. |
@@ -269,7 +275,7 @@ Discovery notes give source references and the boundary for each row.
 | [F30](docs-01-discoveries-continued.md#f30-dashboard-reporting-stage-text) | Product-facing text | Dashboard places final target after reporting and, with a test fixture, retains three reporting operations; current target precedes two reporting operations. | Current reporting-stage and fixture wording conflicts with target order; FINAL and historical rules differ. |
 | [F31](docs-01-discoveries-continued.md#f31-historical-slurm-username-recovery-advice) | Recovery wording | Troubleshooting gives an undated upgrade instruction for a Slurm username incident whose submission fix is already present. | Incident evidence remains dated; current recovery wording is unqualified. |
 | [F32](docs-01-discoveries-continued.md#f32-mermaid-checks-stated-ceiling) | Evidence ceiling | Documentation guides overstate Mermaid syntax and all-file heading checks; checker covers declarations/fences and canonical H1s. | Both README claims exceed structural-check coverage. |
-| [F33](docs-01-discoveries-continued.md#f33-report-receipt-version-in-the-scientist-diagram) | Diagram contradiction | Scientist diagram groups summary with HTML, names a v4 report receipt, and calls create-only reporting “read-only”; test baseline echoes that ambiguity. | Summary and HTML publication are distinct; report output creation and input immutability differ. |
+| [F33](docs-01-discoveries-continued.md#f33-report-receipt-version-in-the-scientist-diagram) | Diagram contradiction | Scientist diagram groups summary with HTML, names a v4 report receipt, and calls create-only reporting “read-only”; test baseline and glossary echo that ambiguity. | Summary and HTML publication are distinct; report output creation and input immutability differ. |
 | [F34](docs-01-discoveries-continued.md#f34-prepared-finalization-in-the-reliability-diagram) | Diagram omission | Reliability diagram sends every resume to a new Attempt; prepared finalization may complete the old Attempt. | Prepared finalization and eligible continuation have different Attempt paths. |
 | [F35](docs-01-discoveries-continued.md#f35-fastq-pairing-language) | Wording ambiguity | Glossary and engineering guide say names never infer pairing; guided Init detects R1/R2 mates from names. | Mechanical mate discovery and authored biological pairing differ. |
 | [F36](docs-01-discoveries-continued.md#f36-cross-owner-history-in-runtime-test-guidance) | Placement candidate | Runtime test README ends with a sentence about retired report-publisher tests. | The runtime test guide includes retired-report history; its unique-evidence status is unverified. |
@@ -341,6 +347,10 @@ Discovery notes give source references and the boundary for each row.
 | [F102](docs-01-discoveries-fourth.md#f102-historical-e09-example-in-current-lifecycle-rules) | Evidence placement | Lifecycle contract names the historical E09 Run after stating its generic missing-evidence rule; the CV register and card retain E09. | E09 cause and old-Run recovery remain unverified; current eligibility is distinct. |
 | [F103](docs-01-discoveries-fourth.md#f103-unpublished-fastq-experiment-in-the-owner-guide) | Historical owner detail | Sample-manifest guide mixes current helper limits with a described unpublished `awk` draft, exact NUL-header counterexample, and logical-pass count. | The direct test module has no NUL case; no measured I/O, deletable span, or saving established. |
 | [F104](docs-01-discoveries-fourth.md#f104-automatic-reports-after-successful-computation) | Operator wording | Runbook says successful computation generates both reports; full Runs invoke reporting by default, but science can complete while reporting is incomplete. | Quickstart and Runbook require separate reporting admission; no behavior defect inferred. |
+| [F105](docs-01-discoveries-fourth.md#f105-retired-scheduler-wrapper-in-the-stage-map) | Historical graph explanation | Stage map combines a retired Step 00a wrapper explanation with durable current no-edge semantics for 00b/00c. | No scheduling behavior or safe saving was established. |
+| [F106](docs-01-discoveries-fourth.md#f106-doctor-storage-plan-proposal-after-slurm-routing-changed) | Stale proposal framing | Polish item 9 describes direct storage planning and a direct-profile workaround for Slurm; current Doctor source and Viking Runbook route differ. | Dated concern survives, but no Doctor run or institutional proof was established. |
+| [F107](docs-01-discoveries-fourth.md#f107-retired-shell-publication-tests-in-a-current-test-guide) | Historical test detail | Shared-library test guide narrates retired shell-publisher faults and links a retained Git revision beside current runner coverage. | Original characterization is unique evidence; current test equivalence and saving unverified. |
+| [F108](docs-01-discoveries-fourth.md#f108-scientific-completion-in-the-run-summary-guide) | Terminology ambiguity | Run-summary guide calls scientific completion external, while inspection and architecture define computational Scientific Results completion. | External review and biological interpretation remain distinct; no behavior defect inferred. |
 
 ## Discovery notes
 

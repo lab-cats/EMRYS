@@ -2,7 +2,7 @@
 
 This companion to the [findings matrix](docs-01-audit.md#findings-matrix)
 holds F30–F61; the [third file](docs-01-discoveries-third.md) holds F62–F99,
-and the [fourth file](docs-01-discoveries-fourth.md) holds F100–F104.
+and the [fourth file](docs-01-discoveries-fourth.md) holds F100–F108.
 Unless a subsection names another revision, source line
 references are pinned to `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`.
 These are observations, not accepted changes or a task-status registry.
@@ -78,10 +78,10 @@ the successful scientific Run, but `emrys report --execute` creates absent
 owned outputs ([reporting owner](../../src/emrys/reporting/README.md) lines
 3–16). Scientific-input immutability and create-only report publication
 are distinct; the diagram can read as if no files are written.
-The [test baseline](../design/TEST_BASELINE.md) lines 108–111 also lists
-“report read-only behavior” without naming the input boundary. That phrase
-shares the diagram's ambiguity between immutable scientific inputs and new
-report outputs; no report transaction defect is inferred.
+The [test baseline](../design/TEST_BASELINE.md) lines 108–111 calls this
+“report read-only behavior”; the [glossary](../reference/GLOSSARY.md) line 71
+calls Results a “read-only home.” Both can conflate immutable scientific
+inputs with absent report outputs. No report transaction defect is inferred.
 
 ### F34 — Prepared finalization in the reliability diagram
 
