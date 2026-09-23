@@ -377,7 +377,7 @@ normalization; its unknown original cause remains intact.
 ### F86 — Step 02b parallel-validation claim
 
 The [Step 02b contract](../../src/emrys/evidence/canonical_bam_qc/CONTRACT.md)
-lines 25–28 says the operation may run in parallel with the Step 02 validator
+lines 17–28 accepts an explicit BAM and permits overlap with Step 02 validation
 once a stable canonical pair exists. The current
 [processing profile](../../src/emrys/workflow/contracts/local_cmh_v2.json)
 lines 118–123 makes Step 02 a direct predecessor of 02b. The
@@ -387,10 +387,11 @@ lines 42–57 carries that edge into `predecessors`, and the
 predecessor's verified marker. The [task runner](../../src/emrys/orchestration/run_coordinator/task.py)
 validates and checks semantic all-pass at lines 2763–2779 before publishing
 that marker at 2883–2920. Thus 02b cannot overlap its *corresponding sample's*
-Step 02 validation in an ordinary Run; different samples may overlap. This
-describes Run order, not an execution defect; standalone capability remains valid.
-F99 records the related Step 01→02 and Step 06→07 data-input versus
-Run-scheduling distinction.
+Step 02 validation in an ordinary Run; different samples may overlap. These
+are accurate statements about different boundaries, not a contract conflict.
+No correction or compression is established; this finding is **dismissed for
+DOCS-01**. F99 records the related Step 01→02 and Step 06→07 distinction.
+No Run was executed.
 
 ### F87 — Step 05 scratch owner in optimization candidate
 

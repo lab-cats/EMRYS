@@ -34,9 +34,11 @@ dispositions, including September 17 acceptance and the evidence-deletion
 limit. The [delegated CV backlog](cluster_verification_backlog.md#verified-scope-and-remaining-evidence)
 lines 72–79 retains CV-26's Open status, original complete-operation
 attribution, E11 timing and no-speedup limit. The optimization and polish
-campaigns own their separate work. A concise linked owner map might save six
-to nine lines if it keeps all five boundaries, the site-verification limit,
-and the campaign's scope relative to those owners. This is separate from
+campaigns own their separate work, but the campaign's statements of those
+relationships are distinct context, not five duplicated routes. Only selected
+status detail might be shortened while preserving those relationships, the
+site-verification limit, and the campaign's scope relative to those owners.
+This is separate from
 F158's Delivery opening/closure criteria, F187's later Delivery span, F165
 priority history and F167 remaining scope.
 No non-audit Markdown link targets this heading, but outside bookmarks were not
@@ -99,3 +101,21 @@ fixture-VCF scientific ceiling remains useful. Whether the retired-count
 sentence has any distinct current reader value or physical-line saving is
 unverified; Git retains its provenance. This remains part of F76's guide
 review, not a separate behavior or scientific finding.
+
+## Adversarial matrix recheck at `6e58835d`
+
+F01–F189 and their detail notes were reread in three partitions against
+selected cited guides, source, tests and workflow paths. F86 is dismissed:
+the Step 02b contract's direct operation and the ordinary Run graph make
+different, accurate scheduling statements. F187 and F189 now preserve the
+CV campaign's combined institutional scenarios and its distinct optimization
+and polish relationships; their prior line-saving estimates were withdrawn.
+No other material correction emerged from this selected source recheck.
+It did not execute tests or validate hosted, institutional or scientific evidence.
+
+A separate static link scan at that head covered all 178 tracked Markdown files,
+including these audit notes: 2,172 inline/image/reference link candidates and
+1,987 repository-local targets. It found no missing local file, heading anchor
+or repository-boundary violation. Regex extraction can miss unusual CommonMark
+syntax and did not check external URLs; `markdown_it` is unavailable here, so
+this does not pass the repository's parser-based documentation gate.

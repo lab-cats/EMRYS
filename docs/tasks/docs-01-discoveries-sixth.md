@@ -377,14 +377,15 @@ not this within-card history. No lossless draft or net saving was verified.
 
 At local audit head `f8c49f9e`, the [campaign Delivery approach](cluster_verification_campaign.md#delivery-approach)
 lines 135–150 follow the checklist overlap at 128–133 already recorded as F158.
-This distinct 16-line span reiterates [CV-01](cluster_verification_backlog.md#cv-01-managed-golden-path-coverage)
-acceptance and site-evidence limits. A shorter account might save four to six
-physical lines, conditional on retaining the missing-memory-plus-UID,
-reuse-plus-node, and native-publication-cancellation combinations; the E01/E06
-unexplained-cause boundary; INIT-02/CV-U22 original-intent decisions; and
-simulation, hosted and institutional evidence ceilings. This estimate does not
-include F158's separate opening. F167 covers Remaining delivery scope; F179
-covers CV-01's later hosted journey. No net saving is verified.
+The span partly restates [CV-01](cluster_verification_backlog.md#cv-01-managed-golden-path-coverage)
+acceptance and site-evidence limits. Its missing-memory-plus-UID,
+reuse-plus-node, and native-publication-cancellation combinations are more
+specific than CV-01's individual conditions. It also retains the E01/E06
+unexplained-cause boundary, INIT-02/CV-U22 original-intent decisions, and
+simulation, hosted and institutional evidence ceilings. Only repeated boundary
+and owner-routing prose is a possible reduction; no lossless draft or physical
+line saving is established. F158 concerns the separate opening; F167 covers
+Remaining delivery scope; F179 covers CV-01's later hosted journey.
 
 ## Other focused source comparisons at `8ef78400`
 
