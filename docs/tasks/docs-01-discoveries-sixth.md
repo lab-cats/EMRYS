@@ -360,18 +360,19 @@ malformed Run, ordinary STAR output, or product execution was observed.
 
 ### F186 — CV-U21 superseded STAR heuristic chronology
 
-At local audit head `f8c49f9e`, [CV-U21](cluster_verification_backlog.md#cv-u21-technical-parameter-assistance)
-lines 1341–1387 spends 47 physical lines on the initial first-record FASTQ
-heuristic, its local checks, the contig-selector extension, and the September
-17 reversal. The current repair and STAR-default account follows at
-1389–1422. A shorter dated account might save roughly 10–15 lines if it
-retains the later-record failure, source-derived selector names versus
-biological choice, fresh publication admission, initial local-test limits,
-and the Verification pending → Open → Verification pending chronology.
-The sampled origin commits `b6d2b3d50`, `d249fc5e2`, `3dc98a301`,
-`0f3e1725a`, and `482f795e0` resolve locally; this does not verify the
-operator walkthrough. F119/F120 concern current default or replay wording,
-not this within-card history. No lossless draft or net saving was verified.
+At local audit head `ab0af63c`, [CV-U21](cluster_verification_backlog.md#cv-u21-technical-parameter-assistance)
+lines 1341–1387 spends 47 physical lines on the first-record FASTQ heuristic,
+its local checks, selector assistance, and September 17 reversal. A private
+80-column accounting sketch uses 31 lines, suggesting 16 local lines could be
+saved. It retains the later-record failure, 115 source-bound tests and two
+replay mismatches, pending variable-length exercise, source-derived selector
+names versus biological choice, fresh publication admission, the September 16
+CI checkpoint, and Verification pending → Open → Verification pending history.
+The current repair/default account remains at 1389–1422 and in the
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md).
+Origin commits `b6d2b3d50`, `d249fc5e2`, `3dc98a301`, `0f3e1725a`, and
+`482f795e0` resolve locally but do not independently verify dated test or CI
+claims. No guide edit, link check, or net saving was verified.
 
 ### F187 — CV campaign post-checklist context under review
 

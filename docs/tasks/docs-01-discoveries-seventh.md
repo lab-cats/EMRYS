@@ -16,12 +16,14 @@ chronology. The current [storage owner](../../src/emrys/evidence/storage_invento
 places capacity planning and retention policy outside EMRYS; its source tree
 retains qualification, not that publisher. The campaign's overlap table at
 line 1008 already records PR #128/#134, while Git retains routine PR order.
-A shorter retirement disposition might save four to six lines, conditional on
-retaining the partial-predecessor, lock-release and obscured-original-error
+Retirement commit `c751bb5f` removed the command, code, examples and tests;
+its CS-27 record preserved qualification and retained evidence. A private
+nine-line accounting sketch suggests four local lines could be saved if it
+retains the partial-predecessor, lock-release and obscured-original-error
 risks; the fact that PR #115/#128/#134 did not repair them; the PR #158/CS-27
 retirement merged through PR #169; and surviving storage qualification,
 reports and recovery files. Retirement closes the repair proposal without
-proving repair. No lossless draft or net saving was verified. F88 concerns
+proving repair. No guide edit or net saving was verified. F88 concerns
 another polish item; F90 concerns other completed tooling sections.
 
 ### F189 — CV campaign Related work repeats current owner map
@@ -36,13 +38,15 @@ lines 72–79 retains CV-26's Open status, original complete-operation
 attribution, E11 timing and no-speedup limit. The optimization and polish
 campaigns own their separate work, but the campaign's statements of those
 relationships are distinct context, not five duplicated routes. Only selected
-status detail might be shortened while preserving those relationships, the
-site-verification limit, and the campaign's scope relative to those owners.
+status detail repeats. A private 16-line accounting sketch suggests three
+local lines could be saved while retaining all five relationships, September
+17 watch acceptance, pending site verification, CV-26's complete-operation
+attribution and no-speedup limit, and the evidence-deletion boundary.
 This is separate from
 F158's Delivery opening/closure criteria, F187's later Delivery span, F165
 priority history and F167 remaining scope.
 No non-audit Markdown link targets this heading, but outside bookmarks were not
-checked. No lossless draft or net saving was verified.
+checked. No guide edit, link check, or net saving was verified.
 
 ## Focused rescreens at `9aaec3ac`
 
