@@ -567,6 +567,10 @@ without treating their absence as permission to submit again. The current
 first-response and no-Run prose omits retained request inspection, including
 partial, malformed, `UNKNOWN`, and scheduler-independent observations. This
 is a static reader-route gap, not a reproduced duplicate submission.
+At `f2e719c0`, [top-level CLI help](../../src/emrys/__main__.py) lines 269–279
+also labels `inspect` and `watch` only by Run/job, although both expose
+`--submission` in [control](../../src/emrys/orchestration/run_coordinator/control.py)
+lines 1926–1937. Detailed option help retains the route.
 
 ### F60 — Submission request promise for direct execution
 

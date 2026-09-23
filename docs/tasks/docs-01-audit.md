@@ -421,7 +421,7 @@ linked notes. The final column states evidence limits, not work orders.
 | [F56](docs-01-discoveries-continued.md#f56-synthetic-driver-dependency-mutation-claim) | Mutation-scope wording | Test-tool and engineering guides imply tests do not install dependencies; the opt-in synthetic driver invokes Doctor repair, and ordinary wheel smoke installs into a temporary environment. | The two test paths have different controlled mutation scopes; neither ran in this audit. |
 | [F57](docs-01-discoveries-continued.md#f57-make-fixture-public-target-label) | Audience classification | Make fixture guide calls every covered target public, while the test map includes internal lanes and operator mutations. | The fixture includes public and internal targets. |
 | [F58](docs-01-discoveries-continued.md#f58-nonoverlapping-validation-lane-claim) | Validation-lane wording | Test-tool guide and driver call four lanes non-overlapping, but Python sharding and guarded-R selection can both include the same real-R pytest file. | Selected pytest IDs may overlap despite distinct lane purposes; no redundant-protection conclusion follows. |
-| [F59](docs-01-discoveries-continued.md#f59-pre-run-submission-recovery-route) | Recovery omission | Troubleshooting's no-Run path checks an exact scheduler ID but does not route readers through the retained request roster, which can exist with no confirmed job ID. | A retained request can precede a Run or confirmed job ID; resubmission eligibility remains uncertain. |
+| [F59](docs-01-discoveries-continued.md#f59-pre-run-submission-recovery-route) | Recovery omission | Troubleshooting's no-Run path and top-level inspect/watch help omit the retained request route, which can exist with no confirmed job ID. | Detailed help and Runbook expose exact request inspection; resubmission eligibility remains uncertain. |
 | [F60](docs-01-discoveries-continued.md#f60-submission-request-promise-for-direct-execution) | Placement overclaim | Runbook says Run/resume/report print a submission request after approval; direct placement executes without one. | Direct placement has no submission request; Slurm retains one before Run admission. |
 | [F61](docs-01-discoveries-continued.md#f61-run-summary-commit-marker-pronoun) | Publication wording | Run-summary README places “Installing it last” after the QC TSV sentence, although the summary JSON is the last installed member. | Owner code and coordinator contract both define JSON-last publication; no behavior defect observed. |
 | [F62](docs-01-discoveries-third.md#f62-benchmark-value-can-be-label-only) | Benchmark evidence ceiling | Scripts guide says the helper measures commands at declared resource values; producer argv need not contain the value placeholder. | Actual resource substitution depends on manifest argv; no benchmark was run. |
@@ -524,6 +524,8 @@ linked notes. The final column states evidence limits, not work orders.
 | [F159](docs-01-discoveries-fifth.md#f159-polish-integration-genealogy-repeated-in-its-introduction) | Compression candidate | Polish campaign repeats PR integration genealogy and hosted-CI references in its opening and later selection account, beside its merged-work map and the main matrix's accepted evidence. | Spans 68–76 and 109–118 are under review, not savings; retain exact audit/test-tree identity, CS-20/22 evidence, the map route, and remaining-owner limits. |
 | [F160](docs-01-discoveries-fifth.md#f160-accepted-follow-up-scope-repeated-in-the-polish-introduction) | Scope repetition | Polish campaign introduction repeats seven accepted follow-up IDs, the 600-line and 25% targets, and cluster-closure exclusion already in the main matrix. | Three live links target its heading; novice-guide/INIT pre-closure scope is distinct. The nine-line span is a review surface, not a verified saving. |
 | [F161](docs-01-discoveries-fifth.md#f161-final-resource-summary-repeated-in-the-configuration-guide) | Dismissed after recheck | Config guide's short final Slurm/tool resource section repeats an earlier coordinator-policy route. | It gives the precise utilization/performance limit, a benchmark route, and the destination of an inbound CV link; no useful saving is established. |
+| [F162](docs-01-discoveries-fifth.md#f162-synthetic-e2e-help-overstates-one-run-parity) | Tool help scope | Synthetic E2E driver help promises direct/Slurm parity on one Run, but profile 130 uses distinct Runs and profile 100000 selects Slurm alone. | The test-tool guide gives 130's separate histories; no driver or hosted lane ran in this audit. |
+| [F163](docs-01-discoveries-fifth.md#f163-optional-worker-threads-shown-as-required) | Internal help ambiguity | Four shell-worker usage blocks show `--threads` among required-looking options, while parsers and owner contracts default it to one. | Internal help wording differs from admitted arguments; Run resource policy and execution are unchanged and untested here. |
 
 ## Discovery notes
 
@@ -584,12 +586,10 @@ lines 73–114. The guard, delivery process, and lasting decision address
 different readers and authority boundaries. This conceptual overlap supplies
 no verified line saving or reason to weaken the safety instructions.
 
-The optional smoke guide repeats part of Quickstart's command sequence for a
-different Project. The external scientific-evaluation checklist explicitly
-keeps review outside the pipeline. Long CV cards for resources, onboarding,
-runtime reuse, managed coverage, dashboard, and logs retain distinct acceptance
-or dated evidence despite current-rule overlap. Those comparisons established
-no additional safe deletion or measured saving.
+The smoke guide repeats Quickstart for another Project; the external scientific
+evaluation checklist keeps review outside the pipeline. Long CV cards for
+resources, onboarding, runtime reuse, managed coverage, dashboard, and logs
+retain distinct acceptance or dated evidence. No safe deletion was found.
 
 The eight exact commits sampled in the historical validation compendium resolve
 locally. CV-10's two cited hosted test-merge commits and CV-26's cited hosted

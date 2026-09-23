@@ -1,7 +1,7 @@
 # DOCS-01 discovery notes, fifth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F130–F161. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
+holds F130–F163. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
 F132–F133 use `935adf06`, F134–F139 use `ebc0012d`, and F140 uses `f239a91d`
 on that date. F141–F143 use `1eb562f0`; F144–F145 use `f91b8303` on that
 date; F146–F148 use `cc5c1f58`; F149–F153 use `a3310af6`.
@@ -9,6 +9,7 @@ F154–F158 use `3ea9c2b1`, read on 2026-09-23 and rechecked at `238e8035`.
 F159 uses `688f7117`, read on 2026-09-23.
 F160 uses `60ec53e1`, read on 2026-09-23.
 F161 uses `22972af4`, read on 2026-09-23.
+F162–F163 use `f2e719c0`, read on 2026-09-23.
 At `d55baa91`, read on 2026-09-23, adversarial review dismissed
 F144–F146/F148–F149/F153 and narrowed F150/F159. Selected test/CI guides
 yielded no separate high-confidence finding.
@@ -519,6 +520,31 @@ placement table. No useful DOCS-01 reduction is established for this span.
 [F123](docs-01-discoveries-fourth.md#f123-repeated-stage-resource-defaults-in-the-configuration-guide)
 covers the separate stage-default table.
 
+### F162 — Synthetic E2E help overstates one-Run parity
+
+At local audit head `f2e719c0`, the [test driver](../../tests/tools/real_synthetic_e2e.py)
+line 2 promises real-tool direct/Slurm parity on “one synthetic EMRYS Run”;
+`build_parser()` at 163–165 exposes that sentence as command help. Profile 130
+selects separate direct and Slurm workspaces at 251–254, then admits and
+completes a Run in each before comparison at 2126–2185. Its distinct two- and
+three-Attempt histories are stated in the [test-tool guide](../../tests/tools/README.md)
+lines 11–20. Profile 100000 selects only Slurm at 251–254 and returns no
+direct comparison at 2184–2187. The blanket help description misstates both
+profile scopes; it establishes no failure of either test. No driver or CI ran.
+
+### F163 — Optional worker threads shown as required
+
+At local audit head `f2e719c0`, four internal shell-worker usage blocks show
+unbracketed `--threads THREADS`: [FASTA sidecars](../../src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh)
+lines 10–21, [duplicate marking](../../src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh)
+lines 10–21, [SplitNCigar](../../src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh)
+lines 10–21, and [BAM QC](../../src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh)
+lines 9–17. Their required-argument declarations omit threads and each parser
+sets `threads=1`; the respective owner contracts state the omitted default
+(FASTA 56, duplicate 43, SplitNCigar 45, BAM QC 142). The usage layout can
+imply the option is required, although these are internal runner workers.
+No shell worker was run; execution and resource-policy behavior are untested.
+
 ## Additional reviewed overlaps without a saving claim
 
 The [Runbook](../operations/RUNBOOK.md) lines 106–111 repeats palette and
@@ -563,3 +589,9 @@ high-confidence documentation issue. F09's reader-order effect remains untested;
 F31's older-install recovery value is not bounded to a fixed release. F21 and
 F50 remain source-backed reader/contract discrepancies, while F136 is a narrow
 private-helper compression candidate. No command or runtime behavior was tested.
+
+At `f2e719c0`, read-only review of public command help, tracked shell/R and
+tool help, and all 34 tracked JSON files found F59's additional help gap and
+F162–F163. Twenty schema resource titles matched their IDs/version owners;
+the only stale JSON description was already F46. Script and schema behavior
+was not executed; no new compression saving was established by this pass.
