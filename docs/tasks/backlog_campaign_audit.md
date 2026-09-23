@@ -411,8 +411,9 @@ numbered findings also document completed implementation, such as item 43's
 **Documentation discovery:** The [44-item disposition table and chronology
 retention map](polish_finding_disposition_review.md) now distinguish completed
 implementation, live gaps, dated evidence, five unselected architecture
-options, and possible Git-only PR sequencing. Verify each proposed durable
-owner and any unmatched rationale before shortening the campaign. This review
+options, and possible Git-only PR sequencing. Seven duplicate overlap rows were
+condensed after retaining their links and outcomes in numbered findings. Other
+rows still need durable owners and unmatched-rationale checks. This review
 does not approve source-evidence removal or reopen completed implementation.
 
 The [five architecture options](polish-campaign.md#integration-scale-architecture-reduction-options) are unselected
@@ -580,11 +581,11 @@ originals remain intact; the draft does not itself authorize shortening them.
 | --- | --- | --- |
 | Current `INIT-02` and dashboard summaries | Corrected present-tense claims at their existing owners; card acceptance and dated test limits remain. | Confirm the exact documentation diff and hosted structure check; no evidence transfer is involved. |
 | Charter's earlier development grant and running-job reference | Date-bound the original authorization and job circumstance; keep the enduring active-installation safety rule. | Confirm the historical approval wording and current workflow authority. |
-| Roughly 205 lines across the three cluster closure regions | Link secondary delivery prose to the matrix's operative checklist. | Compare each condition with card acceptance and the E register; the region size is not a duplicate-line count. |
-| Matrix walkthrough and charter E01–E12 | Additive dated record drafted and indexed; source records remain intact. | Verify source completeness, exact identities, unknown causes, absent receipts, limits, and inbound links before any separately approved reduction. |
-| `COMPRESS-01` closeout counts and hosted checks | Additive dated record drafted and indexed; the matrix remains authoritative for the Closed decision. | Verify both baselines, count scope, exact run heads, evidence limits, and inbound links before any separately approved evidence reduction. |
-| Polish audit/PR chronology and CV checkpoint narratives | Condense routine sequence after proposal and card-by-card disposition. | Keep unique rationale, exact CI/artifact identity, measurements, approvals, and recovery decisions. |
-| Optimization old priority and traversal/attestation counts | Frame the counts as the pinned September 7 observation; re-evaluate priority against current source. | Retain raw PR45 measurements and obtain comparable new data before claiming benefit. |
+| Roughly 205 lines across the three baseline cluster closure regions | The charter now links to the matrix checklist; the CV backlog retains its owner-specific summary. | Preserve card acceptance and the E register; the baseline region size was never a duplicate-line count. |
+| Matrix walkthrough and charter E01–E12 | Additive dated record is indexed and source-compared; originals remain intact. | Settle the allocation-account identity and lasting owner homes before any separately approved reduction. |
+| `COMPRESS-01` closeout counts and hosted checks | Additive dated record was source-compared; the matrix owns the Closed decision. | Retain both baselines, exact run heads, and evidence limits; any exact-evidence reduction needs separate approval. |
+| Polish audit/PR chronology and CV checkpoint narratives | Seven duplicate polish overlap rows were condensed; other sequence awaits item and card disposition. | Keep unique rationale, exact CI/artifact identity, measurements, approvals, and recovery decisions. |
+| Optimization old priority and traversal/attestation counts | September 7 priority and counts are dated; all 13 candidates have source-only comparisons. | Retain raw PR45 measurements and obtain comparable new data before claiming benefit or selecting work. |
 
 Inbound links constrain later placement changes: the matrix's
 `#viking-walkthrough-findings` heading is referenced by `SITE-PARITY-01` and

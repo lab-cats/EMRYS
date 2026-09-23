@@ -74,7 +74,8 @@ PRs #141–147 are integrated into [PR #140](https://github.com/lab-cats/EMRYS/p
 Its exact `2fb8f5ef` head passed [full ordinary CI](https://github.com/lab-cats/EMRYS/actions/runs/34301289787);
 PR #140 subsequently merged through PR #169 on 2026-09-14. Original
 PRs closed through either integration are not unimplemented proposals. The
-[overlap reconciliation](#existing-capabilities-and-overlapping-work) identifies
+numbered dispositions and the
+[overlap reconciliation](#existing-capabilities-and-overlapping-work) identify
 what each integration contains. This documentation pass ran no product tests
 or new performance measurements; ordinary CI does not establish long-lane,
 institutional, production, scientific-review, or biological acceptance.
@@ -259,9 +260,11 @@ qualification and retained reports and recovery files remain.
 
 The retired publisher could leave a partial predecessor after a backup failure,
 release its lock after failed restoration, or obscure the original error during
-cleanup. PR #115 did not repair it; PR #128's measurement consolidation and
-PR #134's test correction also left those defects unresolved. CS-27 retired the
-publisher; its removal closes this repair proposal without claiming a repair.
+cleanup. PR #115 did not repair it; [PR #128](https://github.com/lab-cats/EMRYS/pull/128)
+consolidated measurement-row assembly and
+[PR #134](https://github.com/lab-cats/EMRYS/pull/134) corrected portable
+filesystem-call test observation without repairing those defects. CS-27 retired
+the publisher; its removal closes this repair proposal without claiming a repair.
 
 ### 3. Make reference-provenance replacement recoverable
 
@@ -352,8 +355,9 @@ proposal is adjacent to, but distinct from, the storage-repair issue below.
 placement but constructed a direct qualification plan when storage was
 unready. Source predicted a Slurm mismatch; the audit did not reproduce a
 site failure. The former Runbook route used a direct default for initial
-preparation before separate Slurm selection. PR #136 consolidated readiness
-construction without resolving that then-current plan.
+preparation before separate Slurm selection.
+[PR #136](https://github.com/lab-cats/EMRYS/pull/136) provided single construction
+of the Doctor readiness result without resolving that then-current plan.
 
 **September 22 source recheck:** The selected Slurm profile now suppresses
 direct-storage planning; Doctor delegates compute checks through Slurm and
@@ -537,7 +541,8 @@ Make/CI wiring are protected without adding a test registry or validation lane.
 
 ### 22. Run ordinary CI automatically on supported stacked PRs
 
-**Disposition:** Implemented and validated in PR #140, merged through PR #169.
+**Disposition:** Implemented and validated in
+[PR #140](https://github.com/lab-cats/EMRYS/pull/140), merged through PR #169.
 The `CI-01` correction removes the `master`-only PR
 base filter. The [validation policy](../design/TEST_BASELINE.md#validation-lanes)
 now covers all PR bases while retaining master-only push runs and the existing
@@ -549,9 +554,10 @@ separately addresses required merge checks.
 
 ### 23. Reduce the measured CI critical path
 
-**Disposition:** Implemented under **`CI-01`**; ordinary hosted CI passed at `b491aac5` (run 34306975901). PR #124's duration
-estimate refresh merged through PR #139 and preceded the fixture changes
-below. Hosted timing review separates queue time,
+**Disposition:** Implemented under **`CI-01`**; ordinary hosted CI passed at
+`b491aac5` (run 34306975901). The long-test duration-estimate refresh in
+[PR #124](https://github.com/lab-cats/EMRYS/pull/124) merged through PR #139
+and preceded the fixture changes below. Hosted timing review separates queue time,
 setup, R restoration, runtime readiness, and test execution rather than treating
 all elapsed time as test cost.
 
@@ -1027,13 +1033,10 @@ still owns any broader acceptance or unresolved follow-up.
 | Compression selection and findings reconciliation | [PR #120](https://github.com/lab-cats/EMRYS/pull/120), [PR #123](https://github.com/lab-cats/EMRYS/pull/123), [PR #135](https://github.com/lab-cats/EMRYS/pull/135) |
 | Historical documentation-path bans | [PR #121](https://github.com/lab-cats/EMRYS/pull/121) |
 | Reporting import-permission consolidation | [PR #122](https://github.com/lab-cats/EMRYS/pull/122) |
-| Long-test duration estimates | [PR #124](https://github.com/lab-cats/EMRYS/pull/124) |
 | Continuing stacked work while CI runs | [PR #125](https://github.com/lab-cats/EMRYS/pull/125) |
 | Unused reporting-table presentation metadata | [PR #126](https://github.com/lab-cats/EMRYS/pull/126) |
-| Storage measurement-row assembly and portable filesystem-call test observation | [PR #128](https://github.com/lab-cats/EMRYS/pull/128), [PR #134](https://github.com/lab-cats/EMRYS/pull/134) |
 | Unconsumed summary context, predecessor validation, and scientific input snapshots | [PR #129](https://github.com/lab-cats/EMRYS/pull/129), [PR #132](https://github.com/lab-cats/EMRYS/pull/132), [PR #133](https://github.com/lab-cats/EMRYS/pull/133) |
 | Polish, optimization, quickstart, and continued-compression findings | [PR #131](https://github.com/lab-cats/EMRYS/pull/131), [PR #138](https://github.com/lab-cats/EMRYS/pull/138); original documentation inputs are linked in Evidence and selection |
-| Single construction of the Doctor readiness result | [PR #136](https://github.com/lab-cats/EMRYS/pull/136) |
 | Direct accumulation of admitted GTF exon rows | [PR #137](https://github.com/lab-cats/EMRYS/pull/137) |
 
 The following changes are also implemented, included in the validated PR #140
@@ -1041,16 +1044,15 @@ head, and merged into master through PR #169:
 
 | Work already covered | Reference |
 | --- | --- |
-| Automatic ordinary CI on stacked PRs | [PR #140](https://github.com/lab-cats/EMRYS/pull/140), item 22 |
-| Per-script Bash syntax checking | [PR #141](https://github.com/lab-cats/EMRYS/pull/141), item 15 |
-| Selected Ruff correctness rules | [PR #142](https://github.com/lab-cats/EMRYS/pull/142), item 17 |
-| Shared local/CI sharder self-tests | [PR #143](https://github.com/lab-cats/EMRYS/pull/143), item 21 |
 | Preserved source-identity policy and one shared declaration of fixed HTML outputs | [PR #144](https://github.com/lab-cats/EMRYS/pull/144), [PR #145](https://github.com/lab-cats/EMRYS/pull/145) |
 | Canonical BAM create-exclusive publication, with legacy replacement retired | [PR #146](https://github.com/lab-cats/EMRYS/pull/146) |
 | Direct create-only reporting publication; six callback carriers and the private facade retired; redundant tests reconciled | [PR #147](https://github.com/lab-cats/EMRYS/pull/147) |
 
-These implementations do not close unrelated recovery defects in items 1–4,
-the Doctor storage-repair issue in item 9 or browser/scientific review.
+The integrations did not themselves repair the recovery defects originally
+described in items 1–4. Items 2 and 4 were later retired; items 1 and 3 retain
+their owner recovery work. Item 9's old direct-plan prediction is historical;
+institutional Doctor qualification, browser review, and scientific review remain
+separate.
 PR #150 completed item 13; CS-18 subsequently moved canonical BAM and the
 other scientific producers into runner-owned publication. Current recovery and
 provenance checks remain. Create-only publication never permits removing
