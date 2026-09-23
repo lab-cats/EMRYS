@@ -172,12 +172,12 @@ evidence protection, and local/CI evidence levels. The
 owns this selection and delivery process; the
 [architecture guardrails](../design/decisions/platform-direction.md) lines
 73–108 own its permanent compression and approval boundaries. The
-[REDUCE-01 row](backlog_matrix.md) line 66 owns behavior classification and
-accounting for that accepted work. The campaign's tooling-only footprint
-exception at lines 98–101 and separate-selection warning at 13–20 remain
-specific, as does its dated source audit at 35–80. A five-to-seven-line owner
-route could save 14–16 lines, pending a draft, link check, and retention of the
-exception. Savings remain unverified; evidence deletion needs separate approval.
+[REDUCE-01 row](backlog_matrix.md) line 66 owns classification for that card,
+not every campaign slice. The campaign's explicit no-parallel-framework list
+at 92–95, tooling-only footprint exception at 98–101, and separate-selection
+warning at 13–20 remain specific, as does its dated source audit at 35–80.
+An eight-to-eleven-line linked route might save 10–13 lines if it keeps those
+limits; no draft or net saving is verified. Evidence deletion needs separate approval.
 
 ### F141 — Retired alpha renderer name in the report owner
 
@@ -489,7 +489,7 @@ baseline, pass changes, and original test provenance at 37–66. The
 CS-20/22 correction and exact hosted revision at 117–118 recur at 286–293;
 retain that evidence and 119–120's remaining-owner boundary. Item 22 at
 532–533 says “run linked above”; keep its exact `34306975901` target, not the
-different run at 73. The ten-line span might save 8–10; unverified.
+different run at 73. The ten-line span might save 7–9; unverified.
 No CI or product test ran in this audit.
 
 ### F160 — Accepted follow-up scope repeated in the polish introduction

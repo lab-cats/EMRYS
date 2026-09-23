@@ -1,12 +1,12 @@
 # DOCS-01 discovery notes, sixth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F164–F179 and a recheck of F158. F164–F167 compare local head `f79bc435`; F168 and the
+holds F164–F181 and a recheck of F158. F164–F167 compare local head `f79bc435`; F168 and the
 F19/F64/F92 refinements compare `5aaa17f0`; F97/F107/F169 use `25f62591`;
 F170 uses `8ef78400`, F171–F172 use `c6ec1562`, and F173–F175 use
 `286f646a`; F158/F176 use `3de8366b`, F124/F172 rechecks use
 `35668cc8`, F166/F169/F175/F177–F178 rechecks use `8489836c`, and F179 uses
-`ce4d22f8`, read on 2026-09-23. The
+`ce4d22f8`, and F180–F181 use `619e60b7`, read on 2026-09-23. The
 full coordinator contract and root/operator/owner history sweeps found no
 other substantial reduction. Counts are
 review spans and conditional arithmetic, not verified savings or approval to
@@ -253,7 +253,7 @@ evidence ceiling. The September 18 correction at 3204–3214 stays separate;
 the priority index links to the CV-16 heading. No replacement or net saving
 was verified.
 
-### F179 — CV-01 integrated journey account can be shorter
+### F179 — CV-01 integrated journey account under review
 
 At local audit head `ce4d22f8`, [CV-01](cluster_verification_backlog.md#cv-01-managed-golden-path-coverage)
 lines 2259–2295 uses 37 physical lines for the selected 130-pair hosted
@@ -267,12 +267,39 @@ inspect/watch/stop, positive closure, three Slurm Attempts, and separate
 two-Attempt direct parity. It also distinguishes the selected profile and
 tiny-fixture floor from production capacity, controlled rejection/local stop
 from site evidence, and pending exact-commit hosted from Viking acceptance.
-A within-card rewrite that preserves those details might reduce the 16-line journey paragraph to
-about 13 lines, the nine-line resource paragraph to six, and the ten-line
-fixture/limit paragraph to nine: roughly seven physical lines saved with both
-blank separators retained. These are estimates, not a drafted or verified replacement.
-The current **Verification pending** status and each evidence ceiling remain;
-overlap with CV-10 or the test guide does not justify deleting this account.
+A shorter within-card account might be possible, but no lossless draft or net
+line saving is established. The current **Verification pending** status and
+each evidence ceiling remain; overlap with CV-10 or the test guide does not
+justify deleting this integrated account.
+
+### F180 — Analysis provider validator independence overstated
+
+At local audit head `619e60b7`, the [analysis owner guide](../../src/emrys/analyses/README.md)
+lines 12–16 says EMRYS checks a provider's “independent validator”; lines
+29–32 also name it. [Descriptor admission](../../src/emrys/analyses/__init__.py)
+lines 317–359 and 420–454 requires a callable planner and valid declarations.
+[Task planning](../../src/emrys/orchestration/run_coordinator/materialization.py)
+lines 1137–1159 requires nonempty producer and validator argv tuples, while
+the [runner](../../src/emrys/orchestration/run_coordinator/task.py) lines
+2697–2709 and 2732–2769 executes them separately and checks their exits.
+Neither admission nor planning establishes that provider-authored validation
+is semantically independent of production. The [collaborator fixture](../../tests/orchestration/run_coordinator/test_materialization.py)
+lines 861–920 supplies different commands but does not prove that guarantee
+for arbitrary providers. This is a documentation-scope overclaim: retain the
+required validator command and separate execution, and distinguish the
+trusted provider's independence obligation from what EMRYS verifies. No
+product defect, exercised failure, or line saving is established.
+
+### F181 — Removed publisher-test history in the runtime test guide
+
+At local audit head `619e60b7`, the [runtime test guide](../../tests/evidence/runtime_availability/README.md)
+line 14 ends a current test-scope paragraph with “Tests solely for the retired
+standalone report publisher are removed.” Local blame identifies its
+introduction at `ddc82817`; a tracked documentation search finds no other
+current use of that phrase. It gives no present test instruction, scope limit,
+or failure evidence. Removing that one historical sentence could save one
+physical line; preserve the adjacent real-Snakemake and local-versus-cluster
+test limits at lines 7–14. No deletion or net saving was verified.
 
 ## Other focused source comparisons at `8ef78400`
 
@@ -405,3 +432,32 @@ CI, institutional evidence review, or proof of an actual line saving. A later
 regex link scan found zero unresolved local targets among 2,054 inline matches,
 72 reference definitions and 624 fragments in 177 Markdown files; it is not
 the parser-backed documentation gate.
+
+## Task and history origin screen at `619e60b7`
+
+Across the eight baseline task/history Markdown files, a read-only scan found
+55 distinct commit-like hexadecimal tokens of 8–40 characters with a letter;
+numeric run/job IDs and full-length digests were excluded. Fifty-two resolve
+to local commit objects. The three unavailable objects are the two hosted
+test merges cited by [CV-10](cluster_verification_backlog.md#cv-10-external-cancellation-and-recovery)
+at lines 2859 and 2928 and the hosted checkout cited by
+[CV-26](cluster_verification_backlog.md#cv-26-repeated-doctor-input-reads) at
+3910. Their six named PR-head/base commits resolve locally. Object presence
+does not verify the associated hosted run, artifact, test result, or scientific
+claim; unavailable hosted objects do not make the citations false. Dense link
+definitions at the ends of the polish and optimization campaigns point to
+pinned source evidence, not disposable prose chronology. No network fetch,
+artifact download, CI, or cluster execution occurred.
+
+## Selected claim-to-source coverage at `619e60b7`
+
+The runtime owner guide's 12 choices, 26 fixed checks, and isolated Snakemake
+startup match policy constants and direct test setup. The source topology's
+25 CLI seams and 22 import exceptions match the checker policy lists; the
+current import graph was not executed. The hosted workflow and documentation
+checker guides matched selected workflow, script, and direct-test assertions.
+F180 and F181 were the only new documentation observations from these bounded
+checks. This does not verify every owner, fixture, or retained evidence claim.
+A standard-library link scan of all 177 tracked Markdown files found no
+unresolved local targets among 2,064 inline matches, 72 reference definitions,
+and 628 fragments; it does not replace the parser-backed documentation gate.
