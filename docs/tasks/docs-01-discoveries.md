@@ -273,22 +273,21 @@ acceptance is governed by the backlog and exact validation evidence.
 
 ### F14 — Old source-attestation cost candidate
 
-[Optimization campaign](optimization_campaign.md) lines 17–24 explicitly pins
-its audit to `fdf7676` and requires a recheck before selection. Its task-entry
-candidate at lines 269–290 counted 24 Git subprocess calls per task then;
-that is historical source counting, not measured latency. Current
-[source authority](../../src/emrys/libraries/source_authority.py) lines 68–125
-uses installed package bytes and build metadata for identity rather than that
-old Git-object path. At pinned revision `e500e7c0`, the normal successful task path
-calls `admit_origins()` at [task entry](../../src/emrys/orchestration/run_coordinator/task.py)
-lines 2561, 2651, 2662, and 2676 before producer entry. The shared helper at
-1861–1898 observes the installed package; its current identity routine calls
-[`installed_python_package_identity`](../../src/emrys/libraries/installed_package_identity.py)
-at lines 286–293, which traverses package bytes. Neither current attestation
-owner invokes Git, so the historical 24-Git-subprocess count does not describe
-this path. Four package observations still occur; their latency and independent
-necessity remain unestablished. The dated source count was not false at its pinned
-revision.
+[Optimization campaign](optimization_campaign.md) lines 17–24 pins its audit
+to `fdf7676` and requires recheck. Its task-entry candidate at 269–290
+counted 24 Git subprocess calls per task then; lines 280–287 also ask a future
+selector to measure Git invocations and preserve changed-HEAD detection.
+Those are revision-bound prompts, not measured latency or current requirements.
+At local audit head `1eb562f0`, [source authority](../../src/emrys/libraries/source_authority.py)
+lines 68–125 uses installed package bytes and build metadata, not Git. The
+normal [task-entry path](../../src/emrys/orchestration/run_coordinator/task.py)
+calls `admit_origins()` at 2561, 2651, 2662, and 2676 before producer entry.
+The shared helper at 1861–1898 observes the installed package; its identity
+routine uses [`installed_python_package_identity`](../../src/emrys/libraries/installed_package_identity.py)
+at 286–293 to traverse package bytes. No current task-entry attestation
+invokes Git. Four package observations remain; their latency and independent
+necessity are unmeasured. The old 24-call count was not false at its pinned
+revision, and the current byte/build-origin boundaries must be preserved.
 
 ### F15 — CV-U22 interim status prose
 
@@ -583,8 +582,8 @@ preliminary 31–32-line net estimate covers only the original 12 stage files.
 At `651d60d5`, nine stage, two evidence, and one analysis contract use the
 same two-line opening linked to the shared
 [test evidence ceiling](../../tests/README.md#evidence-limits):
-24 physical lines in the review span. Some second lines continue with unique
-owner limits. [Canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md)
+24 physical lines are under review: four clauses stand alone, while eight
+second lines continue with unique owner limits. [Canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md)
 has a different two-line version at 177–178. Owner-specific coverage, oracles,
 recovery, and scientific limits remain distinct. No additional saving is
 established, and no contract deletion is approved.

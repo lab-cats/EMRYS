@@ -204,9 +204,10 @@ no runtime command was executed in the audit.
 ### F110 — Unrouted study-pairs configuration file
 
 The tracked [three-column pairing roster](../../configs/step_09_pairs.NORAD_EV_PUM1.tsv)
-at lines 1–7 is absent from the [config inventory](../../configs/README.md#what-belongs-here)
-at lines 7–16 and had no non-audit reader or caller reference in a tracked-text
-search before this finding was recorded.
+at lines 1–7 has no filename-specific link in the
+[config inventory](../../configs/README.md#what-belongs-here) at lines 7–16
+or filename-specific tracked caller. The same guide generically mentions
+a pairing example at 391–394; that weak route does not identify this file.
 Its six assignments match the [Quickstart table](../../quickstart.md#2-gather-the-study-inputs-and-scientific-choices)
 at lines 83–90, so the roster adds no distinct current assignment value found
 in this pass. Named Init creates the Project `samples.tsv` through the

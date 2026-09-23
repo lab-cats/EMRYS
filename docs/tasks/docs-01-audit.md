@@ -346,9 +346,6 @@ permission to change or delete the source.
   non-audit Markdown files found 59 cross-file near matches, already F28/F91
   or owner-specific; paraphrases can escape. F71/F107 gained scope limits,
   and F127's count was pinned. No product, test, CI, or cluster command ran.
-- At `3cfe4eff`/`651d60d5`, owner, tooling, evidence, operator, coordinator,
-  and adversarial finding rechecks added no new ID; F94/F02/F28 were refined.
-  No product, test, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -377,7 +374,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 140 numbered records include F41, F43, F87, F130, and F138, dismissed after recheck so
+The 143 numbered records include F41, F43, F87, F130, and F138, dismissed after recheck so
 their original claims and corrections remain traceable. The last column records
 an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -397,7 +394,7 @@ Discovery notes give source references and the boundary for each row.
 | [F11](docs-01-discoveries.md#f11-python-hook-scope) | Contradiction | Engineering guide omits root `setup.py` from hook scope. | The guide and hook file disagree on `setup.py` scope. |
 | [F12](docs-01-discoveries.md#f12-init-preview-proposal) | Prior-revision proposal | Polish campaign's dated audit says Init preview shows only destination and directories; normal preview now shows scientific values and selected fields have source-fixture coverage. | The full requested field set is not shown normally; automatic STAR values resolve at creation, so literal preview/published-byte equality is not established. |
 | [F13](docs-01-discoveries.md#f13-doctor-profile-proposal) | Prior-revision proposal | Polish campaign's dated audit says Doctor has no `--profile`; the public option now exists. | The proposal and accepted work/tests have different authority. |
-| [F14](docs-01-discoveries.md#f14-old-source-attestation-cost-candidate) | Historical cost claim | Old optimization finding counts 24 Git calls per task entry; current source has four installed-package observations before producer entry but no Git subprocess in that attestation path. | Repeated package-byte work remains unmeasured; old Git-call count is revision-bound. |
+| [F14](docs-01-discoveries.md#f14-old-source-attestation-cost-candidate) | Historical cost and selection prompt | Old optimization candidate counts 24 Git calls and asks future selectors to measure Git and preserve changed-HEAD detection; current task entry observes installed package bytes four times without invoking Git. | Old count and Git/HEAD instructions are revision-bound; current byte/build-origin guards and their cost remain distinct and unmeasured. |
 | [F15](docs-01-discoveries.md#f15-cv-u22-interim-status-prose) | Retained chronology | CV-U22's dated checkpoints explain why the card returned to Open; compression has no demonstrated benefit yet. | The causal record has no demonstrated reader conflict. |
 | [F16](docs-01-discoveries.md#f16-polish-merged-pr-tables) | Compression candidate | Polish campaign repeats merged-PR chronology in two tables; the first retains unique slice mappings. | The first table retains unique mappings; routine chronology overlaps. |
 | [F17](docs-01-discoveries.md#f17-main-backlog-chronology-and-run-repetition) | Retained row evidence | One hosted run supports three distinct backlog rows; repeated row-local citations may be warranted. | Only routine genealogy is a compression candidate. |
@@ -411,7 +408,7 @@ Discovery notes give source references and the boundary for each row.
 | [F25](docs-01-discoveries.md#f25-reporting-decision-versus-migration-history) | Compression candidate | Reporting decision retains predecessor failure provenance and some retired-symbol inventory. | Predecessor and recovery limits are distinct; retired symbols may overlap current owners. |
 | [F26](docs-01-discoveries.md#f26-alpha-carrier-note-in-reporting-readme) | Retained API guidance | Reporting README's five-line carrier note mixes a brief migration phrase with current collaborator API guidance. | Current types and positional guidance remain; isolated trimming has negligible value. |
 | [F27](docs-01-discoveries.md#f27-old-fixed-resource-provenance) | Compression candidate | Resource-profile README repeats four lines of old 12-core origin provenance already retained in CV-U28. | Current resource policy and capacity limits remain owner-local; the historical review span is not a verified saving. |
-| [F28](docs-01-discoveries.md#f28-repeated-owner-boilerplate) | Compression candidate | Six stage owners and eight stage/evidence test guides repeat 58 generic physical lines; twelve owner-contract evidence-ceiling openings occupy a further 24-line review span. | The illustrative 31–32-line saving covers only the original 12-file stage subset; some contract lines have unique continuations and no further net saving is verified. |
+| [F28](docs-01-discoveries.md#f28-repeated-owner-boilerplate) | Compression candidate | Six stage owners and eight stage/evidence test guides repeat 58 generic physical lines; twelve owner-contract evidence-ceiling openings occupy a further 24-line review span. | The illustrative 31–32-line saving covers only the original 12-file stage subset; eight contract lines continue with unique limits, and no further net saving is verified. |
 | [F29](docs-01-discoveries.md#f29-library-subowner-navigation) | Navigation mismatch | Tests point to a library index that does not route readers to six documented Python subowners. | Six documented subowners are not routed by the test index. |
 | [F30](docs-01-discoveries-continued.md#f30-dashboard-reporting-stage-text) | Product-facing text | Dashboard places final target after reporting and, with a test fixture, retains three reporting operations; current target precedes two reporting operations. | Current reporting-stage and fixture wording conflicts with target order; FINAL and historical rules differ. |
 | [F31](docs-01-discoveries-continued.md#f31-historical-slurm-username-recovery-advice) | Recovery wording | Troubleshooting gives an undated upgrade instruction for a Slurm username incident whose submission fix is already present. | Incident evidence remains dated; current recovery wording is unqualified. |
@@ -493,7 +490,7 @@ Discovery notes give source references and the boundary for each row.
 | [F107](docs-01-discoveries-fourth.md#f107-retired-shell-publication-tests-in-a-current-test-guide) | Historical detail placement | Shared-library test guide and six current owner contracts retain distinct failures from retired direct-write publishers beside current runner coverage. | Old fault oracles remain; TERM equivalence, transfer, and saving remain unverified. |
 | [F108](docs-01-discoveries-fourth.md#f108-scientific-completion-in-the-run-summary-guide) | Terminology ambiguity | Run-summary guide calls scientific completion external, while inspection and architecture define computational Scientific Results completion. | External review and biological interpretation remain distinct; no behavior defect inferred. |
 | [F109](docs-01-discoveries-fourth.md#f109-runtime-discoverys-interactive-publication) | No-write wording | Runtime owner guide says discovery without `--execute` does not write; affirmative terminal confirmation publishes, as source and direct fixture show. | Declined or noninteractive previews remain no-write; no runtime command ran in the audit. |
-| [F110](docs-01-discoveries-fourth.md#f110-unrouted-study-pairs-configuration-file) | Configuration inventory | Tracked three-column EV/PUM1 roster is unindexed and repeats Quickstart's six pairings; current Init writes the six-column sample manifest that Step 09 admits. | Historical use is unverified; matching values do not authorize deletion or make the old roster a current Step 09 input. |
+| [F110](docs-01-discoveries-fourth.md#f110-unrouted-study-pairs-configuration-file) | Configuration inventory | Tracked three-column EV/PUM1 roster is not named in the inventory and repeats Quickstart's six pairings; current Init writes the six-column sample manifest that Step 09 admits. | Historical use is unverified; matching values do not authorize deletion or make the old roster a current Step 09 input. |
 | [F111](docs-01-discoveries-fourth.md#f111-current-resource-claim-with-old-profile-citations) | Citation provenance | Optimization campaign describes current allocation-aware defaults but links to the fixed-policy profiles from its older audit revision. | Old links remain valid historical citations; no resource performance or runtime result was inferred. |
 | [F112](docs-01-discoveries-fourth.md#f112-r-environment-checks-report-support-claim) | Check-scope overclaim | Scripts index says the R environment checker verifies report support; it checks R dependencies and a headless PDF device, not current HTML report rendering. | PDF readiness is relevant to Step 09 scientific outputs; no report failure or runtime result is inferred. |
 | [F113](docs-01-discoveries-fourth.md#f113-cv-26-mixed-current-rules-and-measurement-history) | Evidence placement | CV-26's 309-line card mixes open acceptance, current Doctor rules, repeated checkpoint status, and four distinct hosted measurement blocks. | Current rules have an owner and status has a delegated card; unique measurements, failed-suite limits, and operator report remain evidence. No saving is established. |
@@ -524,6 +521,9 @@ Discovery notes give source references and the boundary for each row.
 | [F138](docs-01-discoveries-fifth.md#f138-reporting-fault-test-detail-in-the-production-guide) | Dismissed after recheck | Reporting owner guide links the fault-test guide but does not repeat its monkeypatch mechanics. | Brief source/input recheck guarantees belong with production; no unnecessary detail or saving is established. |
 | [F139](docs-01-discoveries-fifth.md#f139-storage-command-route-in-the-evidence-index) | Reader-route ambiguity | Evidence index lists the manual storage debug command without distinguishing Doctor's normal storage-qualification path. | Index may catalog commands; manual phase and residue limits remain distinct. No command was run. |
 | [F140](docs-01-discoveries-fifth.md#f140-generic-selection-policy-repeated-in-the-polish-campaign) | Compression candidate | Polish campaign repeats a five-bullet generic selection checklist already governed by workflow and architecture guardrails. | Its tooling exception, separate-selection warning, and dated source audit remain; 21-line review span is not a proved saving. |
+| [F141](docs-01-discoveries-fifth.md#f141-retired-alpha-renderer-name-in-the-report-owner) | One-line history candidate | Paired-CMH report guide names retired `render_report_view` after describing the surviving template, view and provider roles. | Current repository callers are absent and Git retains the migration; external use and the value of this warning remain unverified. |
+| [F142](docs-01-discoveries-fifth.md#f142-collaborator-acceptance-repeated-in-the-polish-campaign) | Acceptance duplication | Polish item 29 repeats external provider/reporter acceptance in two adjacent blocks and the authoritative `EXTENSION-01` row. | The sampled composition-test limit and no-conformance-service nuance remain distinct; 31 lines are under review, not a saving estimate. |
+| [F143](docs-01-discoveries-fifth.md#f143-unrouted-reporting-run-contract-example) | Unrouted example | Eight-line run-contract example has no filename-specific tracked link or call site found; current coordinator projects the six-field record. | The config guide generically routes specialist examples; external readers and safe deletion or saving remain unverified. |
 
 ## Discovery notes
 
@@ -565,8 +565,8 @@ and a warning against copying during publication. Troubleshooting repeats
 the coordinator's trusted-workspace limit where a recovery reader needs it.
 The Quickstart output table repeats owner rosters but supplies first-time
 navigation through copied Results. These overlaps alone establish no safe
-reduction. Polish items 29–30 retain external-provider and release evidence
-boundaries that the accepted `EXTENSION-01` and `RELEASE-01` rows summarize.
+reduction. Polish item 29's repeated acceptance is F142; its composition-test
+limit remains. Item 30 retains release context beyond the `RELEASE-01` summary.
 The test-tool guide overlaps CV-01's selected journey but uniquely states
 request-token stream matching and its guarded emergency-cancellation limit;
 those current driver rules have no demonstrated net reduction.

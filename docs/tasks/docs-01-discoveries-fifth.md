@@ -1,9 +1,10 @@
 # DOCS-01 discovery notes, fifth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F130–F140. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
+holds F130–F143. F130–F131 use local audit head `3ebfb2bf`, read on 2026-09-23;
 F132–F133 use `935adf06`, F134–F139 use `ebc0012d`, and F140 uses `f239a91d`
-on that date. F138 was dismissed on adversarial recheck at `f239a91d`.
+on that date. F141–F143 use `1eb562f0` on that date. F138 was dismissed on
+adversarial recheck at `f239a91d`.
 F130 was dismissed as a duplicate on recheck at local head `935adf06`.
 Source and direct tests were read, not executed. These are documentation
 observations, not runtime results, accepted changes, or permission to alter
@@ -160,3 +161,46 @@ accounting for that accepted work. The campaign's tooling-only footprint
 exception at lines 98–101 and separate-selection warning at 13–20 remain
 specific, as does its dated source audit at 35–80. This 21-line scope is a
 review surface, not a verified saving or permission to remove evidence.
+
+### F141 — Retired alpha renderer name in the report owner
+
+At local audit head `1eb562f0`, the [paired-CMH report guide](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/README.md)
+line 27 says the alpha `render_report_view` dictionary-layout interface is
+retired. Lines 22–26 already describe the current template, view, and provider
+roles. The [provider](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/provider.py)
+at 28–33 and 96–121 uses `render_scientific_html` and returns the current
+carrier. A tracked non-audit source/document search found the old symbol only
+in that guide; local Git revision `ef321aa1` retains the former source and
+migration. This one-line historical note is under review; external readers
+were not checked, and no deletion or evidence transfer is approved.
+
+### F142 — Collaborator acceptance repeated in the polish campaign
+
+At local audit head `1eb562f0`, [polish item 29](polish-campaign.md) lines
+620–650 marks `EXTENSION-01` as the accepted owner, then states similar
+provider/reporter installation, discovery, execution, validation, reporting,
+identity, and no-parallel-framework criteria at 634–641 and 643–650. The
+[main matrix](backlog_matrix.md) line 70 already owns the accepted checklist.
+The polish finding at 626–632 uniquely explains why its sampled composition
+test does not prove real entry-point discovery. The versioned-interface,
+bounded Step 09/optional Step 10, and no-conformance-service language at
+647–649 also needs a destination check before any reduction. The 31-line
+section is a review span, not a verified saving or permission to discard
+evidence.
+
+### F143 — Unrouted reporting run-contract example
+
+At local audit head `1eb562f0`, the eight-line
+[run-contract example](../../configs/artifact_run_contract.example.json) has no
+filename-specific tracked link or call site found. The
+[config guide](../../configs/README.md) lines 7–16 groups other `.example.*`
+files, and 391–394 generically mentions artifact/report examples. The
+[coordinator projection](../../src/emrys/contracts/orchestration/projection.py)
+at 101–127 now constructs the six-field reporting run contract; its current
+validation belongs to [artifact identity](../../src/emrys/contracts/artifacts/_artifact_contracts/identity.py)
+at 22–40. The example's canonical component hash matches its five components
+in a static standard-library calculation. The
+[artifact-index owner](../../src/emrys/reporting/_artifact_index/README.md)
+at 3–7 describes direct indexing as private. No external-reader inventory or
+example-file usage was established; neither deletion nor an eight-line saving
+follows from the missing filename route.
