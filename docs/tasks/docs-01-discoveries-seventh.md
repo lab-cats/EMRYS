@@ -1,8 +1,9 @@
 # DOCS-01 discovery notes, seventh file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F188–F189 and an F182 recheck from read-only comparison at local audit head `9aaec3ac`,
-read on 2026-09-23. Review spans and proposed line savings are conditional;
+holds F188–F189 and an F182 recheck at local audit head `9aaec3ac`, plus an
+F76 recheck and coverage screens at `16a98be5`, read on 2026-09-23. Review
+spans and proposed line savings are conditional;
 no guide, product source, test, or retained evidence was changed, and no
 product, CI, or cluster command ran.
 
@@ -58,3 +59,43 @@ and publication section, were reread against selected owners, source and
 tests. Existing findings cover the apparent overlap and private detail;
 F182 now also names its scratch-cleanup claim at lines 383–387. No separate
 safe reduction was established by this recheck.
+
+## Cross-repository duplicate and claim screen at `16a98be5`
+
+Across 170 non-audit Markdown files, a paragraph screen found 2,739 text
+blocks; 1,341 non-table blocks of 30–250 words entered a word-weighted,
+cross-file similarity comparison. I inspected pairs scoring about 0.28 or
+higher, plus repeated non-table lines of at least 70 characters. The strongest
+overlaps involved config and Runbook batch setup, coordinator and
+Troubleshooting recovery, coordinator and decision reporting, resource policy
+and its dated history, and submission and logging identity. Existing findings
+or distinct reader roles account for them. This screen cannot rule out every
+paraphrase or establish a safe line saving.
+
+A simple scan of inline and reference-style Markdown path links, excluding
+temporary audit notes as sources, found 41 non-audit files without an inbound
+link. All are directory `README.md` files, not demonstrated orphans. The
+[task index](README.md) is explicitly required by the documentation checker.
+The license and scientific-context resource indexes retain distinct local
+obligations. The scan does not account for directory browsing or external
+bookmarks and establishes no deletion or line saving.
+
+All 53 test, script and CI Markdown guides (692 physical lines) were reread
+against selected assertions, driver behavior and workflow wiring. Selected
+strong guarantees about Init FASTQ reads, STAR members, Step 06/07 validation,
+reporting, and Slurm scratch were traced to source. Apparent gaps were already
+F182/F185 or expressly limited by source; no new high-confidence finding
+emerged. These were static comparisons, not executed checks or hosted evidence.
+
+## F76 historical-sentence recheck at `16a98be5`
+
+The [Step 07 test guide](../../tests/stages/partitioned_cohort_mpileup/README.md)
+lines 10–11 also narrates retired shell-suite fixed primary/pilot counts,
+introduced at `76acb9c5f`. The current [producer test](../../tests/stages/partitioned_cohort_mpileup/test_partitioned_cohort_mpileup_producer.py)
+lines 239–293 checks fixture arguments and the final-path receipt; the
+[stage contract](../../src/emrys/stages/partitioned_cohort_mpileup/CONTRACT.md)
+does not make those old counts a production requirement. The guide's line 12
+fixture-VCF scientific ceiling remains useful. Whether the retired-count
+sentence has any distinct current reader value or physical-line saving is
+unverified; Git retains its provenance. This remains part of F76's guide
+review, not a separate behavior or scientific finding.
