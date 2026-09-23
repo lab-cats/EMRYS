@@ -223,6 +223,14 @@ permission to change or delete the source.
   tracked Markdown resolved to local commits, paths, and line ranges; that
   check does not validate their semantic claims or external artifacts. No
   product, test, CI, or cluster command was run.
+- A read-only Step 00a–10 owner comparison at local head `b62e207b`
+  extended F99 to Step 01→02's data-input versus Run-gate wording. The other
+  early and late stage contracts yielded no new high-confidence finding.
+  No validator, Run, test, CI, or cluster command was run.
+- A read-only reporting, evidence, ingestion, and CI/tooling comparison at
+  the same head added F112 for the R check's unqualified report-support claim.
+  Other apparent overlaps were existing findings or distinct owner routes.
+  No report, R check, test, CI, or cluster command was run.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -250,7 +258,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 111 numbered records include F87, dismissed after recheck so its original
+The 112 numbered records include F87, dismissed after recheck so its original
 claim and correction remain traceable. The last column records an evidence
 limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -355,7 +363,7 @@ Discovery notes give source references and the boundary for each row.
 | [F96](docs-01-discoveries-third.md#f96-unrouted-artifact-schema-version-notes) | Navigation and compression question | Artifact schema index links current JSON schemas, while four adjacent version READMEs have no inbound Markdown route. | Their 32 lines overlap the index but retain unique compatibility, identity, and evidence limits; no saving is established. |
 | [F97](docs-01-discoveries-third.md#f97-past-audit-priority-order-in-polish-campaign) | Historical selection order | Polish campaign keeps nine lines of second/third-pass priorities whose proposals and accepted status are recorded elsewhere. | Nine lines are a review surface; measurement prerequisites and dated decisions remain distinct. |
 | [F98](docs-01-discoveries-third.md#f98-worker-prerequisites-inside-validation-sections) | Contract placement | Step 00c and Step 05 validation sections repeat Java/GATK/hash-launcher prerequisites used by internal workers, not their grouped validators. | Worker policy and validator input/evidence limits remain distinct. |
-| [F99](docs-01-discoveries-third.md#f99-step-07-data-inputs-versus-run-gate) | Execution-order wording | Step 07 says it needs only Step 06 BAM/BAI files, while the admitted Run waits for the Step 06 verified marker before starting it. | Worker data inputs and Run scheduling differ; no runtime defect is inferred. |
+| [F99](docs-01-discoveries-third.md#f99-stage-data-inputs-versus-run-gates) | Execution-order wording | Step 01 calls STAR logs and the SJ table non-prerequisites for Step 02; Step 07 calls Step 06 validation and its marker non-prerequisites. The admitted Run waits for each predecessor's verified marker before starting the next stage. | Worker data inputs and Run scheduling differ; no runtime defect is inferred. |
 | [F100](docs-01-discoveries-fourth.md#f100-gtf-worker-detail-in-the-coordinator-contract) | Owner-detail overlap | Coordinator runner section repeats the GTF worker's shared-normalization fact already in its stage contract. | Runner publication and recovery rules remain distinct; no saving established. |
 | [F101](docs-01-discoveries-fourth.md#f101-retired-reporting-memory-recovery-advice-in-the-contract) | Audience placement | Coordinator contract alone names exact retired-field removal advice; profile guide gives only a generic retired-setting warning. | Rejection behavior is current owner detail; the old control's effectiveness was not replayed. |
 | [F102](docs-01-discoveries-fourth.md#f102-historical-e09-example-in-current-lifecycle-rules) | Evidence placement | Lifecycle contract names the historical E09 Run after stating its generic missing-evidence rule; the CV register and card retain E09. | E09 cause and old-Run recovery remain unverified; current eligibility is distinct. |
@@ -368,6 +376,7 @@ Discovery notes give source references and the boundary for each row.
 | [F109](docs-01-discoveries-fourth.md#f109-runtime-discoverys-interactive-publication) | No-write wording | Runtime owner guide says discovery without `--execute` does not write; affirmative terminal confirmation publishes, as source and direct fixture show. | Declined or noninteractive previews remain no-write; no runtime command ran in the audit. |
 | [F110](docs-01-discoveries-fourth.md#f110-unrouted-study-pairs-configuration-file) | Configuration inventory | Tracked three-column EV/PUM1 pairing roster is unindexed, with no pre-audit reader or caller reference found; current Step 09 uses the six-column sample manifest. | Historical use is unverified; neither deletion nor current Step 09 admission is inferred. |
 | [F111](docs-01-discoveries-fourth.md#f111-current-resource-claim-with-old-profile-citations) | Citation provenance | Optimization campaign describes current allocation-aware defaults but links to the fixed-policy profiles from its older audit revision. | Old links remain valid historical citations; no resource performance or runtime result was inferred. |
+| [F112](docs-01-discoveries-fourth.md#f112-r-environment-checks-report-support-claim) | Check-scope overclaim | Scripts index says the R environment checker verifies report support; it checks R dependencies and a headless PDF device, not current HTML report rendering. | PDF readiness is relevant to Step 09 scientific outputs; no report failure or runtime result is inferred. |
 
 ## Discovery notes
 

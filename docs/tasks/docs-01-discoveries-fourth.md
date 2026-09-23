@@ -1,11 +1,10 @@
 # DOCS-01 discovery notes, fourth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F100–F111. F100–F104 use local audit head `e1771d21`; F105–F108 use
-`b65e8fb8`; F109–F110 use `26898b5e`; F111 uses `cd45bd51`, all read on
-2026-09-22. These are
-documentation observations, not runtime results, accepted changes, or
-permission to alter retained evidence.
+holds F100–F112. F100–F104 use local audit head `e1771d21`; F105–F108 use
+`b65e8fb8`; F109–F110 use `26898b5e`; F111 uses `cd45bd51` and F112 uses
+`b62e207b`, all read on 2026-09-22. These are documentation observations, not
+runtime results, accepted changes, or permission to alter retained evidence.
 
 ## Discovery notes
 
@@ -201,6 +200,23 @@ candidate's current-policy paragraph to `593f6e728` on 2026-09-21, after the
 audit snapshot. The old links remain valid for historical claims, but do not
 support this later current-policy description. This is citation provenance,
 not a measured resource or runtime result.
+
+### F112 — R environment check's report-support claim
+
+The [scripts index](../../scripts/README.md) line 10 says
+`check_r_environment.R` checks the selected R library against the lock and
+“verifies report support.” The [script](../../scripts/check_r_environment.R)
+lines 48–125 checks R packages, versions, library selection, and lock status;
+lines 128–159 create and inspect a tiny headless PDF. It invokes no reporting
+provider, HTML renderer, or report publication path. Current
+[report rendering](../../src/emrys/reporting/_run_report/validation.py)
+lines 85–159 uses Python/Jinja HTML, and the built-in
+[figure renderer](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/figures.py)
+lines 208–231 uses Python/Matplotlib SVG. The R PDF device is relevant to
+[Step 09's scientific PDF outputs](../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md#inputs-and-six-output-transaction),
+but this check alone does not verify current
+report support. This is a guide-scope overclaim, not evidence that rendering
+fails; neither the R check nor a report ran in this audit.
 
 ## Reviewed overlaps without a saving claim
 

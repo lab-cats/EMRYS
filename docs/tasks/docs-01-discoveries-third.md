@@ -1,15 +1,15 @@
 # DOCS-01 discovery notes, third file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F62–F99; [fourth notes](docs-01-discoveries-fourth.md) hold F100–F111.
+holds F62–F99; [fourth notes](docs-01-discoveries-fourth.md) hold F100–F112.
 F62–F64 use pinned revision `b67e0eeb`; F65–F66 began at
 `cf94af08`, with F66 extended at `9c4fafdc`; F67–F70 use `c0a6027a`;
 F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`; F74–F77 use `ab25ea9b`;
 F78–F83 use pinned revision `7a07d502`; F84–F88 use `ce9a3289`;
 F89 uses local head `39a21034`; F90–F93 and the F85 extension use `9c0264d3`;
 F94–F96 and the F22/F53 extensions use local head `e90c85f4`,
-F97–F99 and the F50/F56/F69/F86 extensions use local head `7adde22a`,
-all read on 2026-09-22.
+F97–F99 and the F50/F56/F69/F86 extensions use local head `7adde22a`;
+F99 was extended at `b62e207b`, all read on 2026-09-22.
 These are documentation observations, not runtime results or accepted changes.
 
 ## Discovery notes
@@ -376,7 +376,8 @@ that marker at 2883–2920. Thus 02b cannot overlap its *corresponding sample's*
 Step 02 validation in an ordinary Run; different samples may overlap. This is
 a timing statement about the admitted graph, not an execution defect or a
 claim about a standalone worker invocation.
-F99 records the related Step 06→07 data-input versus Run-scheduling distinction.
+F99 records the related Step 01→02 and Step 06→07 data-input versus
+Run-scheduling distinction.
 
 ### F87 — Step 05 scratch owner in optimization candidate
 
@@ -549,7 +550,7 @@ under validator prose can blur the public validator's prerequisites. This is
 a repeated contract-placement issue, not evidence that a validator ran GATK.
 The worker environment and each validator's independent checks remain distinct.
 
-### F99 — Step 07 data inputs versus Run gate
+### F99 — Stage data inputs versus Run gates
 
 The [Step 07 contract](../../src/emrys/stages/partitioned_cohort_mpileup/CONTRACT.md)
 lines 12–18 says it checks only Step 06 BAM/BAI presence and nonemptiness and
@@ -562,3 +563,13 @@ lines 402–420 waits for each predecessor's verified marker. Thus Step 07's
 worker data admission is narrower than its scheduling prerequisite in an
 ordinary Run. This extends F86's input-versus-order distinction to a separate
 stage; no worker or Run was executed.
+
+At local audit head `b62e207b`, the [Step 01 contract](../../src/emrys/stages/star_alignment/CONTRACT.md)
+lines 21–25 likewise calls its three STAR logs and splice-junction table
+evidence outputs rather than Step 02 execution prerequisites. Step 02 consumes
+the BAM as its direct [profile edge](../../src/emrys/workflow/contracts/local_cmh_v2.json)
+lines 112–116, but the [Step 01 validator](../../src/emrys/stages/star_alignment/validator.py)
+lines 49–116 checks all five outputs. The same Run graph waits for Step 01's
+verified marker before scheduling Step 02. The contract's statement is accurate
+for Step 02's worker inputs; it does not describe the admitted Run gate. No
+validator or Run was executed.
