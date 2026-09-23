@@ -328,7 +328,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 190 records, 71 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 191 records, 71 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -341,7 +341,7 @@ Of 190 records, 71 were dismissed after recheck; linked notes give reasons. The 
 | [F07](docs-01-discoveries.md#f07-doctor-repair-does-not-always-install) | Contradiction | Runbook states Doctor installs, the decision assigns it uv, and Troubleshooting labels qualification failure “after installation”; verification-only Slurm plans can still submit checks. | Package work, preview, and confirmed verification have different effects. |
 | [F08](docs-01-discoveries.md#f08---version-and-local-env) | Source-ordering limit | Runbook promises `--version` from any directory; a malformed marked or non-regular `.env` is rejected before version dispatch. | Source inference and unrun installed-command behavior remain separate. |
 | [F09](docs-01-discoveries.md#f09-runbook-entry-order) | Dismissed for DOCS-01 | Request/watch/stop procedures precede setup, but the Runbook opens with its evidence and owner boundary. | The procedures serve returning operators; no reader failure or useful reduction from reordering is established. |
-| [F10](docs-01-discoveries.md#f10-contract-location-claim) | Filename overclaim | Two global indexes imply an adjacent `CONTRACT.md` for every component; many README locations use another contract form. | Two global routes overstate `CONTRACT.md` coverage; stage-owner wording remains accurate. |
+| [F10](docs-01-discoveries.md#f10-contract-location-claim) | Filename overclaim | Two global indexes imply an adjacent `CONTRACT.md` for every component; the decision index gives a less absolute route to that filename, while many owners use READMEs or schemas. | The two explicit filename promises overstate coverage; the decision route is incomplete, and stage-owner wording remains accurate. |
 | [F11](docs-01-discoveries.md#f11-python-hook-scope) | Contradiction | Engineering guide omits root `setup.py` from hook scope. | The guide and hook file disagree on `setup.py` scope. |
 | [F12](docs-01-discoveries.md#f12-init-preview-proposal) | Prior-revision proposal | Polish campaign's dated audit says Init preview shows only destination and directories; normal preview now shows scientific values and selected fields have source-fixture coverage. | The full requested field set is not shown normally; automatic STAR values resolve at creation, so literal preview/published-byte equality is not established. |
 | [F13](docs-01-discoveries.md#f13-doctor-profile-proposal) | Prior-revision proposal | Polish campaign's dated audit says Doctor has no `--profile`; the public option now exists. | The proposal and accepted work/tests have different authority. |
@@ -522,6 +522,7 @@ Of 190 records, 71 were dismissed after recheck; linked notes give reasons. The 
 | [F188](docs-01-discoveries-seventh.md#f188-retired-storage-publisher-history-in-polish-item-2) | Retired-feature chronology candidate | Polish item 2 spends 13 lines on a retired capacity-and-retention publisher and the PR sequence that preceded its removal. | Four to six lines may be available; retain the three recovery risks, retirement without repair, exact retirement provenance, and surviving storage qualification. Saving is unverified. |
 | [F189](docs-01-discoveries-seventh.md#f189-cv-campaign-related-work-repeats-current-owner-map) | Conditional owner-map candidate | CV campaign's Related work section repeats selected SITE-PARITY, SCHED/CV-11, watch and CV-26 status detail; its optimization and polish relationships add distinct context. | Preserve those relationships, September 17 watch acceptance, pending site evidence, CV-26/E11 no-speedup limit, and evidence-deletion boundary. No lossless draft or line saving is established. |
 | [F190](docs-01-discoveries-seventh.md#f190-source-topology-reporting-internal-import-boundary) | Source-topology wording contradiction | The import guide says no functional owner imports reporting internals, while its own exact exception table permits seven Run coordinator imports that current source uses. | Scope the blanket rule to owners outside the listed exceptions; retain every import pair and justification. This is documentation accuracy, not an unauthorized import or executed checker result. |
+| [F191](docs-01-discoveries-seventh.md#f191-console-detail-tiers-in-the-execution-decision) | Console-detail wording drift | An execution decision says verbose and debug progressively expose detail, but `--verbose` is the sole public detail switch and shows both event classes together. | Keep normal/verbose output and durable-log boundaries distinct. This is a static interface comparison, not an observed command failure. |
 
 ## Discovery notes
 

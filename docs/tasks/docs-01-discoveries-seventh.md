@@ -148,3 +148,32 @@ ceiling and reporting-consumer sentences are already F28 and dismissed F145;
 their local links and owner-specific limits prevent an unverified saving claim.
 No product commands, tests, CI, cluster operation, or hosted evidence were run in this
 static rescreen; remaining claim-to-source and evidence checks are selective.
+
+### F191 — Console detail tiers in the execution decision
+
+At local audit head `f3dc7749`, the [execution decision](../design/decisions/execution-evidence-and-reporting.md#console-logs-and-status)
+lines 265–268 says verbose and debug progressively expose console detail.
+The [logging contract](../design/LOGGING_CONTRACT.md#sinks-controls-and-streams)
+lines 36–38 and 51–55 makes `--verbose` the sole public detail switch and has
+only normal and verbose console rows. [Argument registration](../../src/emrys/libraries/application_logging/controls.py)
+lines 58–64 adds only `--verbose`; [projection](../../src/emrys/libraries/application_logging/handler.py)
+lines 544–549 shows both `verbose` and `debug` event classes when it is on.
+The [direct test](../../tests/libraries/application_logging/test_handler.py)
+lines 215–259 expects those two classes together. “Debug” is an internal event
+class, not a separate progressively broader public view. The decision can
+mislead a reader about available controls; the durable JSONL log and the
+promise that projection does not change behavior or exits remain intact.
+This is a static source/test comparison, not an executed CLI result.
+
+## Architecture, test, and task-record rescreen at `f3dc7749`
+
+All 16 architecture/design Markdown and Mermaid files and 53 test/script/CI
+guides were reread against selected current source, workflow configuration,
+direct tests and owners. Six principal task/evidence records were screened by
+heading and status; relevant sections were compared with current owner records
+and selected local Git history. F191 and the F10 expansion were the distinct
+changes. Existing findings cover the remaining apparent diagram, test-lane,
+owner-status and campaign-history issues. Polish item 30's earlier Quickstart
+account is explicitly dated context, not a current guide claim. Tests, CI,
+institutional work and scientific review were not run or promoted by these
+static reads.

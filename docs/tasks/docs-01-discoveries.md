@@ -218,23 +218,22 @@ their order is established.
 
 ### F10 — Contract-location claim
 
-[Docs index](../README.md) lines 3–4 explicitly says each component has a
-`CONTRACT.md`; [owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
-lines 7–8 makes a similar adjacent-file claim. The
-[architecture](../architecture/ARCHITECTURE.md) lines 6–7 and
-[tests index](../../tests/README.md) lines 3–4 use the broader word
-“contract.” Runtime-availability and reporting owners, among others, express
-current contracts in READMEs; schema owners also use schemas. At the pinned
-revision, 62 source README locations but only 15 adjacent `CONTRACT.md` files
-exist; 47 README directories have no adjacent file. Those 62 directories are
-not all functional owners: some are indexes or schema folders. The narrower
-[stage-owner index](../../src/emrys/stages/README.md) lines 3–5 correctly
-points each of its ten owners to an adjacent contract. The two global
-filename promises conflict with mixed owner forms; no empty contracts are
-implied by the evidence.
-The owner inventory's later generic “adjacent contract” at lines 31–33 and
-the architecture/test indexes' conceptual use of “contract” do not make the
-same filename promise.
+[Docs index](../README.md) lines 3–4 says each component has a `CONTRACT.md`;
+[owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md) lines 7–8
+makes a similar adjacent-file claim. [DECISIONS](../design/DECISIONS.md) lines
+13–14 routes exact behavior to the applicable owner `CONTRACT.md`, schema and
+tests; “applicable” is less categorical but overlooks README-only owners.
+The [architecture](../architecture/ARCHITECTURE.md) lines 6–7 and
+[tests index](../../tests/README.md) lines 3–4 use “contract” more broadly.
+Runtime-availability and reporting owners use READMEs; schema owners use
+schemas. At the pinned revision, 62 source README locations had only 15
+adjacent `CONTRACT.md` files; 47 README directories lack one, although not all
+62 are functional owners. The narrower [stage-owner index](../../src/emrys/stages/README.md)
+lines 3–5 correctly points its ten owners to adjacent contracts. The two
+explicit filename promises conflict with mixed owner forms; the decision route
+is incomplete, but no empty contract is implied. The inventory's later
+generic “adjacent contract” and the architecture/test conceptual usage do not
+promise that filename.
 
 ### F11 — Python hook scope
 
