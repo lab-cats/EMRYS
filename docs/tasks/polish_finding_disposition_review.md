@@ -187,11 +187,12 @@ and commit boundary.
 | [Overlap tables](polish-campaign.md#existing-capabilities-and-overlapping-work): merged PRs | Overlap dispositions prevent completed work from being selected again; PRs #128/#134 did not repair item 2. PRs #144–147 include source-identity, fixed-HTML-output, BAM-publication, and reporting-publication decisions. | The PR-by-PR merge inventory after each unique decision and unresolved limit has an owner. | Compare every row with the item table above, [reporting decisions](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression), and the [compression closeout](../history/2026-09-14-compression-closeout.md). Preserve any unmatched rationale before shortening. |
 | [Overlap exceptions](polish-campaign.md#existing-capabilities-and-overlapping-work) and [campaign rule](polish-campaign.md#campaign-disposition) | The integrations did not themselves repair the recovery defects originally described in items 1–4; items 2 and 4 were later retired. Institutional Doctor qualification, browser review, and scientific review remain separate. PRs #44/#45 are experiments, not adopted improvements. Campaign retirement requires a disposition and durable home for every proposal. | PR #150 and CS-18 sequencing after their owner decisions are verified. | Keep negative scope, evidence-retention limits, and the campaign selection rule; verify the experiments against the optimization owner before reducing this paragraph. |
 
-Seven duplicate overlap rows have been condensed after their exact PR links and
-outcomes were retained in the numbered findings: #128/#134 in item 2, #136 in
-item 9, #140–143 in items 22/15/17/21, and #124 in item 23. The original
-integration head, ordinary CI run, and evidence ceiling remain in Evidence and
-selection; other overlap rows still need owner-by-owner review.
+Eight duplicate overlap rows have been condensed after their exact PR links and
+outcomes were retained: #128/#134 in item 2, #136 in item 9, #140–143 in items
+22/15/17/21, #124 in item 23, and #147 in the
+[reporting lifecycle decision](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression).
+The original integration head, ordinary CI run, and evidence ceiling remain in
+Evidence and selection; other overlap rows still need owner-by-owner review.
 
 **Next:** Select item 6's timestamp policy and contract checks; verify an
 installed operator-minimal journey for item 11 while retaining its later test

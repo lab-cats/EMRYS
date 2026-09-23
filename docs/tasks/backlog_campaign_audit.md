@@ -413,9 +413,9 @@ numbered findings also document completed implementation, such as item 43's
 **Documentation discovery:** The [44-item disposition table and chronology
 retention map](polish_finding_disposition_review.md) now distinguish completed
 implementation, live gaps, dated evidence, five unselected architecture
-options, and possible Git-only PR sequencing. Seven duplicate overlap rows were
-condensed after retaining their links and outcomes in numbered findings. Other
-rows still need durable owners and unmatched-rationale checks. This review
+options, and possible Git-only PR sequencing. Eight duplicate overlap rows were
+condensed after their links and outcomes moved to findings or the reporting
+owner. Other rows still need durable homes and rationale checks. This review
 does not approve source-evidence removal or reopen completed implementation.
 
 The [five architecture options](polish-campaign.md#integration-scale-architecture-reduction-options) are unselected
@@ -586,7 +586,7 @@ originals remain intact; the draft does not itself authorize shortening them.
 | Roughly 205 lines across the three baseline cluster closure regions | The charter now links to the matrix checklist; the CV backlog retains its owner-specific summary. | Preserve card acceptance and the E register; the baseline region size was never a duplicate-line count. |
 | Matrix walkthrough and charter E01–E12 | Additive dated record is indexed and source-compared; originals remain intact. | Settle the allocation-account identity and lasting owner homes before any separately approved reduction. |
 | `COMPRESS-01` closeout counts and hosted checks | Additive dated record was source-compared; the matrix owns the Closed decision. | Retain both baselines, exact run heads, and evidence limits; any exact-evidence reduction needs separate approval. |
-| Polish audit/PR chronology and CV checkpoint narratives | Seven duplicate polish overlap rows were condensed; other sequence awaits item and card disposition. | Keep unique rationale, exact CI/artifact identity, measurements, approvals, and recovery decisions. |
+| Polish audit/PR chronology and CV checkpoint narratives | Eight duplicate polish overlap rows were condensed; other sequence awaits item and card disposition. | Keep unique rationale, exact CI/artifact identity, measurements, approvals, and recovery decisions. |
 | Optimization old priority and traversal/attestation counts | September 7 priority and counts are dated; all 13 candidates have source-only comparisons. | Retain raw PR45 measurements and obtain comparable new data before claiming benefit or selecting work. |
 
 Inbound links constrain later placement changes: the matrix's

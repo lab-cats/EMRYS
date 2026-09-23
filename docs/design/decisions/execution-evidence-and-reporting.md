@@ -209,9 +209,11 @@ owns current ordering, file ownership, cleanup, and recovery behavior.
 
 The predecessor implementation and its replacement-failure characterization
 remain inspectable at `0ece377ca2b285d6ec2a46f7d2441c78f16409e1`, the head of
-[PR #146](https://github.com/lab-cats/EMRYS/pull/146). The retirement intentionally
-removed private overwrite, predecessor backup/restoration, and repeated private
-publication. It did not authorize deletion or repair of existing residue.
+[PR #146](https://github.com/lab-cats/EMRYS/pull/146).
+[PR #147](https://github.com/lab-cats/EMRYS/pull/147) replaced that reporting
+publisher with create-only publication, retiring private overwrite, predecessor
+backup/restoration, and repeated private publication. It did not authorize
+deletion or repair of existing residue.
 
 The same change retired three publication operation records, two identity
 operation records, `ReceiptValidationOps` and its public testing arguments,

@@ -1046,7 +1046,11 @@ head, and merged into master through PR #169:
 | --- | --- |
 | Preserved source-identity policy and one shared declaration of fixed HTML outputs | [PR #144](https://github.com/lab-cats/EMRYS/pull/144), [PR #145](https://github.com/lab-cats/EMRYS/pull/145) |
 | Canonical BAM create-exclusive publication, with legacy replacement retired | [PR #146](https://github.com/lab-cats/EMRYS/pull/146) |
-| Direct create-only reporting publication; six callback carriers and the private facade retired; redundant tests reconciled | [PR #147](https://github.com/lab-cats/EMRYS/pull/147) |
+
+PR #147 joined that validated head and merge. The
+[reporting lifecycle decision](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression)
+holds its create-only publication, retired carriers/facade, and test boundary
+with the original PR link.
 
 The integrations did not themselves repair the recovery defects originally
 described in items 1–4. Items 2 and 4 were later retired; items 1 and 3 retain
