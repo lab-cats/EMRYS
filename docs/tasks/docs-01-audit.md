@@ -314,14 +314,14 @@ separate proposal, approval, and commit.
 
 ### Coverage so far
 
-At `25f62591`, 582 tracked files include 177 Markdown (seven audit notes), three Mermaid and 282 Python.
+At `496846d5`, 583 tracked files include 178 Markdown (eight audit notes), three Mermaid and 282 Python.
 All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence checks remain selective.
 
 | Area | Compared to date | Further reading needed |
 | --- | --- | --- |
 | Scientist and operator paths | All nine root and operations Markdown files, configuration guide, and all three reference guides; selected routes compared with CLI source and direct tests | Remaining claim-to-source paths and an executed operator journey are unverified. |
 | Architecture and decisions | All 19 architecture, design, and reference Markdown/Mermaid files, including all three diagrams; selected provider/schema claims and stage-map edges compared with source | Remaining source implications and visual rendering are unverified. |
-| Task and evidence records | All eight baseline task/history Markdown files (excluding temporary audit notes); 60 CV index entries reconciled to card endings; 55 commit-like refs screened locally; three hosted merge objects, run/job status, and cited artifact metadata checked through GitHub | Actual worker checkout, archive bytes/contents, and case-level claims remain unverified. |
+| Task and evidence records | All eight baseline task/history Markdown files (excluding temporary audit notes); 60 CV index entries reconciled to card endings; 55 commit-like refs screened locally; three hosted merge objects, run/job status, and four cited archive bytes/selected contents checked | Actual worker checkout, uninspected archives, and case-level claims beyond selected records remain unverified. |
 | Product owners | All 62 `src/emrys/` READMEs and all 15 owner contracts, including full rechecks of the 1,248-line coordinator and 14 other contracts (1,817 lines) with selected production comparisons | Remaining code and schema claims beyond selected owner paths. |
 | Tests, scripts, and CI | All 53 Markdown files in these trees, plus selected source assertions, direct test cases, and documentation-check code | Executable checks were not run; compare remaining code, fixtures, and retained evidence. |
 | Non-Markdown notices | Root `LICENSE` and `NOTICE` plus the bundled renv MIT text were inspected for file-location references | License meaning and third-party compliance were not evaluated. |
@@ -350,7 +350,7 @@ Of 191 records, 71 were dismissed after recheck; linked notes give reasons. The 
 | [F16](docs-01-discoveries.md#f16-polish-merged-pr-tables) | Compression candidate | Four second-table rows repeat completed polish items; the first table and later #144–147 rows preserve otherwise absent PR-to-slice mappings. | Four physical lines are under review; keep unique mappings, evidence limits, and the linked heading. Net saving is unverified. |
 | [F17](docs-01-discoveries.md#f17-main-backlog-chronology-and-run-repetition) | Dismissed for DOCS-01 | Main backlog has brief routine ancestry clauses; one hosted run supports three distinct accepted rows. | Row-local exact evidence helps each outcome stand alone, and no useful reduction is established. |
 | [F18](docs-01-discoveries.md#f18-history-filing-rule-and-existing-compendium) | Evidence placement | Undated seven-topic compendium was appended after creation; a prior dated PORT record and unique ARCH-CLOSE limits remain in Git, while several run dates remain unknown. | One source and six live consumers retain distinct evidence and authority boundaries. |
-| [F19](docs-01-discoveries.md#f19-doctor-experiment-evidence-in-workflow-readme) | Evidence placement | CI workflow README's 14-line completed Doctor experiment repeats CV-26's exact artifact, trials, limits and decision. | A short route might save 11–12 lines locally; durable placement of CV-26's rationale and evidence remains open, so repository net saving is unverified. |
+| [F19](docs-01-discoveries.md#f19-doctor-experiment-evidence-in-workflow-readme) | Evidence placement | CI workflow README's 14-line completed Doctor experiment repeats CV-26's exact artifact, trials, limits and decision. | The cited archive's bytes and per-trial records match the card; post-expiry availability, evidence limits and repository net saving remain open. |
 | [F20](docs-01-discoveries.md#f20-independent-golden-migration-comparisons) | Dismissed after recheck | Independent-golden README keeps migration comparisons beside the literal oracle owner. | No lossless transfer, reader burden, or useful DOCS-01 reduction was established. |
 | [F21](docs-01-discoveries.md#f21-coordinator-contracts-no-write-section) | Reader-link precision | Coordinator contract has a 632-line no-write section without subheadings; one owner-index link names watch selection but lands on the later Run/Results section. | Both sections contain distinct rules; link precision is at issue, with no DOCS-01 reduction established. |
 | [F22](docs-01-discoveries.md#f22-coordinator-cross-owner-detail) | Dismissed after recheck | Coordinator README, contract, logging, runtime, and Runbook summaries overlap across distinct trust boundaries, including request/stream names. | Their index, publication, seal, prompt, diagnostic, and action rules serve distinct readers; no useful reduction is established. |
@@ -591,7 +591,8 @@ retain distinct acceptance or dated evidence. No safe deletion was found.
 The eight exact commits sampled in the historical validation compendium resolve
 locally. CV-10's two cited hosted test merges and CV-26's cited hosted checkout
 are absent locally, but GitHub confirms their existence and parent order.
-Associated run/job status and artifact ID, name, size and digest metadata match
-the cited records. These metadata do not prove actual worker checkout, archive
-bytes or contents, individual cases, or scientific claims. No hosted artifact
-was downloaded or CI run started for this audit.
+Associated run/job status and artifact metadata match the cited records.
+Four retained archives now also match their recorded byte sizes and digests;
+selected contents support narrow hosted observations. Neither metadata nor
+archives independently prove worker checkout, uninspected cases, institutional
+operation, or scientific claims. No CI run was started for this audit.

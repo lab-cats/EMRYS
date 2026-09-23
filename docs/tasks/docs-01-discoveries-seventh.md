@@ -225,3 +225,26 @@ Historical README and shell-test text at `3199ea86^` names an approved paired
 manifest and 25 receipts/50 VCFs; current Step 08 only requires every declared
 partition. The test guide's current contract route still lacks the promised
 study-wide criterion, while its fixture-VCF caveat remains correct.
+
+## Retained hosted archive inspection at `496846d5`
+
+Four cited GitHub Actions artifacts were downloaded to temporary storage on
+2026-09-23 and inspected read-only. Each ZIP passed an integrity check; its
+locally computed byte size and SHA-256 matched the exact value in the cited CV
+card. None was added to the repository.
+
+| Archive | Selected contents compared with the CV card |
+| --- | --- |
+| [CV-10 10407865575](https://github.com/lab-cats/EMRYS/actions/runs/34993805649/artifacts/10407865575), 7,461,300 bytes | Native log records 32 passed, 93 deselected; real one/two-thread success BAM/BAI outputs and both cancellation records with signal 15 and empty output rosters are present. |
+| [CV-10 10410455801](https://github.com/lab-cats/EMRYS/actions/runs/35000308100/artifacts/10410455801), 7,696,940 bytes | Native log records 47 passed, 96 deselected; the two real-sort cancellation records again contain empty output rosters. The later final artifact 10411245477 was not inspected. |
+| [CV-26 10387257383](https://github.com/lab-cats/EMRYS/actions/runs/34944690812/artifacts/10387257383), 6,825,885 bytes | Donor/borrower measurement JSONs report zero exits and wall times of 168.319256/110.727837 seconds, matching the card; the checkout is a value reported by the files. |
+| [CV-26 10407268954](https://github.com/lab-cats/EMRYS/actions/runs/34995028343/artifacts/10407268954), 9,209,702 bytes | Four per-trial records agree with the combined record: one/two/two/one workers, zero exits, 26 ordered passing observations and ten R checks each. Serial/two-worker wall means recompute to 57.445185/41.533529 seconds; sampled peak means to 1204.316406/1634.177734 MiB. Donor hash lists match across before, preview, comparison and after. |
+
+These archive bytes support only the named hosted, instrumented observations.
+Archive self-reported checkout values and run metadata do not independently
+prove the worker checkout; sampled memory may miss peaks and count shared pages,
+and zero block-backed read accounting does not prove absent physical I/O. These
+records do not establish Viking cancellation, later recovery, scientific or
+biological outcomes. The hosted artifacts have finite retention; future
+availability and any operator-held copies remain unverified. No CI, product
+test, cluster run, push, or dependency installation occurred in this pass.

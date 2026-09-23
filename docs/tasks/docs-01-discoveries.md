@@ -382,17 +382,16 @@ procedural sequence. Their overlap does not justify deleting either wholesale.
 ### F19 — Doctor experiment evidence in workflow README
 
 [Workflow README](../../.github/workflows/README.md) lines 26–39 has 13 prose
-lines plus one blank in its completed Doctor experiment: run, four trials, mean
-time/RSS, limits, retirement, and the surviving driver. [CV-26](cluster_verification_backlog.md#cv-26-repeated-doctor-input-reads)
-lines 3949–3999 already records each claim with the artifact identity, trial
-values, failed-suite limits, serial decision, and retired apparatus. Workflow
-lines 3–22 own current CI lanes; this section gives no active lane instruction
-and has no inbound heading link found in tracked Markdown. The
-[optimization campaign](optimization_campaign.md) lines 302–315 retains serial
-policy and future comparison, but CV-26 at 3979–3987 alone explains the
-one-CPU and cancellation rationale. A two-to-three-line route could remove
-roughly 11–12 local lines. Net saving awaits durable CV-26 evidence, including
-its artifact, cache, shared-page, missed-peak and cancellation limits.
+lines plus one blank on the completed Doctor experiment. [CV-26](cluster_verification_backlog.md#cv-26-repeated-doctor-input-reads)
+3949–3999 retains its artifact, trials, limits, serial decision and retired
+apparatus. Workflow lines 3–22 own current lanes; the experiment adds no active
+instruction and has no inbound heading link in tracked Markdown. The
+[optimization campaign](optimization_campaign.md) 302–315 retains serial policy,
+while CV-26 3979–3987 alone explains the one-CPU and cancellation rationale.
+A two-to-three-line route might save 11–12 local lines, preserving CV-26's
+cache, shared-page, missed-peak and cancellation limits. [Archive inspection](docs-01-discoveries-seventh.md#retained-hosted-archive-inspection-at-496846d5)
+matched its size, hash and per-trial records, but cannot prove worker checkout
+or site performance. Net saving and post-expiry availability are unverified.
 
 ### F20 — Independent golden migration comparisons
 
