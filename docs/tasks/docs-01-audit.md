@@ -321,7 +321,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 | --- | --- | --- |
 | Scientist and operator paths | All nine root and operations Markdown files, configuration guide, and all three reference guides; selected routes compared with CLI source and direct tests | Remaining claim-to-source paths and an executed operator journey are unverified. |
 | Architecture and decisions | All 19 architecture, design, and reference Markdown/Mermaid files, including all three diagrams; selected provider/schema claims and stage-map edges compared with source | Remaining source implications and visual rendering are unverified. |
-| Task and evidence records | All eight baseline task/history Markdown files (excluding temporary audit notes); 60 CV index entries reconciled to card endings; 55 commit-like refs screened locally; three hosted merge objects and associated run/job metadata later checked through GitHub | Actual worker checkout, artifact contents, and artifact-to-claim bindings remain unverified. |
+| Task and evidence records | All eight baseline task/history Markdown files (excluding temporary audit notes); 60 CV index entries reconciled to card endings; 55 commit-like refs screened locally; three hosted merge objects, run/job status, and cited artifact metadata checked through GitHub | Actual worker checkout, archive bytes/contents, and case-level claims remain unverified. |
 | Product owners | All 62 `src/emrys/` READMEs and all 15 owner contracts, including full rechecks of the 1,248-line coordinator and 14 other contracts (1,817 lines) with selected production comparisons | Remaining code and schema claims beyond selected owner paths. |
 | Tests, scripts, and CI | All 53 Markdown files in these trees, plus selected source assertions, direct test cases, and documentation-check code | Executable checks were not run; compare remaining code, fixtures, and retained evidence. |
 | Non-Markdown notices | Root `LICENSE` and `NOTICE` plus the bundled renv MIT text were inspected for file-location references | License meaning and third-party compliance were not evaluated. |
@@ -407,7 +407,7 @@ Of 191 records, 71 were dismissed after recheck; linked notes give reasons. The 
 | [F73](docs-01-discoveries-third.md#f73-profile-create-explicit-placement-requirement) | Dismissed after recheck | Contract requires a selected site or placement; `EMRYS_SITE` supplies an explicit site selection without a CLI flag. | Source and direct test support the contract's wording; no inconsistency or saving remains. |
 | [F74](docs-01-discoveries-third.md#f74-final-check-command-omits-r-library-prerequisite) | Command prerequisite | Engineering guide's displayed `all-checks` command supplies Rscript but not the existing `RENV_LIBRARY` required by its guarded-R lane. | The command can pass that gate only when the library variable is already supplied. |
 | [F75](docs-01-discoveries-third.md#f75-validation-lane-diagnostic-bounds) | Dismissed for DOCS-01 | Test baseline calls failed and cancelled diagnostics bounded; the driver retains complete logs for a finite lane/file set. | No byte cap is shown, but “bounded” does not specify bytes; no contradiction or documentation reduction is established. |
-| [F76](docs-01-discoveries-third.md#f76-step-07-dataset-promotion-route) | Authority-route overclaim | Step 07 test guide says the linked stage contract owns dataset-promotion criteria, but that contract states no such criteria and no current documentation owner was found. | Mechanical VCF validation cannot promote candidates; the fixture caveat remains. The [retired-count recheck](docs-01-discoveries-seventh.md#f76-historical-sentence-recheck-at-16a98be5) found no verified saving. |
+| [F76](docs-01-discoveries-third.md#f76-step-07-dataset-promotion-route) | Authority-route overclaim | Step 07 test guide routes retired study-wide “dataset promotion” to the current per-partition contract, which states no such criteria. | The old EV/PUM1 gate required an approved paired manifest and 25 receipts/50 VCFs; it was separate from biological review. The fixture caveat remains valid. |
 | [F77](docs-01-discoveries-third.md#f77-omitted-application-model-test-suite) | Dismissed for DOCS-01 | Orchestration contract test README describes two real suites and does not inventory every sibling; the application-model suite exists. | A new index entry would add prose; no false completeness claim or useful reduction is established. |
 | [F78](docs-01-discoveries-third.md#f78-omitted-python-shard-duration-baseline) | Dismissed for DOCS-01 | Test-baselines README accurately explains the coverage snapshot; a sibling duration baseline actively weights shards. | The README does not claim to inventory every baseline; a new entry would add prose, not correct a false claim. |
 | [F79](docs-01-discoveries-third.md#f79-shared-fixture-consumer-count) | Dismissed after recheck | Shared-fixtures README says tracked inputs serve multiple test owners; its sole tracked data fixture is referenced by one cross-entrypoint test module. | One module can cover multiple owners; no contradiction or reduction candidate was established. |
@@ -590,8 +590,8 @@ retain distinct acceptance or dated evidence. No safe deletion was found.
 
 The eight exact commits sampled in the historical validation compendium resolve
 locally. CV-10's two cited hosted test merges and CV-26's cited hosted checkout
-are absent from this local Git object store, but read-only GitHub commit data
-confirms their existence and stated parent order. Associated run/job status
-metadata was also checked. Neither metadata source proves the worker's actual
-checkout, artifact contents, individual cases, or scientific claims. No hosted
-artifact was downloaded or CI run started for this audit.
+are absent locally, but GitHub confirms their existence and parent order.
+Associated run/job status and artifact ID, name, size and digest metadata match
+the cited records. These metadata do not prove actual worker checkout, archive
+bytes or contents, individual cases, or scientific claims. No hosted artifact
+was downloaded or CI run started for this audit.

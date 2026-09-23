@@ -246,17 +246,17 @@ F68's Slurm uploads. No lane ran or log was inspected.
 ### F76 — Step 07 dataset-promotion route
 
 The [Step 07 test guide](../../tests/stages/partitioned_cohort_mpileup/README.md)
-lines 9–12 says its linked
-[stage contract](../../src/emrys/stages/partitioned_cohort_mpileup/CONTRACT.md)
-owns “dataset-promotion criteria.” That contract's inputs, output, validation,
-consumer, and evidence-ceiling sections (lines 24–119) state no such criteria;
-a repository documentation search found the phrase only in the test guide.
-The contract's lines 47–64 instead define mechanical VCF publication and
-validation; passing those checks cannot promote candidates to validated
-variants or editing sites. The test guide's own lines 10–12 retain that caveat.
-No current dataset-promotion owner was identified by this documentation pass,
-so the link does not deliver the named authority. This is a reader-route
-finding, not an observed Step 07 execution or scientific defect.
+lines 9–12 says its linked [stage contract](../../src/emrys/stages/partitioned_cohort_mpileup/CONTRACT.md)
+owns “dataset-promotion criteria.” That contract defines per-partition outputs
+and validation, not a study-wide gate. At `3199ea86^`, the retired Step 07
+README used “Primary promotion” for an approved EV/PUM1 paired manifest plus
+25 receipts and 50 VCFs; its shell test checked fixed primary/pilot counts.
+Current [configuration](../../configs/README.md) retains the study's 25-contig
+input, while the [Step 08 contract](../../src/emrys/stages/cohort_candidate_preprocessing/CONTRACT.md)
+requires every declared partition. Neither restores the retired fixed gate.
+No current replacement owner was found, so the test-guide link lacks its
+promised criteria. Its separate fixture-VCF caveat remains sound; external
+candidate review is another process. No execution or scientific defect is inferred.
 
 ### F77 — Omitted application-model test suite
 

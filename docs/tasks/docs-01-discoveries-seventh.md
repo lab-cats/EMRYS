@@ -201,3 +201,27 @@ finding was added. A separate challenge of 14 larger or uncertain line-saving
 estimates found no material overstatement. They remain conditional on the
 content-preservation limits in their existing notes. No product command, test,
 CI, cluster operation, or dependency install ran.
+
+## Artifact metadata, link gate, and F76 recheck at `13a6a7aa`
+
+Read-only GitHub metadata for [artifact 10407865575](https://api.github.com/repos/lab-cats/EMRYS/actions/artifacts/10407865575),
+[10410455801](https://api.github.com/repos/lab-cats/EMRYS/actions/artifacts/10410455801),
+and [10387257383](https://api.github.com/repos/lab-cats/EMRYS/actions/artifacts/10387257383)
+matches the cited run associations, names and SHA-256 digests. The last record
+also matches the documented 6,825,885-byte size. All three were marked
+unexpired on 2026-09-23, with September 29 expiry dates. Service metadata is
+not a local digest of downloaded bytes; no archive, case result, or historical
+download claim was verified. The earlier worker-checkout limit also remains.
+
+The repository's own documentation checker passed on 178 tracked Markdown
+files and three Mermaid sources using an existing Python interpreter with
+`markdown_it`; no environment was created or installed. It checks canonical
+ownership, local links/anchors and Mermaid declarations, not external URLs,
+factual accuracy or visual rendering. Bytecode writes were disabled.
+
+F76's “dataset promotion” was traced to the retired Step 07 operational gate
+for the EV/PUM1 primary set, not biological promotion of VCF candidates.
+Historical README and shell-test text at `3199ea86^` names an approved paired
+manifest and 25 receipts/50 VCFs; current Step 08 only requires every declared
+partition. The test guide's current contract route still lacks the promised
+study-wide criterion, while its fixture-VCF caveat remains correct.
