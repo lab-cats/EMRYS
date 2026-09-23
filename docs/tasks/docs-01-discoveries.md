@@ -458,6 +458,7 @@ in the broad no-write section, so its navigation precision remains limited.
 
 ### F22 — Coordinator cross-owner detail
 
+**Dismissed after recheck at `a3b741bb`.**
 The [coordinator README](../../src/emrys/orchestration/run_coordinator/README.md)
 lines 45–56 summarizes setup/site, repair, shared-generation, Slurm
 qualification, and profile rules already held by the contract at 69–99,
@@ -539,6 +540,7 @@ disposition under any future section change is unverified.
 
 ### F26 — Alpha carrier note in reporting README
 
+**Dismissed after recheck at `a3b741bb`.**
 [Reporting README](../../src/emrys/reporting/README.md) lines 22–27 says an
 approved alpha cleanup changed the carrier and retired an alias, then gives
 the current field/callable shape. That is the only explicit collaborator

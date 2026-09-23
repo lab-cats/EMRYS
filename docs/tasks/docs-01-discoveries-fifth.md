@@ -119,9 +119,9 @@ at 854–857. [Materialization source](../../src/emrys/orchestration/run_coordin
 lines 328, 891, and 1042–1059 confirms the implementation; the
 [coordinator index](../../src/emrys/orchestration/run_coordinator/README.md)
 lines 29–40 already maps `materialization.py` to planning. The helper names
-have no evident public or recovery role. Preserve the planning contract and
-special path, command, and resource guarantees around this four-line span;
-no deletion is approved or measured here.
+have no evident public or recovery role. The seven-line passage also holds
+public composition at 852–853 and distinct STAR/reference/input/R construction
+at 857–858; both must remain legible. No net saving is measured here.
 
 ### F137 — Reporting artifact format in the coordinator contract
 
@@ -204,6 +204,7 @@ evidence.
 
 ### F143 — Unrouted reporting run-contract example
 
+**Dismissed for DOCS-01 at `a3b741bb`.**
 At local audit head `1eb562f0`, the eight-line
 [run-contract example](../../configs/artifact_run_contract.example.json) has no
 filename-specific non-audit Markdown link or call site found. The
@@ -331,6 +332,7 @@ a verified saving. Shared final behavior does not merge those records.
 
 ### F150 — Named Init review roster repeated in adjacent CV cards
 
+**Dismissed after recheck at `a3b741bb`.**
 At local audit head `a3310af6`, [CV-U02](cluster_verification_backlog.md)
 at 315–321 and adjacent [CV-U03](cluster_verification_backlog.md) at 339–343
 both state the September 21 normal-review roster: strand, comparison/target,
@@ -499,6 +501,7 @@ The nine-line span is a review surface, not a verified deletion or saving.
 
 ### F161 — Final resource summary repeated in the configuration guide
 
+**Dismissed after recheck at `a3b741bb`.**
 At local audit head `22972af4`, the [configuration guide](../../configs/README.md)
 lines 381–389 closes with a Slurm/tool resource section. Its coordinator-policy
 route repeats lines 235–237 and 275–279; allocation-aware shares appear at

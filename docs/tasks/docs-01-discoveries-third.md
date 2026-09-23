@@ -460,10 +460,10 @@ lines 3–7 restate historical aliases and
 [RSeQC](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md) lines 3–8
 also names its repository-path producer command. The map already gives
 all identities at lines 19–34, and adjacent owner READMEs identify their
-routes. Each contract still has local worker/validator classification and
-unique dependencies, consumer rules, and evidence limits. Retaining two to
-three local opening lines per contract suggests only an illustrative 12–24
-net-line opportunity; no edit or saving was verified.
+routes. Each contract still has a useful local alias and worker/validator role,
+plus unique dependencies, consumer rules, and evidence limits. Repeated
+map-authority boilerplate is the review surface; no replacement text or net
+saving was verified.
 
 ### F92 — Python lock checks before institutional R restoration
 
