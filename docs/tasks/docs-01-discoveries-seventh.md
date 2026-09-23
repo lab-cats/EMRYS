@@ -422,3 +422,50 @@ one-time fingerprint transition did not make earlier Runs compatible. A
 17–19-line account with owner routes suggests only five to seven conditional
 local lines saved. No replacement, link check, net saving, or evidence
 deletion was verified or authorized.
+
+## Selected earlier findings rechecked at `44e6cf0f`
+
+F01–F08 and F83 still have their stated documentation and source boundaries.
+For F05, the [configuration guide](../../configs/README.md) links to Quickstart
+but explicitly asks readers to replace study choices; the stronger generic
+handoff is [Runbook lines 288–296](../operations/RUNBOOK.md#create-a-project-for-your-own-data),
+which send own-data readers to named EV/PUM1/Slurm continuation steps. F13,
+F14, F16, and F19 remain conditional compression candidates, not measured
+savings. The [scientific decision's STAR paragraph](../design/decisions/scientific-pipeline.md#build-star-with-explicit-mechanically-derived-index-settings)
+and its configuration/coordinator/validator owners were also compared with
+onboarding source and direct tests; F64 remains owner-detail overlap, not a
+demonstrated behavior conflict. These were static checks, not an executed
+Project journey or scientific validation.
+
+### F14 summary-table recheck
+
+The [optimization summary](optimization_campaign.md) line 65 still says to
+preserve package/commit attribution. Its detailed task-entry selection at
+269–290 asks for Git measurements and changed-HEAD detection at a dated
+revision. Current [build metadata](../../setup.py) lines 17–40 records a
+commit when Git is available; [source admission](../../src/emrys/libraries/source_authority.py)
+lines 91–125 accepts absent build-origin Git metadata. The current task-entry
+path observes installed package bytes four times without calling Git. Thus
+the table should not be read as a mandatory current commit/HEAD check. Keep
+the old 24-call source count as dated evidence, the available origin record,
+and all current byte/recheck boundaries. Startup cost and a safe reduction in
+those four observations remain unmeasured; F14's five-line saving is conditional.
+
+### F28 repository-net recheck
+
+Eight stage/evidence [test guides](../../tests/README.md) repeat 40 physical
+lines, and six [production stage guides](../../src/emrys/stages/README.md#running-a-stage)
+repeat 18. A shared eight-to-nine-line explanation in the test root plus
+eight two-line owner routes would save 15–16 repository lines. The test root
+serves both stage and evidence guides; the stage-only test index does not.
+The production stage index already states Run, internal-worker, and grouped
+validator boundaries; adding one to two `--help` clarification lines there
+plus six one-line owner routes suggests 10–11 more. The combined 25–27-line
+net saving is a conditional accounting estimate, not a performed reduction.
+Keep both local help commands, owner-specific test limits, and the visible
+worker/validator distinction. The STAR-index producer cases are Python tests
+that invoke the shell worker, so a shared route should say “producer cases,”
+not “shell cases.” Existing `#running-a-stage` and `#evidence-limits` inbound
+links require preservation. Twelve contract openings are a separate review
+span, not another verified saving. No replacement text, links, or rendered
+reader route was checked.

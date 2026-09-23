@@ -562,7 +562,7 @@ overlap establish no useful DOCS-01 net reduction or speedup conclusion.
 
 ### F28 — Repeated owner boilerplate
 
-At `ca31d41f`, six shell-stage test READMEs (`canonical_bam`,
+At `ca31d41f`, six stage test READMEs (`canonical_bam`,
 `duplicate_marking`, `fasta_sidecars`, `split_n_cigar`, `star_alignment`,
 `star_index`) and two evidence guides ([BAM QC](../../tests/evidence/canonical_bam_qc/README.md)
 and [RSeQC](../../tests/evidence/rseqc_orientation/README.md)) each repeat the
@@ -571,17 +571,17 @@ distinct native checks, mocked-tool limits, and historical defects.
 The [test root](../../tests/README.md#evidence-limits) and
 [stage index](../../tests/stages/README.md) give general limits, but omit shared
 scratch/staging, publication/recovery tests, and the public validator split.
-A nine-line shared account plus eight two-line routes would save 15 local lines
-while keeping that split visible. One-line routes could save 23 but require
-a click; neither replacement nor its links has been checked.
+An eight-to-nine-line tests-root account plus eight two-line routes suggests
+15–16 repository lines while keeping that split visible. The
+[later recheck](docs-01-discoveries-seventh.md#f28-repository-net-recheck) includes shared text and links.
 
 The matching six [production stage guides](../../src/emrys/stages/README.md)
 repeat three execution lines each: `duplicate_marking` 10–12,
 `split_n_cigar` 11–13, and the other four 12–14. The stage index at 28–40
 already owns normal Run, internal workers, and grouped specialist validators;
 it lacks the warning that shell `--help` describes runner-only arguments.
-One shared index line and six one-line owner routes suggest 10–11 additional
-local lines, conditional on keeping both owner-local help commands and limits.
+One to two shared index lines and six one-line owner routes suggest 10–11
+repository lines, conditional on keeping both local help commands and limits.
 
 Twelve stage/evidence/analysis contracts have a separate 24-line test-ceiling
 opening. Four stand alone and might each shrink one line; eight flow into
