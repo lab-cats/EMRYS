@@ -279,6 +279,7 @@ history or saving was found.
 
 ### F147 — Computation scope in the contract-golden guides
 
+**Dismissed for DOCS-01 at `27844f15`.**
 At local audit head `cc5c1f58`, the
 [contract-integration index](../../tests/contract_integration/README.md)
 at 6–7 calls its goldens “computational examples,” and the
@@ -292,9 +293,10 @@ at 25 points to a prewritten incomplete Run summary, not a computed Step 09
 result. The [test baseline](../design/TEST_BASELINE.md) at 63–65 separately
 routes Step 09 statistics and estimability to the
 [CMH oracle](../../tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_oracle.py).
-“Computation” could mean HTML rendering, but the broad labels leave the
-numerical boundary unclear. Preserve the literal and rendering protections;
-no test failure or biological proof follows from this wording.
+The guide names rendered-report digests at lines 3–6 and expressly excludes
+runtime and biological evidence at 8–10. HTML rendering is computation; these
+words do not claim Step 09 numerical coverage. The separate oracle route makes
+the boundary clear enough without added prose or a useful reduction.
 
 ### F148 — Repeated synthetic-fixture guidance in three nested indexes
 
@@ -420,6 +422,7 @@ address different Doctor claims.
 
 ### F156 — Substitution regression narration in the coordinator contract
 
+**Dismissed for DOCS-01 at `27844f15`.**
 The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 lines 1021–1027 correctly retains exact-byte/device/inode checks and the
 trusted-workspace, recycled-inode, and same-UID limits. Its test-specific
@@ -427,10 +430,12 @@ clause at 1025–1027 repeats the distinct-inode regression ceiling in the
 [coordinator test guide](../../tests/orchestration/run_coordinator/README.md)
 line 14 and [CV-10](cluster_verification_backlog.md) lines 2968–2979. The
 [test source](../../tests/orchestration/run_coordinator/test_lifecycle.py)
-lines 3088–3131 exercises a distinct-inode equal-byte substitution. Roughly
-two lines are under review; CV-10 delegates the lasting trusted workspace
-limit to this contract. Its accepted residual limit and
-required observations must remain. No test or filesystem fault was run here.
+lines 3088–3131 exercises a distinct-inode equal-byte substitution. The
+contract's two-sentence evidence limit prevents that regression from implying
+ownership proof after inode recycling, and CV-10 delegates the lasting trust
+boundary to this owner. Retain the accepted limit and required observations;
+the apparent two-line overlap offers no useful reduction. No test or
+filesystem fault was run here.
 
 ### F157 — CV-U33 current usage policy beside correction evidence
 

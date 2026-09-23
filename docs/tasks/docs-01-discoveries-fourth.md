@@ -199,14 +199,13 @@ no runtime command was executed in the audit.
 
 ### F110 — Unrouted study-pairs configuration file
 
+**Dismissed for DOCS-01 at `27844f15`.**
 The tracked [three-column pairing roster](../../configs/step_09_pairs.NORAD_EV_PUM1.tsv)
 at lines 1–7 has no filename-specific link in the
 [config inventory](../../configs/README.md#what-belongs-here) at lines 7–16
-or filename-specific tracked caller. The same guide generically mentions
-a pairing example at 391–394; that weak route does not identify this file.
-Its six assignments match the [Quickstart table](../../quickstart.md#2-gather-the-study-inputs-and-scientific-choices)
-at lines 83–90, so the roster adds no distinct current assignment value found
-in this pass. Named Init creates the Project `samples.tsv` through the
+or tracked caller; the guide generically mentions pairing at 391–394. Its
+six assignments match the [Quickstart table](../../quickstart.md#2-gather-the-study-inputs-and-scientific-choices)
+at lines 83–90. Named Init creates the Project `samples.tsv` through the
 [onboarding owner](../../src/emrys/orchestration/run_coordinator/onboarding.py)
 at lines 1114–1159 and 1376–1387. Current
 [Step 09 contract](../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md)
@@ -214,8 +213,9 @@ lines 22–24 makes the sample manifest the sole pairing authority, and its
 [validator](../../src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_validation.R)
 lines 1–17 requires six columns absent from this file. Local Git places the
 file at `e4371de5` on 2026-07-25, but its historical use is unverified.
-This is an unrouted, apparently legacy study artifact; neither safe deletion
-nor executable current Step 09 input follows from the comparison.
+This is a configuration artifact, not duplicate guide prose. Adding inventory
+text would expand the guide; retiring the file has separate authority and
+unverified external use. It is not a current Step 09 input.
 
 ### F111 — Current resource claim with old profile citations
 
@@ -432,6 +432,7 @@ was established by this review.
 
 ### F123 — Repeated stage resource defaults in the configuration guide
 
+**Dismissed for DOCS-01 at `27844f15`.**
 The [profile document guide](../../configs/README.md#profile-document)
 lines 330–344 gives a 15-physical-line table of stage CPU use and task memory,
 including eight numeric repeated-stage minimums. The current
@@ -444,10 +445,10 @@ selection and example profile; it does not check this Markdown table. The
 [resource owner guide](../../src/emrys/orchestration/run_coordinator/resources/README.md)
 lines 22–24 links readers to the table for stage meanings and serial phases.
 CPU descriptions also include tool behavior that is not just a YAML value.
-The repeated current defaults create a drift surface, but the table's
-explanation and reader route are distinct. Removing numeric cells would not
-necessarily remove a physical line. Its full 15 lines are a review scope,
-not a demonstrated saving or capacity result.
+The table's current values match the serialized policy and its owner
+deliberately links it for stage meanings. Repeated numbers remain a drift
+surface, but removing them shows no useful physical-line saving. The 15-line
+table is not a savings estimate or capacity result.
 
 ### F124 — Reliability diagram collapses two validation orders
 

@@ -231,14 +231,16 @@ lane; the guide does not state that prerequisite. No gate was run.
 
 ### F75 — Validation lane diagnostic bounds
 
+**Dismissed for DOCS-01 at `27844f15`.**
 The [test baseline](../design/TEST_BASELINE.md) lines 90–91 says failed,
 interrupted, and peer-cancelled local validation lanes retain bounded
 diagnostics. The [validation driver](../../tests/tools/run_validation.py)
-copies each failed or interrupted lane's entire log at lines 234–240 and
-prints the entire failed log at 243–249 and 444–455. Peer-cancelled logs are
-also retained at 466–485. No byte or line cap is shown; “bounded” may refer
-only to the finite lane/file set. This differs from F68's uploaded Slurm
-diagnostics. No lane ran or log contents were inspected.
+limits the lane set at 21–27, retains complete failed/interrupted logs at
+234–240, prints complete failed logs at 243–249 and 444–455, and retains
+peer-cancelled logs at 466–485. No byte cap is shown, but “bounded” does not
+claim one; finite lane/file scope is a plausible reading. The volume
+question establishes no overclaim or useful reduction. This differs from
+F68's Slurm uploads. No lane ran or log was inspected.
 
 ### F76 — Step 07 dataset-promotion route
 
@@ -523,24 +525,22 @@ not evidence of a runtime logging defect. No stop was issued.
 
 ### F96 — Unrouted artifact schema version notes
 
+**Dismissed for DOCS-01 at `27844f15`.**
 The [artifact schema index](../../src/emrys/contracts/schemas/artifacts/README.md)
-lines 3–8 links four current JSON schemas directly. Its adjacent
+lines 3–8 links all four current JSON schemas directly. Its adjacent
 [v1](../../src/emrys/contracts/schemas/artifacts/v1/README.md),
 [v2](../../src/emrys/contracts/schemas/artifacts/v2/README.md),
 [v3](../../src/emrys/contracts/schemas/artifacts/v3/README.md), and
 [v5](../../src/emrys/contracts/schemas/artifacts/v5/README.md) READMEs have
-no inbound Markdown link outside this temporary audit in a repository link
-scan, including directory links to their README targets. By comparison, the
-[orchestration schema index](../../src/emrys/contracts/schemas/orchestration/README.md)
-lines 6–11 routes through each of its three version READMEs. The four artifact files
-occupy 32 physical lines and partly repeat the index. They also record
-distinct limits: v1's shared definitions remain active and link compatibility
-checks; v2 separates shared Run identity from original Attempt history; v3
-binds module policy and says no historical summary/receipt reader is
-registered; v5 limits the receipt to rendering and publication, not scientific
-validation. The direct JSON links bypass those explanations. Thirty-two lines
-describe the review surface, not a verified saving or grounds to delete the
-caveats.
+no inbound non-audit Markdown link in a limited scan. Unlike the
+[orchestration index](../../src/emrys/contracts/schemas/orchestration/README.md)
+lines 6–11, this index routes to schema files, not version notes. The four
+READMEs occupy 32 physical lines but retain distinct limits: active v1
+definitions/compatibility; v2 Run versus Attempt history; v3 module policy
+without historical summary/receipt readers; and v5 receipt publication, not
+scientific validation. Link absence is not evidence that these rules are
+duplicated or expendable. Adding routes would expand documentation; no useful
+DOCS-01 reduction follows. Directory and external readers remain unverified.
 
 ### F97 — Past audit priority order in polish campaign
 
@@ -574,24 +574,21 @@ The worker environment and each validator's independent checks remain distinct.
 
 ### F99 — Stage data inputs versus Run gates
 
+**Dismissed for DOCS-01 at `27844f15`.**
 The [Step 07 contract](../../src/emrys/stages/partitioned_cohort_mpileup/CONTRACT.md)
-lines 12–18 says it checks only Step 06 BAM/BAI presence and nonemptiness and
-does not require Step 06 counts, validation evidence, or native marker. The
+lines 12–18 describes Step 06 BAM/BAI as direct worker inputs, without
+requiring Step 06 counts, validation evidence, or native marker. The
 [Step 06 contract](../../src/emrys/stages/mechanical_orientation/CONTRACT.md)
-lines 12–18 likewise describes the pairs as downstream data inputs. The
+lines 12–18 likewise describes downstream data inputs. The
 [processing profile](../../src/emrys/workflow/contracts/local_cmh_v2.json)
-lines 160–164 declares the 06→07 edge; the [Run graph](../../src/emrys/workflow/Snakefile)
-lines 402–420 waits for each predecessor's verified marker. Thus Step 07's
-worker data admission is narrower than its scheduling prerequisite in an
-ordinary Run. This extends F86's input-versus-order distinction to a separate
-stage; no worker or Run was executed.
-
-At local audit head `b62e207b`, the [Step 01 contract](../../src/emrys/stages/star_alignment/CONTRACT.md)
-lines 21–25 likewise calls its three STAR logs and splice-junction table
-evidence outputs rather than Step 02 execution prerequisites. Step 02 consumes
-the BAM as its direct [profile edge](../../src/emrys/workflow/contracts/local_cmh_v2.json)
-lines 112–116, but the [Step 01 validator](../../src/emrys/stages/star_alignment/validator.py)
-lines 49–116 checks all five outputs. The same Run graph waits for Step 01's
-verified marker before scheduling Step 02. The contract's statement is accurate
-for Step 02's worker inputs; it does not describe the admitted Run gate. No
-validator or Run was executed.
+lines 160–164 declares the edge, while the
+[Run graph](../../src/emrys/workflow/Snakefile) lines 402–420 separately waits
+for predecessor verified markers. At `b62e207b`, the
+[Step 01 contract](../../src/emrys/stages/star_alignment/CONTRACT.md) lines
+21–25 similarly calls STAR logs and the SJ table evidence outputs rather than
+Step 02 worker inputs; the [profile](../../src/emrys/workflow/contracts/local_cmh_v2.json)
+lines 112–116 passes BAM, while its [validator](../../src/emrys/stages/star_alignment/validator.py)
+lines 49–116 checks all five Step 01 outputs. Worker input and Run scheduling
+are distinct, accurate boundaries, already illustrated by F86. Adding Run
+order to each stage contract would expand docs; no correction or saving is
+established. No validator or Run was executed.

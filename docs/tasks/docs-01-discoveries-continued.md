@@ -150,14 +150,15 @@ adapter. That wording alone establishes no additional dependency error.
 
 ### F38 — Slurm request in the reliability diagram
 
-[Reliability diagram](../architecture/diagrams/reliability.mmd) lines 2–6
-shows generic approval to Attempt creation, without labeling Slurm. For
-whole-Run placement, the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 410–418 and 431–449 creates and synchronizes a retained submission
-request before `sbatch`; a request can exist before any Run or Attempt. The
-[Runbook](../operations/RUNBOOK.md) lines 9–25 gives that request its own
-inspection route. The diagram omits that path; it does not misdraw a labeled
-Slurm path. Scheduler status cannot supply compute-side Run truth.
+**Dismissed for DOCS-01 at `27844f15`.** The
+[reliability diagram](../architecture/diagrams/reliability.mmd) lines 2–6
+shows a generic compute path; the [diagram index](../architecture/diagrams/README.md)
+lines 3–14 calls it a concise, non-authoritative view. The
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 410–449 and [Runbook](../operations/RUNBOOK.md) lines 9–25 own the
+separate Slurm request and inspection path. The diagram makes no Slurm claim;
+adding that branch would expand it without reducing documentation. F34's
+unconditional resume edge is a distinct observation.
 
 ### F39 — Validation roster inventory claim
 
@@ -299,16 +300,15 @@ references remain public schema bytes. No validator defect is inferred.
 
 ### F47 — R-probe concurrency candidate after CV-26
 
-The [optimization campaign](optimization_campaign.md) lines 292–319 still
-proposes comparing bounded concurrency of independent R namespace probes.
-The [CV-26 record](cluster_verification_backlog.md) lines 3949–3987 already
-retains a four-trial serial/two-worker hosted steady-ready comparison and a
-decision to retain serial checks: a one-CPU profile is supported, diagnosis
-has no admitted concurrency budget, and concurrent-child cancellation is not
-owned. The campaign links CV-26 for a different source reduction, so this is
-a candidate-selection context gap, not proof that a new resource-aware study
-is forbidden. Link the measured disposition at the proposal before any new
-selection; complete Doctor-path attribution and cancellation proof remain open.
+**Dismissed for DOCS-01 at `27844f15`.** The
+[optimization candidate](optimization_campaign.md) lines 302–319 already
+links [CV-26](cluster_verification_backlog.md), says its source reduction
+leaves serial probes unchanged, and conditions future comparison on Doctor
+and runtime-model reconciliation. CV-26 at 3979–3987 retains the measured
+two-worker deferral for a supported one-CPU profile and unowned cancellation,
+while allowing a separately qualified resource-aware proposal. The two
+records have distinct roles; no missing selection context or useful DOCS-01
+reduction remains. No new measurement was run.
 
 ### F48 — Project name lookup from the repository root
 
@@ -487,17 +487,14 @@ lines 121–160 returns the same structured carrier, so F54 covers both guides.
 
 ### F55 — CI lane selection route
 
-The [workflow README](../../.github/workflows/README.md) lines 3–6 says the
-[test baseline](../design/TEST_BASELINE.md#validation-lanes) “defines each
-lane.” That section at lines 73–85 describes the assembled local gate,
-verified CI shards, broad long-lane categories, and trigger limits, but does
-not enumerate each hosted job or its exact selection. The
-[workflow](../../.github/workflows/ci.yml) owns those job conditions (for
-example, lines 109–114) and the schedule plus Sunday 100,000-pair selection
-(lines 51–53 and 1385–1394). `ci.yml` is the exact current lane source;
-the baseline owns test policy and evidence ceilings. This
-does not imply a CI failure or that a green workflow proves cluster or
-scientific acceptance; no workflow was run in this pass.
+**Dismissed for DOCS-01 at `27844f15`.** The
+[workflow README](../../.github/workflows/README.md) lines 3–6 directly
+links both [`ci.yml`](../../.github/workflows/ci.yml) for exact job selection
+and the [test baseline](../design/TEST_BASELINE.md#validation-lanes) lines
+73–85 for lane policy and evidence limits. “Defines each lane” does not
+promise that the baseline enumerates every job condition. The schedule and
+Sunday 100,000-pair selection remain in `ci.yml` at 51–53 and 1385–1394.
+No route is missing, no useful reduction follows, and no workflow ran.
 
 ### F56 — Synthetic driver dependency mutation claim
 
