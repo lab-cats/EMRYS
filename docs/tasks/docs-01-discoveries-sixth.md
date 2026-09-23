@@ -1,10 +1,10 @@
 # DOCS-01 discovery notes, sixth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F164–F169. F164–F167 compare local head `f79bc435`; F168 and the
-F19/F64/F92 refinements compare `5aaa17f0`; F97/F107/F169 use `25f62591`,
-read on 2026-09-23. The full coordinator contract and root/operator/owner
-history sweeps found no other substantial reduction. Counts are
+holds F164–F170. F164–F167 compare local head `f79bc435`; F168 and the
+F19/F64/F92 refinements compare `5aaa17f0`; F97/F107/F169 use `25f62591`;
+and F170 uses `8ef78400`, read on 2026-09-23. The full coordinator contract
+and root/operator/owner history sweeps found no other substantial reduction. Counts are
 review spans and conditional arithmetic, not verified savings or approval to
 alter guides, accepted status, or evidence. No product, test, CI, or cluster
 command was run.
@@ -98,3 +98,31 @@ unique seal continuation; 323–324 are a review span, not two removable lines.
 A two-line account of 321–324 might save two physical lines after reflow while
 keeping the unique outcomes and seal. No draft, net saving, or command result
 was verified.
+
+### F170 — First-watch log controls before a Run exists
+
+At local audit head `8ef78400`, [Quickstart](../../quickstart.md) lines 176–185
+shows `emrys watch` after submitting, then says Up scrolls back and `G` follows
+new log lines. The [watch presenter](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py)
+lines 1163–1167 instead opens overview for a retained request without a Run;
+it opens evidence/log view directly for an explicit Run without a request.
+The same source at 45–59 and 168–201 maps `3`/`v` to evidence view and Up/G to
+scroll/follow within the active view. The [Runbook control table](../operations/RUNBOOK.md#watch-one-fixed-selection)
+lines 96–104 already names `3`/`v`. Thus the novice queued-request path needs a
+view choice before those keys act on log lines. This is a conditional reader
+ambiguity, not a missing watch capability or proof of a runtime defect. No
+interactive watch was run and no line saving was established.
+
+## Other focused source comparisons at `8ef78400`
+
+The current root and operator guides were reread against CLI/coordinator source
+and selected direct tests; runtime, resource, configuration, reporting,
+storage, reference, CI, test-tool, and history guides received focused source
+or retained-Git checks. Existing records cover the material overlaps in these
+scopes, including Quickstart F04/F05, Doctor F07/F126, evidence F18/F19,
+test tooling F56/F162, and resources/reporting F54/F70/F72/F109/F152.
+Project schema v1 requires one dataset, one reference, and at least one named
+Analysis, consistent with the architecture's public model. Full source and
+retained-evidence comparison remain open. These were static comparisons, not
+executed CLI, CI, hosted-artifact review, institutional proof, or scientific
+review.

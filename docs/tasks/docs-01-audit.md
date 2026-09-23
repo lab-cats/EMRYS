@@ -327,9 +327,8 @@ permission to change or delete the source.
   “regeneration.” At `f239a91d`, recheck dismissed F138, narrowed F134/F136/F137,
   and added F140; CV-23/Slurm-preview/operator rereads found no new candidate.
 - At `d18470c8`, five-word shingles across 1,515 paragraphs found 59 matches; paraphrases could escape.
-- At `2398f144`–`d55baa91`, F01–F153 were rechecked and F154–F159/F94
-  added or refined; F45/F79/F144–F146/F148–F149/F153 were dismissed,
-  with other narrowing in their notes. No product/CI ran.
+- At `2398f144`–`d55baa91`, F01–F153 were rechecked; F154–F159/F94
+  added or refined; F45/F79/F144–F146/F148–F149/F153 dismissed. No product/CI ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 owns placement. DOCS-01 remains open until findings have an authoritative
@@ -353,7 +352,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 169 records, 67 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 170 records, 67 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -526,6 +525,7 @@ Of 169 records, 67 were dismissed after recheck; linked notes give reasons. The 
 | [F167](docs-01-discoveries-sixth.md#f167-cv-campaign-remaining-delivery-summary-repeats-matrix) | Summary compression candidate | CV campaign's 28-line remaining-delivery block restates accepted matrix rows and delegated CV status; F03 covers its INIT-02 overclaim. | A 9–12-line owner route might save 16–19 lines; preserve inbound heading links, the no-new-execution limit, CV-U06/CV-10 exceptions, and distinct campaign authority. Unverified. |
 | [F168](docs-01-discoveries-sixth.md#f168-scheduler-stream-names-repeated-in-the-logging-contract) | Dismissed after recheck | Logging contract's scheduler passage repeats names already examined under dismissed F22. | The 5–7-line estimate added no new evidence; distinct logging and coordinator readers, plus unique local behavior, establish no useful saving. |
 | [F169](docs-01-discoveries-sixth.md#f169-runtime-discover-display-rule-repeated-in-the-coordinator-contract) | Small internal overlap | Coordinator contract repeats its shared color and plain-text rule in Runtime Discover guidance. | A four-line passage might become two lines; keep READY/NOT READY, no-write/admitted outcomes, verbose checks and seal. Saving is unverified. |
+| [F170](docs-01-discoveries-sixth.md#f170-first-watch-log-controls-before-a-run-exists) | Conditional reader ambiguity | Quickstart names Up/G as log controls immediately after watch; a queued request without a Run initially opens overview. | The existing Runbook gives `3`/`v` for evidence/log view; explicit Run selection already opens that view. Source checked, not exercised. |
 
 ## Discovery notes
 
