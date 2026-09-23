@@ -258,27 +258,23 @@ fails; neither the R check nor a report ran in this audit.
 ### F113 — CV-26 mixed current rules and measurement history
 
 The [delegated CV-26 card](cluster_verification_backlog.md#cv-26-repeated-doctor-input-reads)
-spans lines 3748–4056: its original full-operation measurement acceptance is
-at 3750–3759 and the current Open disposition at 4053–4056. Current Doctor
-timing, fresh-read, and logging rules recur at 3761–3775, 3827–3844, and
-4016–4039; the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 220–287 owns related current timing and logging behavior, while the
-[campaign summary](cluster_verification_campaign.md) lines 203–206 and
-[main matrix](backlog_matrix.md) lines 104–110 state the structural reduction's
-current limit. Earlier Open checkpoint labels also recur at CV-26 lines 3900,
-4000–4002, 4014, and 4021–4022. This mixes live acceptance with dated progress
-inside a 309-physical-line card; the count is a review scope, not a saving.
-
+spans lines 3748–4056 (309 lines). It owns original acceptance at 3750–3759
+and the current Open disposition at 4053–4056. Earlier Open labels at 3900,
+4000–4002, 4014, and 4021–4022 are dated checkpoints, not competing status.
 The hosted phase timings at 3785–3808, probe attribution at 3846–3875,
-invocation counters at 3902–3947, and four-trial serial/two-worker comparison
-at 3949–3977 each retain distinct revisions, artifacts, numbers, and evidence
-limits. The local hash-reuse fixture and cache decision at 3810–3825, failed
-prototype suites and retirement CI at 3989–4002, September 16 operator report
-at 4004–4014, and September 21 source/check results at 4044–4052 also retain
-distinct context. The [closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
-requires exact CV-26 evidence and limits before temporary-card retirement.
-No evidence was moved, no net reduction was established, and no Doctor or CI
-operation ran in this audit.
+invocation counters at 3902–3947, and four-trial comparison at 3949–3977
+retain distinct revisions, artifacts, numbers, and limits. The hash/cache
+decision at 3810–3825, failed-suite limits at 3989–4002, operator report at
+4004–4014, and September 21 source/check record at 4024–4052 also remain.
+
+The optional synthetic E2E caveat at 4019–4021 repeats 4011–4012, but that
+sentence shares physical lines with unique admission and checkpoint context.
+The September 21 record explains a five-to-four diagnosis reduction, the
+preserved readmission and final checks, and its exact software evidence. The
+[closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+requires the card's evidence and limits before retirement. This concern is
+dismissed as a compression candidate: 309 lines are card scope, not a saving,
+and no useful reduction or transfer was established. No Doctor or CI ran here.
 
 ### F114 — Older novice route in SITE-PARITY item
 

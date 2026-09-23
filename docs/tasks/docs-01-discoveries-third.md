@@ -436,8 +436,8 @@ cardinality; it does not state that precondition. No command was exercised.
 
 The [polish campaign](polish-campaign.md) has five completed tooling and
 public-CLI sections at lines 459–468, 479–488, 502–512, 537–560, and
-930–951: 77 physical lines in total. Their repeated disposition and hosted-CI
-facts for `DEV-01`, `CI-01`, and `CLI-VERSION-01` also appear in the current
+930–951: 77 physical lines in total. Repeated hosted-CI/status clauses at 461,
+481, 504, 539, and 935–936 for `DEV-01`, `CI-01`, and `CLI-VERSION-01` appear in the current
 [main matrix](backlog_matrix.md) lines 340–356. The [test baseline](../design/TEST_BASELINE.md)
 lines 73–85 owns current validation-lane policy, while the
 [Runbook](../operations/RUNBOOK.md) lines 184–188 owns the public version

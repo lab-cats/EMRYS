@@ -574,11 +574,11 @@ production READMEs repeat a three-line execution paragraph (18 lines):
 `duplicate_marking` 10–12, `split_n_cigar` 11–13, others 12–14. Shared Run,
 worker, and validator rules live in the
 [stage index](../../src/emrys/stages/README.md) lines 28–40; the
-[stage test index](../../tests/stages/README.md) lines 13–16 owns common
-evidence limits. At `c0cdceb1`, the five-line test paragraph also appeared in
-[canonical BAM QC](../../tests/evidence/canonical_bam_qc/README.md) and
-[RSeQC](../../tests/evidence/rseqc_orientation/README.md) at lines 5–9. Eight
-test copies plus six production copies repeat 58 physical lines. The
+[stage test index](../../tests/stages/README.md) at lines 13–16 routes to the
+[test evidence limits](../../tests/README.md#evidence-limits).
+The paragraph also appears in [canonical BAM QC](../../tests/evidence/canonical_bam_qc/README.md)
+and [RSeQC](../../tests/evidence/rseqc_orientation/README.md) at lines 5–9
+(`c0cdceb1`). Eight test and six production copies repeat 58 physical lines. The
 preliminary 31–32-line net estimate covers only the original 12 stage files.
 At `651d60d5`, nine stage, two evidence, and one analysis contract use the
 same two-line opening routing to the [test index](../../tests/README.md),
