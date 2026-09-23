@@ -1435,13 +1435,15 @@ the latter during the existing FASTQ validation/hash pass and freezes all three
 numeric STAR values in the new Project. Explicit advanced overrides remain
 available and visibly identified.
 
-The generated replay command preserves omission of automatic STAR flags so an
-observed preview value is not converted into an override. Reference-derived
+At that checkpoint, the generated replay command omitted automatic STAR flags
+so an observed preview value was not converted into an override. `INIT-03`
+later retired replay for same-invocation confirmation; the automatic/override
+distinction remains in the admitted Project. Reference-derived
 values remain bound to the device, inode, size, nanosecond modification time and
 nanosecond change time observed with the FASTA summary; a change through full
 admission fails before publication. Existing Projects without
 `genome_chr_bin_nbits` normalize to `18` without rewriting their files. The Step
-`00a` validator adds a seventh exact check for the retained native value. CV-U21
+`00a` validator adds a seventh exact check for the retained native value.
 The CV-U21 software correction passed ordinary checks in
 [baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692)
 but remains **Verification pending** for a fresh operator walkthrough with
@@ -1503,9 +1505,11 @@ institutional smoke-to-study reuse journey remains pending, so CV-U22 is
 **Latest journey boundary:** The synthetic E2E is optional. When it is chosen,
 reuse its compatible prepared tools in the real Project as above. The direct
 real-data path must also work without a smoke Project and must not require an
-invented donor. Both paths retain explicit runtime discovery, compatibility and
-Project-readiness checks. This changes the Quickstart routing requirement, not
-the immutable-generation or explicit replacement safeguards.
+invented donor. The requested contract was explicit runtime discovery,
+compatibility and Project-readiness checks on both paths; the delivered
+skip-smoke path currently proceeds to Doctor without a donor search, as the
+Open disposition below records. The Quickstart routing requirement preserves
+the immutable-generation and explicit replacement safeguards.
 
 **September 17 adversarial audit:** Runtime reuse remains an operator-chosen
 alternate path rather than discovery before installation. The numbered
@@ -2699,9 +2703,13 @@ managed donor before publishing an absent borrower inventory. The closed seal
 and three-column selector bind donor location, exact digest and borrower Python.
 Selected native/R paths must remain inside the donor managed root. Doctor,
 Run/resume and retained Attempt profiles use one runtime content-binding owner;
-fresh fixed-content comparisons reject drift. Managed repair refuses a sealed
-donor even with malformed/missing inventories or a stale plan. Interrupted or
-failed publication preserves surviving claims/seals, and borrower failure does
+fresh fixed-content comparisons reject drift. At that checkpoint, managed
+repair refused a sealed donor even with malformed/missing inventories or a
+stale plan. The later [CV-U23 policy](#cv-u23-repair-restriction-when-sharing-tools)
+creates a verified replacement generation for owner repair and requires
+explicit dependent replacement; the sealed generation is never changed in
+place. Interrupted or failed publication preserves surviving claims/seals,
+and borrower failure does
 not undo a seal. There is no unseal or cleanup command.
 
 The 462 net product lines use six existing files and consolidate binding from

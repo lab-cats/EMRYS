@@ -73,8 +73,8 @@ discovery below and names the next evidence needed before changing authority.
 | 4. `CV-26` Doctor cost | One redundant full diagnosis was removed; original complete-operation attribution and comparable measurements remain Open. | Separate exact retained measurements and the serial-probe decision from implementation checkpoints and unmeasured speedup claims. |
 | 5. Dashboard retirement | The matrix says the standalone entry point and callers are retired; several CV summaries still say that retirement remains. | Current-sounding text is corrected in this branch; keep shared watch code, historical readers, and pending visual verification. |
 | 6. Repeated cluster closure instructions | The main checklist, cluster backlog summary, and charter repeat remaining work. | The charter now links to the operative sequence while retaining its unique disposition, site-combination, and evidence custody rules. |
-| 7. Viking walkthrough chronology | The main matrix holds dated jobs, a qualification identity, capacity observations, approvals, and a last-supplied Run state. | Review the [additive dated record](../history/2026-09-14-viking-walkthrough.md) against both sources before proposing any source shortening. |
-| 8. Compression closeout chronology | The completed section combines the user closure, quantified shortfall, exact CI, and PR chronology. | Review the [additive dated record](../history/2026-09-14-compression-closeout.md) before any closeout shortening; retain the closure decision in the matrix. |
+| 7. Viking walkthrough chronology | The main matrix holds dated jobs, a qualification identity, capacity observations, approvals, and a last-supplied Run state. | The [dated record](../history/2026-09-14-viking-walkthrough.md) now preserves source-only journey and safety details; settle the allocation-account evidence need and owner homes before any shortening. |
+| 8. Compression closeout chronology | The completed section combines the user closure, quantified shortfall, exact CI, and PR chronology. | The [dated record](../history/2026-09-14-compression-closeout.md) matches material source decisions and evidence limits; retain the closure decision and request separate authority before shortening source evidence. |
 | 9. CV card checkpoint narratives | Detailed cards repeatedly recount Open-to-implemented-to-pending transitions alongside live acceptance. | The 61-card first pass and CI wording correction are recorded below; transfer exact observations and decisions before any shortening. |
 | 10. Polish chronology and overlap | The campaign contains an old audit/PR narrative and merged-PR tables plus proposals already implemented elsewhere. | The [retention map](polish_finding_disposition_review.md#polish-audit-and-pr-chronology-retention-map) separates Git-only chronology candidates from unique decisions and evidence; transfer checks remain before compression. |
 | 11. Optimization source drift | The September 7 audit is correctly pinned, but most cited source blobs changed by the baseline. Candidates 8 and 12 have materially changed source premises. | Re-evaluate all 13 candidates against current owners and measurements without converting old proposals into defects. |
@@ -115,17 +115,22 @@ source outcomes are implemented. The charter's lines 149–150 acknowledge
 `INIT-02` remains incomplete. CV-06's dated correction at cluster backlog
 lines 2505–2511 calls its narrower explicit-manifest route Verification pending.
 
-**Next:** Inspect the public Init owner and direct tests at this commit, then
-separate the delivered no-paste route from automatic study selection. Review
-CV-06, CV-U08, CV-U20, and CV-U21 acceptance as whole outcomes; correct summaries
-without changing their statuses solely because one linked `INIT` row is Open.
+**Next:** Resolve how guided Init selects and distributes the maintained study
+file without a manifest path. Check no-argument selection, preserved explicit
+and generic routes, missing-reference refusal, installed-package access,
+exact hosted behavior, and a fresh novice Viking journey. CV-06/U08/U20/U21
+retain their own acceptance and statuses.
 
 **Source comparison:** The public Init owner in
 [`onboarding.py`](../../src/emrys/orchestration/run_coordinator/onboarding.py)
 lines 1027–1055 offers a regions file or manually entered FASTA names when no
 partition manifest is given; it does not choose the maintained EV/PUM1 study.
 The direct test at `tests/orchestration/run_coordinator/test_onboarding.py`
-lines 1505–1510 supplies the manifest path. CV-06's original acceptance at
+lines 1505–1510 supplies the manifest path. The installed-distribution test
+uses a fixture manifest. [`pyproject.toml`](../../pyproject.toml) disables
+implicit package-data inclusion and lists other resources explicitly, but not
+the repo-level study manifest; neither path proves its installed availability.
+CV-06's original acceptance at
 cluster backlog lines 2474–2484 permits either a short guided path or a
 supported import, so an Open `INIT-02` does not mechanically reopen CV-06.
 CV-U20 lines 1323–1329 describe the Quickstart's explicit manifest, not
@@ -140,6 +145,8 @@ from `INIT-02`'s Open automatic-selection outcome. They retain `INIT-01` and
 `INIT-03` implementation and each CV card's own remaining novice/site or
 selected real-Slurm acceptance. Ordinary software checks later passed
 [ordinary baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692); no card status changed.
+CV-U21's generated-replay description is now historical; `INIT-03` confirms
+and publishes in the same invocation.
 
 ### 3. `CV-U22` runtime reuse
 
@@ -154,11 +161,13 @@ owner](../../src/emrys/orchestration/run_coordinator/onboarding.py) lines
 2268–2322 requires an explicit `--from-project` for donor reuse; without that
 argument it plans discovery of the current Project's own runtime.
 
-**Next:** Map existing Project discovery and compatibility helpers before
-proposing a general donor-selection design. Preserve the known-smoke
-implementation and its pending institutional acceptance while keeping the
-expanded before-install requirement visible. Doctor must not silently select
-another Project's tools.
+**Source comparison:** `_plan_runtime_reuse` validates one named donor. Without
+`--from-project`, discovery inspects only the current Project; Doctor does not
+search others. CV-08's named-donor reuse awaits site proof, while CV-U22 stays
+Open for general compatible-donor discovery before installation.
+
+**Next:** Resolve explicit donor choice without silently selecting tools;
+retain the known-smoke route and its pending institutional acceptance.
 
 ### 4. `CV-26` Doctor cost
 
@@ -246,10 +255,12 @@ allowance, and reported synthetic/actual-data states. The
 [charter register](cluster_verification_campaign.md) lines 104–117 summarizes
 E01–E12 but does not replace every exact identifier or approval in the matrix.
 
-**Next:** Review the [additive dated record](../history/2026-09-14-viking-walkthrough.md)
-for source completeness and fidelity before any source shortening. The record
-names the source commits and exact identities below; it is a preservation
-draft, not a completed removal gate. Keep current site acceptance in
+**Source comparison:** A read-only comparison of the
+[additive dated record](../history/2026-09-14-viking-walkthrough.md) with the
+matrix and charter found source-only setup, interface, output, and memory-safety
+details, now added to the record above. The record names the source commits
+and exact identities below; it is a preservation draft, not a completed removal
+gate. Keep current site acceptance in
 `SITE-PARITY-01`/`CLUSTER-VERIFY-01`, lasting policy with its owner, and exact
 observations with their evidence ceiling. Do not infer actual-data completion
 from a last-supplied state.
@@ -282,10 +293,13 @@ against the agreed 20% target, two different comparison baselines, a seven-surfa
 table, exact CI links, and PR integration chronology. The closure decision and
 measurement definitions remain material; Git already keeps routine PR order.
 
-**Next:** Review the [additive dated record](../history/2026-09-14-compression-closeout.md)
-for source completeness before any closeout shortening. Keep the user decision
-in the row. The old dashboard statement is now date-bound to its September 14
-checkpoint; the matrix's original evidence remains in place.
+**Source comparison:** The [additive dated record](../history/2026-09-14-compression-closeout.md)
+preserves the material closure decision, counts, comparison definitions, exact
+CI heads, and evidence limits from the matrix snapshot. A read-only comparison
+found no material omission. Keep the user decision in the row. The old dashboard
+statement is now date-bound to its September 14 checkpoint; the matrix's
+original evidence remains in place. Any source-evidence removal remains a
+separate approval and commit decision.
 
 **Preservation check:** The Closed row records 42 completed CS cards, with
 CS-05 transferred to `REPORT-ROSTER-01`, after PR #169 merged as `2ecf7d44`.

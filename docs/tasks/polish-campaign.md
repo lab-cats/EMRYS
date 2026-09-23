@@ -30,7 +30,8 @@ dispositions, the 25% reduction target, broad code/test/protection/gate and
 documentation/contract audits, schema review, collaborator guidance and release
 planning. These outcomes remain accepted; none is a cluster-campaign closure
 gate. The focused novice-guide corrections and `INIT-01` through `INIT-03`
-remain in the cluster campaign's approved pre-closure tranche.
+belonged to the cluster campaign's previously approved September 14
+pre-closure tranche; that dated approval grants no current work authority.
 
 ## Evidence and selection
 
