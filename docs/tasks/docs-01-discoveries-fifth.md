@@ -462,14 +462,14 @@ F149 covers watch selection across other CV cards, not this usage policy.
 
 ### F158 — Campaign delivery prose beside the closure checklist
 
-The [CV campaign charter](cluster_verification_campaign.md) lines 128–133
-restates the [main closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
-at 125–140; the charter already links it at 70 and 154–155. Six lines becoming one
-route suggests five fewer physical lines, conditional on a draft and link
-check, not a verified saving. Lines 135–142 also retain CV-01's continuing
-role and three institutional combinations; the [E01–E12 register](cluster_verification_campaign.md)
-at 88–124 and charter completion criteria at 11–17 and 173–190 are distinct.
-This review does not authorize retiring the campaign or deleting evidence.
+At `3de8366b`, [CV charter](cluster_verification_campaign.md) lines 128–133
+restate the [main checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+at 125–140 despite charter links at 70 and 154–155; a one-line route might
+save five lines. Closure criteria at 173–190 also repeat checklist mechanics;
+the [completion recheck](docs-01-discoveries-sixth.md#completion-criteria-recheck-for-f158-at-3de8366b)
+separates unique rules and estimates 8–11 more conditional lines. Retain
+CV-01 and site combinations at 135–142 and E01–E12 at 88–124. Neither saving
+is verified; retirement and evidence deletion need separate authority.
 
 ### F159 — Polish integration genealogy repeated in its introduction
 

@@ -1,10 +1,10 @@
 # DOCS-01 discovery notes, sixth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F164–F175. F164–F167 compare local head `f79bc435`; F168 and the
+holds F164–F176 and a recheck of F158. F164–F167 compare local head `f79bc435`; F168 and the
 F19/F64/F92 refinements compare `5aaa17f0`; F97/F107/F169 use `25f62591`;
 F170 uses `8ef78400`, F171–F172 use `c6ec1562`, and F173–F175 use
-`286f646a`, read on 2026-09-23. The
+`286f646a`; F158 and F176 use `3de8366b`, read on 2026-09-23. The
 full coordinator contract and root/operator/owner history sweeps found no
 other substantial reduction. Counts are
 review spans and conditional arithmetic, not verified savings or approval to
@@ -188,6 +188,21 @@ both suffix branches, which are covered; it could also be read as claiming
 decoding through STAR, which this test does not exercise. No missing product
 behavior or real-run failure is established, and no test was executed here.
 
+### F176 — Polish campaign closing selection paragraph repeats its opening
+
+At local audit head `3de8366b`, the [polish campaign](polish-campaign.md)
+lines 1043–1047 repeats the selection and status authority already stated in
+its introduction at 3–20 and in the [workflow](../operations/WORKFLOW.md)
+lines 9–29 and 69–85. Its instruction not to maintain parallel mutable status
+also repeats the workflow's single-matrix rule. No tracked Markdown link
+targets the `Campaign disposition` heading. The adjacent lines 1049–1052
+uniquely require a terminal disposition for every proposal and verified
+transfer of useful content before retirement; those rules and the heading
+remain. Removing only the repeated first paragraph and its following blank
+could save six physical lines, conditional on a draft and link check. This is
+distinct from F140's earlier 21-line generic procedure and F160's seven-card
+follow-up list. No replacement or net saving has been verified.
+
 ## Other focused source comparisons at `8ef78400`
 
 The current root and operator guides were reread against CLI/coordinator source
@@ -212,6 +227,24 @@ bookmarks or non-Markdown readers. Focused operator, design, owner, task,
 history, test, and CI routes found F171–F172 and already recorded F21/F59/F161.
 Existing links were read at their destinations, not rendered or exercised.
 
+## Completion-criteria recheck for F158 at `3de8366b`
+
+The [CV charter](cluster_verification_campaign.md) lines 173–190 spends 18
+physical lines on closure criteria. The already-linked [main checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+lines 125–152 owns the institutional journey, exact-revision CI/site evidence,
+separate reviews, card dispositions, and transfer before retirement. The
+charter's opening at 11–17 still assigns campaign completion criteria to this
+document, and the [main matrix](backlog_matrix.md) line 171 routes closure
+through it. A shorter charter-specific criterion must retain rejection by
+explicit decision, unresolved failures as findings, agreement among the
+matrix/backlog/guides/contracts, and the E01–E12 and exact-result evidence here
+until authorized transfer. Retirement and evidence deletion stay separately
+authorized. No tracked Markdown link targets the `Completion and handoff`
+heading directly. A concise route to the checklist plus these distinct rules
+could save roughly 8–11 lines in that 18-line span; this is conditional, not
+a drafted or verified net saving. F158's earlier statement that the full span
+was distinct is narrowed accordingly.
+
 ## Stage and schema source recheck at `286f646a`
 
 Step 00a–02 and Step 07–10 owner guides were compared with selected producers,
@@ -222,3 +255,15 @@ Artifact and orchestration registries were read against that inventory. This
 checks the static reference graph, not runtime validation, historical schema
 compatibility, scientific correctness, or a complete caller audit. No test,
 product, CI, or cluster operation ran.
+
+## Owner compression recheck at `3de8366b`
+
+The 734-line Runbook, 271-line Troubleshooting guide, and full 1,248-line
+coordinator contract were reread for novel duplication and developer history.
+Their plausible reduction spans are already recorded under F05/F21–F23/F53,
+F92/F100–F102/F128/F136–F137/F144/F146/F154–F156/F169 or retain distinct
+operator recovery and admission rules. No further safe net saving was found on
+this pass. Selected runtime-owner claims were crosschecked with the installed
+policy: 12 choices, 26 unique fixed checks, and 30/120-second probe limits
+match source constants. This is static comparison, not runtime, CI, site, or
+scientific proof.

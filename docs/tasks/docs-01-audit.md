@@ -322,8 +322,7 @@ permission to change or delete the source.
 - At `d18470c8`, five-word shingles across 1,515 paragraphs found 59 matches; paraphrases could escape.
 - At `2398f144`–`d55baa91`, F01–F153 were rechecked; F154–F159/F94
   added or refined; F45/F79/F144–F146/F148–F149/F153 dismissed. No product/CI ran.
-- At `286f646a`, stage-owner and schema source comparisons added F173–F175.
-  These were static checks only; no product, test, CI, or cluster command ran.
+- At `286f646a`, static stage-owner and schema checks added F173–F175; no product, test, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 owns placement. DOCS-01 remains open until findings have an authoritative
@@ -347,7 +346,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 175 records, 67 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 176 records, 67 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -508,7 +507,7 @@ Of 175 records, 67 were dismissed after recheck; linked notes give reasons. The 
 | [F155](docs-01-discoveries-fifth.md#f155-runtime-diagnostic-contents-in-troubleshooting) | Dismissed after recheck | Troubleshooting summarizes failed runtime-check diagnostic contents also specified in the coordinator contract. | The two-line plain-English summary helps operators read the log; no unnecessary detail or saving is established. |
 | [F156](docs-01-discoveries-fifth.md#f156-substitution-regression-narration-in-the-coordinator-contract) | Dismissed after recheck | Coordinator contract states why the distinct-inode substitution regression cannot prove ownership through inode recycling; test guide and CV-10 repeat that ceiling. | The owner contract must retain its accepted trust and evidence boundary after temporary CV notes retire; no useful reduction is established. |
 | [F157](docs-01-discoveries-fifth.md#f157-cv-u33-current-usage-policy-beside-correction-evidence) | Dismissed after recheck | CV-U33's concise current-scope paragraph repeats selected-cluster accounting and local-only live-usage rules held by the source owner. | It preserves the card's supported-scope and pending-acceptance context; no useful reduction is established. |
-| [F158](docs-01-discoveries-fifth.md#f158-campaign-delivery-prose-beside-the-closure-checklist) | Checklist overlap | CV campaign's six-line Delivery opening restates the main matrix's closure checklist, which the campaign already links. | A one-line route suggests five fewer lines; preserve CV-01, institutional combinations, charter criteria, E01–E12 and evidence limits. Saving remains unverified. |
+| [F158](docs-01-discoveries-fifth.md#f158-campaign-delivery-prose-beside-the-closure-checklist) | Checklist overlap | CV campaign's Delivery opening and part of its closure criteria repeat the linked main checklist. | Conditional estimates are five and 8–11 lines; retain charter-specific dispositions, unresolved failures, guide agreement, CV-01/site combinations, E01–E12 and evidence limits. Unverified. |
 | [F159](docs-01-discoveries-fifth.md#f159-polish-integration-genealogy-repeated-in-its-introduction) | Compression candidate | Polish campaign's 109–118 account repeats integration and hosted-CI evidence held in the main matrix and later dispositions. | An 8–10-line reduction is plausible only if item 22's “linked above” still targets run `34306975901`; retain 68–79 tested-tree identity and CS-20/22 limits. |
 | [F160](docs-01-discoveries-fifth.md#f160-accepted-follow-up-scope-repeated-in-the-polish-introduction) | Scope repetition | Polish campaign introduction repeats seven accepted IDs, the 600-line and 25% targets, and cluster exclusion already in the main matrix. | A short route might save five to six lines; keep three inbound heading links and distinct novice/INIT pre-closure scope. Saving is unverified. |
 | [F161](docs-01-discoveries-fifth.md#f161-final-resource-summary-repeated-in-the-configuration-guide) | Dismissed after recheck | Config guide's short final Slurm/tool resource section repeats an earlier coordinator-policy route. | It gives the precise utilization/performance limit, a benchmark route, and the destination of an inbound CV link; no useful saving is established. |
@@ -526,6 +525,7 @@ Of 175 records, 67 were dismissed after recheck; linked notes give reasons. The 
 | [F173](docs-01-discoveries-sixth.md#f173-step-05-producer-read-group-exactness-overclaimed) | Producer-contract overclaim | Step 05 contract credits the producer with exact read-group ID/SM matching; its shell check accepts a sample-ID prefix, while grouped validation checks exact fields. | This is a producer-local claim mismatch, not evidence that a full Run admits malformed output. |
 | [F174](docs-01-discoveries-sixth.md#f174-step-06-verified-marker-contents-overstated) | Evidence-location ambiguity | Step 06 owner places tool versions and final hashes in the workflow verified record; the verified marker contains only a terminal-attempt reference. | Output hashes and tool versions remain reachable in separate linked records; no missing evidence is shown. |
 | [F175](docs-01-discoveries-sixth.md#f175-star-gzip-test-scope-ambiguous) | Test-scope ambiguity | Step 01 test guide says both compression modes are covered; its direct fake-STAR test uses plain bytes under `.gz` names and checks suffix-selected gunzip routing. | That test does not exercise gzip decoding through STAR; separate ingestion tests use genuine gzip data. |
+| [F176](docs-01-discoveries-sixth.md#f176-polish-campaign-closing-selection-paragraph-repeats-its-opening) | Campaign-policy overlap | Polish campaign's closing selection paragraph repeats its opening and the workflow's selection/status rules. | The adjacent terminal-disposition and content-transfer rule remains unique; a six-line saving is conditional and unverified. |
 
 ## Discovery notes
 
