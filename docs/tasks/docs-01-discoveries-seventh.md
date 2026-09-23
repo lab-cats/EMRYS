@@ -307,3 +307,39 @@ browsers, and evidence bound to an exact revision. Retain the no-third-renderer
 and no-scientific-proof limits. A 12–14-line owner route might save five to
 seven local lines only if those review cases and limits stay accessible.
 No rendered review, guide edit, link check, or net saving occurred here.
+
+## Owner and operator rescreen at `99fe2d5a`
+
+The full 734-line Runbook and 271-line Troubleshooting guide, main matrix and
+polish campaign were reread against existing findings. All ten stage READMEs
+and contracts, the evidence contracts, paired-CMH/Step 10 contracts, and
+selected reporting, runtime, storage, reference, ingestion, library, `renv`,
+and workflow owners were compared with adjacent source. Existing entries cover
+the apparent operator overlaps and owner-specific input, validation, recovery,
+and evidence limits. The architecture, decision, reference, and root guides
+received a targeted history and policy reread. No independent new finding was
+established in those areas. No product source has changed since the initial
+`3a672fdf` audit base; this was static review, not execution.
+
+### Reporting history rescreen for F25
+
+The [reporting decision](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression)
+lines 216–225 inventories retired private operation records, the
+`ReceiptValidationOps` testing interface, `report.py`, and later
+`RunSummaryBuildDeps`. These are retired production interfaces; the
+[source-dependency test](../../tests/test_source_dependencies.py) fabricates
+the old `report.py` path as a forbidden-import case.
+Git retains their chronology. The adjacent lines 210–214 preserve
+PR #146's predecessor tree and replacement-failure limit; the later combined
+summary retirement came with `9e8eafba`, not that predecessor revision.
+Current source admission, logical producer identity, retained source observers
+and input rechecks, and combined manifest/summary publication are covered by
+the [reporting owner](../../src/emrys/reporting/README.md#implementation-and-fault-tests),
+the [private report owner](../../src/emrys/reporting/_run_report/README.md),
+the [artifact-index owner](../../src/emrys/reporting/_artifact_index/README.md),
+the [summary owner](../../src/emrys/reporting/_run_summary/README.md), and the
+[fault-test guide](../../tests/reporting/README.md#fault-injection).
+A six-to-eight-line account of this ten-line subspan suggests two to four
+conditional local lines; Markdown links or preservation wording may erase
+that saving. No guide rewrite or net saving was verified. F25's full-section
+reduction remains dismissed, and retained evidence deletion is not authorized.

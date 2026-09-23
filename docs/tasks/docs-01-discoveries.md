@@ -516,9 +516,9 @@ found; preserve the inbound link.
 
 ### F25 — Reporting decision versus migration history
 
-**Dismissed for DOCS-01 at `35cbe2a1`.** No current owner duplicates this
-combined history and surviving compatibility account; no useful lossless
-reduction is established.
+**Whole-section reduction dismissed at `35cbe2a1`; lines 216–225 reopened
+at `99fe2d5a`.** The [targeted rescreen](docs-01-discoveries-seventh.md#reporting-history-rescreen-for-f25)
+is conditional; the surrounding compatibility and recovery rules remain.
 
 [Execution, evidence, and reporting decision](../design/decisions/execution-evidence-and-reporting.md)
 lines 119–209 and 227–257 retains scientific-fingerprint, independent-test,
