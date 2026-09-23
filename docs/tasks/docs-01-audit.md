@@ -310,6 +310,11 @@ permission to change or delete the source.
   anywhere, regardless of heading order. A separate static scan found six
   relative reference-style link definitions, all with resolved local targets.
   Source and tests were read, not executed; no CI or cluster work ran.
+- A shared-contract and operator-display pass at local head `54f7b756` added
+  F125 for a present-tense producer/publication ownership claim and F126 for
+  Doctor detail/timing wording. Focused Step 07, Step 10, CI, and test-guide
+  comparisons found no further distinct claim. These were source and test
+  readings only; no product, test, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -338,7 +343,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 124 numbered records include F41, F43, and F87, dismissed after recheck so
+The 126 numbered records include F41, F43, and F87, dismissed after recheck so
 their original claims and corrections remain traceable. The last column records
 an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -469,6 +474,8 @@ Discovery notes give source references and the boundary for each row.
 | [F122](docs-01-discoveries-fourth.md#f122-step-06-optimization-source-after-publication-moved-to-the-runner) | Historical source routing | Optimization candidate 1 cites a pinned Step 06 producer for both extraction and publication; the current worker still extracts and checks outputs, while the runner owns publication and recovery. | The pinned historical mechanism is valid and the five-output transaction remains required; current-owner attribution and performance must be assessed separately. |
 | [F123](docs-01-discoveries-fourth.md#f123-repeated-stage-resource-defaults-in-the-configuration-guide) | Compression candidate | The configuration guide's stage table repeats eight numeric memory minimums and workflow/shared settings from the packaged default and Viking example profiles. | The table also explains stage and tool behavior and has an inbound owner link; no safe line saving or runtime capacity conclusion follows. |
 | [F124](docs-01-discoveries-fourth.md#f124-reliability-diagram-collapses-two-validation-orders) | Diagram sequence drift | Reliability diagram routes every task through validation before publication and labels validation-failure recovery as an owner action; the runner validates Steps 08/09 before publication but other owners after native publication. | The runner owns recovery; post-commit validation failure preserves native outputs. The diagram is non-authoritative and no runtime defect is inferred. |
+| [F125](docs-01-discoveries-fourth.md#f125-producer-publication-claim-in-the-shared-contract-index) | Owner-routing drift | Shared-contract index says producers own computation and publication; current first-party scientific tasks separate producer computation from runner publication and recovery. | Reporting and other record publication have their own owners; this wording alone implies no runtime defect. |
+| [F126](docs-01-discoveries-fourth.md#f126-doctor-plan-detail-and-timing-display-in-the-runbook) | Display-scope drift | Runbook does not qualify when Doctor prints `Runtime work` or full invocation timing; the field requires verbose repair, while normal elapsed output requires `--repair`. | Plan heading still distinguishes repair from verification, and package-manager output owns actual reuse evidence. No Doctor behavior defect is inferred. |
 
 ## Discovery notes
 

@@ -1,11 +1,11 @@
 # DOCS-01 discovery notes, fourth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F100–F124. F100–F104 use local audit head `e1771d21`; F105–F108 use
+holds F100–F126. F100–F104 use local audit head `e1771d21`; F105–F108 use
 `b65e8fb8`; F109–F110 use `26898b5e`; F111 uses `cd45bd51`, F112 uses
 `b62e207b`, F113 uses `ac14392e`, F114–F117 use `b72b03c0`, and F118–F119 use
 `24579272`; F120 uses `dc44861b`, F121–F122 use `f538efe4`, and F123 uses
-`7e7c364c`, and F124 uses `663da8ed`, all read on
+`7e7c364c`, F124 uses `663da8ed`, and F125–F126 use `54f7b756`, all read on
 2026-09-22. These are documentation observations, not runtime results,
 accepted changes, or permission to alter retained evidence.
 
@@ -448,6 +448,39 @@ runner's recovery ownership ambiguous. It is a non-authoritative schematic:
 after native commit, a validation failure preserves native outputs and failed
 evidence; both paths still require semantic all-pass and publish verification
 last. Source and tests were read, not executed; rendering was not checked.
+
+### F125 — Producer publication claim in the shared-contract index
+
+The [shared-contract index](../../src/emrys/contracts/README.md) line 12 says
+producers own computation and publication. For first-party scientific tasks,
+the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 1099–1103 assigns computation and native checks to producers but paths,
+publication, and recovery to the runner. The
+[source topology](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) lines 45 and
+49–50 repeats runner publication ownership for Steps 07, 09, and 10, and
+the [runner](../../src/emrys/orchestration/run_coordinator/task.py) lines
+1490–1492 and 1625–1629 contains native publication. This present-tense
+overview claim obscures the scientific producer/runner boundary. F122 concerns
+a dated optimization citation; F124 concerns validation order. Reporting and
+other record publishers have separate owners, and no runtime defect follows
+from the index wording. Source was read, not executed.
+
+### F126 — Doctor plan detail and timing display in the Runbook
+
+The [Runbook](../operations/RUNBOOK.md) lines 660–666 says a `Runtime work`
+line distinguishes three managed-runtime states, and lines 678–680 say Doctor
+prints full invocation elapsed time and exit outcome. Neither sentence scopes
+the display mode. The [Doctor source](../../src/emrys/orchestration/run_coordinator/doctor.py)
+lines 1433–1444 prints `Runtime work` only for a verbose repair plan; lines
+2023–2026 enable the normal elapsed summary only for `--repair`, while verbose
+diagnosis can print detailed invocation timing (lines 207–266). Direct
+[tests](../../tests/orchestration/run_coordinator/test_doctor.py) lines 947–1074
+assert the field is absent in normal plan previews for all three states and
+that normal elapsed output follows `--repair`. Lines 2064–2079 also assert
+approved normal repair omits `Runtime work` while retaining its value in the
+maintenance log. The normal plan heading still distinguishes repair from
+verification; only package-manager output establishes actual package reuse.
+This is a guide display-scope observation, not a Doctor or cluster result.
 
 ## Reviewed overlaps without a saving claim
 
