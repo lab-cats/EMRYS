@@ -293,9 +293,10 @@ permission to change or delete the source.
   added F123 for repeated resource defaults in the configuration guide. The
   original `3a672fdf` inventory was independently recomputed as 170 Markdown
   files, three Mermaid files, and 15,834 Markdown lines; the five added audit
-  files account for all current Markdown-file growth. The three earlier audit
-  note introductions were corrected to point to the fourth notes beginning at
-  F100. No CLI, test, official documentation, CI, or cluster command ran.
+  files at that head accounted for all then-current Markdown-file growth. The
+  three earlier audit note introductions were corrected to point to the
+  fourth notes beginning at F100. No CLI, test, official documentation, CI,
+  or cluster command ran.
 - An adversarial recheck at local head `8b8f5fde` challenged F100–F123
   against their cited source and narrowed F114's older novice-route wording:
   the polish item does not call storage qualification manual. F112 now names
@@ -321,6 +322,12 @@ permission to change or delete the source.
   Quickstart, operations, reference, and glossary comparisons found no further
   distinct claim. The older local-check totals were not replayed; source and
   tests were read without product, CI, or cluster execution.
+- A test-guide, evidence-owner, and schema-language pass at local head
+  `3ebfb2bf` added F130 for an eight-guide paragraph repetition and F131 for
+  the glossary's unqualified receipt-validation wording. F107 now includes
+  three current owner contracts' distinct retired-writer histories. Other
+  bounded tooling and schema-index comparisons found no additional distinct
+  claim. No product, test, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -349,7 +356,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 129 numbered records include F41, F43, and F87, dismissed after recheck so
+The 131 numbered records include F41, F43, and F87, dismissed after recheck so
 their original claims and corrections remain traceable. The last column records
 an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -462,7 +469,7 @@ Discovery notes give source references and the boundary for each row.
 | [F104](docs-01-discoveries-fourth.md#f104-automatic-reports-after-successful-computation) | Operator wording | Runbook says successful computation generates both reports; full Runs invoke reporting by default, but science can complete while reporting is incomplete. | Quickstart and Runbook require separate reporting admission; no behavior defect inferred. |
 | [F105](docs-01-discoveries-fourth.md#f105-retired-scheduler-wrapper-in-the-stage-map) | Historical graph explanation | Stage map opens its “Current operational coupling” section with a retired Step 00a wrapper while also stating durable no-edge semantics for 00b/00c. | External-input and no-index dependencies remain current owner rules; no graph defect or safe saving is established. |
 | [F106](docs-01-discoveries-fourth.md#f106-doctor-storage-plan-proposal-after-slurm-routing-changed) | Stale proposal framing | Polish item 9 describes direct storage planning and a direct-profile workaround for Slurm; current Doctor source and Viking Runbook route differ. | Dated concern survives, but no Doctor run or institutional proof was established. |
-| [F107](docs-01-discoveries-fourth.md#f107-retired-shell-publication-tests-in-a-current-test-guide) | Historical test detail | Shared-library test guide narrates retired shell-publisher faults and links a retained Git revision with a dropped-link regression beside current runner coverage. | Original characterization and runner tests cover different publishers; TERM equivalence and any saving remain unverified. |
+| [F107](docs-01-discoveries-fourth.md#f107-retired-shell-publication-tests-in-a-current-test-guide) | Historical detail placement | Shared-library test guide and three current owner contracts retain distinct failures from retired direct-write publishers beside current runner coverage. | Original characterization and runner tests cover different publishers; TERM equivalence, evidence transfer, and any saving remain unverified. |
 | [F108](docs-01-discoveries-fourth.md#f108-scientific-completion-in-the-run-summary-guide) | Terminology ambiguity | Run-summary guide calls scientific completion external, while inspection and architecture define computational Scientific Results completion. | External review and biological interpretation remain distinct; no behavior defect inferred. |
 | [F109](docs-01-discoveries-fourth.md#f109-runtime-discoverys-interactive-publication) | No-write wording | Runtime owner guide says discovery without `--execute` does not write; affirmative terminal confirmation publishes, as source and direct fixture show. | Declined or noninteractive previews remain no-write; no runtime command ran in the audit. |
 | [F110](docs-01-discoveries-fourth.md#f110-unrouted-study-pairs-configuration-file) | Configuration inventory | Tracked three-column EV/PUM1 roster is unindexed and repeats Quickstart's six pairings; current Init writes the six-column sample manifest that Step 09 admits. | Historical use is unverified; matching values do not authorize deletion or make the old roster a current Step 09 input. |
@@ -485,13 +492,16 @@ Discovery notes give source references and the boundary for each row.
 | [F127](docs-01-discoveries-fourth.md#f127-older-local-checks-inside-active-cv-acceptance-cards) | Evidence placement | CV-U08 and CV-U20 carry older local-check totals beside later active acceptance wording without naming the checked source revision. | Historical check outcomes are not disproved; excluded cases, environment, and evidence-ceiling limits remain material and cannot be deleted by this audit. |
 | [F128](docs-01-discoveries-fourth.md#f128-tool-specific-thread-effects-in-the-coordinator-contract) | Compression candidate | Coordinator contract repeats five lines of worker-specific STAR, samtools, and Java flag effects already held by their stage and evidence contracts. | Central resource derivation and refusal remain coordinator-owned; no safe saving is established by the overlap alone. |
 | [F129](docs-01-discoveries-fourth.md#f129-unrouted-workflow-profile-index) | Navigation and compression candidate | The 11-line workflow-profile index has no inbound tracked Markdown link while parent and local-profile guides carry most of its current orientation. | Its selectable-profile approval rule is unique; filesystem routes were not assessed and no deletion scope is established. |
+| [F130](docs-01-discoveries-fifth.md#f130-repeated-test-scope-paragraph-across-eight-owner-guides) | Compression candidate | Eight stage and evidence test guides repeat one identical five-line worker/runner/validator/evidence-scope paragraph. | Their owner-specific coverage and local reader context remain distinct; 40 repeated physical lines are a review surface, not a proved saving. |
+| [F131](docs-01-discoveries-fifth.md#f131-receipt-validation-scope-in-the-glossary) | Validation-scope ambiguity | Glossary says receipt follows validation and marks transaction completion without distinguishing staged native checks from later independent task validation. | Native checks and receipt-last publication remain real; receipt presence alone does not verify a scientific task. No runtime defect is inferred. |
 
 ## Discovery notes
 
 The [first discovery notes](docs-01-discoveries.md),
 [continued notes](docs-01-discoveries-continued.md),
-[third file](docs-01-discoveries-third.md), and
-[fourth file](docs-01-discoveries-fourth.md) give sources, uncertainty, and
+[third file](docs-01-discoveries-third.md),
+[fourth file](docs-01-discoveries-fourth.md), and
+[fifth file](docs-01-discoveries-fifth.md) give sources, uncertainty, and
 preservation boundaries for every matrix row. The temporary split keeps each
 document below the 600-line review threshold.
 

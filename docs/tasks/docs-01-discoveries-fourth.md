@@ -1,7 +1,8 @@
 # DOCS-01 discovery notes, fourth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F100–F129. F100–F104 use local audit head `e1771d21`; F105–F108 use
+holds F100–F129; [fifth notes](docs-01-discoveries-fifth.md) begin at F130.
+F100–F104 use local audit head `e1771d21`; F105–F108 use
 `b65e8fb8`; F109–F110 use `26898b5e`; F111 uses `cd45bd51`, F112 uses
 `b62e207b`, F113 uses `ac14392e`, F114–F117 use `b72b03c0`, and F118–F119 use
 `24579272`; F120 uses `dc44861b`, F121–F122 use `f538efe4`, and F123 uses
@@ -148,6 +149,16 @@ validation-recovery section at lines 22–30 describes live tests and known
 limits. This shell passage is historical defect characterization inside a
 present test index; a lossless
 evidence home and any saving remain unverified. No test ran in this audit.
+
+The same retired-writer history remains in current scientific-worker contracts:
+[BAM QC](../../src/emrys/evidence/canonical_bam_qc/CONTRACT.md) lines 80–82
+describes mixed evidence, [RSeQC](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md)
+lines 68–70 describes truncation and empty success, and
+[duplicate marking](../../src/emrys/stages/duplicate_marking/CONTRACT.md) lines
+58–59 describes partial or mixed outputs. Their current workers use runner
+staging. The shared [publication decision](../design/decisions/execution-evidence-and-reporting.md#publish-validated-transactions)
+states the lasting runner boundary but not these distinct old failure modes.
+This expands the placement review, not the authority to remove evidence.
 
 ### F108 — Scientific completion in the run-summary guide
 
