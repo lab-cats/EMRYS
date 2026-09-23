@@ -328,7 +328,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 191 records, 74 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 191 records, 75 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -521,7 +521,7 @@ Of 191 records, 74 were dismissed after recheck; linked notes give reasons. The 
 | [F187](docs-01-discoveries-sixth.md#f187-cv-campaign-post-checklist-context-under-review) | Dismissed after recheck | Parts of CV campaign's Delivery approach lines 135–150 echo CV-01 and site-evidence limits; its three institutional combinations and dated owner decisions carry distinct detail. | A preservation sketch yields only two lines of reflow; F158 owns the adjacent checklist overlap. No useful standalone reduction is established. |
 | [F188](docs-01-discoveries-seventh.md#f188-retired-storage-publisher-history-in-polish-item-2) | Retired-feature chronology candidate | Polish item 2 spends 13 lines on a retired capacity-and-retention publisher and the PR sequence that preceded its removal. | A private nine-line sketch suggests four local lines; five or six are unsupported. Keep three recovery risks, retirement without repair, provenance and surviving qualification. Net saving is unverified. |
 | [F189](docs-01-discoveries-seventh.md#f189-cv-campaign-related-work-repeats-current-owner-map) | Conditional owner-map candidate | CV campaign's Related work section repeats selected SITE-PARITY, SCHED/CV-11, watch and CV-26 status detail; its optimization and polish relationships add distinct context. | A private 16-line sketch suggests three local lines; preserve all five relationships, watch acceptance, site/evidence limits and CV-26's no-speedup boundary. Net saving is unverified. |
-| [F190](docs-01-discoveries-seventh.md#f190-source-topology-reporting-internal-import-boundary) | Source-topology wording contradiction | The import guide says no functional owner imports reporting internals, while its own exact exception table permits seven Run coordinator imports that current source uses. | Scope the blanket rule to owners outside the listed exceptions; retain every import pair and justification. This is documentation accuracy, not an unauthorized import or executed checker result. |
+| [F190](docs-01-discoveries-seventh.md#f190-source-topology-reporting-internal-import-boundary) | Dismissed after recheck | The apparent reporting-import conflict treated Run coordination as a functional owner, but the import guide and checker classify orchestration separately from stage, analysis, and evidence owners. | Seven exact coordinator exceptions are already listed; no unauthorized import or useful documentation correction is established. The checker was not run. |
 | [F191](docs-01-discoveries-seventh.md#f191-console-detail-tiers-in-the-execution-decision) | Console-detail wording drift | An execution decision says verbose and debug progressively expose detail, but `--verbose` is the sole public detail switch and shows both event classes together. | Keep normal/verbose output and durable-log boundaries distinct. This is a static interface comparison, not an observed command failure. |
 
 ## Discovery notes

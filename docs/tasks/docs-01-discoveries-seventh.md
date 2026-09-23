@@ -126,28 +126,27 @@ this does not pass the repository's parser-based documentation gate.
 
 ### F190 — Source-topology reporting-internal import boundary
 
-At local audit head `bc6f971f`, [SOURCE_TOPOLOGY](../../src/emrys/contracts/SOURCE_TOPOLOGY.md#ratified-exact-import-exceptions)
-lines 133–135 says Run coordination crosses into reporting only through listed
-exceptions, then says no functional owner or grouped command imports reporting
-internals. The same table at lines 154–160 permits seven exact imports from
-`run_coordinator/reporting_operation.py` into private reporting modules. The
-[current coordinator](../../src/emrys/orchestration/run_coordinator/reporting_operation.py)
-imports their error models at lines 23–25 and context/publication modules at
-120, 128, 139 and 143; the [source checker](../../tests/tools/source_dependencies.py)
-encodes all seven as private-owner exceptions at 186–227. The
+At local audit head `bc6f971f`, the apparent conflict was that
+[SOURCE_TOPOLOGY](../../src/emrys/contracts/SOURCE_TOPOLOGY.md#ratified-exact-import-exceptions)
+lines 133–135 forbids functional-owner imports of reporting internals while
+its table permits seven exact `run_coordinator/reporting_operation.py` imports.
+Adversarial recheck at `7d0fceb1` dismissed that reading: the guide's
+dependency table at lines 64–79 separates `stages/`, `analyses/`, and
+`evidence/` from `orchestration/`; the [source checker](../../tests/tools/source_dependencies.py)
+at lines 427–440 uses `functional` only for the first three and classifies Run
+coordination as `orchestration`. Its seven imports are the listed exceptions
+`SRC-TRANS-016`–`018` and `021`–`024`. The
 [architecture owner table](../architecture/ARCHITECTURE.md#responsibility-boundaries)
-names Run coordination as a functional owner. The blanket prohibition is thus
-too broad for the documented and implemented exception. Preserve the exact
-exception IDs, pairs, reasons and restriction on other owners and commands.
-This is a wording contradiction, not an unauthorized import or evidence that
-the checker was executed.
+groups responsibilities but does not redefine the import checker's taxonomy.
+No unauthorized import, useful compression, or necessary wording correction
+is established. This was a static read; the checker was not run.
 
 ## Owner and operator source rescreen at `bc6f971f`
 
 Root README, Quickstart, Runbook, Troubleshooting, all 1,248 coordinator-contract
 lines, and 51 non-stage owner Markdown files were reread against selected CLI,
 coordinator, reporting, evidence, analysis, schema, and direct-test source.
-F190 was the only distinct new finding. The apparent repeated contract test
+F190 was the only apparent new finding and was later dismissed. The repeated contract test
 ceiling and reporting-consumer sentences are already F28 and dismissed F145;
 their local links and owner-specific limits prevent an unverified saving claim.
 No product commands, tests, CI, cluster operation, or hosted evidence were run in this
