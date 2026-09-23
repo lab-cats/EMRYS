@@ -190,10 +190,10 @@ The [Runbook](../operations/RUNBOOK.md) lines 184–188 promises
 `emrys --version` from any directory. The [CLI](../../src/emrys/__main__.py)
 lines 349–368 reads `.env` before version dispatch; the
 [environment loader](../../src/emrys/orchestration/run_coordinator/onboarding.py)
-lines 153–185 can reject a malformed marked file. This is a source-level edge
-case, not a reproduced command failure. `main` catches that error and returns
-exit 2 at lines 352–356 before building the argument parser; the version branch
-cannot run for that input if the package imports successfully. An unmarked
+lines 153–185 can reject a malformed marked file or any non-regular `.env`
+before its marker check. This is source inference, not a reproduced failure.
+`main` returns exit 2 at lines 352–356 before building the parser; the version
+branch cannot run for that input if the package imports successfully. An unmarked
 regular `.env` is skipped at loader lines 168–169.
 `tests/test_public_cli_contracts.py`
 lines 713–734 covers version from a clean temporary directory; the malformed

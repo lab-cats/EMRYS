@@ -272,7 +272,7 @@ line saving is established. The current **Verification pending** status and
 each evidence ceiling remain; overlap with CV-10 or the test guide does not
 justify deleting this integrated account.
 
-### F180 — Analysis provider validator independence overstated
+### F180 — Analysis provider validator independence wording
 
 At local audit head `619e60b7`, the [analysis owner guide](../../src/emrys/analyses/README.md)
 lines 12–16 says EMRYS checks a provider's “independent validator”; lines
@@ -285,21 +285,19 @@ the [runner](../../src/emrys/orchestration/run_coordinator/task.py) lines
 Neither admission nor planning establishes that provider-authored validation
 is semantically independent of production. The [collaborator fixture](../../tests/orchestration/run_coordinator/test_materialization.py)
 lines 861–920 supplies different commands but does not prove that guarantee
-for arbitrary providers. This is a documentation-scope overclaim: retain the
-required validator command and separate execution, and distinguish the
-trusted provider's independence obligation from what EMRYS verifies. No
+for arbitrary providers. “Independent” may describe that separate execution,
+so this is a wording ambiguity, not a proven false claim. The trusted provider's
+semantic obligation and EMRYS's structural checks have different scopes. No
 product defect, exercised failure, or line saving is established.
 
 ### F181 — Removed publisher-test history in the runtime test guide
 
 At local audit head `619e60b7`, the [runtime test guide](../../tests/evidence/runtime_availability/README.md)
-line 14 ends a current test-scope paragraph with “Tests solely for the retired
-standalone report publisher are removed.” Local blame identifies its
-introduction at `ddc82817`; a tracked documentation search finds no other
-current use of that phrase. It gives no present test instruction, scope limit,
-or failure evidence. Removing that one historical sentence could save one
-physical line; preserve the adjacent real-Snakemake and local-versus-cluster
-test limits at lines 7–14. No deletion or net saving was verified.
+line 14 ends a current test-scope paragraph with a retired publisher-test
+sentence. This is the same sentence and placement question already recorded
+as F36, so F181 is dismissed as a duplicate. Removing the sentence alone saves
+no physical line: the live batch-dependency caveat still occupies line 14.
+The real-Snakemake and local-versus-cluster limits at lines 7–14 must remain.
 
 ## Other focused source comparisons at `8ef78400`
 
@@ -456,8 +454,46 @@ startup match policy constants and direct test setup. The source topology's
 25 CLI seams and 22 import exceptions match the checker policy lists; the
 current import graph was not executed. The hosted workflow and documentation
 checker guides matched selected workflow, script, and direct-test assertions.
-F180 and F181 were the only new documentation observations from these bounded
-checks. This does not verify every owner, fixture, or retained evidence claim.
+F180 was the only new documentation observation from these bounded checks;
+F181 repeats F36 and is dismissed. This does not verify every owner, fixture,
+or retained evidence claim.
 A standard-library link scan of all 177 tracked Markdown files found no
 unresolved local targets among 2,064 inline matches, 72 reference definitions,
 and 628 fragments; it does not replace the parser-backed documentation gate.
+
+## Inventory reconciliation at `c0c2d6a9`
+
+The 173 non-audit Markdown/Mermaid paths partition without gaps: nine root or
+operations guides, 19 architecture/design/reference files, 62 `src/emrys/`
+READMEs, 15 owner contracts, 53 test/script/CI guides, eight task/history
+files, and seven remaining indexes or guides (`LICENSES/README.md`,
+`Projects/README.md`, `configs/README.md`, `docs/README.md`, `src/README.md`,
+`src/emrys/contracts/STAGE_MAP.md`, and
+`src/emrys/contracts/SOURCE_TOPOLOGY.md`). The seven remaining files
+were reread without a new substantial compression candidate. The baseline has
+170 Markdown and three Mermaid; the present 170 non-audit Markdown total 15,794
+physical lines, 40 fewer than baseline after the approved Runbook slice.
+Static path coverage does not establish claim-by-claim or retained-evidence
+verification; those checks remain selective.
+
+## Current-head reader and owner rescreen at `c0c2d6a9`
+
+The [root route](../../README.md) lines 67–69, [configuration entry](../../configs/README.md)
+lines 3–5, and [Runbook handoff](../operations/RUNBOOK.md) line 164 send a
+generic own-study reader to the fixed EV/PUM1 Quickstart. Its opening and
+study setup (lines 1–5 and 77–124) make the named scope clear after arrival;
+the Runbook's generic continuation at 288–296 still enters its named steps.
+This extends F05's inbound-route evidence, without establishing observed
+reader error or a separate finding. The same source pass sharpened F08's
+non-regular `.env` case and F70's configuration-guide wording; neither CLI
+path was executed.
+
+All 26 owner READMEs without a direct path link in these notes (461 lines)
+and 25 previously unlinked test READMEs plus four script/CI guides were
+reread. Selected claims about reference provenance, stage tools, GTF skips,
+mpileup/receipt behavior, scientific-context outputs, workflow selection,
+and direct-test boundaries matched adjacent source or assertions. The
+repeated stage-test/execution material is already F28; other apparent overlap
+retains owner-specific commands, contracts, or evidence limits. No new
+substantial DOCS-01 candidate emerged from this bounded pass. Source and
+tests were read, not executed; retained evidence was not validated.

@@ -147,7 +147,8 @@ test or broken merge gate.
 The [Runbook](../operations/RUNBOOK.md) lines 238–248 says synthetic Init
 without `--site` writes a direct execution profile; lines 280–284 advise
 omitting `--site viking` for a direct-host study. The
-[shared parser](../../src/emrys/orchestration/run_coordinator/execution_profile.py)
+[configuration guide](../../configs/README.md) lines 357–362 repeats that claim.
+The [shared parser](../../src/emrys/orchestration/run_coordinator/execution_profile.py)
 lines 57–62 instead defaults `--site` from `EMRYS_SITE`, and lines 66–82 map
 `viking` to Slurm placement. Both the
 [synthetic](../../src/emrys/orchestration/run_coordinator/synthetic_fixture.py)

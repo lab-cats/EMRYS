@@ -121,8 +121,9 @@ sentence while removing the tests; [polish item 4](polish-campaign.md) lines
 276–282 retains PR #160, the unresolved defects and preserved old reports.
 The retired optional publisher differs from current public `emrys report`,
 registered in [`__main__.py`](../../src/emrys/__main__.py) lines 264–267. This is a
-one-line cross-owner history candidate, not measured saving or evidence-deletion
-authority; the runtime guide's current scope and site limits remain distinct.
+cross-owner history placement candidate, not measured saving or evidence-deletion
+authority. Removing the sentence alone saves no physical line: the live batch
+caveat still occupies line 14. F181 repeats this finding and is dismissed.
 
 ### F37 — BED12 dependency in the scientist diagram
 
