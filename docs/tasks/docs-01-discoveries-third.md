@@ -440,8 +440,10 @@ public-CLI sections at lines 459–468, 479–488, 502–512, 537–560, and
 [main matrix](backlog_matrix.md) lines 340–356. The [test baseline](../design/TEST_BASELINE.md)
 lines 73–85 owns current validation-lane policy, while the
 [Runbook](../operations/RUNBOOK.md) lines 184–188 owns the public version
-route. The polish sections also retain unique facts: seven ShellCheck fixes,
-the 78-file/2,101-line formatting baseline, staged-hook observations,
+route. Those status clauses occupy seven physical lines under review, but
+line reflow and item-specific proof may erase any saving. The sections retain
+unique facts: seven ShellCheck fixes, the 78-file/2,101-line formatting
+baseline, staged-hook observations,
 35-task and guarded-R test preservation, timing limits, and version/parser
 rationale. The 77 lines are a review surface, not a demonstrated saving or
 permission to remove evidence.

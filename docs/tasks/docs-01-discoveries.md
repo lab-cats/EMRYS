@@ -304,16 +304,14 @@ conflict or useful reduction was found; retain the causal record and status.
 tables of merged PRs #116–147: 15 rows and seven rows, about 35 lines. Its
 live purpose is to avoid reselecting finished work. The main matrix already
 closes COMPRESS-01 with its evidence ceiling; Git and linked PRs retain the
-routine chronology. Lines 1008–1009 and the #144/#145/#147 rows contain
-PR-to-slice groupings unique in live Markdown, but local commits and current
-owners retain their work and behavior. PR #140–143 outcomes recur at 450–457,
-469–477, and 514–535. Net saving requires a drafted replacement and link
-check. The CodeQL ruleset caveat
-at 984–989, recovery and CS-18 distinctions at 1027–1032, excluded PR #44/#45
-experiments at 1034–1039, and the campaign's evidence ceiling at 35–85 remain
+routine chronology. Lines 1008–1009 and the #144/#145/#147 rows map specific
+PRs to slices only here; Git retains commits but not this convenient selection
+map. PR #140–143 outcomes recur at 450–457, 469–477, and 514–535. A shorter
+record must account for unique mappings and pass a link check. The CodeQL
+ruleset caveat at 984–989, recovery and CS-18 distinctions at 1027–1032,
+excluded PR #44/#45 experiments at 1034–1039, and the campaign's evidence ceiling at 35–85 remain
 distinct. The same-file link at line 76 targets the enclosing heading and
-needs a valid
-destination if that section is reshaped.
+needs a valid destination if that section is reshaped.
 
 ### F17 — Main backlog chronology and run repetition
 
