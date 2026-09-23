@@ -440,9 +440,10 @@ selection and example profile; it does not check this Markdown table. The
 [resource owner guide](../../src/emrys/orchestration/run_coordinator/resources/README.md)
 lines 22–24 links readers to the table for stage meanings and serial phases.
 CPU descriptions also include tool behavior that is not just a YAML value.
-The repeated current defaults create an audit-time duplication and drift
-surface, but the table's explanation and reader route are distinct. Its full
-15 lines are a review scope, not a demonstrated saving or capacity result.
+The repeated current defaults create a drift surface, but the table's
+explanation and reader route are distinct. Removing numeric cells would not
+necessarily remove a physical line. Its full 15 lines are a review scope,
+not a demonstrated saving or capacity result.
 
 ### F124 — Reliability diagram collapses two validation orders
 
@@ -534,7 +535,10 @@ lines 42–53 own the other Java-worker detail. Current
 lines 371–379 derives the native allowance and rejects impossible budgets.
 This is a bounded five-line coordinator detail overlap, not a demonstrated
 deletion: the central allowance, refusal, immutable policy, and owner-specific
-tool behavior remain distinct. Source and tests were read, not executed.
+tool behavior remain distinct. The stage map assigns tool details to owner
+contracts but does not link each one; a reader-safe replacement may need
+enough links to erase the nominal saving. Source and tests were read, not
+executed.
 
 ### F129 — Unrouted workflow-profile index
 

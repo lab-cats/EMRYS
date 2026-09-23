@@ -485,9 +485,10 @@ At local audit head `60ec53e1`, [polish campaign](polish-campaign.md) lines
 22–33 has a “Current follow-up scope” section. Lines 24–32 enumerate the same
 seven accepted cards, 600-line and 25% targets, and non-cluster-closure status
 as the [main matrix](backlog_matrix.md#maintainability-and-release) lines 54–71.
-The matrix at line 58 and [cluster campaign](cluster_verification_campaign.md)
-lines 78–80 both link to the heading. Lines 32–33 also preserve the distinct
-novice-guide/INIT-01–03 pre-closure tranche. Preserve those links and that
+The matrix at line 58, [cluster campaign](cluster_verification_campaign.md)
+lines 78–80, and [repository decision](../design/decisions/repository-and-delivery.md)
+line 64 link to the heading. Lines 32–33 also preserve the distinct
+novice-guide/INIT-01–03 pre-closure tranche. Preserve all three links and that
 separate cluster boundary; the matrix remains the sole status authority.
 The nine-line span is a review surface, not a verified deletion or saving.
 
@@ -499,6 +500,8 @@ route repeats lines 235–237 and 275–279; allocation-aware shares appear at
 281–287 and the native-control owner route at 346–350. Its warning that
 declarations are not measured utilization/performance echoes the no-saturation
 and planning-minimum limits at 285–286 and 326–328. The
+[CV-U06](cluster_verification_backlog.md) line 458 links to this heading as
+“HPC resource research,” although the section is only a short summary. The
 [Runbook benchmark link](../operations/RUNBOOK.md#resource-benchmarking) at
 388–389 is a distinct reader route to preserve, as may be context after the
 placement table. This nine-line span is under review, not a verified saving.
