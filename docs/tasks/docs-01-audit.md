@@ -180,6 +180,11 @@ permission to change or delete the source.
   F22 and F53. Repeated CV-10 acceptance rows and reporting transaction
   summaries retained distinct limits, so no saving was inferred. No product
   command, test, CI, or cluster operation was run.
+- A further standard-library link scan of the 174 Markdown files at this
+  working head found 1,441 local destinations and 472 Markdown anchors with
+  no unresolved target. Its simple link extraction is narrower than the
+  repository's CommonMark-based checker; this is static link evidence, not a
+  passing official documentation gate.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery

@@ -498,7 +498,9 @@ lines 3–8 links four current JSON schemas directly. Its adjacent
 [v3](../../src/emrys/contracts/schemas/artifacts/v3/README.md), and
 [v5](../../src/emrys/contracts/schemas/artifacts/v5/README.md) READMEs have
 no inbound Markdown link outside this temporary audit in a repository link
-scan, including directory links to their README targets. Those four files
+scan, including directory links to their README targets. By comparison, the
+[orchestration schema index](../../src/emrys/contracts/schemas/orchestration/README.md)
+lines 6–11 routes through each of its three version READMEs. The four artifact files
 occupy 32 physical lines and partly repeat the index. They also record
 distinct shared-definition compatibility and test routes, Run/Attempt
 separation, module-policy and historical-reader bounds, and rendering
