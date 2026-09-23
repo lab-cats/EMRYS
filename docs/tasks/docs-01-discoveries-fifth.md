@@ -476,10 +476,9 @@ is verified; retirement and evidence deletion need separate authority.
 At local audit head `688f7117`, [polish campaign](polish-campaign.md) lines
 109–118 repeat PR #140/#148/#169 integration and run `34306975901` already
 recorded in the [main matrix](backlog_matrix.md) at 340–355 and later campaign
-dispositions. Opening lines 68–76 also recount integration, but retain
-distinct tested-tree identity, hosted run `34301289787`, and the
-[merged-work map](polish-campaign.md#existing-capabilities-and-overlapping-work)
-route. This is distinct from F16's tables, F90's completed tooling sections,
+dispositions. Opening 68–76 retains a distinct tested tree, hosted run
+`34301289787`, and the [merged-work map](polish-campaign.md#existing-capabilities-and-overlapping-work).
+This is distinct from F16's tables, F90's completed tooling sections,
 F97's former selection order, and F140's generic policy list.
 
 Preserve the exact audit/test-tree identity at 68–69 (local Git gives
@@ -489,7 +488,8 @@ baseline, pass changes, and original test provenance at 37–66. The
 CS-20/22 correction and exact hosted revision at 117–118 recur at 286–293;
 retain that evidence and 119–120's remaining-owner boundary. Item 22 at
 532–533 says “run linked above”; keep its exact `34306975901` target, not the
-different run at 73. The ten-line span might save 7–9; unverified.
+different run at 73. A direct item-22 link and up to two bridging lines could
+save 7–9 net lines; no draft, reflow, or link check verifies that estimate.
 No CI or product test ran in this audit.
 
 ### F160 — Accepted follow-up scope repeated in the polish introduction
@@ -503,8 +503,8 @@ lines 78–80, and [repository decision](../design/decisions/repository-and-deli
 line 64 link to the heading. Lines 32–33 also preserve the distinct
 novice-guide/INIT-01–03 pre-closure tranche. Preserve all three links and that
 separate cluster boundary; the matrix remains the sole status authority.
-The nine-line span might yield five to six fewer lines after routing, but no
-drafted or verified saving exists.
+The ten-line span might yield five to six net lines with a four-to-five-line
+local route; no drafted or verified saving exists.
 
 ### F161 — Final resource summary repeated in the configuration guide
 

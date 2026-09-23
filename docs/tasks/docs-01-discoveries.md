@@ -510,28 +510,23 @@ found; preserve the inbound link.
 
 ### F25 — Reporting decision versus migration history
 
+**Dismissed for DOCS-01 at `35cbe2a1`.** No current owner duplicates this
+combined history and surviving compatibility account; no useful lossless
+reduction is established.
+
 [Execution, evidence, and reporting decision](../design/decisions/execution-evidence-and-reporting.md)
-lines 119–159 gives lasting scientific-fingerprint and reporting-provenance
-rationale; 161–199 declares independent expectations; 201–209 explains
-create-only publication; 227–251 describes recovery and artifact meaning; and
-253–257 states the old-Run compatibility consequence. These remain decision
-content. The [reporting owner](../../src/emrys/reporting/README.md) owns mechanics.
-Decision lines 210–214 cite
-`0ece377ca2b285d6ec2a46f7d2441c78f16409e1` (PR #146), the predecessor tree
-that still contains `report.py` and the canonical-BAM retirement. Reporting
-commit `053f4130` removes the facade; the prior failure account and nondeletion
-limit matter to [history's](../history/README.md) rules. A narrower
-compression candidate is the retired symbol enumeration at 216–218 and
-223–225. Exact names such as `ReceiptValidationOps` and `RunSummaryBuildDeps`
-occur only here in current Markdown, so their removal would rely on Git history,
-not a duplicate current owner account.
-The logical `emrys.reporting.report` producer at line 220 still has current
-compatibility meaning in `_run_report/README.md:31–36` and `models.py:19`;
-surviving callbacks are described in reporting README 114–119 and its tests
-README 13–24. The combined index/summary rule is described in the
-`_run_summary` and `_artifact_index` owner READMEs. No inbound link targets
-the decision's `reporting-lifecycle-compression` heading directly; its
-disposition under any future section change is unverified.
+lines 119–209 and 227–257 retains scientific-fingerprint, independent-test,
+create-only, recovery and old-Run compatibility decisions; the
+[reporting owner](../../src/emrys/reporting/README.md) owns mechanics. Lines
+210–214 cite PR #146's `0ece377ca2b285d6ec2a46f7d2441c78f16409e1`
+predecessor tree, which still contains `report.py`; later `053f4130` removes
+the facade. The failure and nondeletion limit matter to [history's](../history/README.md)
+rules. Retired symbols at 216–218 and 223–225, including
+`ReceiptValidationOps` and `RunSummaryBuildDeps`, occur only here in current
+Markdown. The logical `emrys.reporting.report` producer still has compatibility
+meaning in `_run_report/README.md:31–36` and `models.py:19`; surviving callbacks
+and combined index/summary publication have current owners. No inbound Markdown
+link targets this heading, but that does not establish a safe deletion.
 
 ### F26 — Alpha carrier note in reporting README
 

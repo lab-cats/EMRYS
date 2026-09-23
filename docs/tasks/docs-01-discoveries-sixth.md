@@ -269,10 +269,9 @@ inspect/watch/stop, positive closure, three Slurm Attempts, and separate
 two-Attempt direct parity. It also distinguishes the selected profile and
 tiny-fixture floor from production capacity, controlled rejection/local stop
 from site evidence, and pending exact-commit hosted from Viking acceptance.
-A shorter within-card account might be possible, but no lossless draft or net
-line saving is established. The current **Verification pending** status and
-each evidence ceiling remain; overlap with CV-10 or the test guide does not
-justify deleting this integrated account.
+A private 32-line accounting sketch suggests five local lines from this
+37-line account. Net saving is unverified. Keep **Verification pending** and
+every evidence ceiling; CV-10 or the test guide cannot replace the journey.
 
 ### F180 — Analysis provider validator independence wording
 
@@ -377,6 +376,9 @@ claims. No guide edit, link check, or net saving was verified.
 
 ### F187 — CV campaign post-checklist context under review
 
+**Dismissed for DOCS-01 at `35cbe2a1`.** A 14-line sketch of this 16-line
+span yields only two reflow lines; F158 owns the adjacent checklist overlap.
+
 At local audit head `f8c49f9e`, the [campaign Delivery approach](cluster_verification_campaign.md#delivery-approach)
 lines 135–150 follow the checklist overlap at 128–133 already recorded as F158.
 The span partly restates [CV-01](cluster_verification_backlog.md#cv-01-managed-golden-path-coverage)
@@ -384,9 +386,7 @@ acceptance and site-evidence limits. Its missing-memory-plus-UID,
 reuse-plus-node, and native-publication-cancellation combinations are more
 specific than CV-01's individual conditions. It also retains the E01/E06
 unexplained-cause boundary, INIT-02/CV-U22 original-intent decisions, and
-simulation, hosted and institutional evidence ceilings. Only repeated boundary
-and owner-routing prose is a possible reduction; no lossless draft or physical
-line saving is established. F158 concerns the separate opening; F167 covers
+simulation, hosted and institutional evidence ceilings. F167 covers
 Remaining delivery scope; F179 covers CV-01's later hosted journey.
 
 ## Other focused source comparisons at `8ef78400`
@@ -514,7 +514,7 @@ deletion emerged. Selected test, script and CI guides were compared with direct
 assertions and workflow wiring; F20/F32/F56/F69/F107/F162 cover the apparent
 scope or history overlaps. The platform decision's ratified public model and
 the current architecture map serve different authority and reader roles;
-the reporting migration record remains bounded by F25. F179 is the only new
+the reporting migration record was reviewed under dismissed F25. F179 is the only new
 candidate from this pass. These are read-only comparisons, not executed tests,
 CI, institutional evidence review, or proof of an actual line saving. A later
 regex link scan found zero unresolved local targets among 2,054 inline matches,
