@@ -288,6 +288,14 @@ permission to change or delete the source.
   A selected test-guide pass compared reporting, stage, analysis, evidence,
   and contract claims with direct assertions without a further distinct
   finding. No measurement, product, test, CI, or cluster command ran.
+- A read-only command, schema, and coordinator-contract pass at local head
+  `7e7c364c` found no further strong public-help or contract discrepancy. It
+  added F123 for repeated resource defaults in the configuration guide. The
+  original `3a672fdf` inventory was independently recomputed as 170 Markdown
+  files, three Mermaid files, and 15,834 Markdown lines; the five added audit
+  files account for all current Markdown-file growth. The three earlier audit
+  note introductions were corrected to point to the fourth notes beginning at
+  F100. No CLI, test, official documentation, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -316,7 +324,7 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 ## Findings matrix
 
-The 122 numbered records include F41, F43, and F87, dismissed after recheck so
+The 123 numbered records include F41, F43, and F87, dismissed after recheck so
 their original claims and corrections remain traceable. The last column records
 an evidence limit, uncertainty, or preservation boundary. It is not a work order.
 Discovery notes give source references and the boundary for each row.
@@ -445,6 +453,7 @@ Discovery notes give source references and the boundary for each row.
 | [F120](docs-01-discoveries-fourth.md#f120-superseded-init-replay-in-the-active-cv-backlog) | Temporal framing | CV-U18's selected-implementation paragraph describes a generated creation command as current, while its later current correction and INIT-03 record direct yes/no confirmation; CV-U21 also retains a dated replay detail. | Earlier replay fixtures and STAR automatic-value reasoning remain historical evidence; current guided behavior is separately established by source and tests. |
 | [F121](docs-01-discoveries-fourth.md#f121-renv-activation-path-in-the-root-notice) | Path wording | Root `NOTICE` describes a tracked activation script as `renv/activate.R`; the source-tree path is `src/emrys/renv/activate.R` and the wheel member is `emrys/renv/activate.R`. | This is a source-location observation only; no license interpretation or package result follows. |
 | [F122](docs-01-discoveries-fourth.md#f122-step-06-optimization-source-after-publication-moved-to-the-runner) | Historical source routing | Optimization candidate 1 cites a pinned Step 06 producer for both extraction and publication; the current worker still extracts and checks outputs, while the runner owns publication and recovery. | The pinned historical mechanism is valid and the five-output transaction remains required; current-owner attribution and performance must be assessed separately. |
+| [F123](docs-01-discoveries-fourth.md#f123-repeated-stage-resource-defaults-in-the-configuration-guide) | Compression candidate | The configuration guide's stage table repeats eight numeric memory minimums and workflow/shared settings from the packaged default and Viking example profiles. | The table also explains stage and tool behavior and has an inbound owner link; no safe line saving or runtime capacity conclusion follows. |
 
 ## Discovery notes
 

@@ -1,10 +1,11 @@
 # DOCS-01 discovery notes, fourth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F100–F122. F100–F104 use local audit head `e1771d21`; F105–F108 use
+holds F100–F123. F100–F104 use local audit head `e1771d21`; F105–F108 use
 `b65e8fb8`; F109–F110 use `26898b5e`; F111 uses `cd45bd51`, F112 uses
 `b62e207b`, F113 uses `ac14392e`, F114–F117 use `b72b03c0`, and F118–F119 use
-`24579272`; F120 uses `dc44861b` and F121–F122 use `f538efe4`, all read on
+`24579272`; F120 uses `dc44861b`, F121–F122 use `f538efe4`, and F123 uses
+`7e7c364c`, all read on
 2026-09-22. These are documentation observations, not runtime results,
 accepted changes, or permission to alter retained evidence.
 
@@ -407,6 +408,24 @@ publication through an older owner, so a reader selecting current work needs
 the producer/runner distinction. The five declared outputs, transaction
 safety, and historical cost observation remain distinct; no saving or speedup
 was established by this review.
+
+### F123 — Repeated stage resource defaults in the configuration guide
+
+The [profile document guide](../../configs/README.md#profile-document)
+lines 330–344 gives a 15-physical-line table of stage CPU use and task memory,
+including eight numeric repeated-stage minimums. The current
+[packaged default](../../src/emrys/orchestration/run_coordinator/resources/default_execution.yaml)
+lines 6–41 and [Viking example](../../configs/execution_profile.csu_viking_ev_pum1.yaml)
+lines 8–43 serialize those same resource-policy values. Direct
+[test source](../../tests/orchestration/run_coordinator/test_execution_profile.py)
+lines 90–96 checks resource-policy equality between the built-in Viking
+selection and example profile; it does not check this Markdown table. The
+[resource owner guide](../../src/emrys/orchestration/run_coordinator/resources/README.md)
+lines 22–24 links readers to the table for stage meanings and serial phases.
+CPU descriptions also include tool behavior that is not just a YAML value.
+The repeated current defaults create an audit-time duplication and drift
+surface, but the table's explanation and reader route are distinct. Its full
+15 lines are a review scope, not a demonstrated saving or capacity result.
 
 ## Reviewed overlaps without a saving claim
 

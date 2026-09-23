@@ -1,7 +1,7 @@
 # DOCS-01 discovery notes, third file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F62–F99; [fourth notes](docs-01-discoveries-fourth.md) hold F100–F119.
+holds F62–F99; [fourth notes](docs-01-discoveries-fourth.md) begin at F100.
 F62–F64 use pinned revision `b67e0eeb`; F65–F66 began at
 `cf94af08`, with F66 extended at `9c4fafdc`; F67–F70 use `c0a6027a`;
 F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`; F74–F77 use `ab25ea9b`;
