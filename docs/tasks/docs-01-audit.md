@@ -235,6 +235,13 @@ permission to change or delete the source.
   head `ac14392e` added F113 for CV-26's mixed current and dated record.
   Existing findings covered the other apparent guide and diagram discrepancies.
   No product, test, CI, or cluster command was run.
+- An adversarial recheck at local head `d3b1f94a` challenged F100–F113 against
+  their cited owners and found no material false positive or unsupported saving.
+  The full 1,248-line coordinator contract and selected test-owner guides were
+  reread without a distinct new finding. A constrained exact three-line prose
+  scan of the 170 non-audit Markdown files found eight cross-file signatures,
+  mostly shifted windows of F28/F91 repetition or owner-specific worker detail;
+  it does not detect paraphrases. No test, CI, product, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -254,11 +261,11 @@ remaining repository-wide work visible without claiming file-by-file completion.
 
 | Area | Compared to date | Further reading needed |
 | --- | --- | --- |
-| Scientist and operator paths | All nine root and operations Markdown files; configuration and selected reference guides | End-to-end reader routes and any reference guides not yet compared. |
-| Architecture and decisions | All 19 architecture, design, and reference Markdown/Mermaid files, including all three diagrams | Source implications and reader routes remain open; no visual rendering was performed. |
+| Scientist and operator paths | All nine root and operations Markdown files, configuration guide, and all three reference guides; selected routes compared with CLI source and direct tests | Remaining claim-to-source paths and an executed operator journey are unverified. |
+| Architecture and decisions | All 19 architecture, design, and reference Markdown/Mermaid files, including all three diagrams; selected provider and schema claims compared with source | Remaining source implications and visual rendering are unverified. |
 | Task and evidence records | All eight task/history Markdown files; 61 CV index entries reconciled to card endings | Original evidence origins and retained artifacts still need independent verification. |
-| Product owners | All 62 source READMEs and all 15 owner contracts, with focused production comparisons | Remaining code and schema claims beyond selected owner paths. |
-| Tests, scripts, and CI | All 53 Markdown files in these trees, plus selected source assertions and documentation-check code | Executable checks were not run; compare remaining code, fixtures, and retained evidence. |
+| Product owners | All 62 source READMEs and all 15 owner contracts, including a full recheck of the 1,248-line coordinator contract and focused production comparisons | Remaining code and schema claims beyond selected owner paths. |
+| Tests, scripts, and CI | All 53 Markdown files in these trees, plus selected source assertions, direct test cases, and documentation-check code | Executable checks were not run; compare remaining code, fixtures, and retained evidence. |
 
 ## Findings matrix
 
