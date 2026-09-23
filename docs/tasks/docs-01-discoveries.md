@@ -551,17 +551,16 @@ content. No standalone compression is selected by this observation.
 
 ### F27 — Old fixed-resource provenance
 
-[Resource defaults README](../../src/emrys/orchestration/run_coordinator/resources/README.md)
-lines 3–12 owns the current allocation-aware defaults and profile route. Its
-four-line historical span at 14–17 repeats the fixed 12-core policy's origin
-commits `92863824` and `d6e54aff`, which the
-[CV-U28 card](cluster_verification_backlog.md#cv-u28-allocation-aware-resource-policy-and-historical-provenance)
-retains at 1766–1779 alongside the recovery review. The README's lines 18–26
-still route current policy and distinguish configured capacity from measured
-utilization. The four historical lines are a review span, not a verified saving;
-the September 21 superseding decision at CV-U28 lines 1847–1861 makes the old
-policy provenance, with institutional admission still pending. No restoration
-or speedup conclusion follows from the duplicate origin text.
+**Dismissed after recheck at `f67410cb`.** The
+[resource defaults owner](../../src/emrys/orchestration/run_coordinator/resources/README.md)
+lines 14–17 names the old fixed-policy commits `92863824` and `d6e54aff`
+and says that policy is neither current, a restoration target, nor a required
+benchmark baseline. The [CV-U28 card](cluster_verification_backlog.md#cv-u28-allocation-aware-resource-policy-and-historical-provenance)
+at 1766–1779 has richer origin history; 1847–1861 records supersession with
+institutional admission pending. That temporary card cannot replace the
+durable owner's current negative boundary. Its other resource rules and
+capacity-versus-utilization limit remain at 3–12 and 18–26. Four lines of
+overlap establish no useful DOCS-01 net reduction or speedup conclusion.
 
 ### F28 — Repeated owner boilerplate
 

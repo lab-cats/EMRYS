@@ -26,8 +26,8 @@ ownership. Current callers use `normalize_gtf` in the
 285–289, [validator](../../src/emrys/stages/gtf_to_bed12/validator.py) line 52,
 and [Project admission](../../src/emrys/orchestration/run_coordinator/onboarding.py)
 line 1719. This is a one-sentence owner-detail overlap inside a cross-owner
-execution section. Runner publication and recovery rules remain distinct; no
-safe saving is established by this comparison alone.
+execution section. The final sentence could save one physical line; runner
+publication and recovery remain distinct. No edit or net saving is verified.
 
 ### F101 — Retired reporting-memory recovery advice in the contract
 
@@ -527,8 +527,9 @@ finding.
 
 ### F128 — Tool-specific thread effects in the coordinator contract
 
-The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-lines 781–785 repeats STAR sorting threads, samtools worker counts and sort
+**Dismissed after recheck at `f67410cb`.** The
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 781–785 partly repeat STAR sorting threads, samtools worker counts and sort
 memory, and Java helper-pool behavior already specified in the
 [STAR](../../src/emrys/stages/star_alignment/CONTRACT.md) lines 67–77,
 [canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md) lines 61–71,
@@ -541,12 +542,11 @@ lines 53–63 and [split-N-cigar](../../src/emrys/stages/split_n_cigar/CONTRACT.
 lines 42–53 own the other Java-worker detail. Current
 [materialization](../../src/emrys/orchestration/run_coordinator/materialization.py)
 lines 371–379 derives the native allowance and rejects impossible budgets.
-This is a bounded five-line coordinator detail overlap, not a demonstrated
-deletion: the central allowance, refusal, immutable policy, and owner-specific
-tool behavior remain distinct. The stage map assigns tool details to owner
-contracts but does not link each one; a reader-safe replacement may need
-enough links to erase the nominal saving. Source and tests were read, not
-executed.
+The central section joins allocation resolution to tool effects and uniquely
+names `addreplacerg` among samtools calls at line 783; the canonical BAM owner
+says only “other samtools operations.” Seven replacement owner links could
+erase the nominal five-line reduction. No useful saving is demonstrated;
+source and tests were read, not executed.
 
 ### F129 — Unrouted workflow-profile index
 

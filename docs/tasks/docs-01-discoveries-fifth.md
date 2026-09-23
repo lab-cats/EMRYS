@@ -100,6 +100,7 @@ verified 58-line saving or permission to delete the record.
 
 ### F135 — CV-24 repeats the current watch action protocol
 
+**Dismissed after recheck at `f67410cb`.**
 The [CV-24 card](cluster_verification_backlog.md#cv-24-run-center-actions)
 lines 3639–3661 describes `p`/`b`/`s` handoffs, fresh planning, refusal of
 noninteractive actions, and Slurm's concurrent-resume caveat. The
@@ -109,8 +110,8 @@ lines 644–661 owns that exact present behavior, and the
 commands. The card's selected three-action disposition, fixture/CI evidence,
 new-analysis choice at lines 3663–3672, hosted-only completion, and separate
 CV-16/institutional and dashboard-retirement acceptance remain distinct.
-Only the repeated current-protocol prose is a compression review surface;
-no safe saving is established.
+The card needs its selected interface beside hosted and pending acceptance;
+no useful DOCS-01 reduction is established.
 
 ### F136 — Private planning-helper narration in the coordinator contract
 
@@ -175,8 +176,8 @@ owns this selection and delivery process; the
 [REDUCE-01 row](backlog_matrix.md) line 66 owns behavior classification and
 accounting for that accepted work. The campaign's tooling-only footprint
 exception at lines 98–101 and separate-selection warning at 13–20 remain
-specific, as does its dated source audit at 35–80. This 21-line scope is a
-review surface, not a verified saving or permission to remove evidence.
+specific, as does its dated source audit at 35–80. A shorter owner route and
+exception could reduce this 21-line scope; no net saving is verified or evidence deletion authorized.
 
 ### F141 — Retired alpha renderer name in the report owner
 
@@ -461,13 +462,13 @@ F149 covers watch selection across other CV cards, not this usage policy.
 ### F158 — Campaign delivery prose beside the closure checklist
 
 The [CV campaign charter](cluster_verification_campaign.md) lines 128–133
-and parts of 135–142 repeat the [main matrix's closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
-at 125–152 even while routing readers there. Preserve the charter's three
-distinct institutional combinations at 135–140, its
-[E01–E12 register](cluster_verification_campaign.md) at 88–124, and charter-owned
-completion criteria at 11–17 and 173–190. The surrounding 25-line span at
-126–150 is a placement review, not a measured saving or authority to retire
-the campaign or delete evidence.
+restates the [main closure checklist](backlog_matrix.md#cluster-verification-closure-checklist)
+at 125–131; the charter already links it at 154–155. Six lines becoming one
+route suggests five fewer physical lines, conditional on a draft and link
+check, not a verified saving. Lines 135–142 also retain CV-01's continuing
+role and three institutional combinations; the [E01–E12 register](cluster_verification_campaign.md)
+at 88–124 and charter completion criteria at 11–17 and 173–190 are distinct.
+This review does not authorize retiring the campaign or deleting evidence.
 
 ### F159 — Polish integration genealogy repeated in its introduction
 
@@ -481,10 +482,11 @@ repeats PR #140/#148/#169 and run `34306975901` at 109–118; the matrix at
 two spans are distinct from F16's tables, F90's completed tooling sections,
 F97's former selection order, and F140's generic policy list.
 
-Preserve the exact audit/test-tree identity at 68–69: local Git gives the
-same tree for `2fb8f5ef` and `8034c211`. Keep the merged-work route at 76
-and the no-new-test/hosted evidence limit at 77–79. Lines 37–66 retain the
-source baseline, pass-specific changes, and original test provenance. The
+Preserve the exact audit/test-tree identity at 68–69 (local Git gives
+`2fb8f5ef` and `8034c211` the same tree), the map route at 76, and
+item 22's “linked above” CI reference at 532–533 to run `34301289787`
+at 73. Retain the no-new-test/hosted limit at 77–79 and source
+baseline, pass changes, and original test provenance at 37–66. The
 CS-20/22 correction and exact hosted revision at 117–118 recur at 286–293;
 retain that evidence and 119–120's remaining-owner boundary. Git retains
 routine PR ancestry; neither span is a net line saving estimate.

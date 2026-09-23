@@ -463,9 +463,9 @@ lines 3–7 restate historical aliases and
 also names its repository-path producer command. The map already gives
 all identities at lines 19–34, and adjacent owner READMEs identify their
 routes. Each contract still has a useful local alias and worker/validator role,
-plus unique dependencies, consumer rules, and evidence limits. Repeated
-map-authority boilerplate is the review surface; no replacement text or net
-saving was verified.
+plus unique dependencies, consumer rules, and evidence limits. The repeated
+two-line map-authority clauses occupy about 24 physical lines; the full 48-line
+openings are not a saving estimate. No replacement or net saving was verified.
 
 ### F92 — Python lock checks before institutional R restoration
 
@@ -486,10 +486,10 @@ R commands, library/cache, checks and recovery at 696–726. No restore ran.
 
 The [configuration guide](../../configs/README.md) lines 191–199 says
 `--region` and `--regions-file` can be combined when partition IDs are unique.
-Lines 212–215 repeat the same combination and uniqueness rule after the
-coordinate examples. The repeated statement spans about two physical lines;
-the intervening BED versus one-based region semantics, examples, and the
-separate supplied-manifest exclusions remain distinct. No Init command ran.
+Lines 212–215 repeat that rule after the coordinate examples; line 214's
+advice to declare each selector remains distinct. One physical line is a
+plausible saving, not a verified edit. BED versus one-based region semantics,
+examples, and supplied-manifest exclusions remain. No Init command ran.
 
 ### F94 — Dashboard retirement closeout tense
 
