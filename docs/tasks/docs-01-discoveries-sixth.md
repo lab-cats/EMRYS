@@ -1,11 +1,12 @@
 # DOCS-01 discovery notes, sixth file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F164–F178 and a recheck of F158. F164–F167 compare local head `f79bc435`; F168 and the
+holds F164–F179 and a recheck of F158. F164–F167 compare local head `f79bc435`; F168 and the
 F19/F64/F92 refinements compare `5aaa17f0`; F97/F107/F169 use `25f62591`;
 F170 uses `8ef78400`, F171–F172 use `c6ec1562`, and F173–F175 use
 `286f646a`; F158/F176 use `3de8366b`, F124/F172 rechecks use
-`35668cc8`, and F166/F169/F175/F177–F178 rechecks use `8489836c`, read on 2026-09-23. The
+`35668cc8`, F166/F169/F175/F177–F178 rechecks use `8489836c`, and F179 uses
+`ce4d22f8`, read on 2026-09-23. The
 full coordinator contract and root/operator/owner history sweeps found no
 other substantial reduction. Counts are
 review spans and conditional arithmetic, not verified savings or approval to
@@ -252,6 +253,27 @@ evidence ceiling. The September 18 correction at 3204–3214 stays separate;
 the priority index links to the CV-16 heading. No replacement or net saving
 was verified.
 
+### F179 — CV-01 integrated journey account can be shorter
+
+At local audit head `ce4d22f8`, [CV-01](cluster_verification_backlog.md#cv-01-managed-golden-path-coverage)
+lines 2259–2295 uses 37 physical lines for the selected 130-pair hosted
+journey, resource policy, focused fixtures, and evidence limits. The
+[test-tool guide](../../tests/tools/README.md) lines 11–30 owns current driver
+mechanics and fixture resources; [CV-10](cluster_verification_backlog.md#cv-10-external-cancellation-and-recovery)
+lines 2732–2746 and 2886–2912 owns the recovery rule. The integrated CV-01
+account is still unique: it connects pre-Run inspection, controlled failure and
+resume, the gated real native child, admitted request/Task/Run, public
+inspect/watch/stop, positive closure, three Slurm Attempts, and separate
+two-Attempt direct parity. It also distinguishes the selected profile and
+tiny-fixture floor from production capacity, controlled rejection/local stop
+from site evidence, and pending exact-commit hosted from Viking acceptance.
+A within-card rewrite that preserves those details might reduce the 16-line journey paragraph to
+about 13 lines, the nine-line resource paragraph to six, and the ten-line
+fixture/limit paragraph to nine: roughly seven physical lines saved with both
+blank separators retained. These are estimates, not a drafted or verified replacement.
+The current **Verification pending** status and each evidence ceiling remain;
+overlap with CV-10 or the test guide does not justify deleting this account.
+
 ## Other focused source comparisons at `8ef78400`
 
 The current root and operator guides were reread against CLI/coordinator source
@@ -365,3 +387,21 @@ A standard-library, read-only scan of all 177 tracked Markdown files found
 no unresolved local destinations or headings under the repository's slug rule.
 This scan does not parse or render CommonMark and does not replace the official
 documentation check. No product, test, CI, or cluster command ran.
+
+## Adversarial guide and owner recheck at `ce4d22f8`
+
+Root, Quickstart, Runbook, Troubleshooting, Workflow and config routes were
+compared again with selected CLI, onboarding, Doctor and runtime source; their
+material overlaps remain F04/F05/F07/F70/F83/F126/F152/F154/F155. The full
+1,248-line coordinator contract and selected owner guides were reread against
+adjacent source and the existing reduction findings; no new safe contract
+deletion emerged. Selected test, script and CI guides were compared with direct
+assertions and workflow wiring; F20/F32/F56/F69/F107/F162 cover the apparent
+scope or history overlaps. The platform decision's ratified public model and
+the current architecture map serve different authority and reader roles;
+the reporting migration record remains bounded by F25. F179 is the only new
+candidate from this pass. These are read-only comparisons, not executed tests,
+CI, institutional evidence review, or proof of an actual line saving. A later
+regex link scan found zero unresolved local targets among 2,054 inline matches,
+72 reference definitions and 624 fragments in 177 Markdown files; it is not
+the parser-backed documentation gate.

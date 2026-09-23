@@ -302,8 +302,7 @@ permission to change or delete the source.
   with the runner's two; F32 clarified H1 order. Six reference-style link
   destinations resolved statically. No execution ran.
 - At `54f7b756`, F125–F126 addressed producer/publication ownership and Doctor
-  detail/timing. Step 07, Step 10, CI, and test guides yielded no other claim.
-  No execution ran.
+  detail/timing; Step 07/10, CI, and test guides yielded no other claim or execution.
 - At `777345b6`, coordinator, CV, and workflow review added F127–F129
   (validation chronology, worker flags, unrouted guide). Root, Quickstart,
   operations, reference, and glossary comparisons found no other claim.
@@ -344,7 +343,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 178 records, 69 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 179 records, 69 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -526,6 +525,7 @@ Of 178 records, 69 were dismissed after recheck; linked notes give reasons. The 
 | [F176](docs-01-discoveries-sixth.md#f176-polish-campaign-closing-selection-paragraph-repeats-its-opening) | Campaign-policy overlap | Polish campaign's closing selection paragraph repeats its opening and the workflow's selection/status rules. | The adjacent terminal-disposition and content-transfer rule remains unique; a six-line saving is conditional and unverified. |
 | [F177](docs-01-discoveries-sixth.md#f177-cv-06-novice-failure-detail-repeated-across-cards) | Dated-account compression candidate | CV-06 recounts September 16 novice-path gaps detailed in CV-U08/U09/U11/U18/U20. | A 9–12-line saving is conditional; preserve the integrated failure, negative institutional evidence, Open checkpoint, and later correction. |
 | [F178](docs-01-discoveries-sixth.md#f178-cv-16-watch-failure-detail-repeated-across-cards) | Dated-account compression candidate | CV-16 recounts September 16 watch failures detailed in CV-U13/U14/U16/U17. | A 6–9-line saving is conditional; preserve the combined failure, screenshot's diagnostic ceiling, Open checkpoint, and later correction. |
+| [F179](docs-01-discoveries-sixth.md#f179-cv-01-integrated-journey-account-can-be-shorter) | Within-card compression candidate | CV-01's 37-line selected hosted journey account contains a unique integrated sequence alongside resource and fixture detail covered by test and recovery owners. | A roughly seven-line saving is conditional; preserve three Slurm Attempts, direct parity, controlled versus site evidence, pending exact-commit CI, and institutional limits. |
 
 ## Discovery notes
 
