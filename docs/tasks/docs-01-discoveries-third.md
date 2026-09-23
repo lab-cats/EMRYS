@@ -7,7 +7,7 @@ F62–F64 use pinned revision `b67e0eeb`; F65–F66 began at
 F71 uses `9c4fafdc`; F72–F73 use `b3af5d9e`; F74–F77 use `ab25ea9b`;
 F78–F83 use pinned revision `7a07d502`; F84–F88 use `ce9a3289`;
 F89 uses local head `39a21034`; F90–F93 and the F85 extension use `9c0264d3`;
-F94–F96 and the F22/F53 extensions use local head `e90c85f4`,
+F94–F96 and F22/F53 extensions use `e90c85f4`; F94 was extended at `688f7117`.
 F97–F99 and the F50/F56/F69/F86 extensions use local head `7adde22a`;
 F99 was extended at `b62e207b`, all read on 2026-09-22.
 These are documentation observations, not runtime results or accepted changes.

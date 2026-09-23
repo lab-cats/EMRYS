@@ -7,6 +7,9 @@ on that date. F141–F143 use `1eb562f0`; F144–F145 use `f91b8303` on that
 date; F146–F148 use `cc5c1f58`; F149–F153 use `a3310af6`.
 F154–F158 use `3ea9c2b1`, read on 2026-09-23 and rechecked at `238e8035`.
 F159 uses `688f7117`, read on 2026-09-23.
+At `d55baa91`, read on 2026-09-23, adversarial review dismissed
+F144–F146/F148–F149/F153 and narrowed F150/F159. Selected test/CI guides
+yielded no separate high-confidence finding.
 F138 was dismissed on
 adversarial recheck at `f239a91d`.
 F130 was dismissed as a duplicate on recheck at local head `935adf06`.
@@ -219,10 +222,11 @@ separate migration/recovery boundary. [Onboarding](../../src/emrys/orchestration
 at 2121–2128 and 2231–2239 implements the refusal; the
 [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 at 326–335 and [Runbook](../operations/RUNBOOK.md) at 643–654 route the
-full replacement. These nine lines are a review span, not a verified saving.
-The two failure headings may need independent instructions; preserve the
-existing-inventory refusal, Doctor inspection, fresh generation verification,
-old/partial evidence, and explicit migration/recovery rule.
+full replacement. The two headings are independently searchable recovery
+cases: one gives the shared-source replacement action; the other handles an
+existing inventory, fresh verification, and migration/refusal. The same-source
+restriction helps at each entry point. This concern is dismissed: nine lines
+are combined context, not a useful saving. Preserve old/partial evidence.
 
 ### F145 — Downstream reporting role repeated in stage contracts
 
@@ -238,9 +242,10 @@ at 18 routes shared reporting ownership; the
 [reporting guide](../../src/emrys/reporting/README.md) at 10–20 describes
 summary and report operations, while the
 [artifact-index owner](../../src/emrys/reporting/_artifact_index/README.md)
-at 30–36 binds artifact inputs. This ten-line review span is not
-a verified saving: the stage-specific adapter IDs and consumer edges remain,
-and readers must still find the promise that reports do not rerun stages.
+at 30–36 binds artifact inputs. The local adapter IDs, reporting consumer
+edges, and no-rerun promise belong beside each stage; generic reporting
+guidance cannot replace those named edges. This concern is dismissed: ten
+repeated physical lines do not establish useful compression.
 
 ### F146 — Scale-probe interpretation in the current coordinator contract
 
@@ -260,9 +265,10 @@ at 334–355 support graph/worker admission;
 at 137–160 and [reuse](../../src/emrys/orchestration/run_coordinator/control.py)
 at 523–543 independently reload evidence. A pure canonical-validation cache
 in the [contract API](../../src/emrys/contracts/orchestration/api.py) at
-720–747 is a different boundary. Review only the historical summary
-within that mixed span; the safety rules and link to retained evidence remain
-useful. No transfer, deletion, or saving is established.
+720–747 is a different boundary. The linked two-sentence interpretation
+explains why the current no-cache rule matters and refuses a speedup claim;
+measurements remain in history. This concern is dismissed: no unnecessary
+history or saving was found.
 
 ### F147 — Computation scope in the contract-golden guides
 
@@ -292,9 +298,10 @@ at 3–8 restate current-schema, reviewed synthetic-input, and evidence-limit
 guidance across 17 physical content lines. The parent routes artifact and
 receipt fixtures to the contract tests; the middle explains that its directory
 name is historical; the leaf names exact examples and bars expectations
-generated from production serializers. Those reader and independent-oracle
-rules need to survive any compression. The span is not a measured net saving,
-and no fixture or test change is authorized by this audit.
+generated from production serializers. These are distinct parent,
+historical-directory, and valid-example routes, with independent-oracle
+limits at the leaf. This concern is dismissed: the 17-line combined scope
+did not establish useful compression or authorize fixture/test changes.
 
 ### F149 — Watch selection correction repeated across CV cards
 
@@ -306,12 +313,12 @@ and inspect selection; [CV-U32](cluster_verification_backlog.md) at 2038–2049
 restates Projects-home request/Run enumeration, bounded refusal, and no
 scheduler query. The current selection contract is in the
 [coordinator owner](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-at 56–67; the [operator route](../operations/RUNBOOK.md) is at 39–59. The
-31 combined physical lines are a review span, not a saving estimate. Preserve
-each card's separate operator request and status, the September 17 defect
-explanations, Projects-home and 256-target limits, exact scheduler diagnostics,
-focused-check scope, and pending hosted/Viking acceptance. A shared final
-behavior does not make those evidence histories interchangeable.
+at 56–67; the [operator route](../operations/RUNBOOK.md) is at 39–59. These
+cards retain different requests and defects: Project selection, multiple
+requests for one Run, and Projects-home discovery. Their corrections add
+different edge cases, local checks, and pending hosted/Viking acceptance.
+This concern is dismissed: the 31 combined lines are dated card context, not
+a verified saving. Shared final behavior does not merge those records.
 
 ### F150 — Named Init review roster repeated in adjacent CV cards
 
@@ -321,10 +328,12 @@ both state the September 21 normal-review roster: strand, comparison/target,
 five paired-CMH values, background state/maximum, and three STAR values, with
 sample paths/assignments under verbose. The
 [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-at 202–207 already owns that current boundary. The 12 physical lines are a
-review span, not a saving estimate. CV-U02's concise-versus-verbose outcome
-and CV-U03's Init summary and Validate pass/fail acceptance remain different;
-retain their dated refinement and pending hosted/Viking checks.
+at 202–207 already owns that current boundary. Repetition centers on CV-U02
+315–319 and CV-U03 339–342, not their entire 12-line surrounding span. A
+shorter cross-reference might be possible, but no saving is established.
+CV-U02's concise-versus-verbose outcome and CV-U03's Init summary and Validate
+pass/fail acceptance remain different; retain their dated refinement and
+pending hosted/Viking checks.
 
 ### F151 — Synthetic artifact inventory example without a named owner route
 
@@ -370,8 +379,9 @@ at 3–8, and [v3](../../src/emrys/contracts/schemas/orchestration/v3/README.md)
 at 3–9 repeat parts of that roster and owner rule across 23 content lines.
 Preserve v1's Draft 2020-12 and packaged-resource distinction, v2's scientific
 Attempt receipt independent of reporting, and v3's declared-versus-resolved
-resource policy. These current semantics are different from F96's unrouted
-artifact-version notes. The span is not a verified net saving.
+resource policy. These semantics differ from F96's unrouted artifact notes;
+only a brief owner/back-link formula repeats. This concern is dismissed: the
+23-line combined scope did not establish useful compression.
 
 ### F154 — Runtime inventory mechanics in the Runbook
 
@@ -445,13 +455,17 @@ At local audit head `688f7117`, the [polish campaign](polish-campaign.md)
 lines 68–76 recount PR #139/#140/#141–147/#169 integration and hosted run
 `34301289787` immediately before linking its own [merged-work map](polish-campaign.md#existing-capabilities-and-overlapping-work)
 at 991–1025. The [main matrix](backlog_matrix.md) lines 345–350 already
-records that run and the PR #140/169 integration outcome. This nine-line
-review span is distinct from F16's two tables, F90's completed tooling
-sections, F97's former selection order, and F140's generic policy list.
+records that run and the PR #140/169 integration outcome. The campaign also
+repeats PR #140/#148/#169 and run `34306975901` at 109–118; the matrix at
+340–355 and later campaign dispositions hold their accepted evidence. These
+two spans are distinct from F16's tables, F90's completed tooling sections,
+F97's former selection order, and F140's generic policy list.
 
 Preserve the exact audit/test-tree identity at 68–69: local Git gives the
 same tree for `2fb8f5ef` and `8034c211`. Keep the merged-work route at 76
 and the no-new-test/hosted evidence limit at 77–79. Lines 37–66 retain the
-source baseline, pass-specific changes, and original test provenance. Git
-retains routine PR ancestry; no transfer or net line saving was verified.
+source baseline, pass-specific changes, and original test provenance. The
+CS-20/22 correction and exact hosted revision at 117–118 recur at 286–293;
+retain that evidence and 119–120's remaining-owner boundary. Git retains
+routine PR ancestry; neither span is a net line saving estimate.
 No CI or product test ran in this audit.
