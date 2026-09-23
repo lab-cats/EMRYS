@@ -339,16 +339,16 @@ permission to change or delete the source.
   otherwise retained their cited limits. No product, test, CI, or cluster
   command ran.
 - At `ebc0012d`, owner/CV review added F134–F139 after a full coordinator
-  contract read; F52 gained another “regeneration” citation. CV-23 and
-  Slurm-preview overlap retained distinct roles. At `f239a91d`, adversarial
-  recheck dismissed F138 and narrowed F134/F136/F137; design/history added
-  F140. Full Runbook/Troubleshooting rereads found no new operator candidate.
-  Source and tests were read; no product, test, CI, or cluster command ran.
-- At `d18470c8`, a five-word-shingle scan of 1,515 qualifying paragraphs in
-  170 non-audit Markdown files found 59 cross-file near-match pairs. Material
-  matches were already F28/F91 or owner-specific; paraphrases can escape this
-  bounded scan. F71/F107 gained scope limits, and F127's count was pinned to
-  its revision. No product, test, CI, or cluster command ran.
+  contract read; F52 gained “regeneration.” At `f239a91d`, recheck dismissed
+  F138, narrowed F134/F136/F137 and added F140. CV-23 and Slurm-preview
+  overlap retained distinct roles; full Runbook/Troubleshooting rereads found
+  no new candidate. No product, test, CI, or cluster command ran.
+- At `d18470c8`, a five-word-shingle scan of 1,515 paragraphs in 170
+  non-audit Markdown files found 59 cross-file near matches, already F28/F91
+  or owner-specific; paraphrases can escape. F71/F107 gained scope limits,
+  and F127's count was pinned. No product, test, CI, or cluster command ran.
+- At `3cfe4eff`, focused owner, tooling, and evidence rechecks added no new
+  ID; the live CV table sharpened F94. No product, test, CI, or cluster ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
 guides placement: scientist journey in root guides, operator action and recovery
@@ -477,7 +477,7 @@ Discovery notes give source references and the boundary for each row.
 | [F91](docs-01-discoveries-third.md#f91-repeated-stage-and-evidence-contract-openings) | Compression candidate | Twelve stage/evidence contract openings use 48 lines to restate aliases and stage-map ownership alongside distinct local command roles. | Only an illustrative 12–24-line net opportunity remains after local roles; no edit or saving was verified. |
 | [F92](docs-01-discoveries-third.md#f92-python-lock-checks-before-institutional-r-restoration) | Audience and prerequisite question | Runbook places Python lock checks before institutional R restoration; developer guidance owns similar checks, while the shown R Make targets do not invoke uv. | Whether this is an independent operator gate remains unverified; the R procedure is unique. |
 | [F93](docs-01-discoveries-third.md#f93-repeated-partition-selector-rule) | Small duplication | Config guide twice states that `--region` and `--regions-file` can combine only with unique partition IDs. | The intervening coordinate examples and separate manifest exclusions remain distinct. |
-| [F94](docs-01-discoveries-third.md#f94-dashboard-retirement-closeout-tense) | Temporal framing | A PR #169 closeout paragraph says the dashboard remains; a later row records retirement of the standalone wrapper after installed watch acceptance. | The older checkpoint and remaining CI/visual verification have distinct dates and meanings. |
+| [F94](docs-01-discoveries-third.md#f94-dashboard-retirement-closeout-tense) | Temporal framing | PR #169/CV-16 accounts retain the prior dashboard state, and the CV backlog's live acceptance table still assigns standalone retirement as pending; the main matrix says the wrapper/callers are retired. | Preserve the older checkpoint; standard CI and institutional visual verification remain pending and distinct from retirement. |
 | [F95](docs-01-discoveries-third.md#f95-executed-stop-missing-from-logging-adopter-roster) | Owner-index omission | Source topology calls its logging-adopter roster complete but omits executed `stop`, which opens a maintenance attempt after admission. | Terminal targets and previews open no log; admitted execution opens one. |
 | [F96](docs-01-discoveries-third.md#f96-unrouted-artifact-schema-version-notes) | Navigation and compression question | Artifact schema index links current JSON schemas, while four adjacent version READMEs have no inbound Markdown route. | Their 32 lines include active v1 compatibility, Run/Attempt separation, absent historical readers, and receipt evidence limits; no saving is established. |
 | [F97](docs-01-discoveries-third.md#f97-past-audit-priority-order-in-polish-campaign) | Historical selection order | Polish campaign keeps nine lines of second/third-pass priorities whose proposals and accepted status are recorded elsewhere. | Nine lines are a review surface; measurement prerequisites and dated decisions remain distinct. |
