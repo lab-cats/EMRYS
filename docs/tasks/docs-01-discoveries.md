@@ -562,33 +562,33 @@ overlap establish no useful DOCS-01 net reduction or speedup conclusion.
 
 ### F28 — Repeated owner boilerplate
 
-Six shell-stage test READMEs (`canonical_bam`, `duplicate_marking`,
-`fasta_sidecars`, `split_n_cigar`, `star_alignment`, `star_index`) repeat a
-five-line runner/evidence paragraph at lines 5–9 (30 lines). Their six
-production READMEs repeat a three-line execution paragraph (18 lines):
-`duplicate_marking` 10–12, `split_n_cigar` 11–13, others 12–14. Shared Run,
-worker, and validator rules live in the
-[stage index](../../src/emrys/stages/README.md) lines 28–40; the
-[stage test index](../../tests/stages/README.md) at lines 13–16 routes to the
-[test evidence limits](../../tests/README.md#evidence-limits).
-The paragraph also appears in [canonical BAM QC](../../tests/evidence/canonical_bam_qc/README.md)
-and [RSeQC](../../tests/evidence/rseqc_orientation/README.md) at lines 5–9
-(`c0cdceb1`). Eight test and six production copies repeat 58 physical lines.
-The shared indexes lack runner, scratch, interruption, recovery, command-help,
-and shell-worker versus validator distinctions; a simple link would lose them.
-An illustrative eight-line tests-root context must cover stage and evidence
-suites; allow one stage-index line too. Fourteen one-line routes leave 35 net
-lines (58 minus 14 routes and nine shared lines); two-line routes leave 21. For the
-original 12 stage files, zero/six/twelve two-line routes yield 27/21/15.
-No saving is verified.
-At `651d60d5`, nine stage, two evidence, and one analysis contract use the
-same two-line opening routing to the [test index](../../tests/README.md),
-which contains the shared evidence ceiling:
-24 physical lines are under review: four clauses stand alone, while eight
-second lines continue with unique owner limits. [Canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md)
-has a different two-line version at 177–178. Owner-specific coverage, oracles,
-recovery, and scientific limits remain distinct. No additional saving is
-established, and no contract deletion is approved.
+At `ca31d41f`, six shell-stage test READMEs (`canonical_bam`,
+`duplicate_marking`, `fasta_sidecars`, `split_n_cigar`, `star_alignment`,
+`star_index`) and two evidence guides ([BAM QC](../../tests/evidence/canonical_bam_qc/README.md)
+and [RSeQC](../../tests/evidence/rseqc_orientation/README.md)) each repeat the
+same five lines at 5–9: 40 physical lines. Their first paragraphs retain
+distinct native checks, mocked-tool limits, and historical defects.
+The [test root](../../tests/README.md#evidence-limits) and
+[stage index](../../tests/stages/README.md) give general limits, but omit shared
+scratch/staging, publication/recovery tests, and the public validator split.
+A nine-line shared account plus eight two-line routes would save 15 local lines
+while keeping that split visible. One-line routes could save 23 but require
+a click; neither replacement nor its links has been checked.
+
+The matching six [production stage guides](../../src/emrys/stages/README.md)
+repeat three execution lines each: `duplicate_marking` 10–12,
+`split_n_cigar` 11–13, and the other four 12–14. The stage index at 28–40
+already owns normal Run, internal workers, and grouped specialist validators;
+it lacks the warning that shell `--help` describes runner-only arguments.
+One shared index line and six one-line owner routes suggest 10–11 additional
+local lines, conditional on keeping both owner-local help commands and limits.
+
+Twelve stage/evidence/analysis contracts have a separate 24-line test-ceiling
+opening. Four stand alone and might each shrink one line; eight flow into
+distinct owner limits, oracles, or recovery. [Canonical BAM](../../src/emrys/stages/canonical_bam/CONTRACT.md)
+177–178 and Step 10's scientific boundary are separate. The four gross lines
+are low-value and establish no useful net reduction. No guide edit, replacement
+link check, or net saving occurred.
 
 ### F29 — Library subowner navigation
 
