@@ -304,6 +304,8 @@ The real-Snakemake and local-versus-cluster limits at lines 7–14 must remain.
 
 At local audit head `c1969b84`, the [Runbook](../operations/RUNBOOK.md)
 line 589 says batch scratch is removed when the wrapper exits. The
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 383–387 repeat this unqualified lifetime claim at `9aaec3ac`. The
 [submission owner](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
 lines 756–773 creates private scratch, checks/chmods it, then installs a Bash
 `EXIT` trap; lines 783–798 forward TERM and exit after the child. The

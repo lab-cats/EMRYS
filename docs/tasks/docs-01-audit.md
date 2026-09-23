@@ -34,6 +34,10 @@ permission to change or delete the source.
   The official check could not start here because the checkout has
   no `.venv` and the available Python lacks `markdown_it`. No dependencies were
   installed; no CI, Slurm, runtime, or scientific validation was performed.
+  Across later passes, no production workflow, direct test suite, CI job, or
+  cluster operation was run; the tiny failed `--version` fixture is noted below.
+  Retained evidence was not changed. The separately approved Runbook reduction
+  is recorded in the sixth discovery notes.
 - Line references below are for the pinned revision. Append the observed
   commit to any later audit pass or newly discovered finding; never silently
   mix revisions in one source claim. “Contradiction” means
@@ -42,12 +46,11 @@ permission to change or delete the source.
   finding here establishes institutional qualification or biological meaning.
 - The second read-only pass on 2026-09-22 checked the same `3a672fdf` source
   after the audit-only commit `8f8ac2e1`. It refined F03, F07–F08, F10,
-  F12–F13, F15, F17–F22, and F25–F29, and added F30–F33. Source and tests
-  were inspected, not executed.
+  F12–F13, F15, F17–F22, and F25–F29, and added F30–F33.
 - The third read-only pass checked the same source after audit-only commit
   `d8d11f00`. It reviewed the reference guides, scientific decision, diagrams,
   stage and selected other owner guides, and test/tooling claims. It added
-  F34–F43 and refined F32–F33. No runtime or cluster work was performed.
+  F34–F43 and refined F32–F33.
 - The fourth read-only pass checked the same source after audit-only commit
   `e9b69dd0`: all nine root and operations Markdown files, all 62 source
   READMEs and 15 owner contracts, all 53 Markdown files under tests,
@@ -72,29 +75,24 @@ permission to change or delete the source.
 - The eighth source-comparison pass checked maintenance-surface candidates
   against current tests, owner documents, and Git provenance at the same source
   after audit-only commit `b4356f48`. It refined F16, F20, F25, and F28. The
-  quantified F28 reduction remains a proposal, and no source, test, or
-  retained evidence was changed.
+  quantified F28 reduction remains a proposal.
 - The ninth pass checked high-consequence stop/resume, resources, guided Init,
   Doctor, watch, and reporting-diagram claims against the same source after
   audit-only commit `b3656a05`. It refined F01–F03, F07, F30, and F33,
   including which direct tests exercise only v3 stop requests and which
-  statements are merely outdated summaries. No product command or cluster
-  operation was run.
+  statements are merely outdated summaries.
 - The tenth pass checked root-to-operator reader routes and reporting recovery
   vocabulary at the same source after audit-only commit `1ce339f2`. It
-  refined F04–F06 and F48–F49 and added F52. It compared source and current
-  owner guidance without running the CLI or changing an operator guide.
+  refined F04–F06 and F48–F49 and added F52 against current owner guidance.
 - The eleventh pass checked source-owner contract terms, test-scope claims,
   schema metadata, and lossless evidence placement against the same source
   after audit-only commit `4fe9ce84`. It refined F10, F18, F39, F42, F44–F46,
   and F51, separating true filename or public-command errors from valid
-  conceptual contracts and preserving unique history. No tests or evidence
-  transfers were run.
+  conceptual contracts and preserving unique history.
 - The twelfth pass checked mate-discovery language, shared-runtime recovery,
   reporting-provider shape, internal worker classification, and CI routing
   against the same source after audit-only commit `c55d7f47`. It refined
-  F33, F35, and F44 and added F53–F55. This was source and document comparison
-  only; no runtime replacement, product test, or cluster operation was run.
+  F33, F35, and F44 and added F53–F55.
 - The thirteenth pass checked test-tool mutation claims, Make target
   applicability, and lane selection overlap against the same source after
   audit-only commit `bb1961fb`. It added F56–F58 and independently found no
@@ -103,26 +101,22 @@ permission to change or delete the source.
 - The fourteenth pass traced historical source documents, preserved Git
   revisions, current Viking owners, and direct/Slurm reader routes at the
   same source after audit-only commit `6cb40ed3`. It refined F18, F51–F53 and
-  added F59–F60. Git document dates were not promoted to observation dates; no
-  evidence was moved or changed and no product or cluster command was run.
+  added F59–F60. Git document dates were not promoted to observation dates.
 - The fifteenth audit pass rechecked F05, F08, F21–F23, and F54 against their
   owners, and added F61. At this PR's `0cb5d507` head, generic study choices
   point to configuration guidance, but the linked Quickstart continuation still
   contains EV/PUM1 paths and Slurm steps. Base-revision findings remain pinned
-  as stated; the current-head limit is recorded below. No further guide or
-  product edits or runtime checks were made in this pass.
+  as stated; the current-head limit is recorded below.
 - The sixteenth read-only pass at `b67e0eeb` compared diagram, decision, and
   test-tool claims with their current owners. It refined F37 and F56 and added
-  F62–F64. Source and tests were read, not executed; no owner guide, product
-  source, or retained evidence was changed.
+  F62–F64.
 - The seventeenth read-only pass at `e500e7c0` traced F14's current task-entry
   source-attestation path. Four installed-package observations remain before
   producer entry, but the historical 24-Git-call count no longer describes
   that path. This is a source count, not a timing measurement.
 - The eighteenth read-only pass at `cf94af08` compared runtime, reporting,
   and Step 08/09 owner descriptions with their current source. It narrowed
-  F22 and added F65–F66. These are static documentation observations; no
-  execution, guide change, or scientific conclusion followed.
+  F22 and added F65–F66. These are static documentation observations.
 - The nineteenth read-only pass at `c0a6027a` compared source ownership, CI
   diagnostic capture and test selection, and Init site defaults with their
   documentation. It added F67–F70. No CI artifact, CLI, runtime, or Slurm
@@ -334,7 +328,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 187 records, 70 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 189 records, 70 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -519,20 +513,22 @@ Of 187 records, 70 were dismissed after recheck; linked notes give reasons. The 
 | [F179](docs-01-discoveries-sixth.md#f179-cv-01-integrated-journey-account-under-review) | Within-card compression question | CV-01's 37-line selected hosted journey account contains a unique integrated sequence alongside resource and fixture detail covered by test and recovery owners. | No net saving is established; preserve three Slurm Attempts, direct parity, controlled versus site evidence, pending exact-commit CI, and institutional limits. |
 | [F180](docs-01-discoveries-sixth.md#f180-analysis-provider-validator-independence-wording) | Wording ambiguity | Analysis owner guide says EMRYS checks a provider's independent validator; admission requires validator argv and the runner executes it separately, without proving semantic independence. | “Independent” may describe separate execution; distinguish that from the trusted provider's semantic obligation. No defect or saving was shown. |
 | [F181](docs-01-discoveries-sixth.md#f181-removed-publisher-test-history-in-the-runtime-test-guide) | Dismissed as duplicate | The runtime test guide's retired-publisher sentence is already F36. | Removing it alone saves no physical line; F36 owns any future placement review. |
-| [F182](docs-01-discoveries-sixth.md#f182-slurm-scratch-cleanup-wording) | Cleanup-scope wording | Runbook says batch scratch is removed on wrapper exit; source installs an `EXIT` trap after creation/checks, and the direct test covers normal completion. | Pre-trap failure or uncatchable termination can bypass cleanup; site cleanup and line saving remain unverified. |
+| [F182](docs-01-discoveries-sixth.md#f182-slurm-scratch-cleanup-wording) | Cleanup-scope wording | Runbook and coordinator contract say batch scratch is removed on wrapper exit; source installs an `EXIT` trap after creation/checks, and the direct test covers normal completion. | Pre-trap failure or uncatchable termination can bypass cleanup; site cleanup and line saving remain unverified. |
 | [F183](docs-01-discoveries-sixth.md#f183-historical-change-scope-in-the-coordinator-contract) | Historical-scope candidate | Coordinator contract says CLI/log/refusal/exit behavior remains unchanged; the dated CV-19 card retains the change scope. | Keep current Doctor and timing rules; a one-line trim is conditional on reflow and evidence preservation. |
 | [F184](docs-01-discoveries-sixth.md#f184-runtime-probe-mechanics-in-the-coordinator-contract) | Cross-owner detail candidate | Coordinator contract repeats Snakemake startup mechanics owned by the runtime guide. | Keep head/compute/execution-preflight boundaries and the head-success limit; two to four lines are conditional. |
 | [F185](docs-01-discoveries-sixth.md#f185-canonical-bam-producer-lb-and-pl-exactness-overclaimed) | Producer-contract overclaim | Canonical BAM contract requires exact `LB` and `PL` read-group fields; shell producer's reuse and final checks use substring matching, while grouped validation checks exact `ID`/`SM` but omits `LB`/`PL`. | An otherwise valid input with extended `LB`/`PL` values appears able to pass the hard-link path. This is source inference, not an observed malformed Run or a claim about normal STAR output. |
 | [F186](docs-01-discoveries-sixth.md#f186-cv-u21-superseded-star-heuristic-chronology) | Dated-account compression candidate | CV-U21 retains a 47-line initial first-record STAR heuristic, tests, selector extension and adversarial reversal ahead of its current repair. | Roughly 10–15 lines may be available; preserve the later-record defect, selector authority, publication boundary, dated tests and Open-to-pending chronology. Saving is unverified. |
 | [F187](docs-01-discoveries-sixth.md#f187-cv-campaign-post-checklist-context-under-review) | Campaign-summary compression candidate | CV campaign's Delivery approach lines 135–150 repeat CV-01 and site-evidence boundaries after F158's separate checklist overlap. | Four to six lines may be available within this distinct span; retain the three institutional combinations, E01/E06 and INIT-02/CV-U22 limits, and evidence ceilings. Saving is unverified. |
+| [F188](docs-01-discoveries-seventh.md#f188-retired-storage-publisher-history-in-polish-item-2) | Retired-feature chronology candidate | Polish item 2 spends 13 lines on a retired capacity-and-retention publisher and the PR sequence that preceded its removal. | Four to six lines may be available; retain the three recovery risks, retirement without repair, exact retirement provenance, and surviving storage qualification. Saving is unverified. |
+| [F189](docs-01-discoveries-seventh.md#f189-cv-campaign-related-work-repeats-current-owner-map) | Owner-map compression candidate | CV campaign's 19-line Related work section repeats five current owner routes held in the main matrix and CV backlog. | Six to nine lines may be available; retain September 17 watch acceptance, pending site evidence, CV-26/E11 no-speedup limit, and evidence-deletion boundary. Saving is unverified. |
 
 ## Discovery notes
 
 The [first discovery notes](docs-01-discoveries.md),
 [continued notes](docs-01-discoveries-continued.md),
 [third file](docs-01-discoveries-third.md),
-[fourth file](docs-01-discoveries-fourth.md), [fifth file](docs-01-discoveries-fifth.md), and
-[sixth file](docs-01-discoveries-sixth.md) give sources, uncertainty, and
+[fourth file](docs-01-discoveries-fourth.md), [fifth file](docs-01-discoveries-fifth.md),
+[sixth file](docs-01-discoveries-sixth.md), and [seventh file](docs-01-discoveries-seventh.md) give sources, uncertainty, and
 preservation boundaries for every matrix row. The temporary split keeps each
 document below the 600-line review threshold.
 
