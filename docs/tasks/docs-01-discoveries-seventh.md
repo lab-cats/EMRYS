@@ -159,6 +159,17 @@ mislead a reader about available controls; the durable JSONL log and the
 promise that projection does not change behavior or exits remain intact.
 This is a static source/test comparison, not an executed CLI result.
 
+At local audit head `db2d2b0b`, the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+lines 1175–1179 also calls per-Task inspection output “Debug rows.” The
+[inspection projection](../../src/emrys/orchestration/run_coordinator/control.py)
+lines 2862 and 2955–2983 prints those rows under `--verbose`, with retained
+start references. The [direct tests](../../tests/orchestration/run_coordinator/test_materialization.py)
+lines 3088–3121 keep `TASK` rows out of normal output and show them in verbose;
+[lifecycle cases](../../tests/orchestration/run_coordinator/test_lifecycle.py)
+lines 3512–3532 likewise require the start path only in verbose. This is a
+second wording site for the same public-tier finding, with no separate
+`--debug` view or observed command result.
+
 ## Architecture, test, and task-record rescreen at `f3dc7749`
 
 All 16 architecture/design Markdown and Mermaid files and 53 test/script/CI

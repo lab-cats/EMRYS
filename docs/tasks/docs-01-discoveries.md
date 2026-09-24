@@ -430,30 +430,30 @@ independent renderer replay or proof of the original HTML comparison. No useful 
 ### F21 — Coordinator contract's no-write section
 
 The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
-has a single `No-write and publication boundaries` section spanning lines
-87–718 without subheadings. The apparent Init repeats separate prompts and
-publication (89–150) from hashing and input stability (184–215); watch
-selection (56–67) differs from dated view, refresh, and action rules
-(557–681). The second pass found navigability pressure, not proven deletable
-duplication. The topic map below distinguishes independent refusals and
-evidence levels; any size disposition remains with SIZE-01.
-The section's existing topics are Init preview/publication 89–151;
-Validate/Doctor 153–182; Init continuity 184–215; Doctor plans/timing
-217–287; managed runtime 299–339; Run/Slurm planning 365–409; submission
-request 410–468; request/Run inspection 470–556; watch diagnostics 557–681;
-and exact-request stop 682–717. Coordinator README 68–71 and Runbook 36,
-118, and 161 route readers to one of two broad contract sections. Their
-target precision is at issue; no DOCS-01 reduction is demonstrated.
-The later `Resume, inspection, Results, and reporting` section at 1141–1223
-remains a separate Run/Task/Results authority; retain links to both when a
-sentence addresses both boundaries. No safe prose deletion is established.
+has one 632-line `No-write and publication boundaries` section (87–718)
+without subheadings. Init prompts/publication (89–150) differ from hashing and
+input stability (184–215); watch selection (56–67) differs from dated view,
+refresh, and action (557–681). This is navigation pressure, not proven
+deletable duplication; any size disposition remains with SIZE-01.
 
-The coordinator [README](../../src/emrys/orchestration/run_coordinator/README.md)
-68–71 links the later section for watch selection, chiefly at contract 56–67
-and 470–555; watch admission is at 557–681. [Runbook](../operations/RUNBOOK.md)
-34–37, 117–119 and 420–423 also send request/watch readers to that later
-section. Its stop and Init links at 161 and 310–312 correctly use no-write.
-The later anchor owns Results/recovery; its existence does not fix these routes.
+Section map: Init preview/publication 89–151; Validate/Doctor 153–182; Init
+continuity 184–215; Doctor plans/timing 217–287; managed runtime 299–339;
+Run/Slurm planning 365–409; submission request 410–468; request/Run inspection
+470–556; watch diagnostics 557–681; exact-request stop 682–717. These rules
+have distinct refusals and evidence levels. The coordinator
+[README](../../src/emrys/orchestration/run_coordinator/README.md) 68–71 and
+[Runbook](../operations/RUNBOOK.md) 34–37, 117–119, and 420–423 send
+request/watch readers to the later Results/recovery section (1141–1223).
+Stop and Init links at Runbook 161 and 310–312 correctly target no-write.
+The later section is a separate Run/Task/Results authority; sentences about
+both boundaries need both routes. No safe deletion is established.
+
+At local audit head `db2d2b0b`, the [configuration guide](../../configs/README.md)
+346–350 calls its link a “command-construction contract” for native controls,
+derivation, and minimum budgets. It resolves to planning at line 719, about
+140 lines before those rules at 859, with no nearer heading. This is a valid
+link with imprecise routing, not a saving. Retain limits, overhead caveat, and
+the immutable-plan boundary.
 
 ### F22 — Coordinator cross-owner detail
 
