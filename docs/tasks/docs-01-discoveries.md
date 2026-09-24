@@ -573,7 +573,7 @@ The [test root](../../tests/README.md#evidence-limits) and
 scratch/staging, publication/recovery tests, and the public validator split.
 An eight-to-nine-line tests-root account plus eight two-line routes suggests
 15–16 repository lines while keeping that split visible. The
-[later recheck](docs-01-discoveries-seventh.md#f28-repository-net-recheck) includes shared text and links.
+[later recheck](docs-01-discoveries-seventh.md#repository-net-recheck-for-f28) includes shared text and links.
 
 The matching six [production stage guides](../../src/emrys/stages/README.md)
 repeat three execution lines each: `duplicate_marking` 10–12,

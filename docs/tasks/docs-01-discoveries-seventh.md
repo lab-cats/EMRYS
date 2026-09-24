@@ -437,7 +437,7 @@ onboarding source and direct tests; F64 remains owner-detail overlap, not a
 demonstrated behavior conflict. These were static checks, not an executed
 Project journey or scientific validation.
 
-### F14 summary-table recheck
+### Summary-table recheck for F14
 
 The [optimization summary](optimization_campaign.md) line 65 still says to
 preserve package/commit attribution. Its detailed task-entry selection at
@@ -451,7 +451,7 @@ the old 24-call source count as dated evidence, the available origin record,
 and all current byte/recheck boundaries. Startup cost and a safe reduction in
 those four observations remain unmeasured; F14's five-line saving is conditional.
 
-### F28 repository-net recheck
+### Repository-net recheck for F28
 
 Eight stage/evidence [test guides](../../tests/README.md) repeat 40 physical
 lines, and six [production stage guides](../../src/emrys/stages/README.md#running-a-stage)
@@ -469,3 +469,43 @@ not “shell cases.” Existing `#running-a-stage` and `#evidence-limits` inboun
 links require preservation. Twelve contract openings are a separate review
 span, not another verified saving. No replacement text, links, or rendered
 reader route was checked.
+
+### F197 — CV-U28 dated policy reversal account
+
+At `6fe6c4ab`, the [CV-U28 card](cluster_verification_backlog.md#cv-u28-allocation-aware-resource-policy-and-historical-provenance)
+lines 1837–1861 spends 25 physical lines on its September 17 return to Open,
+September 21 superseding owner decision, and remaining site admission. The
+[CV-U06 account](cluster_verification_backlog.md#cv-u06-available-resources)
+and [resource owner](../../src/emrys/orchestration/run_coordinator/resources/README.md)
+hold the current allocation-aware policy; F27 reviews the separate durable
+owner warning, and F115 reviews the optimization summary.
+
+A 19–21-line account might save four to six local lines while keeping both
+dated decisions and their causal conflict. Retain the former fixed 12-core/
+524288-MiB policy and reported eight-hour/four-hour timing as provenance,
+the current per-task minima and allocation-aware authority, and the exact
+installed-revision Doctor/Run check still pending. That check would establish
+admission and allocation resolution, not optimality, utilization, speedup,
+memory safety for every dataset, or scientific acceptance. The CV backlog's
+priority table links this heading; it must remain. This is a conditional
+accounting sketch, with no card edit, link check of replacement text, or
+verified repository saving.
+
+## Developer-history sweep at `6fe6c4ab`
+
+A search for PR or commit references across non-audit Markdown found 15 files.
+The permanent root, operator, architecture and most decision guides carry no
+routine PR chronology. The reporting decision's PR #146 predecessor and
+failure limit remain covered by F25. Five owner documents retain current
+recovery/evidence boundaries or are already covered by F27/F107; their cited
+historical Git objects resolve locally. The main matrix, CV backlog, campaigns,
+and validation history preserve distinct accepted status and dated evidence.
+The test baseline gives current policy; literal-golden migration comparisons
+and the retired shell-publication fault are already F20/F107. Their original
+commits resolve locally, and current oracle/recovery tests still use the guides.
+The [polish campaign](polish-campaign.md#evidence-and-selection) lines 55–66
+looked compressible, but a lossless reflow keeping both audit revisions, PR
+horizons, item changes, hosted-ruleset recheck and no-execution limits saves at
+most one line. F159's instruction to retain those pass changes stands. This
+search screens literal PR/hash references, not paraphrased history; no product
+test, CI, or cluster run was started.
