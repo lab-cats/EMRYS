@@ -326,7 +326,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 198 records, 76 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 199 records, 76 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -528,6 +528,7 @@ Of 198 records, 76 were dismissed after recheck; linked notes give reasons. The 
 | [F196](docs-01-discoveries-seventh.md#f196-reporting-decision-repeats-current-manifest-mechanics) | Conditional decision compression | The reporting decision's 24-line combined-manifest account repeats current publication and artifact-entry mechanics held by reporting owners. | A 17–19-line decision account might save five to seven local lines while retaining the one-owner rationale, retired-field/evidence limits and old-Run fingerprint boundary. Unverified; F25's separate history finding stands. |
 | [F197](docs-01-discoveries-seventh.md#f197-cv-u28-dated-policy-reversal-account) | Dated-account compression candidate | CV-U28 spends 25 lines on the September 17 fixed-policy conflict, September 21 superseding decision, and pending institutional admission; CV-U06 and the resource owner hold current policy. | A 19–21-line account suggests four to six local lines; preserve both decisions, historical resource/timing provenance, exact-revision site check and performance limits. No net saving is verified. |
 | [F198](docs-01-discoveries-seventh.md#f198-doctor-package-log-path-is-verbose-only) | Operator route defect | Troubleshooting says to follow the `Package output:` path while an ordinary Doctor repair runs, but the logging owner prints that label only with `--verbose`; the opening JSONL path is also hidden in normal output. | The package log exists, but the documented live lookup lacks its promised path. Failure diagnostics arrive after the fact; no Doctor command was executed in this audit. |
+| [F199](docs-01-discoveries-seventh.md#f199-completed-public-version-item-repeats-current-authority) | Conditional completed-item compression | Polish item 43 spends 22 lines on completed `CLI-VERSION-01` behavior and acceptance already held by the matrix and Runbook, alongside distinct original finding and limits. | A 15–17-line dated account suggests five to seven local lines; retain exact hosted evidence, CS-26 follow-on, positional flag, source-identity/readiness limits, item 30, and F08's `.env` caveat. No net saving is verified. |
 
 ## Discovery notes
 

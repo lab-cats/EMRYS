@@ -1,7 +1,7 @@
 # DOCS-01 discovery notes, seventh file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F188–F189 and an F182 recheck at local audit head `9aaec3ac`, plus an
+holds F188–F199 and an F182 recheck at local audit head `9aaec3ac`, plus an
 F76 recheck and coverage screens at `16a98be5`, read on 2026-09-23. Review
 spans and proposed line savings are conditional;
 no guide, product source, test, or retained evidence was changed, and no
@@ -551,3 +551,39 @@ report preview can read and hash substantial artifact data; the optimization
 campaign already records its unmeasured startup I/O, so this screen establishes
 neither a new DOCS-01 finding nor a site-policy violation. This was static
 reading only; no operator command, report, test, CI, or cluster run occurred.
+
+### F199 — Completed public-version item repeats current authority
+
+At local audit head `b226e912`, [polish item 43](polish-campaign.md#43-report-the-installed-package-version-through-the-public-cli)
+lines 930–951 spends 22 physical lines on the completed public version display.
+The [main matrix](backlog_matrix.md#repository-maintenance) lines 340–356
+already holds `CLI-VERSION-01` acceptance and hosted run `34306975901` at
+`b491aac5`; the [Runbook](../operations/RUNBOOK.md) lines 184–188 owns current
+usage. The [public parser](../../src/emrys/__main__.py) lines 230–236 and
+349–382 and [direct tests](../../tests/test_public_cli_contracts.py) lines
+713–751 support top-level `--version [-v]`, clean foreign-directory display,
+and invalid-combination refusal. No command was executed here.
+
+A 15–17-line dated account might save five to seven local lines while retaining
+the original missing-parser finding, exact hosted revision/run, CS-26's later
+installed-package admission, positional `--version` restriction, conditional
+known/unavailable source identity without inferring a commit from another
+checkout, and the distinction between version display, controlled-runtime
+admission, readiness, and reproducibility. Item 30's release acceptance stays
+open; the campaign introduction at lines 113–115 names item 43, so its heading
+must remain. [F08](docs-01-discoveries.md#f08---version-and-local-env) also limits
+the “arbitrary directory” claim: a malformed saved `.env` can refuse before
+version dispatch, whereas the direct test uses a clean temporary directory.
+This is a conditional accounting sketch, not replacement text or a verified
+repository saving. No product guide, evidence, or accepted status was changed.
+
+## Owner history and matrix screen at `b226e912`
+
+The four owner guides with literal pinned Git revisions retain distinct
+resource-policy or retired-writer evidence already covered by F27/F107; their
+named commits resolve locally. A numeric mpileup depth was a search false
+positive, and the report owner's retired-alpha sentence is already F141.
+The 392-line main matrix's Viking, CV closure, and COMPRESS-01 accounts are
+covered by F17/F51/F158/F166/F167. Direct operator links into owner guides
+were screened; the imprecise coordinator routes are F21, with no additional
+material mismatch. These are static reads, not executed product or site proof.
