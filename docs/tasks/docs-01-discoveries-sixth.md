@@ -339,7 +339,7 @@ placement and head-success limit are unique here. A concise owner route might
 save two to three physical lines from this six-line span; four remains an
 unverified upper bound. No lossless draft, link check or net saving exists.
 
-### F185 — Canonical BAM producer LB and PL exactness overclaimed
+### F185 — Canonical BAM LB/PL contract/source disagreement
 
 At local audit head `f8c49f9e`, the [canonical BAM contract](../../src/emrys/stages/canonical_bam/CONTRACT.md)
 requires exact `ID`, `SM`, `LB` and `PL:ILLUMINA` at lines 50–54; the
@@ -354,6 +354,10 @@ at 56–65 checks exact `ID`/`SM` but omits `LB`/`PL`, as the contract notes at
 142–147. The rewrite path writes exact fields, so this is primarily a reuse
 and final-check overclaim. No real-tool edge case, Run, or ordinary STAR output
 was observed.
+Scope review at `4f3e0a43` leaves remediation unsettled: the possible hard-link
+admission gap is a product question for the canonical BAM owner, outside
+DOCS-01 remediation authority. This audit does not choose a contract change or
+producer repair.
 
 ### F186 — CV-U21 superseded STAR heuristic chronology
 
