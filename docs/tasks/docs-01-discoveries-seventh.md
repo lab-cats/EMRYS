@@ -587,3 +587,14 @@ The 392-line main matrix's Viking, CV closure, and COMPRESS-01 accounts are
 covered by F17/F51/F158/F166/F167. Direct operator links into owner guides
 were screened; the imprecise coordinator routes are F21, with no additional
 material mismatch. These are static reads, not executed product or site proof.
+
+## Owner claim-to-source screen at `a55b2e18`
+
+Ten stage owner pairs, 16 evidence/ingestion/library/shared guides (431 lines),
+and analysis/reporting/template/style guides were compared with selected source
+and tests. All 52 documented stage validator check IDs match ten validator
+modules. Orchestration/workflow/profile and contract indexes were checked
+against packaged files and parser/lifecycle source. Apparent command, recovery,
+resource, publication, and historical overlaps are already F28/F91/F99/F107/
+F137/F184/F185/F196/F198. This selected static read did not execute product
+commands, tests, CI, cluster work, or cover every fault or retained artifact.

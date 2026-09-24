@@ -312,7 +312,7 @@ separate proposal, approval, and commit.
 
 ### Coverage so far
 
-At `496846d5`, 583 tracked files include 178 Markdown (eight audit notes), three Mermaid and 282 Python.
+At `a55b2e18`, 583 tracked files include 178 Markdown (eight audit notes), three Mermaid and 282 Python.
 All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence checks remain selective.
 
 | Area | Compared to date | Further reading needed |
@@ -320,7 +320,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 | Scientist and operator paths | All nine root and operations Markdown files, configuration guide, and all three reference guides; selected routes compared with CLI source and direct tests | Remaining claim-to-source paths and an executed operator journey are unverified. |
 | Architecture and decisions | All 19 architecture, design, and reference Markdown/Mermaid files, including all three diagrams; selected provider/schema claims and stage-map edges compared with source | Remaining source implications and visual rendering are unverified. |
 | Task and evidence records | All eight baseline task/history Markdown files (excluding temporary audit notes); 60 CV index entries reconciled to card endings; 55 commit-like refs screened locally; three hosted merge objects, run/job status, and four cited archive bytes/selected contents checked | Actual worker checkout, uninspected archives, and case-level claims beyond selected records remain unverified. |
-| Product owners | All 62 `src/emrys/` READMEs and all 15 owner contracts, including full rechecks of the 1,248-line coordinator and 14 other contracts (1,817 lines) with selected production comparisons | Remaining code and schema claims beyond selected owner paths. |
+| Product owners | All 62 `src/emrys/` READMEs and 15 contracts (1,248-line coordinator and 1,817 other-contract lines); selected source/test checks of ten stage pairs, 16 evidence/ingestion/library guides, and analysis/reporting guides | Remaining code and schema claims beyond selected owner paths. |
 | Tests, scripts, and CI | All 53 Markdown files in these trees, plus selected source assertions, direct test cases, and documentation-check code | Executable checks were not run; compare remaining code, fixtures, and retained evidence. |
 | Non-Markdown notices | Root `LICENSE` and `NOTICE` plus the bundled renv MIT text were inspected for file-location references | License meaning and third-party compliance were not evaluated. |
 
