@@ -32,6 +32,9 @@ planning. These outcomes remain accepted; none is a cluster-campaign closure
 gate. The focused novice-guide corrections and `INIT-01` through `INIT-03`
 remain in the cluster campaign's approved pre-closure tranche.
 
+The [ASSURANCE-01 repository audit](assurance-audit.md) records repository-wide
+findings and open questions; the main backlog retains status and acceptance.
+
 ## Evidence and selection
 
 The source audit used GitHub master
