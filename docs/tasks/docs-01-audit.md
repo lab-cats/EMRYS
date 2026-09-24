@@ -326,7 +326,7 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 
 ## Findings matrix
 
-Of 197 records, 76 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
+Of 198 records, 76 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
 
 | ID | Kind | Observation at the pinned revision | Audit boundary |
 | --- | --- | --- | --- |
@@ -527,14 +527,12 @@ Of 197 records, 76 were dismissed after recheck; linked notes give reasons. The 
 | [F195](docs-01-discoveries-seventh.md#f195-cv-21-acceptance-history-repeats-its-current-boundary) | Conditional dated-account compression | CV-21 spends 17 lines on its September 17 Open and September 21 Verification pending decisions after the card and campaign summary already state the accepted current boundary. | A nine-to-eleven-line account might save six to eight local lines; retain both dated decisions, unexplained E06, accepted protections and exact-revision institutional proof still pending. No evidence deletion is authorized; no net saving is verified. |
 | [F196](docs-01-discoveries-seventh.md#f196-reporting-decision-repeats-current-manifest-mechanics) | Conditional decision compression | The reporting decision's 24-line combined-manifest account repeats current publication and artifact-entry mechanics held by reporting owners. | A 17–19-line decision account might save five to seven local lines while retaining the one-owner rationale, retired-field/evidence limits and old-Run fingerprint boundary. Unverified; F25's separate history finding stands. |
 | [F197](docs-01-discoveries-seventh.md#f197-cv-u28-dated-policy-reversal-account) | Dated-account compression candidate | CV-U28 spends 25 lines on the September 17 fixed-policy conflict, September 21 superseding decision, and pending institutional admission; CV-U06 and the resource owner hold current policy. | A 19–21-line account suggests four to six local lines; preserve both decisions, historical resource/timing provenance, exact-revision site check and performance limits. No net saving is verified. |
+| [F198](docs-01-discoveries-seventh.md#f198-doctor-package-log-path-is-verbose-only) | Operator route defect | Troubleshooting says to follow the `Package output:` path while an ordinary Doctor repair runs, but the logging owner prints that label only with `--verbose`; the opening JSONL path is also hidden in normal output. | The package log exists, but the documented live lookup lacks its promised path. Failure diagnostics arrive after the fact; no Doctor command was executed in this audit. |
 
 ## Discovery notes
 
-The [first](docs-01-discoveries.md), [second](docs-01-discoveries-continued.md),
-[third](docs-01-discoveries-third.md), [fourth](docs-01-discoveries-fourth.md),
-[fifth](docs-01-discoveries-fifth.md), [sixth](docs-01-discoveries-sixth.md), and
-[seventh](docs-01-discoveries-seventh.md) notes record sources, limits, and
-preservation for each row; each file stays at or below 600 lines.
+Each matrix row links its discovery note with sources, limits, and preservation.
+The temporary audit files stay at or below 600 lines.
 
 ## Preservation boundaries for the next pass
 

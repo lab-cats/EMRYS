@@ -509,3 +509,34 @@ horizons, item changes, hosted-ruleset recheck and no-execution limits saves at
 most one line. F159's instruction to retain those pass changes stands. This
 search screens literal PR/hash references, not paraphrased history; no product
 test, CI, or cluster run was started.
+
+### F198 — Doctor package-log path is verbose only
+
+The [Troubleshooting route](../operations/TROUBLESHOOTING.md#watching-doctors-installation-log)
+lines 181–200 says an operator can follow package-manager output during a
+repair by copying the path printed after `Package output:`. The ordinary
+[Runbook command](../operations/RUNBOOK.md) is `emrys doctor --repair`, without
+`--verbose`. The [logging owner](../../src/emrys/libraries/application_logging/handler.py)
+lines 211–221 prints `Package output:` only when verbose is set. Its opening
+JSONL path is also a verbose-only terminal projection (lines 177–197), so the
+ordinary terminal does not provide the documented live path lookup.
+
+The [Doctor owner](../../src/emrys/orchestration/run_coordinator/doctor.py)
+lines 1700–1720 retains the package path in the `repair_started` JSONL event;
+on failure, it can report the diagnostics path after the attempt (line 1965).
+The [normal-output repair test](../../tests/orchestration/run_coordinator/test_doctor.py)
+lines 2064–2079 and [logging projection test](../../tests/libraries/application_logging/test_handler.py)
+lines 240–256 support the source reading. Any refinement must keep the
+second-terminal and no-cancel guidance, buffering caveat, and final readiness
+check. This is a documentation route finding, not an executed Doctor repair or
+authority to change the logging behavior.
+
+## Operator-command source screen at `6fe6c4ab`
+
+The root/Quickstart/configuration examples and Runbook commands were compared
+with current parsers, coordinator/reporting owners, and relevant tests. No
+separate command discrepancy survived beyond recorded findings. Later Runbook
+report preview can read and hash substantial artifact data; the optimization
+campaign already records its unmeasured startup I/O, so this screen establishes
+neither a new DOCS-01 finding nor a site-policy violation. This was static
+reading only; no operator command, report, test, CI, or cluster run occurred.
