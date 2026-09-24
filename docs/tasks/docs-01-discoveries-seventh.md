@@ -1,11 +1,10 @@
 # DOCS-01 discovery notes, seventh file
 
 This temporary companion to the [findings matrix](docs-01-audit.md#findings-matrix)
-holds F188–F199 and an F182 recheck at local audit head `9aaec3ac`, plus an
-F76 recheck and coverage screens at `16a98be5`, read on 2026-09-23. Review
-spans and proposed line savings are conditional;
-no guide, product source, test, or retained evidence was changed, and no
-product, CI, or cluster command ran.
+holds F188–F199 and selected rechecks. F188/F182 use local head `9aaec3ac`;
+F76 and a coverage screen use `16a98be5`. Later sections pin their own heads.
+Read on 2026-09-23; savings are conditional. No product guide, source, test,
+or retained evidence changed, and no product, CI, or cluster command ran.
 
 ### F188 — Retired storage publisher history in polish item 2
 

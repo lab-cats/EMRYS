@@ -7,7 +7,8 @@ F170 uses `8ef78400`, F171–F172 use `c6ec1562`, and F173–F175 use
 `286f646a`; F158/F176 use `3de8366b`, F124/F172 rechecks use
 `35668cc8`, F166/F169/F175/F177–F178 rechecks use `8489836c`, and F179 uses
 `ce4d22f8`, F180–F181 use `619e60b7`, F182–F184 use `c1969b84`, and
-F185–F187 use `f8c49f9e`, read on 2026-09-23. The full coordinator contract
+F185/F187 use `f8c49f9e`; F186 uses `ab0af63c`, all read on
+2026-09-23. The full coordinator contract
 and root/operator/owner history sweeps found no other substantial reduction.
 Counts are
 review spans and conditional arithmetic, not verified savings or approval to

@@ -1,7 +1,7 @@
 # DOCS-01 repository-wide working audit
 
-This is a temporary investigation record for [DOCS-01](backlog_matrix.md). It
-records compression candidates and incidental accuracy observations, not
+The [findings matrix](#findings-matrix) is a temporary audit record for
+[DOCS-01](backlog_matrix.md). It records compression and accuracy observations, not
 accepted changes, guide expansion, task status, or new completion criteria.
 The backlog matrix remains the authority for DOCS-01;
 the [cluster verification backlog](cluster_verification_backlog.md) remains the
@@ -324,6 +324,8 @@ All 170 non-audit Markdown and three Mermaid had a static read; owner/evidence c
 | Tests, scripts, and CI | All 53 Markdown files in these trees, plus selected source assertions, direct test cases, and documentation-check code | Executable checks were not run; compare remaining code, fixtures, and retained evidence. |
 | Non-Markdown notices | Root `LICENSE` and `NOTICE` plus the bundled renv MIT text were inspected for file-location references | License meaning and third-party compliance were not evaluated. |
 
+At `4a83fd82`, all 199 IDs link to unique detail headings; 76 dismissals agree with their notes.
+
 ## Findings matrix
 
 Of 199 records, 76 were dismissed after recheck; linked notes give reasons. The final column states evidence limits, not work orders.
@@ -532,8 +534,7 @@ Of 199 records, 76 were dismissed after recheck; linked notes give reasons. The 
 
 ## Discovery notes
 
-Each matrix row links its discovery note with sources, limits, and preservation.
-The temporary audit files stay at or below 600 lines.
+Each row links a note with sources, limits, and preservation; audit files stay within 600 lines.
 
 ## Preservation boundaries for the next pass
 
