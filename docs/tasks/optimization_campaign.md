@@ -41,22 +41,29 @@ I/O. Compression can reduce storage while increasing CPU time. Moving scratch
 can relieve shared storage without reducing total bytes written. Select an
 explicit primary objective and acceptable tradeoffs for each experiment.
 
+The September 22 source recheck of candidates 6, 8 and 12 is pinned to
+`3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`. Its comparisons describe that
+checkpoint, not new integration measurements or selected implementation.
+
 ## Candidate observations
 
-The order is an initial value-and-risk assessment, not a dependency graph.
-Reference streaming and Step 06 count consolidation are the recommended first
-implementation proposals; execution-profile tuning is the first measurement
-proposal. Step 08 retention and Step 07 hashing merit larger investigations.
+The order is the September 7 audit's initial value-and-risk assessment, not a
+dependency graph or current work selection. At that checkpoint, reference
+streaming and Step 06 count consolidation were the recommended first
+implementation proposals; optional execution-profile tuning was the first
+measurement proposal. Step 08 retention and Step 07 hashing merited larger
+investigations. Recheck current owners and measurements before selecting any
+candidate.
 
 | Discussion | Candidate | Primary opportunity | Initial behavior classification |
 |---|---|---|---|
 | 1 | Consolidate Step 06 scans and subgroup materialization | Wall time, logical I/O; temporary disk in a later slice | Preserve count and partition semantics; direct-output replacement remains undecided until parity is demonstrated. |
 | 2 | Stream reference observation and FASTA parsing | Memory | Preserve input acceptance, hashes, sizes, and mutation detection. |
-| 3 | Tune existing resource profiles | Wall time and allocation efficiency | Environment-deferred; measure on the selected allocation and storage. |
+| 3 | Tune existing resource profiles | Wall time and allocation efficiency | Optional future tuning; measure independently on the selected allocation and storage. |
 | 4 | Produce or reuse native BAM indexes | Wall time and I/O | Preserve indexed retrieval, validation, and publication. |
 | 5 | Bound Step 08 retained candidate tables | Memory; potentially wall time | Preserve candidate construction, order, counts, and serialized outputs. |
 | 6 | Reduce repeated whole-cohort hashing around Step 07 | Wall time and read I/O | Guarantee decision remains undecided across distinct mutation boundaries. |
-| 7 | Bind JVM heaps to admitted stage budgets | Memory and execution reliability | Environment-deferred; preserve successful processing and failure semantics. |
+| 7 | Bind JVM heaps to admitted stage budgets | Memory and execution reliability | Native limits implemented; workload measurements remain environment-deferred. |
 | 8 | Use qualified fast scratch for GATK spill | Shared-storage I/O and wall time | Environment-deferred; preserve capacity and recovery protections. |
 | 9 | Reduce Step 09 validation allocations | Memory | Preserve AF validation, pairing, global BH correction, and reconciliation. |
 | 10 | Evaluate compressed retained VCFs and tables | Persistent disk; potentially physical I/O | Undecided representation contract, requiring complete consumer migration. |
@@ -103,13 +110,20 @@ Any separately selected empty-header correction is a distinct behavior decision.
 
 ### 3. Tune existing resource profiles
 
-The [default profile][default-profile] reserves the entire workflow memory for
-every stage, preventing simultaneous tasks even when the DAG and CPU capacity
-permit them. The [Viking example][viking-profile] requests 256 CPUs but permits
-12 workflow cores. That is a configuration distinction, not measured CPU
-utilization; a large node may have been selected for memory.
+The [default profile][default-profile] and [Viking example][viking-profile] use
+the current allocation-aware policy selected through CV-U06/CV-U28. Workflow
+CPU and memory resolve from the process-accessible allocation; repeated stages
+fit automatic concurrency and CPU/memory shares to the admitted workload; and
+supported native tools receive the resolved task allowances. Recovered EV/PUM1
+per-task memory values remain configurable minimums only where the current
+profile declares them. Viking requests all CPUs and RAM on one exclusive node.
+The original fixed 12-core workflow/STAR policy is retained as provenance, not
+behavior to restore or a required comparison baseline. Ordinary institutional
+execution, not comparative performance evidence, remains CV-U28's verification
+boundary. Requested capacity remains distinct from measured utilization.
 
-Measure concurrent samples versus threads per task, realistic per-stage memory
+Future tuning is an independent optimization candidate. If selected, measure
+concurrent samples versus threads per task, realistic per-stage memory
 reservations, and Step 07 partition concurrency. Use existing profile controls
 and admission constraints rather than another scheduler or tuning service.
 Evaluate queue delay separately from execution time where site measurements
@@ -153,11 +167,16 @@ extra temporary I/O introduced by fragments.
 
 Every partition task [binds all cohort orientation BAMs and indexes][step07-inputs],
 plus shared reference inputs. The task wrapper hashes inputs
-[twice before production][task-entry] and [once afterward][task-exit]. For `P`
-partitions and `B` bytes of common inputs, these observations alone request
-approximately `3 * P * B` logical bytes: 75 complete shared-input traversals for
-25 partitions. Producer, validator, output, and resume observations add work.
-Cache hits mean this is not a claim of 75 physical disk reads.
+[twice before production][task-entry] and [once afterward][task-exit] at the
+September 7 audit revision. The resulting `3 * P * B` estimate, or 75
+shared-input traversals for 25 partitions, is historical. At the September 22
+checkpoint, the successful, nonreused path in [Task](../../src/emrys/orchestration/run_coordinator/task.py)
+hashes shared inputs at initial binding, producer entry, before and after
+native publication, and final admission. For `P` partitions and `B` bytes of
+common declared inputs, those five visible windows imply at least
+`5 * P * B` logical bytes, or 125 shared-input traversals for 25 partitions,
+before other observations. This source-derived count is not a measurement of
+physical disk reads, wall time, or savings from a proposed change.
 
 First determine whether adjacent pre-entry observations can be consolidated
 without opening their mutation window. Reusing one observation across tasks requires proof that it detects
@@ -170,33 +189,45 @@ not eliminate these wrapper observations.
 
 ### 7. Bind JVM heaps to admitted stage budgets
 
-The [Picard invocation][step04-index] supplies no explicit heap bound;
-[GATK Java options][gatk-scratch] set temporary storage but not heap size.
-Snakemake memory reservations are scheduling admission, not per-process heap
-limits. No claim about the effective JVM maximum or observed RSS follows from
-the absence of an explicit command-line setting.
+The original finding was that the [Picard invocation][step04-index] supplied
+no explicit heap bound and [GATK Java options][gatk-scratch] set temporary
+storage but not heap size. The current allocation-aware policy derives both
+heaps, STAR index/sort limits, and samtools sort buffers from the admitted stage
+budgets through
+[existing command construction](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning).
+This leaves overhead headroom; Snakemake reservations and native limits do
+not enforce total process RSS. No claim about the former effective JVM maximum
+or observed RSS follows from the absence of an explicit command-line setting.
+The implemented wiring is authoritative behavior; the measurements below are
+independent future tuning, not CV-U28 acceptance.
 
-Evaluate native heap limits derived from admitted budgets with headroom for
-nonheap/native allocations. Measure representative concurrent jobs, spill
-volume, garbage collection, peak memory, and task wall time. Smaller heaps may
-increase disk traffic or fail otherwise successful processing. Keep resource
-authority with the existing profile and owner command construction; avoid a
-second independent resource policy.
+For a separately selected experiment, measure representative concurrent jobs,
+spill volume, garbage collection, peak memory, and task wall time. Smaller heaps
+may increase disk traffic or fail otherwise successful processing. Keep
+resource authority with the existing profile and owner command construction;
+avoid a second independent resource policy.
 
 ### 8. Use qualified fast scratch for GATK spill
 
-[Slurm already establishes private temporary storage][slurm-scratch], but
-[Step 05][gatk-scratch] deliberately places GATK spill under the output directory
-because CSU `/tmp` can be too small. Evaluate sufficiently large fast scratch
+At the September 7 audit revision, [Slurm established private temporary
+storage][slurm-scratch] while [Step 05][gatk-scratch] placed GATK spill under the
+output directory because CSU `/tmp` could be too small. Current
+[Step 05](../../src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh)
+passes runner-owned `EMRYS_TASK_WORK_DIR` to both Java and GATK, as its
+[contract](../../src/emrys/stages/split_n_cigar/CONTRACT.md) records. The runner
+creates that `.scratch` directory beside the Task output working directory,
+on the same filesystem; placement alone does not qualify it as fast site
+scratch or remove shared-storage I/O. Evaluate sufficiently large fast scratch
 for disposable tool spill while keeping final-output staging and publication
 on their required filesystem.
 
 Preserve capacity qualification, headroom, ownership, interruption handling,
 and recovery. Do not blindly redirect to `/tmp`; a memory-backed filesystem
 can worsen memory pressure. Compare spill-heavy workloads on the intended
-institutional storage. This can reduce shared-storage traffic and wall time
-without reducing total bytes written or persistent output size. PR44 does not
-implement this scratch-placement change.
+institutional storage. A faster qualified path might reduce shared-storage
+traffic or wall time without reducing total bytes written or persistent output
+size; this remains unmeasured. At the September 7 audit, PR44 did not implement
+the proposed scratch-placement change.
 
 ### 9. Reduce Step 09 validation allocations
 
@@ -255,26 +286,28 @@ selecting any report-startup slice.
 
 ### 12. Audit source attribution before task entry
 
-The [normal task-entry path][task-source-entry] calls source attestation four
-times before scientific production, including the call made while constructing
-the task-start record. Each [attestation][source-attestation] performs two
-working/package comparisons and a [Git-object comparison][source-object-check].
-Together with its top-level and HEAD observations, this makes six Git
-subprocess calls per successful attestation, or 24 per normal task entry, plus
-repeated package-tree traversal and byte reads. These are source-derived call
-counts, not measured startup time or evidence that the checks are redundant.
+At the September 7 audit revision, the [normal task-entry path][task-source-entry]
+called source attestation four times before production. Each
+[attestation][source-attestation] included
+[working/package][source-package-check] and
+[Git-object][source-object-check] comparisons; the source-derived estimate was
+24 Git subprocess calls per normal Task entry. That is not current installed
+execution behavior. The current
+[installed-package admission](../../src/emrys/libraries/source_authority.py)
+reads build provenance and hashes executing package content without a runtime
+Git checkout call. [Task admission](../../src/emrys/orchestration/run_coordinator/task.py)
+still rechecks that installed identity at distinct pre-producer and publication
+boundaries. These observations establish repeated work, not measured startup
+cost or redundant protections.
 
-Measure task-start latency, Git invocations, and filesystem work on the selected
-local or institutional storage. Identify what can change between each check and the file publication it
-protects before combining checks. The
-[package comparison][source-package-check] also reads both sides when their
-resolved roots are the same; determine whether that case can be simplified
-without losing a currently detected change. Retire only equivalent work inside
-the existing source-authority owner. Preserve executing-package bytes, exact
-commit binding, changed HEAD/package detection, and task-start publication
-checks. An immutable Run does not make its source filesystem immutable and
-does not authorize caching across those boundaries. Related assurance work
-remains in the [polish campaign](polish-campaign.md).
+Measure task-start latency and package-identity filesystem work on the selected
+local or institutional storage. Identify what can change between each check
+and the record or output publication it protects before combining checks.
+Retire only equivalent work inside the existing source-authority owner.
+Preserve executing-package bytes, build-origin and Attempt binding, and
+task-start/publication checks. An immutable Run does not make installed package
+bytes immutable and does not authorize caching across those boundaries.
+Related assurance work remains in the [polish campaign](polish-campaign.md).
 
 ### 13. Measure R runtime-probe startup overhead
 
@@ -285,6 +318,13 @@ One examination of that inventory therefore starts R ten times for namespace
 checks in addition to its R-version probe; module dependencies can add checks.
 This establishes process multiplicity, not how much of Doctor or execution
 startup it consumes.
+
+The selected [CV-26 source reduction](cluster_verification_backlog.md#cv-26-repeated-doctor-input-reads)
+removes one redundant full head runtime/Project diagnosis after compute
+qualification. Exact Project/execution-profile readmission still precedes the
+independent storage finalization, and one full final runtime/Project/package
+diagnosis remains before success. This structural reduction does not change the
+serial namespace-probe policy described here and makes no speedup claim.
 
 Measure the complete readiness path and separate interpreter startup,
 namespace loading, and package-identity I/O. Compare bounded concurrency of

@@ -395,10 +395,10 @@ def test_real_processing_plan_dry_run_closes_at_step_06(
 
 
 def test_backend_projection_accepts_successor_resource_policy_record(
-    built: workflow_fixture.WorkflowFixture,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config = orchestration_contracts.load_json_object(built.workflow_attempt_path)
-    resource_policy = config["workflow"]["resource_policy"]
+    resource_policy = workflow_fixture._resource_policy()
     effective = resource_policy["effective"]
     symbolic = {
         **effective,
@@ -411,7 +411,9 @@ def test_backend_projection_accepts_successor_resource_policy_record(
     resource_policy["symbolic_sha256"] = orchestration_contracts.canonical_sha256(
         symbolic
     )
-    _publish_attempt(built, config)
+    monkeypatch.setattr(workflow_fixture, "_resource_policy", lambda: resource_policy)
+    built = workflow_fixture.build(tmp_path / "fixture")
+    workflow_fixture.materialize_active_run_lock(built)
 
     nodes, _, output = _dag(built, *REFERENCE_RULES)
 
@@ -474,7 +476,7 @@ def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
 ) -> None:
     completed = _snakemake(built, "--", "cohort_slice")
     markers = sorted(built.verified_root.glob("*/*.json"))
-    starts = sorted((built.run_root / "state" / "task-starts").glob("*/*.json"))
+    starts = sorted(built.run_root.glob("attempts/*/tasks/*/*/task-start.json"))
     assert len(markers) == len(starts) == 35, completed.stdout
     for marker in markers:
         marker_record = orchestration_contracts.load_record(marker, "verified-task")
@@ -493,12 +495,21 @@ def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
         start = orchestration_contracts.load_record(start_path, "task-start")
         assert start_path == (
             built.run_root
-            / "state/task-starts"
+            / "attempts"
+            / record["workflow_attempt_id"]
+            / "tasks"
             / record["machine_key"]
-            / f"{scope_id}.json"
+            / scope_id
+            / "task-start.json"
         )
         assert start["machine_key"] == record["machine_key"]
         assert start["scope"] == record["scope"]
+        assert start["inputs"] == record["inputs"]
+        assert [item["role"] for item in start["inputs"][:3]] == [
+            "workflow_attempt",
+            "execution_contract",
+            "workflow_profile",
+        ]
         assert (
             record["task_start_record"]["sha256"]
             == hashlib.sha256(start_path.read_bytes()).hexdigest()
@@ -574,7 +585,11 @@ def test_resume_refuses_dispatch_substitution_for_a_valid_completed_task(
         check=False,
     )
     assert failed.returncode != 0
-    assert "Verified task origin does not match the Attempt manifest" in failed.stdout
+    assert (
+        "Fresh task follows an entered scope without positive abort closure"
+        in failed.stdout
+    )
+    assert not (substituted.workflow_attempt_path.parent / "tasks").exists()
 
 
 @pytest.mark.parametrize(
@@ -790,26 +805,20 @@ def test_pending_task_cannot_execute_from_an_original_attempt(
 ) -> None:
     machine_key = "emrys.stage.construct_STAR_index.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
-    attempt = orchestration_contracts.load_json_object(built.workflow_attempt_path)
-    origin_id = "workflow-20260812T110000Z-" + "b" * 32
-    origin = {
-        **attempt,
-        "workflow_attempt_id": origin_id,
-        "created_at": "2026-08-12T11:00:00Z",
-    }
-    origin_path = built.run_root / "attempts" / origin_id / "attempt.json"
-    origin_path.parent.mkdir(parents=True)
-    origin_path.write_bytes(orchestration_contracts.canonical_json_bytes(origin))
+    origin_path = built.workflow_attempt_path
+    resumed = workflow_fixture.refresh_attempt(built, sequence=1)
+    attempt = orchestration_contracts.load_json_object(resumed.workflow_attempt_path)
     attempt["tasks"][machine_key][scope_id] = {
         "workflow_attempt_record": {
             "path": origin_path.relative_to(built.run_root).as_posix(),
             "sha256": hashlib.sha256(origin_path.read_bytes()).hexdigest(),
         }
     }
-    _publish_attempt(built, attempt)
-    failed = _snakemake(built, "--dry-run", "--", *REFERENCE_RULES, check=False)
+    _publish_attempt(resumed, attempt)
+    failed = _snakemake(resumed, "--dry-run", "--", *REFERENCE_RULES, check=False)
     assert failed.returncode != 0
-    assert "does not bind the current workflow attempt" in failed.stdout
+    assert "Retained task does not bind its admitted verified origin" in failed.stdout
+    assert not list(built.run_root.glob("attempts/*/tasks"))
 
 
 def test_attempt_and_profile_snapshot_are_closed_and_content_bound(

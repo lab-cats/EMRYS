@@ -117,7 +117,10 @@ def _command(arguments: Sequence[str], *, capture: bool = False) -> str:
 
 
 def _count(context: Context, *arguments: str) -> int:
-    raw = _command((context.samtools, "view", "-c", *arguments), capture=True)
+    raw = _command(
+        (context.samtools, "view", "-@", str(context.threads - 1), "-c", *arguments),
+        capture=True,
+    )
     value = raw.removesuffix("\n")
     if re.fullmatch(r"0|[1-9][0-9]*", value) is None:
         fail(f"samtools count is not a non-negative integer: {value!r}")
@@ -176,7 +179,7 @@ def execute(context: Context) -> None:
                     context.samtools,
                     "view",
                     "-@",
-                    str(context.threads),
+                    str(context.threads - 1),
                     "-b",
                     "-f",
                     flag,
@@ -191,14 +194,16 @@ def execute(context: Context) -> None:
                 context.samtools,
                 "merge",
                 "-@",
-                str(context.threads),
+                str(context.threads - 1),
                 "-o",
                 str(p[name]),
                 *(str(p[f"tmp_{flag}"]) for flag in flags),
             )
         )
     for name in ("fwd", "rev"):
-        _command((context.samtools, "index", str(p[name])))
+        _command(
+            (context.samtools, "index", "-@", str(context.threads - 1), str(p[name]))
+        )
     _write_counts(context)
     _validate_outputs(context)
 

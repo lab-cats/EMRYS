@@ -19,7 +19,11 @@ from emrys.orchestration.run_coordinator.materialization import AttemptPlan
 from tests.orchestration.run_coordinator.fixtures import workflow
 
 
-def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
+def with_owner_doubles(
+    plan: AttemptPlan,
+    *,
+    native_gate: tuple[str, str, Path] | None = None,
+) -> AttemptPlan:
     """Replace only owner command effects in an otherwise unchanged plan."""
 
     source = {**plan.run.analysis.workflow_inputs, "run_id": plan.run.run_id}
@@ -71,12 +75,12 @@ def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
 
     attempt = json.loads(plan.attempt_record_bytes)
     records = (
-        record
-        for by_scope in attempt["tasks"].values()
-        for record in by_scope.values()
+        (machine_key, scope_id, record)
+        for machine_key, by_scope in attempt["tasks"].items()
+        for scope_id, record in by_scope.items()
         if "workflow_attempt_record" not in record
     )
-    for record in records:
+    for machine_key, scope_id, record in records:
         payload_record = {
             "producer": [
                 {
@@ -106,6 +110,8 @@ def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
                 payload_argument,
             )
         )
+        if native_gate is not None and (machine_key, scope_id) == native_gate[:2]:
+            record["producer_argv"].extend(("--native-ready", str(native_gate[2])))
         record["validator_argv"] = list(
             controlled_python_argv(
                 sys.executable,

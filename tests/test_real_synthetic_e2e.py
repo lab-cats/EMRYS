@@ -13,10 +13,14 @@ import pytest
 from tests.tools import real_synthetic_e2e as driver
 
 
-def _argv(root: Path, *, execute: bool = False) -> list[str]:
+def _argv(
+    root: Path, *, scenario: str = "success-parity", execute: bool = False
+) -> list[str]:
     values = [
         "--profile",
         "130",
+        "--scenario",
+        scenario,
         "--repo-root",
         str(root / "repo"),
         "--operator-root",
@@ -29,20 +33,13 @@ def _argv(root: Path, *, execute: bool = False) -> list[str]:
         str(root / "renv"),
         "--slurm-partition",
         "emrys-ci",
-        "--slurm-memory",
-        "6G",
     ]
     return [*values, "--execute"] if execute else values
 
 
-def _plan(workspace: Path) -> str:
-    return "\n".join(
-        (
-            f"Run root: {workspace}/runs/run-{'a' * 64}",
-            "Reporting: automatic after scientific work",
-            "Dry-run complete; no workspace state was written.",
-        )
-    )
+def _submission(logs: Path, job_id: str = "42") -> str:
+    stem = logs / f"emrys-{'a' * 32}-{job_id}"
+    return f"JOB_ID={job_id}\nOUT={stem}.out\nERR={stem}.err\n"
 
 
 def test_cli_defaults_to_a_no_write_plan(
@@ -50,8 +47,8 @@ def test_cli_defaults_to_a_no_write_plan(
 ) -> None:
     arguments = driver.build_parser().parse_args(_argv(tmp_path))
     assert arguments.execute is False
-    assert arguments.slurm_cpus == 4
-    assert arguments.slurm_memory == 6144
+    assert not hasattr(arguments, "slurm_cpus")
+    assert not hasattr(arguments, "slurm_memory")
     assert driver.main(_argv(tmp_path)) == 0
     output = capsys.readouterr().out
     assert '"operation": "plan"' in output
@@ -80,7 +77,7 @@ def test_operator_root_is_external_empty_and_never_adopts_contents(
     assert marker.read_text() == "keep\n"
 
 
-def test_production_like_profile_selects_only_slurm_workspace(tmp_path: Path) -> None:
+def test_scenarios_select_only_the_required_workspaces(tmp_path: Path) -> None:
     paths = driver.Paths(
         tmp_path,
         tmp_path / "direct",
@@ -91,13 +88,81 @@ def test_production_like_profile_selects_only_slurm_workspace(tmp_path: Path) ->
         tmp_path / "transcripts",
     )
 
-    assert driver._selected_workspaces(paths, "130") == {
-        "direct": paths.direct_workspace,
-        "slurm": paths.slurm_workspace,
-    }
-    assert driver._selected_workspaces(paths, "100000") == {
-        "slurm": paths.slurm_workspace
-    }
+    for scenario in driver.PARITY_SCENARIOS:
+        assert driver._selected_workspaces(paths, scenario) == {
+            "direct": paths.direct_workspace,
+            "slurm": paths.slurm_workspace,
+        }
+    for scenario in ("stop-resume", "production-like"):
+        assert driver._selected_workspaces(paths, scenario) == {
+            "slurm": paths.slurm_workspace
+        }
+
+
+def test_profile_and_scenario_are_independent_but_compatible(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert driver.main(_argv(tmp_path, scenario="stop-resume")) == 0
+    assert '"scenario": "stop-resume"' in capsys.readouterr().out
+
+    incompatible = _argv(tmp_path, scenario="production-like")
+    assert driver.main(incompatible) == 2
+    assert "requires profile 100000" in capsys.readouterr().err
+
+
+def test_failure_resume_admits_direct_failure_without_scheduler_job(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    direct_run = tmp_path / "direct-run"
+    slurm_run = tmp_path / "slurm-run"
+    initial_job = driver.Job("42", tmp_path / "42.out", tmp_path / "42.err")
+    resumed_job = driver.Job("43", tmp_path / "43.out", tmp_path / "43.err")
+    admitted: list[tuple[Path, driver.Job | None]] = []
+    commands: list[str] = []
+
+    def admitted_failure(
+        run_root: Path, *, job: driver.Job | None
+    ) -> dict[str, object]:
+        admitted.append((run_root, job))
+        return {"run_root": str(run_root)}
+
+    class FakeTranscripts:
+        def run(
+            self, label: str, command: list[str], **_kwargs: object
+        ) -> subprocess.CompletedProcess[str]:
+            commands.append(label)
+            return subprocess.CompletedProcess(command, 0, "JOB_ID=43\n", "")
+
+    monkeypatch.setattr(driver, "_admitted_failure", admitted_failure)
+
+    def admit_resume(output, project, *, command, requested_run, **_kwargs):
+        assert output.stdout == "JOB_ID=43\n"
+        assert project == tmp_path / "slurm"
+        assert command == "resume"
+        assert requested_run == slurm_run.name
+        commands.append("admit-resume")
+
+    monkeypatch.setattr(driver, "admit_active_submission", admit_resume)
+    monkeypatch.setattr(driver, "wait_for_job", lambda *_args, **_kwargs: resumed_job)
+
+    failures, jobs = driver._resume_failed_runs(
+        arguments=SimpleNamespace(slurm_timeout_seconds=60, poll_seconds=0.01),
+        transcripts=FakeTranscripts(),  # type: ignore[arg-type]
+        python=Path("/runtime/python"),
+        repo=tmp_path,
+        paths=SimpleNamespace(slurm_workspace=tmp_path / "slurm"),
+        projects={"direct": tmp_path / "direct", "slurm": tmp_path / "slurm"},
+        direct_run_root=direct_run,
+        slurm_run_root=slurm_run,
+        initial_job=initial_job,
+        scontrol=Path("/usr/bin/scontrol"),
+        scancel=Path("/usr/bin/scancel"),
+    )
+
+    assert admitted == [(direct_run, None), (slurm_run, initial_job)]
+    assert commands == ["direct-resume", "slurm-resume-submit", "admit-resume"]
+    assert set(failures) == {"direct", "slurm"}
+    assert jobs == (initial_job, resumed_job)
 
 
 def test_step09_oracle_rejects_unknown_significant_status(tmp_path: Path) -> None:
@@ -129,7 +194,9 @@ def test_step09_oracle_rejects_unknown_significant_status(tmp_path: Path) -> Non
         )
 
 
-def test_adapters_and_default_resource_projection(tmp_path: Path) -> None:
+def test_adapters_and_allocation_aware_fixture_resource_projection(
+    tmp_path: Path,
+) -> None:
     python = Path("/runtime/bin/python")
     java = Path("/runtime/bin/java")
     assert b"importlib.metadata" in driver.rseqc_adapter_bytes(
@@ -172,15 +239,26 @@ def test_adapters_and_default_resource_projection(tmp_path: Path) -> None:
         account=None,
         partition="emrys-ci",
         qos=None,
-        cpus_per_task=4,
-        memory_mb=6144,
         time_limit="02:00:00",
         nodelist=None,
         scratch_parent=tmp_path / "scratch",
         module_init=module_init,
     )
     profile_document = json.loads(rendered)
-    assert "resources" not in profile_document
+    assert profile_document["resources"] == driver.ci_resource_document()
+    assert profile_document["placement"] | {"modules": None} == {
+        "kind": "slurm",
+        "account": None,
+        "partition": "emrys-ci",
+        "qos": None,
+        "cpus_per_task": "node",
+        "memory_mb": 0,
+        "time": "02:00:00",
+        "exclusive": True,
+        "nodelist": None,
+        "scratch_parent": str(tmp_path / "scratch"),
+        "modules": None,
+    }
     assert profile_document["placement"]["modules"] == {
         "mode": "exact",
         "init": str(module_init),
@@ -188,10 +266,114 @@ def test_adapters_and_default_resource_projection(tmp_path: Path) -> None:
     }
     profile = tmp_path / "slurm.json"
     profile.write_bytes(rendered)
-    assert (
-        load_execution_profile(config_path=profile).resource_policy.document()
-        == load_execution_profile().resource_policy.document()
+    admitted = load_execution_profile(config_path=profile)
+    admitted.validate_reservation()
+    assert admitted.resource_policy.document() == driver.ci_resource_document()
+
+
+def test_ci_resource_document_preserves_packaged_policy_with_fixture_minima() -> None:
+    from emrys.orchestration.run_coordinator.execution_profile import (
+        load_execution_profile,
     )
+    from emrys.orchestration.run_coordinator.resource_policy import (
+        REPEATABLE_STAGE_IDS,
+    )
+
+    packaged = load_execution_profile().resource_policy.document()
+    selected = driver.ci_resource_document()
+
+    assert selected["workflow_cores"] == "allocation"
+    assert selected["workflow_memory_mb"] == "allocation"
+    assert selected["stage_concurrency"] == packaged["stage_concurrency"]
+    assert selected["step_threads"] == packaged["step_threads"]
+    assert selected["stage_memory_mb"] == {
+        **packaged["stage_memory_mb"],
+        **{step_id: {"minimum_mb": 2048} for step_id in REPEATABLE_STAGE_IDS},
+    }
+
+
+def test_ci_resource_document_serializes_only_workflow_cpu() -> None:
+    allocation_wide = driver.ci_resource_document()
+    serial = driver.ci_resource_document(serial_workflow=True)
+
+    assert serial == {**allocation_wide, "workflow_cores": 1}
+
+
+def test_slurm_execution_profile_can_serialize_stop_resume_workflow(
+    tmp_path: Path,
+) -> None:
+    from emrys.orchestration.run_coordinator.execution_profile import (
+        load_execution_profile,
+    )
+    from emrys.orchestration.run_coordinator.resource_policy import (
+        AllocationCapacity,
+        resolve_resource_policy,
+    )
+
+    rendered = driver.slurm_execution_profile_bytes(
+        account=None,
+        partition="emrys-ci",
+        qos=None,
+        time_limit="02:00:00",
+        nodelist=None,
+        scratch_parent=tmp_path / "scratch",
+        serial_workflow=True,
+    )
+
+    profile_document = json.loads(rendered)
+    assert profile_document["resources"] == driver.ci_resource_document(
+        serial_workflow=True
+    )
+    assert profile_document["placement"]["cpus_per_task"] == "node"
+    assert profile_document["placement"]["memory_mb"] == 0
+    assert profile_document["placement"]["exclusive"] is True
+    profile = tmp_path / "ci.json"
+    profile.write_bytes(rendered)
+    admitted = load_execution_profile(config_path=profile)
+    resolved = resolve_resource_policy(
+        admitted.resource_policy,
+        AllocationCapacity(4, 16384, "hosted fixture", slurm_job_id="42"),
+        workload={"samples": 4, "partitions": 1},
+    )
+    assert resolved.allocation.cores == 4
+    assert resolved.workflow_cores == 1
+    assert set(dict(resolved.stage_concurrency).values()) == {1}
+    assert set(dict(resolved.step_threads).values()) == {1}
+    driver._assert_ci_allocation_resources(
+        {
+            "symbolic": admitted.resource_policy.document(),
+            "effective": resolved.effective_document(),
+            "allocation": {
+                "cores": resolved.allocation.cores,
+                "memory_mb": resolved.allocation.memory_mb,
+            },
+        },
+        serial_workflow=True,
+    )
+
+
+def test_native_gate_adapter_passes_version_probe_without_claiming_gate(
+    tmp_path: Path,
+) -> None:
+    gate = tmp_path / "native-stop-gate"
+    armed = gate.with_suffix(".armed")
+    armed.write_text("armed\n")
+    delegate = tmp_path / "delegate"
+    delegate.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
+    delegate.chmod(0o700)
+    adapter = tmp_path / "samtools"
+    adapter.write_bytes(driver.samtools_gate_adapter_bytes(delegate, gate))
+    adapter.chmod(0o700)
+    observed = subprocess.run(
+        [str(adapter), "--version"],
+        env={"EMRYS_TASK_WORK_DIR": str(tmp_path)},
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    assert observed.stdout == "--version\n"
+    assert armed.is_file()
+    assert not gate.with_suffix(".claimed").exists()
 
 
 def test_runtime_environment_seals_science_adapters_and_managed_utilities(
@@ -220,7 +402,8 @@ def test_runtime_environment_seals_science_adapters_and_managed_utilities(
     )
 
     environment = driver.runtime_environment(
-        SimpleNamespace(adapters=adapters), runtime
+        SimpleNamespace(adapters=adapters, native_gate=tmp_path / "native-stop-gate"),
+        runtime,
     )
 
     assert environment["PATH"] == str(adapters)
@@ -228,6 +411,8 @@ def test_runtime_environment_seals_science_adapters_and_managed_utilities(
         name: (adapters / name).readlink() for name in driver.DISCOVERY_UTILITIES
     } == {name: native_bin / name for name in driver.DISCOVERY_UTILITIES}
     assert all((adapters / name).is_file() for name in adapted)
+    assert (adapters / "samtools").is_file()
+    assert not (adapters / "samtools").is_symlink()
 
 
 def test_run_submission_and_wait_failure_cancel_once(
@@ -235,13 +420,8 @@ def test_run_submission_and_wait_failure_cancel_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     workspace = tmp_path / "workspace"
-    run_root = driver.parse_run_plan(_plan(workspace), workspace, no_write=True)
     logs = workspace / "logs"
-    submission = driver.parse_submission(
-        f"JOB_ID=42\nOUT={logs}/emrys-local-pilot-42.out\n"
-        f"ERR={logs}/emrys-local-pilot-42.err\n",
-        logs,
-    )
+    submission = _submission(logs)
     calls: list[tuple[str, ...]] = []
 
     def scheduler(
@@ -260,16 +440,17 @@ def test_run_submission_and_wait_failure_cancel_once(
     with pytest.raises(driver.DriverError, match="cancellation: CANCELLED"):
         driver.wait_for_job(
             submission,
+            log_dir=logs,
             scontrol=Path("scontrol"),
             scancel=Path("scancel"),
             cwd=tmp_path,
             timeout_seconds=1,
             poll_seconds=0.01,
         )
-    assert run_root.parent == workspace / "runs"
     assert sum(argv[0] == "scancel" for argv in calls) == 1
 
-    stdout, stderr = tmp_path / "job.out", tmp_path / "job.err"
+    submitted = driver.parse_submission(_submission(tmp_path, "43"), tmp_path)
+    stdout, stderr = submitted.stdout, submitted.stderr
     stdout.write_text("")
     stderr.write_text("controlled failure\n")
     monkeypatch.setattr(
@@ -280,7 +461,8 @@ def test_run_submission_and_wait_failure_cancel_once(
         ),
     )
     job = driver.wait_for_job(
-        driver.Job("43", stdout, stderr),
+        _submission(tmp_path, "43"),
+        log_dir=tmp_path,
         scontrol=Path("scontrol"),
         scancel=Path("scancel"),
         cwd=tmp_path,
@@ -289,6 +471,150 @@ def test_run_submission_and_wait_failure_cancel_once(
         expected=("FAILED", "1:0"),
     )
     assert (job.state, job.exit_code) == ("FAILED", "1:0")
+
+
+def test_intentional_stop_observation_never_reissues_cancellation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        driver,
+        "_scheduler",
+        lambda argv, _cwd: subprocess.CompletedProcess(argv, 124, "", "timeout"),
+    )
+    monkeypatch.setattr(
+        driver,
+        "cancel_job",
+        lambda *_args, **_kwargs: pytest.fail("stop observation retried cancellation"),
+    )
+    with pytest.raises(driver.DriverError, match="scontrol failed"):
+        driver.wait_for_job(
+            _submission(tmp_path),
+            log_dir=tmp_path,
+            scontrol=Path("scontrol"),
+            scancel=Path("scancel"),
+            cwd=tmp_path,
+            timeout_seconds=1,
+            poll_seconds=0.01,
+            expected=None,
+            cleanup_on_failure=False,
+        )
+
+
+def test_transcripts_record_a_real_bounded_timeout(tmp_path: Path) -> None:
+    transcripts = driver.Transcripts(tmp_path)
+    with pytest.raises(driver.DriverError, match="partial streams retained"):
+        transcripts.run(
+            "bounded-command",
+            [sys.executable, "-c", "import time; time.sleep(5)"],
+            cwd=tmp_path,
+            timeout_seconds=0.1,
+        )
+    assert (tmp_path / "01-bounded-command.stdout.log").is_file()
+    assert transcripts.records[0]["timed_out"] is True
+
+
+def test_transcripts_retain_partial_timeout_streams(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def expire(argv: tuple[str, ...], **kwargs: object) -> None:
+        raise subprocess.TimeoutExpired(
+            argv, kwargs["timeout"], output=b"started\n", stderr=b"diagnostic\n"
+        )
+
+    monkeypatch.setattr(driver.subprocess, "run", expire)
+    transcripts = driver.Transcripts(tmp_path)
+    with pytest.raises(driver.DriverError, match="partial streams retained"):
+        transcripts.run(
+            "bounded-command",
+            [sys.executable, "-c", "import time; time.sleep(5)"],
+            cwd=tmp_path,
+            timeout_seconds=0.1,
+        )
+    assert (tmp_path / "01-bounded-command.stdout.log").read_bytes() == b"started\n"
+    assert (tmp_path / "01-bounded-command.stderr.log").read_bytes() == b"diagnostic\n"
+    assert transcripts.records[0]["timed_out"] is True
+
+
+@pytest.mark.parametrize("job_id", ("42", "700123"))
+def test_submission_requires_matching_request_token_and_job_id(
+    tmp_path: Path, job_id: str
+) -> None:
+    logs = tmp_path / "logs with spaces"
+    job = driver.parse_submission(_submission(logs, job_id), logs)
+    assert job.job_id == job_id
+    assert job.stdout == logs / f"emrys-{'a' * 32}-{job_id}.out"
+    assert job.stderr == job.stdout.with_suffix(".err")
+
+
+def test_submission_request_rejects_ambiguous_or_foreign_paths(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    request = workspace / "logs" / f"submission-{'a' * 32}"
+    for text in (
+        f"Submission request: {request}\nSubmission request: {request}\n",
+        f"Submission request: {tmp_path / 'other' / 'logs' / request.name}\n",
+        f"Submission request: {workspace / 'logs' / 'submission-short'}\n",
+    ):
+        with pytest.raises(driver.DriverError):
+            driver.parse_submission_request(
+                subprocess.CompletedProcess((), 0, "", text), workspace
+            )
+    with pytest.raises(driver.DriverError, match="observed 0"):
+        driver.parse_submission_request(
+            subprocess.CompletedProcess((), 0, f"Submission request: {request}\n", ""),
+            workspace,
+        )
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement", "cancelled"),
+    (
+        ("a" * 32 + "-", "", True),
+        ("a" * 32, "A" * 32, True),
+        ("a" * 32, "a" * 31, True),
+        ("-42.err", "-43.err", True),
+        ("a" * 32 + "-42.err", "b" * 32 + "-42.err", True),
+        ("ERR=", "MISSING_ERR=", True),
+        ("OUT=", "OUT=/elsewhere", True),
+        ("JOB_ID=42", "JOB_ID=42\nJOB_ID=43", False),
+        ("JOB_ID=42", "JOB_ID=42\nJOB_ID=42", False),
+        ("JOB_ID=42", "JOB_ID=0", False),
+        ("JOB_ID=42", "JOB_ID=042", False),
+        ("JOB_ID=42", "MISSING_JOB_ID=42", False),
+    ),
+)
+def test_invalid_submission_cancels_only_one_unambiguous_reported_job(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    original: str,
+    replacement: str,
+    cancelled: bool,
+) -> None:
+    calls = []
+
+    def scheduler(argv, _cwd):
+        calls.append(argv)
+        return subprocess.CompletedProcess(
+            argv, 0, "JobState=CANCELLED ExitCode=0:15", ""
+        )
+
+    monkeypatch.setattr(driver, "_scheduler", scheduler)
+    with pytest.raises(driver.DriverError):
+        driver.wait_for_job(
+            _submission(tmp_path).replace(original, replacement),
+            log_dir=tmp_path,
+            scontrol=Path("scontrol"),
+            scancel=Path("scancel"),
+            cwd=tmp_path,
+            timeout_seconds=1,
+            poll_seconds=0.01,
+        )
+    assert calls == (
+        [("scancel", "--signal=TERM", "42"), ("scontrol", "show", "job", "-o", "42")]
+        if cancelled
+        else []
+    )
 
 
 def _table(path: Path, rows: tuple[tuple[str, str], ...]) -> None:
@@ -383,6 +709,7 @@ def test_step09_summary_projection_ignores_placement_local_provenance(
 
 
 def _completion(attempt_id: str, memory_mb: int) -> dict[str, object]:
+    sample_stage_ids = ("01", "02", "02b", "03", "04", "05", "06")
     return {
         "authority": {"run": {"id": "run-1", "sha256": "a" * 64}},
         "attempt": {
@@ -390,8 +717,19 @@ def _completion(attempt_id: str, memory_mb: int) -> dict[str, object]:
             "common_fields": {"run_id": "run-1", "executor": "snakemake"},
             "task_roster": [{"machine_key": "owner", "state": "verified"}],
             "resources": {
-                "symbolic": {"workflow_memory_mb": "allocation"},
-                "effective": {"workflow_memory_mb": memory_mb},
+                "symbolic": {
+                    "workflow_cores": "allocation",
+                    "workflow_memory_mb": "allocation",
+                    "stage_concurrency": {
+                        step_id: "auto" for step_id in sample_stage_ids
+                    },
+                },
+                "effective": {
+                    "workflow_cores": 4,
+                    "workflow_memory_mb": memory_mb,
+                    "stage_concurrency": {step_id: 4 for step_id in sample_stage_ids},
+                },
+                "allocation": {"cores": 4, "memory_mb": memory_mb},
             },
         },
         "scientific_results": {"result.tsv": {"sha256": "b" * 64}},
@@ -402,14 +740,18 @@ def _completion(attempt_id: str, memory_mb: int) -> dict[str, object]:
     }
 
 
-def test_direct_slurm_parity_separates_run_authority_from_attempt_resources() -> None:
+def test_direct_slurm_parity_requires_allocation_resolved_attempt_resources() -> None:
     direct = _completion("attempt-direct", 8192)
-    scheduled = _completion("attempt-slurm", 6144)
+    scheduled = _completion("attempt-slurm", 8192)
 
     parity = driver._assert_direct_slurm_parity(direct, scheduled)
 
     assert parity["attempt_ids_distinct"] is True
-    assert parity["direct_effective_resources"] != parity["slurm_effective_resources"]
+    assert parity["direct_effective_resources"] == parity["slurm_effective_resources"]
+    scheduled["attempt"]["resources"]["effective"]["workflow_memory_mb"] = 6144
+    with pytest.raises(driver.DriverError, match="observed allocation"):
+        driver._assert_direct_slurm_parity(direct, scheduled)
+    scheduled = _completion("attempt-slurm", 8192)
     scheduled["scientific_results"] = {"result.tsv": {"sha256": "c" * 64}}
     with pytest.raises(driver.DriverError, match="scientific Results differ"):
         driver._assert_direct_slurm_parity(direct, scheduled)
@@ -521,3 +863,49 @@ def test_transcripts_and_failure_summary_retain_streams(tmp_path: Path) -> None:
     assert summary["commands"] == transcripts.records
     assert "retained" in summary["retention"]
     assert "no completion" in summary["evidence_boundary"]
+
+
+@pytest.mark.parametrize("state", ["RUNNING", "COMPLETED"])
+def test_run_plan_waits_for_complete_bound_output(tmp_path, monkeypatch, state):
+    workspace = tmp_path / "workspace"
+    unrelated = workspace / "runs" / ("run-" + "a" * 64)
+    unrelated.mkdir(parents=True)
+    selected = workspace / "runs" / ("run-" + "b" * 64)
+    stderr = tmp_path / "selected.err"
+    stderr.write_text(f"Location: {selected}\n")
+
+    def observe(argv, cwd):
+        assert argv[-1] == "42"
+        if state == "RUNNING":
+            stderr.write_text(
+                f"Location: {selected}\nReporting: automatic after scientific work\n"
+            )
+        return subprocess.CompletedProcess(
+            argv, 0, f"JobState={state} ExitCode=0:0", ""
+        )
+
+    monkeypatch.setattr(driver, "_scheduler", observe)
+    arguments = dict(scontrol=Path("scontrol"), cwd=tmp_path, poll_seconds=0.001)
+    job = driver.Job("42", tmp_path / "selected.out", stderr)
+    if state == "COMPLETED":
+        with pytest.raises(driver.DriverError, match="before publishing one Run plan"):
+            driver.await_run_plan(job, workspace, **arguments)
+    else:
+        assert driver.await_run_plan(job, workspace, **arguments) == selected
+
+
+def test_run_plan_refuses_duplicate_bound_locations(tmp_path, monkeypatch):
+    selected = tmp_path / "runs" / ("run-" + "b" * 64)
+    stderr = tmp_path / "selected.err"
+    stderr.write_text(f"Location: {selected}\nLocation: {selected}\n")
+    monkeypatch.setattr(
+        driver, "_scheduler", lambda *_: pytest.fail("ambiguous plan polled")
+    )
+    with pytest.raises(driver.DriverError, match="expected one run root"):
+        driver.await_run_plan(
+            driver.Job("42", tmp_path / "selected.out", stderr),
+            tmp_path,
+            scontrol=Path("scontrol"),
+            cwd=tmp_path,
+            poll_seconds=0.001,
+        )

@@ -321,6 +321,35 @@ def test_step10_rank_drives_one_joined_immutable_roster(tmp_path: Path) -> None:
         candidate.display_rank = 99  # type: ignore[misc]
 
 
+def test_candidate_display_preserves_infinite_odds_ratio(tmp_path: Path) -> None:
+    row, *_ = _three_rows()
+    row["common_odds_ratio"] = "Inf"
+
+    projection = build_candidate_display(_computational_results(tmp_path, [row]))
+
+    assert projection.candidates[0].common_odds_ratio == Decimal("Infinity")
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("common_odds_ratio", "-Inf"),
+        ("common_odds_ratio", "NaN"),
+        ("common_odds_ratio", "sNaN"),
+        ("cmh_fdr_bh", "Inf"),
+        ("mean_control_af", "Inf"),
+    ],
+)
+def test_candidate_display_rejects_other_nonfinite_values(
+    tmp_path: Path, field: str, value: str
+) -> None:
+    row, *_ = _three_rows()
+    row[field] = value
+
+    with pytest.raises(ReportRenderError, match="must be finite"):
+        build_candidate_display(_computational_results(tmp_path, [row]))
+
+
 def test_all_four_motif_states_are_explicit_and_nonoverlapping(tmp_path: Path) -> None:
     present, no_hit, boundary = _three_rows()
     computational = _computational_results(tmp_path, [present, no_hit, boundary])

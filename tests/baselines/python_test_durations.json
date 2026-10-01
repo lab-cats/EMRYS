@@ -1,10 +1,21 @@
 {
   "default_seconds": 1.0,
   "durations_seconds": {
-    "tests/orchestration/run_coordinator/test_materialization.py::test_every_projected_owner_command_is_accepted_by_public_help": 22.0,
-    "tests/orchestration/run_coordinator/test_materialization.py::test_public_adapter_executes_failure_and_byte_preserving_resume": 446.58,
-    "tests/orchestration/run_coordinator/test_materialization.py::test_public_downstream_run_reuses_processing_without_mutating_its_source": 555.32,
-    "tests/orchestration/run_coordinator/test_workflow.py::test_resume_reuses_every_completed_file_with_existing_engine_metadata": 181.25
+    "tests/orchestration/run_coordinator/test_lifecycle.py::test_preentry_failure_can_resume_into_later_verified_start": 38.52,
+    "tests/orchestration/run_coordinator/test_lifecycle.py::test_public_resume_finalization_only_outcomes_create_no_attempt[succeeded-execute]": 25.97,
+    "tests/orchestration/run_coordinator/test_lifecycle.py::test_public_slurm_profile_finalization_only_logs_without_submission_or_attempt[none]": 26.33,
+    "tests/orchestration/run_coordinator/test_materialization.py::test_every_projected_owner_command_is_accepted_by_public_help": 71.1,
+    "tests/orchestration/run_coordinator/test_materialization.py::test_public_adapter_executes_failure_and_byte_preserving_resume": 300.46,
+    "tests/orchestration/run_coordinator/test_materialization.py::test_public_downstream_run_reuses_processing_without_mutating_its_source": 403.31,
+    "tests/orchestration/run_coordinator/test_materialization.py::test_public_real_snakemake_native_cancellation_and_stop_outcome[direct-signal-resume]": 340.14,
+    "tests/orchestration/run_coordinator/test_materialization.py::test_public_real_snakemake_native_cancellation_and_stop_outcome[public-stop]": 248.01,
+    "tests/orchestration/run_coordinator/test_workflow.py::test_content_bound_verified_marker_is_reused_and_mutation_fails_closed": 33.27,
+    "tests/orchestration/run_coordinator/test_workflow.py::test_foreign_preexisting_verified_marker_fails_closed": 27.75,
+    "tests/orchestration/run_coordinator/test_workflow.py::test_pinned_snakemake_requires_ignore_incomplete_for_scientific_resume": 274.05,
+    "tests/orchestration/run_coordinator/test_workflow.py::test_resume_refuses_dispatch_substitution_for_a_valid_completed_task": 27.28,
+    "tests/orchestration/run_coordinator/test_workflow.py::test_resume_reuses_completed_scientific_work_without_engine_metadata": 203.51,
+    "tests/orchestration/run_coordinator/test_workflow.py::test_resume_reuses_every_completed_file_with_existing_engine_metadata": 258.37,
+    "tests/orchestration/run_coordinator/test_workflow.py::test_verified_state_roster_rejects_every_unexpected_entry[root_symlink]": 26.77
   },
   "schema_version": "1.0.0"
 }

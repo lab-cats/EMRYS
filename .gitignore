@@ -22,6 +22,9 @@ logs/*
 *.db
 .env
 .DS_Store
+Projects/*
+!Projects/.gitkeep
+!Projects/README.md
 __pycache__/
 *.pyc
 build/

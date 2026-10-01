@@ -79,7 +79,7 @@ case "\$subcommand" in
                     output_bam="\${2:-}"
                     shift 2
                     ;;
-                -@)
+                -@|-m)
                     shift 2
                     ;;
                 *)
@@ -148,6 +148,7 @@ case "\$subcommand" in
         fi
         ;;
     view)
+        [[ "\${1:-}" != "-@" ]] || shift 2
         if [[ "\${1:-}" == "-H" ]]; then
             input_bam="\${2:-}"
             grep '^@' "\$input_bam"
@@ -163,6 +164,7 @@ case "\$subcommand" in
         fi
         ;;
     index)
+        [[ "\${1:-}" != "-@" ]] || shift 2
         input_bam="\${1:-}"
         [[ -n "\$input_bam" ]] || { printf 'fake samtools index missing input BAM\\n' >&2; exit 64; }
         printf 'fake bam index\\n' > "\$input_bam.bai"
@@ -178,9 +180,15 @@ chmod +x "$fake_bin/samtools"
 input="$tmp_dir/inputs/alignment.sam"
 printf '@HD\tVN:1.6\tSO:unknown\n' >"$input"
 export FAKE_SAMPLE_ID=sample
-command=(bash "$SCRIPT" --sample-id sample --input-alignment "$input"
+command=(bash "$SCRIPT" --native-memory-mb 800 --sample-id sample --input-alignment "$input"
     --output-dir "$tmp_dir/staged" --threads 2 --samtools-bin "$fake_bin/samtools")
 "${command[@]}"
+assert_contains "${samtools_log}" '400M'
+: >"${samtools_log}"
+"${command[@]}" --native-memory-mb 1600
+assert_contains "${samtools_log}" '800M'
+assert_fails 'positive integer' "${command[@]}" --native-memory-mb 0
+assert_fails 'at least 1 MiB per sorting thread' "${command[@]}" --native-memory-mb 1
 assert_contains "$tmp_dir/staged/sample.sorted.bam" $'@RG\tID:sample\tSM:sample\tLB:sample\tPL:ILLUMINA'
 [[ -s "$tmp_dir/staged/sample.sorted.bam.bai" ]] || fail 'missing BAM index'
 # A canonical input reuses bytes without another sort or RG rewrite.

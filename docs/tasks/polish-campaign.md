@@ -19,6 +19,26 @@ not duplicate tasks. Numbered headings are
 navigation references, not new backlog IDs. Proposed acceptance below becomes
 authoritative only when selected through the existing workflow.
 
+## Current follow-up scope
+
+The user assigned the broader follow-up work to this campaign:
+`DOCS-01`, `REDUCE-01`, `SIZE-01`, `ASSURANCE-01`, `SCHEMA-01`,
+`EXTENSION-01` and `RELEASE-01`. Their current status and full acceptance remain
+in the [main backlog](backlog_matrix.md#maintainability-and-release).
+This includes the repository-wide 600-line inventory and explicit exception
+dispositions, the 25% reduction target, broad code/test/protection/gate and
+documentation/contract audits, schema review, collaborator guidance and release
+planning. These outcomes remain accepted; none is a cluster-campaign closure
+gate. The focused novice-guide corrections and `INIT-01` through `INIT-03`
+were delivered through the cluster campaign's source-development sequence,
+which is now closed pending final verification.
+
+The [ASSURANCE-01 repository audit](assurance-audit.md) records repository-wide
+findings and open questions; the main backlog retains status and acceptance.
+The [SIZE-01 repository-wide audit](size-01-audit.md) is this campaign's
+working path-by-path inventory and evidence review. It creates no separate
+task status or size-exception authority.
+
 ## Evidence and selection
 
 The source audit used GitHub master
@@ -60,7 +80,8 @@ PRs #141–147 are integrated into [PR #140](https://github.com/lab-cats/EMRYS/p
 Its exact `2fb8f5ef` head passed [full ordinary CI](https://github.com/lab-cats/EMRYS/actions/runs/34301289787);
 PR #140 subsequently merged through PR #169 on 2026-09-14. Original
 PRs closed through either integration are not unimplemented proposals. The
-[overlap reconciliation](#existing-capabilities-and-overlapping-work) identifies
+numbered dispositions and the
+[overlap reconciliation](#existing-capabilities-and-overlapping-work) identify
 what each integration contains. This documentation pass ran no product tests
 or new performance measurements; ordinary CI does not establish long-lane,
 institutional, production, scientific-review, or biological acceptance.
@@ -116,6 +137,110 @@ documented commands, and scientific-output discoverability. Provider and
 upgrade evidence refine the existing extension and release outcomes rather
 than create parallel initiatives.
 
+## Integration-scale architecture reduction options
+
+The September 17 integration review at `e580a763` compared 144 changed files,
+34,623 additions, and 6,038 deletions with merge base `f2c0149e`. Relative to
+the original integration head, the completed compression removed 2,187 net
+maintained lines but reduced the pull-request additions by only 850. A prior
+6,400–9,200-line opportunity estimate is withdrawn: it added overlapping
+candidate ranges and was not supported by caller-complete prototypes. No
+further thousands-of-lines reduction is established by the review.
+
+The options below are unselected architecture investigations, not backlog
+acceptance or implementation authority. Each must start with a current
+caller/dependency audit, one measured vertical prototype, and separate
+product, test/protection, tooling, documentation/configuration, and evidence
+accounting. Selection requires a credible caller-complete deletion plan under
+the [architecture guardrails](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails).
+Watch remains supported, and no option authorizes deleting retained evidence
+or an entire feature family.
+
+### Unified inspection and Watch observation architecture
+
+Define one immutable admitted Run-observation model. `inspect` would read one
+snapshot; `watch` would repeatedly feed snapshots through the same Run
+selection, presentation model, navigation reducer, and renderer. The current
+[dashboard](../../src/emrys/orchestration/run_coordinator/dashboard.py),
+[inspection presentation](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py),
+[inspection evidence](../../src/emrys/orchestration/run_coordinator/_inspection_evidence.py),
+and [scheduler observation](../../src/emrys/orchestration/run_coordinator/scheduler_observation.py)
+are the initial audit surface.
+
+Scheduler state must remain an observation rather than Run-completion or
+recovery authority. Exact Run selection, admitted evidence, streaming
+ownership, terminal navigation, rendering, and all current Watch interactions
+must retain parity. The redesign is acceptable only if every parallel
+selection/presentation path retires; another adapter layer is not reduction.
+
+### Shared application-operation kernel
+
+Evaluate a small lifecycle kernel for mechanics repeated by Doctor,
+onboarding, control, Task, and Slurm submission: exclusive claims, signal
+handling, phase transitions, durable application logging, rollback bookkeeping,
+and terminal receipts. Each owner would supply its own admitted inputs,
+mutation authorization, phase work, failure vocabulary, and recovery policy.
+
+This option must not turn different trust boundaries into configuration flags
+inside a generic controller. A prototype should migrate one complete repeated
+mechanic across every equivalent caller, delete the former implementations,
+and preserve public exits, writes, locks, logs, receipts, recovery states, and
+fault injection. Of the listed options, this has the broadest potential product
+surface, but no deletion quantity is accepted before that prototype.
+
+### Declarative operation records and fault scenarios
+
+Evaluate canonical builders for Project, Run, Task, attempt, scheduler,
+filesystem-fault, and publication scenarios. Tests would declare admitted
+inputs, the exact injected boundary, and literal expected records or outcomes
+instead of rebuilding complete trees and assertion plumbing. Product record
+construction may join the same effort only where equivalent owners already
+make the same decision from the same inputs.
+
+Every distinct failure mode must remain named and independently selectable;
+independent scientific or evidence oracles remain independent. Success is a
+smaller test and fixture surface with unchanged behavioral coverage, not fewer
+tests obtained by merging unlike outcomes or weakening literal expectations.
+
+### Common reporting transaction engine
+
+Evaluate replacing the artifact-index and Run-report publication loops with
+one reporting-owned transaction plan. The plan would have to express staging,
+link order, final completion marker, file modes, directory re-admission,
+rollback ownership proof, recovery evidence, and cleanup without choosing a
+publisher's admission or evidence policy.
+
+The current publishers have materially different commit ordering, exception
+handling, and recovery boundaries. This option is justified only if a
+caller-complete implementation is smaller than both existing publishers,
+preserves every injected fault outcome, and deletes both superseded transaction
+loops. Sharing isolated helpers or adding a second publication framework does
+not meet that bar.
+
+### Narrow supported surfaces without retiring feature families
+
+Audit whether multiple schema generations, selector grammars, compatibility
+routes, output representations, or command paths are still publicly supported
+and used. Where one route can become canonical, retire its superseded adapters,
+branches, tests, configuration, and documentation together while retaining the
+underlying Watch, Doctor, submission, materialization, reporting, and
+scientific feature families.
+
+This is a public-contract decision rather than an internal refactor. Each
+candidate needs an exact consumer inventory, migration and rollback path, and
+separate approval. Absence of a recently observed caller is not sufficient
+evidence for retirement.
+
+### Review structure is not architecture reduction
+
+Stacked pull requests, prerequisite merges, rebuilding from current `master`,
+or retargeting an integration pull request can make each review smaller. They
+do not reduce maintained code or total additions unless equivalent work is
+already independently reviewed in the new base or duplicate ancestry is
+removed. Squashing, renaming branches, or hiding files never counts toward an
+architecture or line-reduction result. Any future campaign must report both
+maintained-line change and the hosting service's pull-request additions.
+
 ## Correctness and recovery
 
 ### 1. Preserve ownership during validation-report recovery
@@ -141,9 +266,11 @@ qualification and retained reports and recovery files remain.
 
 The retired publisher could leave a partial predecessor after a backup failure,
 release its lock after failed restoration, or obscure the original error during
-cleanup. PR #115 did not repair it; PR #128's measurement consolidation and
-PR #134's test correction also left those defects unresolved. CS-27 retired the
-publisher; its removal closes this repair proposal without claiming a repair.
+cleanup. PR #115 did not repair it; [PR #128](https://github.com/lab-cats/EMRYS/pull/128)
+consolidated measurement-row assembly and
+[PR #134](https://github.com/lab-cats/EMRYS/pull/134) corrected portable
+filesystem-call test observation without repairing those defects. CS-27 retired
+the publisher; its removal closes this repair proposal without claiming a repair.
 
 ### 3. Make reference-provenance replacement recoverable
 
@@ -183,6 +310,9 @@ whose optional timestamp dependency is absent from the declared lock closure.
 An [earlier local observation](https://github.com/lab-cats/EMRYS/blob/5c99c8159f87341287e2cacf733a58f12186550f/docs/tasks/compression_backlog_matrix.md#L929-L936)
 found that historical v1 and then-current v2 Attempt receipts accepted
 `finished_at: "not-a-time"` without that checker.
+The [September 22 source-bound recheck](polish_finding_disposition_review.md)
+reproduced malformed-string admission through the public v3 validator;
+producer output and later inspection have different, narrower behavior.
 
 **Outcome and acceptance:** Choose the intended timestamp policy and provide
 its checker reproducibly through the established dependency. Test valid
@@ -195,19 +325,23 @@ a proposed dependency/correctness correction, not an established reduction.
 
 ### 7. Show the effective Project before creation
 
-**Finding:** [Initialization](../../src/emrys/orchestration/run_coordinator/onboarding.py)
-collects fifteen fields and generates admitted Project bytes, but its preview
-shows only the output root, owned directories, and no-copy policy.
-The revised quickstart explains the scientific suggestions and repeated setup
-answers; the command's generated preview is unchanged.
+**September 7 finding:** At the audited revision,
+[Initialization](https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/onboarding.py)
+collected fifteen fields, but its preview showed only the output root, owned
+directories, and no-copy policy. The revised quickstart explained scientific
+suggestions while the command's preview stayed narrow.
 
-**Outcome and acceptance:** Display a faithful, readable preview of the already
-generated definition, including reference paths, analysis/cohort choices,
-target change, and thresholds. Explain suggestions without presenting them as
-universally valid scientific settings. Prove preview/publication agreement and
-no writes during preview. Reuse current rendering and admission; add no draft
-registry or parallel schema. This new UX proposal may need a small product-size
-exception.
+**Current boundary (September 22):** [Init](../../src/emrys/orchestration/run_coordinator/onboarding.py)
+now previews the reference, libraries,
+comparison, target change, thresholds, and STAR choices from a validated
+provisional definition. When unset, two STAR values are labeled automatic at
+creation; FASTQ admission derives them before final Project publication.
+
+**Remaining acceptance:** Prove that every displayed exact choice and deferred
+label agrees with the final admitted definition, without reading FASTQ content
+or writing during preview. Explain suggestions without presenting them as
+universally valid science. Reuse current rendering and admission, with no draft
+registry or parallel schema; any selected change follows current size guardrails.
 
 ### 8. Let Doctor inspect the selected execution profile
 
@@ -223,22 +357,24 @@ proposal is adjacent to, but distinct from, the storage-repair issue below.
 
 ### 9. Make Doctor's proposed storage repair match placement
 
-**Finding:** Doctor diagnoses storage against direct or Slurm placement, but
-constructs a direct qualification plan when storage is unready. Source predicts
-that this cannot satisfy the Slurm qualification requirement; this audit did
-not reproduce a site failure.
-The runbook now documents the supported route: retain a direct default during
-initial preparation, perform compute/finalize storage qualification, and select
-the separate Slurm profile. PR #136 consolidated readiness-result construction;
-it did not change the storage repair plan or resolve this finding.
+**September 7 finding:** Doctor diagnosed storage against direct or Slurm
+placement but constructed a direct qualification plan when storage was
+unready. Source predicted a Slurm mismatch; the audit did not reproduce a
+site failure. The former Runbook route used a direct default for initial
+preparation before separate Slurm selection.
+[PR #136](https://github.com/lab-cats/EMRYS/pull/136) provided single construction
+of the Doctor readiness result without resolving that then-current plan.
 
-**Outcome and acceptance:** Reassess the remaining command-level problem against
-that documented route and verify it through the existing plan and admission
-paths before selecting a repair change. Any selected correction must make
-repair intent and qualification requirements agree without duplicating setup
-machinery. Preserve profile ownership and the preview/execute boundary. Local
-plan proof and institutional execution are separate. This remains a proposed
-bounded defect investigation owned by this item.
+**September 22 source recheck:** The selected Slurm profile now suppresses
+direct-storage planning; Doctor delegates compute checks through Slurm and
+finishes storage qualification on the head node. The current Runbook gives
+that single head-node `doctor --repair` route. Simulated cases cover the
+delegated path; institutional placement remains unproved by this review.
+
+**Disposition:** Do not select the old predicted failure as a current defect
+without a new source or site reproduction. Preserve profile ownership and the
+preview/execute boundary. Local plan proof and institutional execution remain
+separate; any new failure belongs to its current Doctor/site owner.
 
 ### 10. Complete a novice institutional walkthrough
 
@@ -264,6 +400,10 @@ execution needs its own authorization.
 matching Doctor. The hosted golden-path clone still installs default groups.
 The remaining work is to align that CI bootstrap and verify the documented
 operator environment through the existing golden path.
+The [September 22 group comparison](polish_finding_disposition_review.md)
+confirms extra development dependencies in CI; that job also invokes `pytest`
+after the journey, so its containment check needs a separate development
+environment or later dependency stage if the journey becomes operator-minimal.
 
 **Outcome and acceptance:** Start operators with the same admitted runtime
 groups Doctor selects, retaining development dependencies for repository
@@ -317,21 +457,16 @@ removed; the [Run-coordinator contract](../../src/emrys/orchestration/run_coordi
 defines rejection in new profiles and current-version resume behavior. The broader
 `REPORT-ROSTER-01` outcome remains open.
 
-### 14. Retire the frozen dashboard when its existing row is selected
+### 14. Retire the replaced standalone dashboard
 
-**Finding:** The [coordinator guide](../../src/emrys/orchestration/run_coordinator/README.md)
-describes the dashboard as a stale, unsupported preview frozen under
-**`DASHBOARD-RETIRE-01`**.
-
-**Disposition and acceptance:** The user requires a usable replacement before
-retirement. Keep the dashboard and its protections until that prerequisite is
-implemented and accepted; retirement is excluded from the current tranche.
-The eventual caller-complete change must preserve Project-local inspection,
-required scheduler accounting, sanitized streams, and exact historical reads,
-or obtain an explicit narrower capability decision. Product code, parsers,
-dedicated tests, targets, and stale guidance retire together only under that
-approved scope. The existing row retains the decision and evidence-deletion
-boundaries; potential size reduction does not override the replacement condition.
+**Disposition and acceptance:** On 2026-09-17 the institutional owner accepted
+the installed watch as the replacement and approved a caller-complete compression
+that preserves watch behavior. The standalone curses/CLI wrapper, duplicate
+scheduler query, Make target, dedicated protections, and stale guidance were
+retired together. Project-local inspection, strict scheduler accounting, sanitized
+streams, exact historical reads, and the shared watch parser/renderer remain.
+`DASHBOARD-RETIRE-01` has implemented the new-name transition with historical
+read compatibility; institutional verification and evidence deletion remain.
 
 ## Development and CI tooling
 
@@ -412,7 +547,8 @@ Make/CI wiring are protected without adding a test registry or validation lane.
 
 ### 22. Run ordinary CI automatically on supported stacked PRs
 
-**Disposition:** Implemented and validated in PR #140, merged through PR #169.
+**Disposition:** Implemented and validated in
+[PR #140](https://github.com/lab-cats/EMRYS/pull/140), merged through PR #169.
 The `CI-01` correction removes the `master`-only PR
 base filter. The [validation policy](../design/TEST_BASELINE.md#validation-lanes)
 now covers all PR bases while retaining master-only push runs and the existing
@@ -424,9 +560,10 @@ separately addresses required merge checks.
 
 ### 23. Reduce the measured CI critical path
 
-**Disposition:** Implemented under **`CI-01`**; ordinary hosted CI passed at `b491aac5` (run 34306975901). PR #124's duration
-estimate refresh merged through PR #139 and preceded the fixture changes
-below. Hosted timing review separates queue time,
+**Disposition:** Implemented under **`CI-01`**; ordinary hosted CI passed at
+`b491aac5` (run 34306975901). The long-test duration-estimate refresh in
+[PR #124](https://github.com/lab-cats/EMRYS/pull/124) merged through PR #139
+and preceded the fixture changes below. Hosted timing review separates queue time,
 setup, R restoration, runtime readiness, and test execution rather than treating
 all elapsed time as test cost.
 
@@ -507,6 +644,12 @@ finding or authorization to scan unrelated private data.
 
 ### 29. Document a minimal external Analysis and reporter
 
+Current accepted outcome and acceptance are owned by `EXTENSION-01` in the
+[main backlog](backlog_matrix.md#maintainability-and-release). The proposal
+below is supporting context, not a second task authority.
+The [discovery draft](extension-01-discovery.md) records the source review and
+open choices for a bounded implementation plan.
+
 **Finding:** [Analysis extension interfaces](../../src/emrys/analyses/README.md)
 exist, but a practical end-to-end provider/reporter walkthrough is missing.
 The [sampled collaborator composition test][provider-composition-test]
@@ -521,8 +664,8 @@ configuration, input/output ownership, resource/dependency declarations,
 independent validation, execution, and reporting. Exercise the documented
 example through public production interfaces without a generic workflow DSL
 or test-only production behavior. Consolidate existing extension guidance.
-This item owns the proposal, which still requires bounded selection and
-footprint accounting.
+`EXTENSION-01` owns the accepted outcome; implementation still requires bounded
+selection and footprint accounting.
 
 Make the example separately installable and exercise actual discovery,
 configuration admission, planning, production, independent validation, and
@@ -535,6 +678,10 @@ This sharpens the existing example's acceptance, not a second extension task.
 
 ### 30. Establish a reviewed alpha release path
 
+`RELEASE-01` in the [main backlog](backlog_matrix.md#maintainability-and-release)
+owns the current request for a path to product v1, using this earlier alpha
+proposal as context. This section does not establish current release readiness.
+
 **Finding:** Quickstart asks users to select a release or commit; the GitHub
 releases endpoint returned no published releases during the audit. Package
 version is `0.1.0.dev0`. No claim was made that Git tags are absent.
@@ -546,8 +693,8 @@ on the original checkout for workflow assets and source admission. Approved
 replaced that requirement with installed workflow/R assets and exact package
 identity. Its hosted integration checks passed in PR #169; neither packaging
 nor synthetic reports establish institutional scientific operation. This card
-still owns release selection and the independently installed Project-to-Results
-release journey.
+provides context for `RELEASE-01`, which owns release selection and the
+independently installed Project-to-Results release journey.
 
 The [wheel installer][release-constraints] also constrains dependencies to
 the versions in `uv.lock`.
@@ -624,6 +771,16 @@ do not mean the branch has no protections or that its CI is failing.
 [Required status checks](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-status-checks-to-pass-before-merging)
 are distinct from the other hosted rules.
 
+**September 22 read-only recheck:** GitHub's active rulesets `21180321`
+(`Reviews`) and `21339165` (`no-push-master`) both target the default branch.
+Effective rules returned for `master` include both, still without
+`required_status_checks`; both list an `OrganizationAdmin` always-bypass.
+The effective branch-rules query for PR #312's base
+`codex/pr302-original-intent-corrections` returned no rules. The legacy
+branch-protection endpoint returned 404 for each branch, which does not negate
+the default-branch rulesets. No settings changed or merge-blocking behavior was
+tested; this dated observation does not select a hosted policy change.
+
 **Outcome and acceptance:** Select the ordinary checks that must succeed for
 the intended merge and bind their actual emitted check names to the effective
 policy. Reconcile overlapping rulesets and document intentional administrative
@@ -677,18 +834,20 @@ preselected implementation.
 
 ### 36. Reject explicitly insufficient Slurm memory before submission
 
-**Finding:** [Submission control][slurm-preflight]
-checks requested CPUs against workflow cores. Existing **`SCHED-01`** owns the
-corresponding missing preflight for explicitly undersized memory requests.
+**September 7 finding:** At the [audited submission-control revision][slurm-preflight],
+requested CPUs were checked against workflow cores, but an explicit
+undersized-memory preflight was missing. `SCHED-01` became its accepted owner.
 
-**Outcome and acceptance:** Reference `SCHED-01` and its full acceptance rather
-than creating another scheduler-policy task. Trace placement, resource
-overrides, and the applicable workflow/stage minimum through the existing
-submission path. Reject known insufficient capacity before `sbatch`; unknown
-capacity remains unknown. Preserve the CPU authority, dry-run/confirmation
-boundary, and absence of scheduler/workspace writes on rejection. Reuse the
-current resource owners without a general resource solver. Local submission
-proof does not establish institutional execution or memory performance.
+**Current disposition and acceptance (September 22):** `SCHED-01` implements
+effective-profile CPU and memory admission before submission, Doctor repair
+planning, profile authoring and placement-only resume. Its public no-submit,
+no-write software cases passed
+[ordinary baseline CI 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692).
+Known insufficient capacity is rejected before `sbatch`; symbolic or omitted
+capacity stays unknown. The dry-run/confirmation boundary and current resource
+owners remain. [CV-11](cluster_verification_backlog.md#cv-11-resource-profile-compatibility)
+retains heterogeneous institutional acceptance. Software proof does not
+establish institutional execution or memory performance.
 
 ### 37. Verify reports in browsers, copied Results, and print
 
@@ -882,13 +1041,10 @@ still owns any broader acceptance or unresolved follow-up.
 | Compression selection and findings reconciliation | [PR #120](https://github.com/lab-cats/EMRYS/pull/120), [PR #123](https://github.com/lab-cats/EMRYS/pull/123), [PR #135](https://github.com/lab-cats/EMRYS/pull/135) |
 | Historical documentation-path bans | [PR #121](https://github.com/lab-cats/EMRYS/pull/121) |
 | Reporting import-permission consolidation | [PR #122](https://github.com/lab-cats/EMRYS/pull/122) |
-| Long-test duration estimates | [PR #124](https://github.com/lab-cats/EMRYS/pull/124) |
 | Continuing stacked work while CI runs | [PR #125](https://github.com/lab-cats/EMRYS/pull/125) |
 | Unused reporting-table presentation metadata | [PR #126](https://github.com/lab-cats/EMRYS/pull/126) |
-| Storage measurement-row assembly and portable filesystem-call test observation | [PR #128](https://github.com/lab-cats/EMRYS/pull/128), [PR #134](https://github.com/lab-cats/EMRYS/pull/134) |
 | Unconsumed summary context, predecessor validation, and scientific input snapshots | [PR #129](https://github.com/lab-cats/EMRYS/pull/129), [PR #132](https://github.com/lab-cats/EMRYS/pull/132), [PR #133](https://github.com/lab-cats/EMRYS/pull/133) |
 | Polish, optimization, quickstart, and continued-compression findings | [PR #131](https://github.com/lab-cats/EMRYS/pull/131), [PR #138](https://github.com/lab-cats/EMRYS/pull/138); original documentation inputs are linked in Evidence and selection |
-| Single construction of the Doctor readiness result | [PR #136](https://github.com/lab-cats/EMRYS/pull/136) |
 | Direct accumulation of admitted GTF exon rows | [PR #137](https://github.com/lab-cats/EMRYS/pull/137) |
 
 The following changes are also implemented, included in the validated PR #140
@@ -896,16 +1052,19 @@ head, and merged into master through PR #169:
 
 | Work already covered | Reference |
 | --- | --- |
-| Automatic ordinary CI on stacked PRs | [PR #140](https://github.com/lab-cats/EMRYS/pull/140), item 22 |
-| Per-script Bash syntax checking | [PR #141](https://github.com/lab-cats/EMRYS/pull/141), item 15 |
-| Selected Ruff correctness rules | [PR #142](https://github.com/lab-cats/EMRYS/pull/142), item 17 |
-| Shared local/CI sharder self-tests | [PR #143](https://github.com/lab-cats/EMRYS/pull/143), item 21 |
 | Preserved source-identity policy and one shared declaration of fixed HTML outputs | [PR #144](https://github.com/lab-cats/EMRYS/pull/144), [PR #145](https://github.com/lab-cats/EMRYS/pull/145) |
 | Canonical BAM create-exclusive publication, with legacy replacement retired | [PR #146](https://github.com/lab-cats/EMRYS/pull/146) |
-| Direct create-only reporting publication; six callback carriers and the private facade retired; redundant tests reconciled | [PR #147](https://github.com/lab-cats/EMRYS/pull/147) |
 
-These implementations do not close unrelated recovery defects in items 1–4,
-the Doctor storage-repair issue in item 9 or browser/scientific review.
+PR #147 joined that validated head and merge. The
+[reporting lifecycle decision](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression)
+holds its create-only publication, retired carriers/facade, and test boundary
+with the original PR link.
+
+The integrations did not themselves repair the recovery defects originally
+described in items 1–4. Items 2 and 4 were later retired; items 1 and 3 retain
+their owner recovery work. Item 9's old direct-plan prediction is historical;
+institutional Doctor qualification, browser review, and scientific review remain
+separate.
 PR #150 completed item 13; CS-18 subsequently moved canonical BAM and the
 other scientific producers into runner-owned publication. Current recovery and
 provenance checks remain. Create-only publication never permits removing

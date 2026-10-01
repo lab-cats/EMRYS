@@ -10,6 +10,11 @@ from pathlib import Path
 from typing import Any
 
 from emrys.contracts.artifacts import api as contracts
+from emrys.libraries.alignments.star import (
+    STAR_INDEX_INTEGER_PARAMETERS,
+    integer_parameter,
+    parse_parameter_lines,
+)
 
 from ._text_common import inspect_nonempty_text, iter_text_lines
 from ._text_genomic import (
@@ -32,6 +37,25 @@ from .binary_readers import (
 )
 from .core import declared_contract_path, issue, stat_source
 from .models import ANCHOR_HASH_FIELDS, AdapterSpec, ArtifactIndexError, Inspection
+
+
+def _inspect_star_index_parameters(path: Path) -> dict[str, int]:
+    try:
+        parameters = parse_parameter_lines(
+            line for _line_number, line in iter_text_lines(path)
+        )
+    except ValueError as exc:
+        raise ArtifactIndexError(str(exc)) from exc
+    native = {}
+    for name in STAR_INDEX_INTEGER_PARAMETERS:
+        value = integer_parameter(parameters, name)
+        if value is None:
+            problem = (
+                f"is missing {name}" if name not in parameters else f"{name} is invalid"
+            )
+            raise ArtifactIndexError(f"STAR genomeParameters {problem}")
+        native[name] = value
+    return native
 
 
 def inspect_source(
@@ -312,20 +336,7 @@ def inspect_present(
         count, _native = inspect_nonempty_text(path)
         native: dict[str, Any] = {}
         if path.name == "genomeParameters.txt":
-            for _line_number, line in iter_text_lines(path):
-                fields = line.split()
-                if len(fields) >= 2 and fields[0] == "sjdbOverhang":
-                    try:
-                        native["sjdbOverhang"] = int(fields[1])
-                    except ValueError as exc:
-                        raise ArtifactIndexError(
-                            "STAR genomeParameters sjdbOverhang is invalid"
-                        ) from exc
-                    break
-            if "sjdbOverhang" not in native:
-                raise ArtifactIndexError(
-                    "STAR genomeParameters is missing sjdbOverhang"
-                )
+            native = _inspect_star_index_parameters(path)
         return count, None, {}, native
     if spec.kind == "text":
         count, native = inspect_nonempty_text(path)

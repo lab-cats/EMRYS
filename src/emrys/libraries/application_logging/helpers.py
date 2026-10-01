@@ -7,7 +7,7 @@ import os
 import sys
 import time
 import unicodedata
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,9 +15,25 @@ from typing import Any
 
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.table import Column
+from rich.text import Text
 
 _MAX_FIELD_BYTES = 16 * 1024
 _UNSAFE_TEXT_CATEGORIES = frozenset({"Cc", "Cf", "Cs", "Zl", "Zp"})
+_STATUS_STYLES = {
+    **dict.fromkeys(
+        "admitted complete completed pass ready succeeded valid yes".split(),
+        "bold green",
+    ),
+    **dict.fromkeys("blocked fail failed invalid".split(), "bold red"),
+    **dict.fromkeys(
+        "incomplete pending planned running unknown unverified".split(),
+        "bold yellow",
+    ),
+    "not admitted": "bold red",
+    "not ready": "bold red",
+    **dict.fromkeys(("not applicable", "no", "none"), "dim"),
+}
 
 
 def _console(file: Any = None) -> Console:
@@ -44,23 +60,54 @@ def console_print(
     _console(file).print(message, style=style, end=end)
 
 
+def console_field(
+    label: str,
+    value: object,
+    *,
+    file: Any = None,
+    value_style: str | None = None,
+    indent: str = "",
+) -> None:
+    """Print one literal label/value pair with a stable visual hierarchy."""
+    text = Text.assemble(
+        (f"{indent}{label}: ", "bold cyan"),
+        (str(value), value_style),
+    )
+    _console(file).print(text)
+
+
+def console_status(
+    label: str, value: object, *, file: Any = None, indent: str = ""
+) -> None:
+    """Print a field whose value has a restrained semantic status style."""
+    style = _STATUS_STYLES.get(str(value).strip().casefold(), "bold")
+    console_field(label, value, file=file, value_style=style, indent=indent)
+
+
 @contextmanager
-def phase_progress(message: str, *, file: Any = None) -> Iterator[None]:
+def phase_progress(
+    message: str,
+    *,
+    file: Any = None,
+    on_complete: Callable[[str, float | None, str], None] | None = None,
+) -> Iterator[None]:
     """Show the current phase and elapsed time without estimating completion."""
-    started = time.monotonic()
+    started = None
+    with suppress(Exception):
+        started = time.monotonic()
     progress = None
     with suppress(Exception):
         console = _console(file)
         live = console.is_terminal and not console.no_color
         progress = Progress(
-            SpinnerColumn(),
-            TextColumn("{task.description}", markup=False),
-            TimeElapsedColumn(),
+            SpinnerColumn(style="cyan"),
+            TextColumn("{task.description}", style="bold cyan", markup=False),
+            TimeElapsedColumn(table_column=Column(style="dim")),
             console=console,
             transient=True,
             disable=not live,
-            redirect_stdout=False,
-            redirect_stderr=False,
+            redirect_stdout=True,
+            redirect_stderr=True,
         )
         if not live:
             console.print(f"{message}...")
@@ -76,11 +123,22 @@ def phase_progress(message: str, *, file: Any = None) -> Iterator[None]:
         with suppress(Exception):
             if progress is not None:
                 progress.stop()
+        elapsed = None
         with suppress(Exception):
-            elapsed = int(time.monotonic() - started)
-            console_print(
-                f"{message}: {outcome} ({elapsed // 60}m {elapsed % 60:02d}s)",
-                style="green" if outcome == "complete" else "red",
+            if started is not None:
+                elapsed = time.monotonic() - started
+        with suppress(Exception):
+            if on_complete is not None:
+                on_complete(message, elapsed, outcome)
+        with suppress(Exception):
+            duration = "elapsed unavailable"
+            if elapsed is not None:
+                seconds = int(elapsed)
+                duration = f"{seconds // 60}m {seconds % 60:02d}s"
+            console_field(
+                message,
+                f"{outcome} ({duration})",
+                value_style="green" if outcome == "complete" else "red",
                 file=file,
             )
 

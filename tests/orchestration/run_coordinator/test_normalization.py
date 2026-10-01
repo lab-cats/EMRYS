@@ -24,6 +24,53 @@ from tests.orchestration.run_coordinator import fixture
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
+def test_ordinary_admission_does_not_parse_fastq_records(tmp_path: Path) -> None:
+    project_path = fixture.build(tmp_path / "project-root")
+    next((project_path.parent / "reads").glob("*.fastq")).write_bytes(
+        b"opaque bytes admitted by hash\n"
+    )
+
+    assert admit_project(project_path, fixture.profile()).dataset_sample_count == 4
+
+
+@pytest.mark.parametrize(("authored", "expected"), ((None, 18), (11, 11)))
+def test_project_admission_freezes_current_star_chr_bin_policy(
+    tmp_path: Path,
+    authored: int | None,
+    expected: int,
+) -> None:
+    project_path = fixture.build(tmp_path / "project-root")
+    definition = yaml.safe_load(project_path.read_text(encoding="utf-8"))
+    if authored is not None:
+        definition["reference"]["star_index"]["genome_chr_bin_nbits"] = authored
+        project_path.write_text(yaml.safe_dump(definition), encoding="utf-8")
+
+    analysis = admit_project(project_path, fixture.profile()).select_analysis()
+    reference = analysis.workflow_inputs["reference"]
+
+    assert reference["star_index"]["genome_chr_bin_nbits"] == expected
+    contracts.validate_record("reference", reference)
+
+
+def test_prepared_sample_admission_is_bound_to_its_project_root(
+    tmp_path: Path,
+) -> None:
+    first = fixture.build(tmp_path / "first")
+    second = fixture.build(tmp_path / "second")
+    sample_path = first.parent / "samples.tsv"
+    definition = yaml.safe_load(second.read_text())
+    definition["dataset"]["samples"] = str(sample_path)
+    second.write_text(yaml.safe_dump(definition), encoding="utf-8")
+    prepared = normalization._admit_sample_inputs(
+        sample_path, sample_path.read_bytes(), first.parent
+    )
+
+    with pytest.raises(contracts.ContractValidationError, match="does not match"):
+        normalization._admit_project_data(
+            second, second.read_bytes(), fixture.profile(), sample_inputs=prepared
+        )
+
+
 def test_analysis_revision_is_path_and_name_neutral(
     tmp_path: Path,
 ) -> None:
@@ -587,6 +634,36 @@ def test_yaml_extensions_are_rejected(
 
     with pytest.raises(contracts.ContractValidationError, match=message):
         admit_project(request, fixture.profile())
+
+
+@pytest.mark.parametrize("change", ("legacy", "unknown_field"))
+def test_unsupported_project_format_keeps_diagnostics_and_guides_setup(
+    tmp_path: Path,
+    change: str,
+) -> None:
+    project = fixture.build(tmp_path / "preserved-bundle")
+    definition = yaml.safe_load(project.read_text(encoding="utf-8"))
+    if change == "legacy":
+        definition["schema_version"] = "emrys.request.v3"
+    else:
+        definition["unrecognized_study_setting"] = "preserve this choice"
+    project.write_text(yaml.safe_dump(definition), encoding="utf-8")
+    before = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
+    with pytest.raises(contracts.ContractValidationError) as original:
+        contracts.validate_record("project", definition)
+
+    with pytest.raises(contracts.ContractValidationError) as rejected:
+        admit_project(project, fixture.profile())
+
+    message = str(rejected.value)
+    assert message.startswith(f"{original.value}\n")
+    assert "Project setup accepts emrys.project.v1" in message
+    assert "Preserve the original bundle" in message
+    assert "emrys init NAME" in message
+    assert "Legacy fields are not translated" in message
+    assert {
+        path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()
+    } == before
 
 
 @pytest.mark.parametrize(

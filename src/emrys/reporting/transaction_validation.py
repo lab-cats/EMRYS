@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.libraries.exclusive_publication import stable_file_identity
 from emrys.libraries.source_authority import (
     PACKAGE_ROOT,
     admit_artifact_source_root,
@@ -124,17 +125,6 @@ def _snapshot_receipt(path: Path) -> _ReceiptSnapshot:
         mtime_ns=before.st_mtime_ns,
         ctime_ns=before.st_ctime_ns,
         sha256=hashlib.sha256(payload).hexdigest(),
-    )
-
-
-def _stat_identity(value: os.stat_result) -> tuple[int, ...]:
-    return (
-        value.st_dev,
-        value.st_ino,
-        value.st_mode,
-        value.st_size,
-        value.st_mtime_ns,
-        value.st_ctime_ns,
     )
 
 
@@ -253,9 +243,9 @@ def _snapshot_bound_file(
         raise ReportingTransactionError(
             f"Bound transaction file changed while admitted: {path}"
         ) from exc
-    if _stat_identity(before) != _stat_identity(after) or _stat_identity(after) != (
-        _stat_identity(current)
-    ):
+    if stable_file_identity(before) != stable_file_identity(
+        after
+    ) or stable_file_identity(after) != (stable_file_identity(current)):
         raise ReportingTransactionError(
             f"Bound transaction file changed while admitted: {path}"
         )

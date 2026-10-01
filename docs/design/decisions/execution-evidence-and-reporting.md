@@ -52,6 +52,12 @@ separate from this default. Existing storage evidence is retained on retry;
 storage receipts do not prove runtime compatibility. Compute, validation, and
 reporting never install dependencies.
 
+A shared managed generation remains immutable. Doctor repair creates and fully
+qualifies a new Project-owned generation, then replaces only the owner's current
+selection. Dependent Projects retain their exact old selector until an explicit
+same-source replacement is freshly admitted. Retained Run and Attempt profiles
+continue to name their original generation.
+
 Repository R activation remains opt-in through `EMRYS_USE_RENV=1`. Report
 rendering uses only the locked packaged Jinja2, Matplotlib, and Logomaker
 environment and a private temporary cache. Neither path accesses the network or
@@ -203,9 +209,11 @@ owns current ordering, file ownership, cleanup, and recovery behavior.
 
 The predecessor implementation and its replacement-failure characterization
 remain inspectable at `0ece377ca2b285d6ec2a46f7d2441c78f16409e1`, the head of
-[PR #146](https://github.com/lab-cats/EMRYS/pull/146). The retirement intentionally
-removed private overwrite, predecessor backup/restoration, and repeated private
-publication. It did not authorize deletion or repair of existing residue.
+[PR #146](https://github.com/lab-cats/EMRYS/pull/146).
+[PR #147](https://github.com/lab-cats/EMRYS/pull/147) replaced that reporting
+publisher with create-only publication, retiring private overwrite, predecessor
+backup/restoration, and repeated private publication. It did not authorize
+deletion or repair of existing residue.
 
 The same change retired three publication operation records, two identity
 operation records, `ReceiptValidationOps` and its public testing arguments,
@@ -252,7 +260,8 @@ new installed package.
 
 HTML publication and validation-roster policy retain their separate scope. Reporting-memory policy belongs to the
 [Run contract](../../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning).
-Dashboard replacement and retirement remain separate decisions.
+At this reporting transition, dashboard replacement and retirement remained
+separate decisions; the later completed retirement is recorded below.
 
 ## Console, logs, and status
 
@@ -270,6 +279,6 @@ The binding sink, redaction, degradation, and ownership behavior is in
 Status is derived from immutable Run, Attempt, task, reporting, receipt, and
 lock records. No mutable status cache competes with them. Elapsed time belongs
 to one current or latest Attempt; resumes are not silently summed and no ETA is
-invented. The stale dashboard is not a status or Results authority and remains
-frozen under `DASHBOARD-RETIRE-01` until a replacement dashboard is implemented
-and validated; retirement then requires its own approved scope.
+invented. Watch diagnostics are not a status or Results authority. The replaced
+standalone dashboard was retired after the institutional owner accepted the
+installed watch; shared parsing and rendering remain internal watch mechanics.
