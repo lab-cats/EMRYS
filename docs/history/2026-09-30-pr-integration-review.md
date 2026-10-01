@@ -286,3 +286,29 @@ with the earlier CI repair the approved exception uses 24 of 100 lines. There ar
 no new product files, schema changes, package installations in product execution,
 new registries or evidence deletions. Tests and documentation are separate from
 this product accounting.
+
+
+### Approved design and interface follow-up
+
+The [R closure proposal](../../src/emrys/evidence/runtime_availability/README.md#proposed-r-dependency-closure)
+uses standard installed-package dependency enumeration and the existing package
+hasher. It identifies every binding/readmission owner and leaves derived IDs,
+seal migration, Analysis roots and bounds for a separate implementation decision.
+No closure or automatic-snapshot behavior was changed.
+
+The [installed extension check](../tasks/extension-01-discovery.md#october-1-installed-interface-verification)
+used a non-editable core wheel from exact `9d348252` source and separate real
+Analysis/reporter entry points. Bounded admission, execution, validator and
+identity-change cases passed. Actual shared reconciliation reproduced EX-13;
+public complete Run/report acceptance remains blocked. An independent review
+rehashed all 57 retained manifest entries without a mismatch. The sources,
+six wheels, fixtures and logs remain in a local temporary evidence bundle,
+not tracked product artifacts or institutional/scientific proof.
+
+The [release checklist](../tasks/release-readiness.md#october-1-integrated-source-readiness-review)
+separates the current integrated-source review from historical September findings.
+It selects no new distribution/platform promise, release version or publication.
+These documentation and verification outcomes do not close RUNTIME-CLOSURE-01,
+EXTENSION-01 or RELEASE-01. Independent documentation review found no blocking
+overclaim; structure and local links passed for 199 Markdown documents and three
+Mermaid sources.

@@ -12,7 +12,53 @@ Before closing the card, reduce this working investigation to the concise
 readiness checklist; move lasting policy to its owner and let Git retain the
 investigation history.
 
-**Current source target:** open [PR #307](https://github.com/lab-cats/EMRYS/pull/307)
+## October 1 integrated-source readiness review
+
+Reviewed source: `9d34825211412332d42d9348ceca00a20fa370d5`, the integration
+branch for PR #322. The September investigation below remains historical
+source evidence. Its separate-stack description is superseded by the
+[integration review](../history/2026-09-30-pr-integration-review.md). The five
+maintenance audits are complete by owner direction; their closure adds no
+release qualification.
+
+Use the documented pinned checkout and locked environment as the first
+candidate route to verify. This review does not select a new distribution,
+publish a release, promise checkout-free operation, or expand supported
+platforms. The backlog row retains acceptance and status.
+
+| Readiness criterion | Required evidence or decision | Existing owner |
+| --- | --- | --- |
+| Candidate identity | Freeze the reviewed commit, distribution bytes, embedded build origin and Python/native/R locks. Bind every result to that candidate; changed code invalidates affected evidence. | RELEASE-01; package/source identity |
+| Supported journey | State promised public operations and environments. Exercise setup, Init, validation, Doctor, preview, Run, inspection, stop/resume and report generation/reuse only where promised. | RELEASE-01; coordinator and subject owners |
+| Install route | Verify the pinned-checkout instructions from a clean isolated environment. Exercise installed operations outside the checkout where supported. Standalone-wheel Setup, study resources and lock delivery remain separate unresolved promises. | Package/onboarding owners |
+| Refusal and recovery | Verify obsolete-Run refusal before submission, completed-report reuse without a new profile or job, current-v4 installed Stop, preserved failed/partial state and separate resume identity. | Coordinator/reporting owners |
+| User-facing limits | Correct runtime-discovery help and obsolete fixed-capacity wording before claiming that guide complete. State actual FASTQ pairing checks and visibility limits for skipped GTF rows/transcripts. | CLI, resource, ingestion and guide owners |
+| Runtime reproducibility | Pass exact-lock restore/check and managed Doctor/golden path. Complete R dependency closure remains RUNTIME-CLOSURE-01; a passing namespace roster alone does not establish it. | Runtime owner |
+| Software and scheduler | Retain ordinary CI, complete Python 3.11/3.14 suites, and the selected 130-pair and 100,000-pair lanes on the exact final candidate. Skips after setup failure are not results. | CI and CLUSTER-VERIFY-01 |
+| Institutional and review | Obtain named-site evidence only through its approved campaign. Keep report visual/link review, scientific review and biological interpretation separate from software success. | SITE-PARITY-01; reporting/scientific owners |
+| Release decision | Choose a version and publication target only after the promised criteria have evidence and remaining limits are explicit. Existing schema/version support policy remains in force. | RELEASE-01; separate publication authority |
+
+Release notes must identify the version and exact source/artifact, supported
+install/environment route, observable changes, compatibility/refusal policy,
+known limitations, and linked exact-revision checks. A prerelease may state a
+narrower tested promise. A v1 claim needs evidence for every additional promise;
+product 1.0 alone requires no schema renumbering and proves no science.
+
+The integrated source fixes the old R21 contract wording: Stop describes v3/v4
+requests. Its complete current-v4 installed journey is still a verification gap.
+Package metadata, the public parser and wheel-smoke coverage are unchanged
+from the original reviewed source; Setup still requires a Git checkout, so the
+documented standalone-wheel and public-journey gaps remain. Report admission is a selected correctness
+repair and must be rechecked after publication. No release is approved by this
+checklist.
+
+## Historical September 22 investigation
+
+All observations, findings and proposed next checks below retain their original
+source/evidence date. The integrated-source review above supersedes current
+branch and ownership claims; it does not delete the underlying evidence.
+
+**Historical source target:** open [PR #307](https://github.com/lab-cats/EMRYS/pull/307)
 at `5ecc409c123fe34f746a61f7e92397c6978f3cab` on 2026-09-22. Most source
 inspection below used its ancestor `f32260f0408fe1826af401fc1ddce0f2478ae6ce`.
 The intervening commits reformat the selected Doctor timing assertion and
@@ -26,7 +72,7 @@ for a release candidate.
 No candidate artifact, installed full Run, institutional execution, or release
 publication was performed for this investigation.
 
-## Intended decisions and evidence
+### Intended decisions and evidence
 
 The first decision is the **promise**: which operations and environments a
 prerelease supports, and which additional claims v1 will make. A release number
@@ -54,7 +100,7 @@ operation, and provenance questions below are resolved.
 | Platform and site | Name supported combinations only with corresponding evidence; label an unqualified site procedure as exploratory. | If Viking is supported for v1, require exact-revision institutional qualification through its existing owners. |
 | Notes and evidence | Identify version, source/artifact, changes, limitations, and bounded check results. | Reconcile all v1 claims, owner blockers, guides, and exact-revision software/site evidence before a separate publication decision. |
 
-## Findings matrix
+### Findings matrix
 
 The “next check” column is an investigation step, not authorization to change
 code, run on a cluster, install dependencies, or publish a release. The IDs are
@@ -85,9 +131,9 @@ local navigation labels, not new backlog items.
 | `R21` | Current-request stop and watch scope | Stop admits named v3/v4 requests, but its contract says v3 only and focused stop fixtures use v3; selected real-tool E2E includes a production-request stop when dispatched. | If Slurm stop is promised, reconcile the owner contract and retain an exact current-v4 installed-path preview/execute/refusal check; distinguish request/raw-scheduler watch from Run recovery. | `RELEASE-01`; coordinator/Slurm owners and R02/R15 |
 | `R22` | Partial GTF acceptance visibility | Reference admission can pass after skipping malformed GTF rows or whole transcripts; named Init drops the warnings and ordinary Project validation prints only PASS, while `--verbose` shows them. | Decide how the promised journey exposes partial annotation acceptance; check one tiny public partly valid GTF and keep PASS narrower than lossless transcript preservation. | `RELEASE-01`; GTF/onboarding/Quickstart owners and R16 |
 
-## Discovery record
+### Discovery record
 
-### R01 — Exact candidate and included work
+#### R01 — Exact candidate and included work
 
 The current source target is PR #307 at the commit above, while the ordinary
 checkout from which this investigation began was on an older, unrelated branch.
@@ -106,7 +152,7 @@ a prepared-Project runtime donor picker. PR #320 branches from #316; neither
 is included in the reviewed tree. Their inclusion and integration order remain
 candidate decisions.
 
-### R02 — Promised operations
+#### R02 — Promised operations
 
 The [Quickstart](../../quickstart.md) presents guided setup, Project creation,
 validation, Doctor, Run, inspection, and completed Results on Viking. The
@@ -160,7 +206,7 @@ also makes `run --through processing` a distinct Steps 00–06 Run with no repor
 and `run --from-processing-run` a distinct downstream Run. Neither is implied
 by a normal Project-to-Results promise.
 
-### R03 — Platforms and site
+#### R03 — Platforms and site
 
 The [README](../../README.md#supported-environment) describes Linux/POSIX,
 Python 3.11 or newer, one direct host or one Snakemake executor inside a
@@ -212,7 +258,7 @@ expected success and refusal behavior, artifact/dependency identity,
 resource/path bounds, exact evidence, and existing owner. The README's broad
 platform line and parser availability cannot fill those cells by themselves.
 
-### R04 — Distributed artifact
+#### R04 — Distributed artifact
 
 The [Quickstart installation](../../quickstart.md#1-install-emrys) clones the
 default branch and installs a locked Python environment. The
@@ -248,7 +294,7 @@ route-specific acceptance questions, not four simultaneous release promises:
 | Wheel paired with checkout | The checkout can supply data and defaults missing from the wheel, but ordinary checkout `uv sync` installs editable checkout code rather than proving use of the wheel. | Pin and hash both units; document an installer route that actually selects the wheel; prove installed code and assets come from it while only declared data/defaults come from the matching checkout. |
 | Standalone wheel | Installed smoke covers selected Init and validation; the reviewed wheel lacks the study selection and checkout-free `setup`, and distributes a lock hash rather than `uv.lock`. | Choose limited or complete scope. For a complete novice promise, resolve R05/R06/R13 and exercise the full public installed path with documented resources and no checkout leakage. |
 
-### R05 — Study-selection resource
+#### R05 — Study-selection resource
 
 The guided PUM1 command still reads the maintained selection manifest under
 repository `configs/`; `pyproject.toml` package-data does not list that root
@@ -276,7 +322,7 @@ complete Run, public report regeneration, or novice Viking acceptance. Its
 backlog row records branch-head hosted regression and leaves novice Viking
 acceptance pending; that is evidence for #316 only, not this target.
 
-### R06 — Dependency policy
+#### R06 — Dependency policy
 
 The wheel smoke reads the checkout's `uv.lock`, constructs an installer
 project constrained to its resolved versions, creates that project's lock,
@@ -311,7 +357,7 @@ package. A wheel-only institutional maintenance promise needs a documented
 supported procedure or an exact checkout companion; managed Doctor repair is
 a separate route. Do not add another installer owner to bridge this gap.
 
-### R07 — Version and provenance
+#### R07 — Version and provenance
 
 [`emrys.__version__`](../../src/emrys/__init__.py) is `0.1.0.dev0` and package
 metadata derives its version from it. The distribution test separately asserts
@@ -332,7 +378,7 @@ Decide how an eventual Git tag name, package version, artifact filenames and
 digests correspond, and whether a version may be reused for a rebuilt
 artifact. Recording that policy does not authorize tag publication.
 
-### R08 — Installed public journey
+#### R08 — Installed public journey
 
 The existing wheel test installs to an isolated environment, uses an arbitrary
 working directory, and exercises help, named Init, and validation through the
@@ -367,7 +413,7 @@ overwritten. Preview prepares only the Run summary, so the execute path is
 needed to check reporter discovery, HTML resources, rendering, and publication.
 These are future checks, not checks performed for this document.
 
-### R09 — Record and schema support
+#### R09 — Record and schema support
 
 The approved [version policy](../design/decisions/platform-direction.md#version-support)
 requires refusal of obsolete Run contracts without changing their scientific
@@ -410,7 +456,7 @@ records schema readers and unresolved retained/external consumers but changes
 no accepted schema policy in this reviewed tree. Decide explicitly whether v1
 retains current IDs or depends on a separately approved `SCHEMA-01` migration.
 
-### R10 — Documentation and known limits
+#### R10 — Documentation and known limits
 
 Keep scientist purpose and the first Results journey in README/Quickstart,
 operator commands and recovery in Runbook/Troubleshooting, exact behavior with
@@ -436,7 +482,7 @@ supplied paths; structural admission is not a filesystem or network sandbox.
 If copied reports are promised, verify the documented complete-tree transfer
 and relative links separately from publication and rendered visual review.
 
-### R11 — Evidence layers and blockers
+#### R11 — Evidence layers and blockers
 
 The ordinary PR wheel lane checks packaging and selected installed commands.
 The selected real-tool synthetic lane runs from the checkout in a hosted
@@ -490,7 +536,7 @@ policy, check URL or retained artifact, observed outcome, evidence limit,
 owner, and disposition. This is a release evidence record, not a parallel Run
 completion state or a substitute for owner acceptance.
 
-### R12 — Notes and release decision
+#### R12 — Notes and release decision
 
 Draft release notes should identify version, source revision, artifact and
 dependency identities, supported workflow/platform/installation route, current
@@ -510,7 +556,7 @@ and added platform support require separate
 authority. Citation guidance and SBOM/attestation remain separate proposed
 work, not automatic `RELEASE-01` completion criteria.
 
-### R13 — Saved defaults and Projects home
+#### R13 — Saved defaults and Projects home
 
 The current [`emrys setup` owner](../../src/emrys/orchestration/run_coordinator/onboarding.py)
 requires an EMRYS Git checkout and an existing writable Projects home. It
@@ -532,7 +578,7 @@ through the public command, then decide whether the Runbook's “any directory�
 wording needs a qualification; do not bypass fail-closed settings admission in
 a release-only wrapper.
 
-### R14 — Performance and capacity claims
+#### R14 — Performance and capacity claims
 
 The existing [optimization campaign](optimization_campaign.md) audited wall
 time, disk, I/O, and memory mechanisms against `fdf767603` on 2026-09-07 and
@@ -601,7 +647,7 @@ cannot by itself prove full Run or network-storage performance. `SETUP-02`
 already owns its eventual retirement after the campaign; do not add a release
 benchmark runner, duplicate timing ledger, or new resource authority.
 
-### R15 — Cross-owner release coverage
+#### R15 — Cross-owner release coverage
 
 The [architecture index](../architecture/README.md),
 [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md),
@@ -724,7 +770,7 @@ owner, and proposed proof for each finding. Unselected operations receive an
 explicit limited or unsupported disposition rather than a full execution
 campaign.
 
-### R16 — Input-admission claim
+#### R16 — Input-admission claim
 
 The [onboarding owner](../../src/emrys/orchestration/run_coordinator/onboarding.py)
 combines guided FASTQs with the checkout-supplied
@@ -756,7 +802,7 @@ read-only. If full mate concordance is promised, decide its explicit admission
 or operator evidence contract with the ingestion owner; do not silently merge
 the helper's limited prefix policy with strict Run input admission.
 
-### R17 — Obsolete-Run refusal before Slurm report submission
+#### R17 — Obsolete-Run refusal before Slurm report submission
 
 Public `inspect`, `resume` planning, and `report` preview reach Run inspection
 before acting on a selected Run. Direct `report --execute` also reaches the
@@ -779,7 +825,7 @@ placement. For Slurm refusal, assert no new submission request or `sbatch`
 call; for all paths, compare retained Run/scientific/evidence bytes and
 membership. Keep current-format success/recovery as a positive control.
 
-### R18 — Interactive mutation modes and help
+#### R18 — Interactive mutation modes and help
 
 Omitting `--execute` is not a universal no-write contract. Named Init prints a
 plan and can create after `y`; when `--execute` is omitted, its explicit
@@ -813,7 +859,7 @@ Classify the exact mode for each promised command and use an explicit preview
 or a controlled declined prompt for candidate-artifact no-write assertions.
 Reuse existing owner tests; do not create a second generic confirmation policy.
 
-### R19 — Direct-host capacity wording
+#### R19 — Direct-host capacity wording
 
 The [direct-host Runbook](../operations/RUNBOOK.md#standalone-compute-host-with-a-managed-runtime)
 asserts that the default workflow's retained concurrent-stage allowances
@@ -830,7 +876,7 @@ Viking's whole-node request and 12-hour limit are configured requests, not
 measured utilization or completion capacity; its scratch suitability remains
 an operator/site evidence question.
 
-### R20 — Specialist report success predicate
+#### R20 — Specialist report success predicate
 
 Shared [validator runtime](../../src/emrys/libraries/validation/runtime.py)
 prints a dry-run or publishes a report and returns zero even when a check row
@@ -850,7 +896,7 @@ summary status separately from publication success. Its known rollback issue
 already has an [existing owner](polish-campaign.md); route it there rather than
 create a new release-only publication layer.
 
-### R21 — Current-request stop and watch scope
+#### R21 — Current-request stop and watch scope
 
 The current [Slurm request owner](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
 creates schema v4 requests and admits complete named v3 or v4 records for
@@ -874,7 +920,7 @@ does not call `inspect_run` without an associated Run. Raw scheduler diagnostics
 have no Project, Run, or action authority. Classify those observation modes
 separately from a verified Run and its recovery choices.
 
-### R22 — Partial GTF acceptance visibility
+#### R22 — Partial GTF acceptance visibility
 
 The [GTF converter](../../src/emrys/stages/gtf_to_bed12/converter.py) can skip
 malformed exon rows or an entire conflicting transcript while retaining other
@@ -894,7 +940,7 @@ limitation, or whether an owner-approved admission change is required. Use one
 tiny partly valid GTF through the public command to retain exact warning and
 no-write behavior; do not duplicate the converter's full warning suite.
 
-## Conditional owner routing
+### Conditional owner routing
 
 These are dependencies of a **selected claim**, not a second backlog or a
 decision that every route must ship. Status and acceptance remain with the
@@ -911,7 +957,7 @@ linked [findings matrix](backlog_matrix.md).
 | Support for obsolete Runs | A separate explicit change to the ratified version policy would be needed before planning such support. | Current policy requires refusal without changing retained scientific files or evidence; `SCHEMA-01` does not authorize historical readers. |
 | Reviewed report appearance or scientific conclusions | `REPORT-01`–`03` for rendered review, `SCI-AUDIT-01` for independent scientific review, and external adjudication for biological meaning. | Each claim needs its own evidence; a software release need not imply any higher layer. |
 
-## Proposed readiness sequence
+### Proposed readiness sequence
 
 These steps are a decision and evidence plan. They do not authorize code
 changes, dependency installation, cluster work, evidence promotion, or release

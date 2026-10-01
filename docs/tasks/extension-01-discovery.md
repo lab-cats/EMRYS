@@ -6,6 +6,55 @@ This record captures what a separately installed collaborator Analysis would nee
 source proves, and what remains to be decided or exercised. Retire or condense this working record
 when the bounded outcome is accepted; move lasting behavior to its owner documentation.
 
+## October 1 installed-interface verification
+
+The approved follow-up exercised exact core source
+`9d34825211412332d42d9348ceca00a20fa370d5` in a separate Python 3.13.15 environment.
+A clean Git archive was built and installed as a non-editable wheel; all 235
+packaged core files matched the archive. Its embedded Git-origin fields are
+null because the exported source has no `.git`; the retained archive and byte
+comparison establish the source association. Existing locked Python dependencies
+were restored offline through `uv`.
+
+Separately built `extension.echo` Analysis and reporter distributions used real
+`emrys.analysis_modules` and `emrys.analysis_reporters` entry points, without
+loader or distribution-metadata substitutes. Actual Project/configuration
+admission, three invalid-config refusals, and core materialization passed. One
+thread was refused; two threads produced one external Step 09 task in a 34-task
+plan without publishing a Run. The exact planned Python worker and a separate
+literal-oracle validator passed on a 41-byte, three-newline mechanical input.
+A tampered result caused validator exit 1 and core all-pass refusal. Reporter
+invocation returned typed HTML and its input hash, and refused a changed input.
+A separately installed reporter update changed reporter identity while preserving
+Analysis identity and readmission. Missing/duplicate entry points, mismatched
+descriptor ID and malformed module version were refused.
+
+EX-13 was reproduced through the actual shared reconciliation dispatcher:
+completed external Step 09 scopes still enter the CMH reconciler, whose required
+`step09_cmh_all_sites_v1` lookup raises `StopIteration`. This is a public
+Run/report integration blocker, not a discovery failure; it was not repaired.
+Keep the existing shared provider-admission owner. Any selected reconciliation
+repair needs its own reviewed module/owner dispatch design and independent
+scientific expectations, without a second registry or parallel validator.
+
+Evidence is local interface verification. Planning uses explicit synthetic
+runtime/storage observations; direct worker execution omits the dummy wrapper
+and core Task publication. No Doctor qualification, public complete Run/report,
+Snakemake, optional Step 10, remote-collaborator, scheduler, institutional,
+scientific or biological acceptance is established. EXTENSION-01 remains open.
+No production inputs or maintained product files were added by this exercise.
+
+The local retention bundle `emrys-extension-proof-9d348252` contains sources,
+six wheels, commands, logs, literal fixtures, identities and hash manifest;
+these runtime/build artifacts remain outside the repository. Its hash manifest
+is `ecf8095680c2212ecc4067da6376b9c8cb5168b06774b0e650a6fbc4b4a046fc`.
+The core archive SHA-256 is
+`705cbd8ac741e38ec4f2f5786523844ec6cbf2f6f9dbb1d12fcd8bcf5ccf871c`;
+the core wheel is
+`2f461670a8c05528b5ec6577d683bdcaf636c9ff2143d031aee10550da4df261`.
+The September source investigation below remains a historical checkpoint;
+its unexecuted statements do not describe this later bounded fixture.
+
 ## Planning baseline and evidence key
 
 - **Target:** [PR #304](https://github.com/lab-cats/EMRYS/pull/304) head `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`, checked against the

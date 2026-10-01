@@ -132,3 +132,58 @@ the operator retains diagnostics rather than copying qualification receipts or
 forcing a previously successful hostname. The probe roster is not a complete
 binary-compatibility certificate for every tool path. Institutional workload
 and cross-node acceptance remain separate evidence.
+
+## Proposed R dependency closure
+
+This is the design proposal for [RUNTIME-CLOSURE-01](../../../../docs/tasks/backlog_matrix.md),
+not implemented or ratified behavior. The fixed-target contract above remains
+current. This source review provides no runtime, cluster or scientific proof.
+
+Derive the recursive `Depends`, `Imports` and `LinkingTo` closure from the fixed
+scientific namespaces and selected Analysis's declared R namespaces. Reuse R's
+[`tools::package_dependencies`](https://stat.ethz.ch/R-manual/R-devel/library/tools/html/package_dependencies.html)
+with an explicit installed-package database; do not use its repository default.
+Use [`utils::installed.packages`](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/installed.packages.html)
+with explicit libraries and `noCache=TRUE`. Inspection neither solves nor repairs
+packages. Bind each member through the existing installed-package-tree hasher
+and `package_tree` records; do not relabel an aggregate closure hash as a package
+hash or add a parallel manifest, registry or dependency parser. Unrelated
+installed packages must not enter Run identity.
+
+One migration must cover namespace probing and immutable inspection, runtime
+binding, Doctor identity projection, discovery/publication, managed-generation
+sealing and repair qualification, materialization's Run identity, and lifecycle
+Attempt readmission. Preserve fixed check IDs and fresh namespace-load checks;
+adding bindings alone is insufficient because Doctor projects observations and
+lifecycle checks their exact roster. Re-admit closure membership, versions,
+resolved roots and bytes together. Changed dependencies create a distinct Run;
+retained Run/Attempt records and generation seals remain unchanged.
+
+Before implementation, decide:
+
+- Deterministic derived binding IDs, collision refusal, ordering, and how closure
+  observations coexist with the fixed check roster and declared Analysis roots.
+- Exact treatment of base/recommended packages under the selected R installation,
+  with no arbitrary site-library fallback; preserve ordinary renv cache links by
+  binding their resolved roots and retain managed-generation containment.
+- A successor to the fixed-roster v1 seal: historical readability, explicit
+  generation replacement, byte bound, and donor baseline versus borrower-specific
+  Analysis dependencies. Reuse existing orchestration package-tree fields.
+- Bounded enumeration/output/time and refusal of missing or ambiguous metadata,
+  changed graph membership, or links retargeted across enumeration and hashing.
+  Declared strong dependencies do not cover undeclared dynamic package use or
+  complete native shared-library identity.
+
+Prove the design with a tiny diamond/cycle dependency fixture, all three edge
+kinds, a missing member and an unrelated package. Transitive byte/edge changes
+must refuse readmission and change new Run identity; unrelated changes must not.
+Exercise normal cache links and retargeting, managed containment, Analysis roots,
+borrowing, generation repair and retained Attempt refusal without mutation.
+
+Keep the automatic-snapshot guard a separate future slice: force both
+`RENV_CONFIG_AUTO_SNAPSHOT=FALSE` and `options(renv.config.auto.snapshot=FALSE)`
+before either supported EMRYS activation branch in the reviewed `.Rprofile`,
+replacing its conditional default. Test inherited true environment/option values
+and unchanged lock/library bytes during inspection. Existing guarded subprocess
+selection remains shared; the vendored autoloader and explicit repair boundary
+remain intact. Measure product growth before seeking implementation authority.
