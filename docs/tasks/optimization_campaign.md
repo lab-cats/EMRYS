@@ -307,7 +307,9 @@ Retire only equivalent work inside the existing source-authority owner.
 Preserve executing-package bytes, build-origin and Attempt binding, and
 task-start/publication checks. An immutable Run does not make installed package
 bytes immutable and does not authorize caching across those boundaries.
-Related assurance work remains in the [polish campaign](polish-campaign.md).
+The [polish campaign](polish-campaign.md) retains the related assurance findings;
+the [October 1 owner completion](backlog_matrix.md#october-1-2026-owner-completion)
+ends that audit workstream without resolving these measurement questions.
 
 ### 13. Measure R runtime-probe startup overhead
 

@@ -1,5 +1,11 @@
 # DOCS-01 repository-wide working audit
 
+> Retained audit checkpoint: the [October 1 owner completion](backlog_matrix.md#october-1-2026-owner-completion)
+> ends this workstream. The findings, coverage gaps, ownership references and
+> proposed next steps below describe the recorded source review; they are not
+> current task assignments. Completion does not resolve every finding or
+> establish unmeasured savings or stronger evidence.
+
 The [findings matrix](#findings-matrix) is a temporary audit record for
 [DOCS-01](backlog_matrix.md). It records compression and accuracy observations, not
 accepted changes, guide expansion, task status, or new completion criteria.
@@ -305,10 +311,11 @@ permission to change or delete the source.
 - At `286f646a`, static stage-owner and schema checks added F173–F175; no product, test, CI, or cluster command ran.
 
 The [documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression)
-owns placement. DOCS-01 remains open until findings have an authoritative
-correction, transfer, dismissal, or deferral; backlog/link reconciliation and
-this record's disposition are also open. Exact evidence deletion requires a
-separate proposal, approval, and commit.
+owns placement. At this audit checkpoint, correction, transfer, dismissal or
+deferral of the findings and backlog/link reconciliation remained open. The
+later [owner completion](backlog_matrix.md#october-1-2026-owner-completion)
+ends the workstream without claiming those findings all resolved. Exact evidence
+deletion still requires a separate proposal, approval, and commit.
 
 ### Coverage so far
 
@@ -354,7 +361,7 @@ Of 199 records, 76 were dismissed after recheck; linked notes give reasons. The 
 | [F20](docs-01-discoveries.md#f20-independent-golden-migration-comparisons) | Dismissed after recheck | Independent-golden README keeps migration comparisons beside the literal oracle owner. | No lossless transfer, reader burden, or useful DOCS-01 reduction was established. |
 | [F21](docs-01-discoveries.md#f21-coordinator-contracts-no-write-section) | Reader-link precision | Coordinator contract has a 632-line no-write section without subheadings; owner-index and Runbook request/watch links land on the later Run/Results section. The configuration guide's valid planning link lands 140 lines before its named native-command rules. | Earlier selection, association and diagnostic rules differ from Results recovery; no DOCS-01 reduction is established. |
 | [F22](docs-01-discoveries.md#f22-coordinator-cross-owner-detail) | Dismissed after recheck | Coordinator README, contract, logging, runtime, and Runbook summaries overlap across distinct trust boundaries, including request/stream names. | Their index, publication, seal, prompt, diagnostic, and action rules serve distinct readers; no useful reduction is established. |
-| [F23](docs-01-discoveries.md#f23-init-details-in-the-runbook) | Recorded compression; route open | Baseline Runbook Init guidance mixes operator choices with hashing and file-identity internals; the approved PR slice removed 40 net lines from that section. | The generic route remains open with F05; DOCS-01 is not closed. |
+| [F23](docs-01-discoveries.md#f23-init-details-in-the-runbook) | Recorded compression; route open | Baseline Runbook Init guidance mixes operator choices with hashing and file-identity internals; the approved PR slice removed 40 net lines from that section. | At this audit checkpoint, the generic route remained open with F05 and DOCS-01 was not closed. |
 | [F24](docs-01-discoveries.md#f24-named-profile-procedure-placement) | Dismissed after recheck | Config guide holds named-profile commands; Runbook links to them and retains head-node Doctor/Run steps. | The routes and exact coordinator contract serve distinct roles; no duplicate procedure or useful saving exists. |
 | [F25](docs-01-discoveries.md#f25-reporting-decision-versus-migration-history) | Partial compression candidate | The reporting decision retains predecessor failure provenance and lasting compatibility rules; lines 216–225 also list retired private symbols whose current behavior has owner-local routes. | A narrower six-to-eight-line account might save two to four of ten local lines. Preserve the separate later summary-publication revision, logical producer, surviving rechecks and no-deletion limit; no net saving is verified. |
 | [F26](docs-01-discoveries.md#f26-alpha-carrier-note-in-reporting-readme) | Dismissed after recheck | Reporting README's five-line carrier note mixes a brief migration phrase with current collaborator API guidance. | Current types and positional guidance remain; isolated trimming has negligible value. |

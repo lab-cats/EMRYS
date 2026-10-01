@@ -21,23 +21,23 @@ authoritative only when selected through the existing workflow.
 
 ## Current follow-up scope
 
-The user assigned the broader follow-up work to this campaign:
-`DOCS-01`, `REDUCE-01`, `SIZE-01`, `ASSURANCE-01`, `SCHEMA-01`,
-`EXTENSION-01` and `RELEASE-01`. Their current status and full acceptance remain
-in the [main backlog](backlog_matrix.md#maintainability-and-release).
-This includes the repository-wide 600-line inventory and explicit exception
-dispositions, the 25% reduction target, broad code/test/protection/gate and
-documentation/contract audits, schema review, collaborator guidance and release
-planning. These outcomes remain accepted; none is a cluster-campaign closure
-gate. The focused novice-guide corrections and `INIT-01` through `INIT-03`
-were delivered through the cluster campaign's source-development sequence,
-which is now closed pending final verification.
+The remaining follow-up outcomes are `SCHEMA-01`, `EXTENSION-01` and
+`RELEASE-01`. Their status and acceptance remain in the
+[main backlog](backlog_matrix.md#maintainability-and-release).
+The [October 1 owner completion](backlog_matrix.md#october-1-2026-owner-completion)
+ends `DOCS-01`, `REDUCE-01`, `SIZE-01`, `ASSURANCE-01` and `QUAL-01` as active
+workstreams. Historical references below to their scope or proposed next steps
+retain the audit context; they do not assign continued work or establish
+unmeasured savings, resolved findings, or stronger evidence.
 
-The [ASSURANCE-01 repository audit](assurance-audit.md) records repository-wide
-findings and open questions; the main backlog retains status and acceptance.
-The [SIZE-01 repository-wide audit](size-01-audit.md) is this campaign's
-working path-by-path inventory and evidence review. It creates no separate
-task status or size-exception authority.
+The [ASSURANCE-01 audit](assurance-audit.md) and
+[SIZE-01 inventory](size-01-audit.md) remain evidence records, alongside the
+[documentation audit](docs-01-audit.md) and [reduction audit](reduce-01-audit.md).
+They create no separate status, implementation, or size-exception authority.
+None of these follow-ups is a cluster-campaign closure gate. The focused
+novice-guide corrections and `INIT-01` through `INIT-03` were delivered through
+the cluster campaign's source-development sequence, which is closed pending
+final verification.
 
 ## Evidence and selection
 

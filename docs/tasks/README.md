@@ -12,6 +12,9 @@ The [polish campaign](polish-campaign.md) holds audit findings and proposed
 follow-ups. The [optimization campaign](optimization_campaign.md) holds resource
 costs, tradeoffs, and measurement proposals. They support selection without
 creating another task-status list or permission to implement a proposal.
+The [October 1 owner completion](backlog_matrix.md#october-1-2026-owner-completion)
+records the completed maintenance workstreams. Their retained audits and
+companion discovery notes are historical findings, not continuing assignments.
 
 The [backlog and campaign audit](backlog_campaign_audit.md) is a working,
 revision-bound review of these documents. It records discrepancies and

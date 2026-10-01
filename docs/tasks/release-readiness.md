@@ -5,6 +5,9 @@ The backlog row alone owns its status, outcome, and acceptance. This document
 records the decisions to make, what the source currently establishes, the
 remaining checks, and the existing owners of related work. It is not a release
 approval or a second task-status register.
+The [October 1 owner completion](backlog_matrix.md#october-1-2026-owner-completion)
+supersedes this snapshot's routing to `DOCS-01`; documentation needed by a
+selected release remains with `RELEASE-01` and the affected subject owner.
 Before closing the card, reduce this working investigation to the concise
 readiness checklist; move lasting policy to its owner and let Git retain the
 investigation history.

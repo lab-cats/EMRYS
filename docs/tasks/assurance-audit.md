@@ -1,10 +1,16 @@
 # ASSURANCE-01 repository-wide audit
 
+> Retained audit checkpoint: the [October 1 owner completion](backlog_matrix.md#october-1-2026-owner-completion)
+> ends this workstream. The findings, coverage gaps, ownership references and
+> proposed next steps below describe the recorded source review; they are not
+> current task assignments. Completion does not resolve every finding or
+> establish unmeasured savings or stronger evidence.
+
 ## Scope and evidence
 
-This is the working investigation record for `ASSURANCE-01`. Its starting source is PR #302 at commit `42d02c5a38ecffaba59e58d5d56ba0ab858eda1f`. The audit covers the entire repository: product code, tests, fixtures, scripts, configuration, documentation checks, packaging, and CI. It is **incomplete**; the entries below are discoveries from successive source passes, not a conclusion that other areas are clear.
+This is the retained investigation record for `ASSURANCE-01`. Its starting source is PR #302 at commit `42d02c5a38ecffaba59e58d5d56ba0ab858eda1f`. The audit covers the entire repository: product code, tests, fixtures, scripts, configuration, documentation checks, packaging, and CI. Its source/fault review was **incomplete**; the entries below are discoveries from successive source passes, not a conclusion that other areas are clear.
 
-The [backlog matrix](backlog_matrix.md) owns the accepted outcome and task status. This document records evidence and questions. It authorizes no implementation, protection removal, coverage change, or evidence deletion. `QUAL-01` owns measured test cost; `HARNESS-01` owns simulated-science harness choices; `REPORT-ROSTER-01` owns the reporting roster decision.
+The [backlog matrix](backlog_matrix.md) owns the accepted outcome and task status. This document records evidence and questions. It authorizes no implementation, protection removal, coverage change, or evidence deletion. `QUAL-01` was the measured-test-cost owner at this checkpoint; `HARNESS-01` owns simulated-science harness choices; `REPORT-ROSTER-01` owns the reporting roster decision.
 
 All `path:line` references below refer to the pinned commit. **Source reviewed** means code or documentation was inspected, without execution in this audit. **Test characterized** means a committed test explicitly asserts the behavior; that test was not rerun for this record. **Inference** identifies a conclusion still needing a focused reproduction. No product or repository test suite, institutional Slurm run, scientific review, or biological validation was performed for this pass. Focused helper and tiny owner-path reproductions are identified in their entries; they do not execute a full Run or report transaction.
 

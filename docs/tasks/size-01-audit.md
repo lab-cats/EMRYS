@@ -1,12 +1,18 @@
 # SIZE-01 repository-wide file responsibility audit
 
-This working audit annex belongs to the [EMRYS polish campaign](polish-campaign.md#current-follow-up-scope). The [main findings matrix](backlog_matrix.md#maintainability-and-release) remains the sole authority for SIZE-01 status and acceptance. Observations and candidates here do not authorize implementation, evidence deletion, or a retained-file exception.
+> Retained audit checkpoint: the [October 1 owner completion](backlog_matrix.md#october-1-2026-owner-completion)
+> ends this workstream. The findings, coverage gaps, ownership references and
+> proposed next steps below describe the recorded source review; they are not
+> current task assignments. Completion does not resolve every finding or
+> establish unmeasured savings or stronger evidence.
+
+This retained audit annex belongs to the [EMRYS polish campaign](polish-campaign.md#current-follow-up-scope). The [main findings matrix](backlog_matrix.md#maintainability-and-release) remains the sole authority for SIZE-01 status and acceptance. Observations and candidates here do not authorize implementation, evidence deletion, or a retained-file exception.
 
 ## Scope and method
 
 Inventory snapshot: 3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d. This inventory covers every tracked, non-test text file at that commit, not just files changed on the integration branch. A file qualifies when it has more than 600 physical lines; a final line without a newline counts. The 38 qualifying files contain 56,985 lines: 15 coordinator Python files, 11 other Python files, two R files, four Markdown files, three dependency locks, one CI workflow, one JSON profile, and one stylesheet.
 
-The tables separate observed responsibility from the next question. A proposed reduction requires a caller-complete review of behavior, protection, evidence, and ownership. No path-specific size exception has been approved. If a file is retained above the limit, record its exact path, reason, explicit user approval, and a retirement condition when the exception is temporary.
+The tables separate observed responsibility from the next question. A proposed reduction requires a caller-complete review of behavior, protection, evidence, and ownership. At this audit checkpoint, no path-specific size exception had been approved. If a file is retained above the limit, record its exact path, reason, explicit user approval, and a retirement condition when the exception is temporary.
 
 The audit reviewed implementation, contracts, callers, tests, and documentation. Its findings are source observations; product tests, hosted CI, Slurm, scientific analysis, and report visual review are separate evidence layers.
 

@@ -86,10 +86,11 @@ this source-completeness disposition claims no new execution evidence.
 
 CV-U06's one-line accounting exception is approved and settled; it proves
 neither functional behavior nor institutional resource policy. CV-10's accepted
-trusted-workspace limitation remains with its recovery owner. Broader
-documentation, 25% code reduction, the explicit >600-line exception audit,
-assurance, schema, collaborator and release work remains accepted under the
-[polish campaign](polish-campaign.md#current-follow-up-scope). Deferred cleanup
+trusted-workspace limitation remains with its recovery owner. The
+[October 1 owner completion](backlog_matrix.md#october-1-2026-owner-completion)
+ends the five maintenance workstreams without promoting their evidence. The
+[polish campaign](polish-campaign.md#current-follow-up-scope) retains those audit
+records and coordinates the remaining schema, collaborator and release work. Deferred cleanup
 and complete guided operation transfer to `CLEANUP-01` and `INTERACTIVE-01` in
 the [main backlog](backlog_matrix.md#deferred-operational-work).
 

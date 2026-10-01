@@ -1,5 +1,11 @@
 # REDUCE-01 repository audit
 
+> Retained audit checkpoint: the [October 1 owner completion](backlog_matrix.md#october-1-2026-owner-completion)
+> ends this workstream. The findings, coverage gaps, ownership references and
+> proposed next steps below describe the recorded source review; they are not
+> current task assignments. Completion does not resolve every finding or
+> establish unmeasured savings or stronger evidence.
+
 This is a repository-wide finding record for [REDUCE-01](backlog_matrix.md#maintainability-and-release). The backlog matrix remains the authority for status and acceptance. Finding IDs below are navigation aids, not another task-status list or permission to implement a proposal.
 
 ## Snapshot and measurement

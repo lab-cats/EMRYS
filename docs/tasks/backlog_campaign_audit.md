@@ -9,6 +9,9 @@
 > earlier proposals to reopen `INIT-02`, CV-U22, or CV-26 are not current work
 > selection. This reconciliation does not resolve every audit finding or
 > promote baseline checks to final integration, institutional, or scientific proof.
+> The [October 1 owner completion](backlog_matrix.md#october-1-2026-owner-completion)
+> also supersedes references below that assign work to the five completed
+> maintenance workstreams; their findings and evidence remain historical.
 
 Baseline: `codex/pr302-original-intent-corrections` at
 `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d` (2026-09-22).
