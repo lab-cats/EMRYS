@@ -1116,13 +1116,14 @@ def _schedule(
             risks = []
             for request in slurm_submission.submission_requests(project):
                 context = request.context
-                if (
-                    context is None
-                    or context["command"] != "run"
+                if context is not None and (
+                    context["command"] != "run"
                     or context["profile_binding_sha256"] != profile.binding_sha256
                 ):
                     continue
-                retained = _retained_run_arguments(context)
+                retained = (
+                    _retained_run_arguments(context) if context is not None else None
+                )
                 try:
                     retained_intent = retained and _run_submission_intent(
                         retained, analysis_names

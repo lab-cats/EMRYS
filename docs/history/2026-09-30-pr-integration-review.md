@@ -205,3 +205,45 @@ environment-bound verification.
 No PR was closed, no branch/stash/evidence was deleted, and no merge, push or
 commit occurred during preparation. The owner subsequently approved the single
 local commit with the measured growth and evidence limits recorded here.
+
+
+## October 1 CI follow-up
+
+The owner approved the follow-up plan on 2026-10-01: repair CI, then the named
+FASTA, normalized scratch-root and Report-admission defects, followed by
+runtime-closure design, collaborator entry-point verification and release
+readiness. The approved correctness exception is at most 100 additional net
+product lines across these named repairs, with no new product files. The five
+maintenance audits are separately [complete by owner direction](../tasks/backlog_matrix.md#october-1-2026-owner-completion).
+Merging, production/site execution, evidence deletion and scientific acceptance
+remain outside this approval.
+
+The ordinary [PR run](https://github.com/lab-cats/EMRYS/actions/runs/36812449696)
+and selected [extended run](https://github.com/lab-cats/EMRYS/actions/runs/36812476356)
+failed on `213d67be8ebb3953cb0aa3c09818f95263aa1685`. Python 3.14 and 3.11 exposed
+a duplicate-submission regression and two stale test assumptions. Managed
+restoration also failed its strict lock synchronization check; all selected
+real-synthetic scenarios were skipped behind that preparation failure. Those
+skips establish no E2E result.
+
+The Python repair keeps unadmitted retained contexts in the existing unknown-risk
+path. Only an admitted context can establish an unrelated command, profile or
+intent. The existing scheduler observer supplies UNKNOWN without querying Slurm;
+the existing explicit duplicate override remains available. No second intent
+parser, scheduler query or recovery mechanism was added. Strict v4 request
+validation remains unchanged. The public-stop fixture now uses the existing
+controlled interpreter argument builder; the E2E admission assertion applies
+to noninteractive output, while the interactive case retains its exact output,
+submission count and retained-record assertions. The collision fault fixture
+uses the explicit duplicate override to reach its distinct no-clobber boundary.
+
+An independent review found no correctness defect in this repair. Local checks
+used an isolated, locked Python 3.13.15 environment restored through `uv`, with
+an editable installation of this worktree. The focused submission selection
+passed 44 tests; the additional malformed-intent selection passed six. Two
+Linux native cancellation cases were skipped on macOS and require hosted CI.
+Ruff correctness, formatting, Python syntax and whitespace checks passed.
+The Python repair adds one net product line and 19 net protection/test lines;
+the owner contract adds three lines. No product file, public interface, schema,
+mutable-state owner or evidence artifact was added or removed. These local
+results do not establish Python 3.11/3.14 full-suite or scheduler acceptance.

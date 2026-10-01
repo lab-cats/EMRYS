@@ -451,6 +451,9 @@ verbosity, reporting and confirmation choices are not work identity. Retained
 v1-v4 request records remain unchanged and are projected through the public Run
 parser; an active or unconfirmed record with the same profile binding whose Run
 selectors cannot be reconstructed is conservatively not treated as distinct.
+A malformed or partial record whose context cannot be admitted cannot establish
+an unrelated command, profile or intent; it remains an unknown duplicate risk
+without a scheduler query.
 
 A matching or identity-unconfirmed request whose scheduler state is active or
 cannot be confirmed terminal produces a prominent duplicate-risk warning and

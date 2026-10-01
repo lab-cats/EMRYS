@@ -4906,20 +4906,23 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     request_roots = list((workspace / "logs").iterdir())
     assert len(request_roots) == 1
     assert request_roots[0].name.startswith("submission-")
-    completed = subprocess.CompletedProcess(
-        ("emrys", "run"), 0, captured.out, captured.err
-    )
     submitted_job = e2e_driver.parse_submission(captured.out, workspace / "logs")
-    assert (
-        e2e_driver.admit_submission_request(
-            completed,
-            arguments.project,
-            submitted_job,
-            command="run",
-            requested_run=None,
+    if execute:
+        # The E2E driver consumes noninteractive command output; this TTY
+        # double does not echo the confirmation response or its newline.
+        completed = subprocess.CompletedProcess(
+            ("emrys", "run"), 0, captured.out, captured.err
         )
-        == request_roots[0]
-    )
+        assert (
+            e2e_driver.admit_submission_request(
+                completed,
+                arguments.project,
+                submitted_job,
+                command="run",
+                requested_run=None,
+            )
+            == request_roots[0]
+        )
     with pytest.raises(e2e_driver.DriverError, match="observed 0"):
         e2e_driver.parse_submission_request(
             subprocess.CompletedProcess(("emrys", "run"), 0, captured.out, ""),
@@ -5328,17 +5331,24 @@ def test_unprojectable_matching_request_fails_closed_without_rewriting_it(
     assert _submission_request_roots(arguments.project) == before_roots
 
 
+@pytest.mark.parametrize(
+    "missing_record", ("sbatch.stdout", "request.json", "malformed")
+)
 def test_unconfirmed_matching_request_fails_closed_without_scheduler_query(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    missing_record: str,
 ) -> None:
     arguments = _valid_scheduled_run_arguments(tmp_path)
     submissions = _record_scheduled_submissions(monkeypatch)
     assert control.run_from_args(arguments) == 0
     capsys.readouterr()
     (request,) = control.slurm_submission.submission_requests(arguments.project)
-    (request.request_root / "sbatch.stdout").unlink()
+    if missing_record == "malformed":
+        (request.request_root / "request.json").write_bytes(b"{")
+    else:
+        (request.request_root / missing_record).unlink()
     monkeypatch.setattr(
         control.slurm_submission.scheduler_observation,
         "command_bytes",
@@ -5354,6 +5364,12 @@ def test_unconfirmed_matching_request_fails_closed_without_scheduler_query(
     assert "scheduler state UNKNOWN" in blocked
     assert _file_snapshot(arguments.project.parent) == before
     assert _submission_request_roots(arguments.project) == before_roots
+
+    arguments.allow_duplicate_submission = True
+    assert control.run_from_args(arguments) == 0
+    assert len(submissions) == 2
+    assert "DUPLICATE SUBMISSION RISK" in capsys.readouterr().err
+    assert {path: path.read_bytes() for path in before} == before
 
 
 @pytest.mark.parametrize(
@@ -5373,6 +5389,7 @@ def test_submission_request_failure_preserves_partial_evidence_before_sbatch(
     request_root = arguments.project.parent / "logs" / ("submission-" + "a" * 32)
     monkeypatch.setattr(control.uuid, "uuid4", lambda: SimpleNamespace(hex="a" * 32))
     if failure == "collision":
+        arguments.allow_duplicate_submission = True
         request_root.mkdir(parents=True)
         (request_root / "preserved").write_bytes(b"prior request evidence")
     elif failure == "context_open":
@@ -6712,15 +6729,17 @@ def _public_native_cancellation_child(
                 "scheduler_stderr_pattern": str(
                     workspace / "logs" / f"{resume_job_name}-%j.err"
                 ),
-                "emrys_argv": [
-                    sys.executable,
-                    "-m",
-                    "emrys",
-                    "resume",
-                    run_id,
-                    "--project",
-                    str(project),
-                ],
+                "emrys_argv": list(
+                    controlled_python_argv(
+                        sys.executable,
+                        "-m",
+                        "emrys",
+                        "resume",
+                        run_id,
+                        "--project",
+                        str(project),
+                    )
+                ),
             }
             (resume_request / "request.json").write_bytes(
                 control.slurm_submission.orchestration_contracts.canonical_json_bytes(
