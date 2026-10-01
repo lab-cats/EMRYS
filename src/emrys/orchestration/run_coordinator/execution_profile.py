@@ -357,7 +357,10 @@ def _merge_profile(target: dict[str, Any], fragment: Mapping[str, Any]) -> None:
 
 
 def _absolute_nonroot_path(value: str) -> Path:
-    return Path(os.path.abspath(value))
+    path = Path(os.path.abspath(value))
+    if path == Path(path.anchor):
+        raise ExecutionProfileError(f"Path must not be a filesystem root: {value!r}")
+    return path
 
 
 def _admit_placement(document: Any) -> Placement:

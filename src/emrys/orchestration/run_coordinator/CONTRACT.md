@@ -765,12 +765,19 @@ new invocation and review. An unavailable or invalid explicit selection is
 `NOT ADMITTED` and never falls back to the Project default. Profile selection
 does not select a different runtime inventory or skip runtime/storage checks.
 
-Standalone report execution also reads the default profile and uses the same
-Slurm transport; its preview is local and read-only. A preview that proposes
-new reports admits its selected profile before showing submission settings;
-already-complete reports require no new submission profile. Automatic reporting stays
-in the Run's existing allocation. Initial Viking selection changes placement
+Standalone report execution admits the Run and checks existing report reuse
+before selecting a profile or submitting a Slurm job. Already-complete reports
+require no profile, submission or application log, including with `--execute`.
+Incomplete eligible reporting uses the selected profile and shared Slurm
+transport; generation re-admits current state in the execution context. Its
+local read-only preview admits the selected profile before showing submission
+settings. Automatic reporting stays in the Run's existing allocation.
+Initial Viking selection changes placement
 only, not the scientific resource policy or Run identity.
+
+Execution-profile admission rejects scratch-parent and module-initialization
+paths that normalize to a filesystem root. Other absolute paths normalize
+lexically without requiring compute-node paths to exist on the submitting host.
 
 Packaged workflow CPU and memory limits use `allocation`; STAR indexing threads
 and memory use `workflow`. Repeated stages use `auto` concurrency and shared

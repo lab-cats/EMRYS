@@ -158,10 +158,28 @@ def _require_successful_results(state: inspection.RunInspection) -> None:
         raise ReportingOperationError("Reporting requires a successful Attempt receipt")
 
 
-def _admit_generation(state: inspection.RunInspection) -> Any:
-    assert state.latest_attempt is not None
+def reuse_reporting(
+    state: inspection.RunInspection,
+) -> ReportingOperationOutcome | None:
+    """Admit reporting eligibility and return an already verified projection."""
+
+    _require_successful_results(state)
+    if state.reporting_status == "not applicable":
+        raise ReportingOperationError(
+            "Reporting is not applicable to this partial scientific Run"
+        )
     if state.reporting_status == "blocked":
         raise ReportingOperationError("Reporting state is blocked")
+    if state.reporting_status == "complete":
+        return ReportingOperationOutcome(
+            status="reused",
+            verified_report_locations=state.verified_report_locations,
+        )
+    return None
+
+
+def _admit_generation(state: inspection.RunInspection) -> Any:
+    assert state.latest_attempt is not None
 
     identifier = str(state.latest_attempt["workflow_attempt_id"])
     attempt_path = state.run_root / "attempts" / identifier / "attempt.json"
@@ -271,16 +289,9 @@ def run_reporting(
 
     try:
         state = inspection.inspect_run(run_root)
-        _require_successful_results(state)
-        if state.reporting_status == "not applicable":
-            raise ReportingOperationError(
-                "Reporting is not applicable to this partial scientific Run"
-            )
-        if state.reporting_status == "complete":
-            return ReportingOperationOutcome(
-                status="reused",
-                verified_report_locations=state.verified_report_locations,
-            )
+        reused = reuse_reporting(state)
+        if reused is not None:
+            return reused
         identity = _admit_generation(state)
         run_id = str(identity.execution["run_id"])
         for output in (

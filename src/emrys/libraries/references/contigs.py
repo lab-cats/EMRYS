@@ -28,7 +28,8 @@ def parse_fasta_lines(lines: Iterable[str]) -> list[tuple[str, int]]:
         if raw_line.startswith(">"):
             if name is not None:
                 result.append((name, length))
-            name = raw_line[1:].split()[0]
+            header = raw_line[1:].split()
+            name = header[0] if header else ""
             if not name or name in seen:
                 _fail(f"FASTA has empty or duplicate contig: {name!r}")
             seen.add(name)

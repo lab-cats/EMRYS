@@ -247,3 +247,42 @@ The Python repair adds one net product line and 19 net protection/test lines;
 the owner contract adds three lines. No product file, public interface, schema,
 mutable-state owner or evidence artifact was added or removed. These local
 results do not establish Python 3.11/3.14 full-suite or scheduler acceptance.
+
+
+### Named admission repairs
+
+The ordinary [follow-up run](https://github.com/lab-cats/EMRYS/actions/runs/36818385910)
+completed on `9d34825211412332d42d9348ceca00a20fa370d5`. All four Python 3.14
+shards and the complete-suite coverage policy passed, as did Python 3.11 smoke,
+static/docs/wheel, workflow lint, shell, guarded R and the three managed-userspace
+checks. Managed golden restoration remained failed: renv 1.2.3 selected
+S4Arrays 1.12.1 instead of locked 1.12.0, and the strict synchronization check
+rejected it. No complete Python 3.11 or selected synthetic-E2E pass is claimed.
+The exact archived scientific package remains available. A separately reviewed
+renv 1.2.4 proposal preserves all scientific package pins; its approval was still
+pending when these independent admission repairs were prepared.
+
+- Empty FASTA headers now enter the existing `ReferenceContigError` path. The
+  shared parser serves Init, reference sidecars, split-N validation, provenance
+  and the STAR wrapper; no caller-specific parser was added. Existing valid-name,
+  ordering, length and other refusal behavior remains in place. Thirty focused
+  tests and five tiny caller probes passed.
+- The existing profile path normalizer now refuses lexical filesystem roots for
+  both scratch parents and module initialization. Nonexistent compute-side paths
+  still admit without submitting-host existence checks; compute-side canonical
+  root protection remains separate. Sixty-one profile tests passed.
+- Report eligibility and complete reuse share one existing reporting-owner policy
+  before profile selection or scheduling. Already-complete execution is read-only
+  and needs no profile, job or application log. Incomplete generation retains
+  delegate admission and fresh execution-context inspection. Forty-nine focused
+  reporting tests passed, including actual failed/obsolete Run refusal and
+  preserved transport/logging fault assertions.
+
+Independent review found no blocking defect. These local Python 3.13.15 fixture
+checks do not establish final-commit hosted CI, real report rendering, scheduler,
+site or scientific acceptance. Ruff correctness/format and whitespace checks
+passed. The three repairs add 23 net product lines (FASTA 1, profile 3, Report 19);
+with the earlier CI repair the approved exception uses 24 of 100 lines. There are
+no new product files, schema changes, package installations in product execution,
+new registries or evidence deletions. Tests and documentation are separate from
+this product accounting.

@@ -5469,6 +5469,11 @@ def test_public_slurm_errors_keep_control_exit_and_never_retry(
         run_id = "run-" + "a" * 64
         if command == "report":
             (project.parent / "runs" / run_id).mkdir(parents=True)
+            monkeypatch.setattr(
+                control.inspection,
+                "inspect_run",
+                lambda _root: _reporting_inspection(complete=False),
+            )
     profile_path = _slurm_profile(
         root,
         cpus_per_task=12,
@@ -5687,7 +5692,13 @@ def test_delegated_operation_records_request_before_preparation_in_one_unique_lo
         raise reporting_operation.ReportingOperationError("fixture reporting failure")
 
     monkeypatch.setattr(control.doctor, "diagnose_project", preflight)
-    monkeypatch.setattr(control.inspection, "inspect_run", preflight)
+    monkeypatch.setattr(
+        control.inspection,
+        "inspect_run",
+        (lambda _root: _reporting_inspection(complete=False))
+        if command == "report"
+        else preflight,
+    )
     monkeypatch.setattr(reporting_operation, "run_reporting", report)
     for _ in range(2):
         assert getattr(control, f"{command}_from_args")(arguments) == (
@@ -5916,6 +5927,18 @@ def test_execution_log_preserves_receipt_and_reporting_boundary(
         assert "Scientific work complete; reporting was skipped." in captured.err
 
 
+def _reporting_inspection(*, complete: bool, locations=()) -> SimpleNamespace:
+    return SimpleNamespace(
+        integrity="valid",
+        attempt_outcome="succeeded",
+        results_status="complete",
+        latest_attempt={},
+        latest_receipt={"status": "succeeded"},
+        reporting_status="complete" if complete else "incomplete",
+        verified_report_locations=locations,
+    )
+
+
 @pytest.mark.parametrize(
     (
         "outcome_status",
@@ -5947,7 +5970,7 @@ def test_standalone_report_logging_boundary(
     run_root = workspace / "runs" / ("run-" + "a" * 64)
     run_root.mkdir(parents=True)
     project.write_text("report selection anchor\n", encoding="utf-8")
-    if execute_requested or outcome_status == "planned":
+    if outcome_status != "reused":
         profile = workspace / "runtime/profiles/default.yaml"
         profile.parent.mkdir(parents=True)
         profile.write_bytes(project_default_profile_bytes())
@@ -5990,7 +6013,15 @@ def test_standalone_report_logging_boundary(
         execute=execute_requested,
     )
     monkeypatch.setattr(reporting_operation, "run_reporting", report)
-    if not execute_requested and outcome_status == "reused":
+    monkeypatch.setattr(
+        inspection,
+        "inspect_run",
+        lambda _root: _reporting_inspection(
+            complete=outcome_status == "reused", locations=locations
+        ),
+    )
+    if outcome_status == "reused":
+        arguments.profile = "../unsupported"
         monkeypatch.setattr(
             control,
             "_resolve_execution_profile",
@@ -6034,7 +6065,14 @@ def test_standalone_report_logging_boundary(
     else:
         assert control.report_from_args(arguments) == 0
     generated = execute_requested and outcome_status == "generated"
-    assert calls == [execute_requested]
+    assert calls == (
+        [] if execute_requested and outcome_status == "reused" else [execute_requested]
+    )
+    if outcome_status == "reused":
+        assert {
+            path: path.read_bytes() if path.is_file() else None
+            for path in tmp_path.rglob("*")
+        } == before
     rendered = capsys.readouterr().err
     assert f"Reporting: {outcome_status}" in rendered
     assert ("Execution placement: Direct" in rendered) is (outcome_status == "planned")
@@ -6080,6 +6118,47 @@ def test_planned_report_rejects_an_unavailable_or_unsupported_profile_without_wr
     assert "Reporting: planned" not in output.err
     assert "Execution placement:" not in output.err
     assert sorted(tmp_path.rglob("*")) == before
+
+
+@pytest.mark.parametrize(
+    "obsolete", (False, True), ids=("failed-results", "obsolete-run")
+)
+def test_report_execution_refuses_ineligible_run_before_profile_or_submission(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys, obsolete: bool
+) -> None:
+    plan = _plan(tmp_path)
+    _failed_run(plan)
+    if obsolete:
+        record = json.loads(plan.execution_path.read_bytes())
+        record["schema_version"] = "emrys.run-binding.v0"
+        plan.execution_path.write_bytes(
+            orchestration_contracts.canonical_json_bytes(record)
+        )
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail(
+            "Ineligible reporting selected a profile, submitted or opened a log"
+        )
+
+    monkeypatch.setattr(control, "_resolve_execution_profile", forbidden)
+    monkeypatch.setattr(control.slurm_submission, "submit", forbidden)
+    monkeypatch.setattr(control, "open_attempt_log", forbidden)
+    arguments = _command_arguments(
+        plan.run.analysis.source_path, run=plan.run.run_id, execute=True
+    )
+    before = _file_snapshot(tmp_path)
+    before_paths = sorted(tmp_path.rglob("*"))
+
+    assert control.report_from_args(arguments) == 2
+    error = capsys.readouterr().err
+    assert "emrys: error:" in error
+    assert (
+        "Unsupported application record"
+        if obsolete
+        else "Reporting requires a successful Attempt with complete Results"
+    ) in error
+    assert _file_snapshot(tmp_path) == before
+    assert sorted(tmp_path.rglob("*")) == before_paths
 
 
 def test_watch_report_handoff_freshly_refuses_ineligible_run_without_writes(
@@ -6152,6 +6231,11 @@ def test_standalone_report_uses_project_slurm_placement(
 
     scheduler = control.slurm_submission
     monkeypatch.setattr(reporting_operation, "run_reporting", report)
+    monkeypatch.setattr(
+        inspection,
+        "inspect_run",
+        lambda _root: _reporting_inspection(complete=False),
+    )
     monkeypatch.setattr(
         scheduler,
         "submit",

@@ -756,6 +756,50 @@ def test_tracked_execution_profile_examples_are_admissible(
     assert profile.placement.memory_mb == 0
 
 
+@pytest.mark.parametrize("field", ("scratch_parent", "module_init"))
+@pytest.mark.parametrize("value", ("/.", "/tmp/..", "//", "//tmp/.."))
+def test_slurm_paths_reject_normalized_filesystem_roots(
+    tmp_path: Path, field: str, value: str
+) -> None:
+    placement = _slurm_placement(tmp_path)
+    if field == "scratch_parent":
+        placement[field] = value
+    else:
+        placement["modules"] = {"mode": "exact", "init": value, "load": ["site/1"]}
+    selected = _write_profile(
+        tmp_path / "profile.yaml",
+        {"schema_version": execution_profile.SCHEMA_VERSION, "placement": placement},
+    )
+
+    with pytest.raises(ExecutionProfileError, match="must not be a filesystem root"):
+        load_execution_profile(config_path=selected)
+
+
+@pytest.mark.parametrize("suffix", ("compute-only", "unused/../compute-only/."))
+def test_slurm_paths_normalize_without_requiring_compute_paths_locally(
+    tmp_path: Path, suffix: str
+) -> None:
+    placement = _slurm_placement(tmp_path)
+    placement["scratch_parent"] = f"{tmp_path}/{suffix}"
+    placement["modules"] = {
+        "mode": "exact",
+        "init": f"{tmp_path}/{suffix}/modules.sh",
+        "load": ["site/1"],
+    }
+    selected = _write_profile(
+        tmp_path / "profile.yaml",
+        {"schema_version": execution_profile.SCHEMA_VERSION, "placement": placement},
+    )
+
+    profile = load_execution_profile(config_path=selected)
+
+    assert isinstance(profile.placement, SlurmPlacement)
+    assert profile.placement.scratch_parent == tmp_path / "compute-only"
+    assert profile.placement.module_init == tmp_path / "compute-only/modules.sh"
+    assert not (tmp_path / "compute-only").exists()
+    assert not (tmp_path / "unused").exists()
+
+
 def test_exact_module_realization_is_typed(tmp_path: Path) -> None:
     placement = _slurm_placement(tmp_path)
     placement["modules"] = {

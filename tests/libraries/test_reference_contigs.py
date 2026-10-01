@@ -75,6 +75,9 @@ def test_fasta_uses_explicit_utf8_while_sidecars_use_default_decoding(
     ("text", "message"),
     [
         ("AC\n", "FASTA sequence appears before its header"),
+        (">\nA\n", "FASTA has empty or duplicate contig: ''"),
+        ("> \t\nA\n", "FASTA has empty or duplicate contig: ''"),
+        (">chr1\nA\n>\nT\n", "FASTA has empty or duplicate contig: ''"),
         (">chr1\nAC1\n", "FASTA has invalid sequence characters for chr1"),
         (">chr1\nA\n>chr1\nC\n", "FASTA has empty or duplicate contig: 'chr1'"),
         (
@@ -93,13 +96,6 @@ def test_fasta_failures_preserve_exact_messages(
     with pytest.raises(REFERENCE_CONTIGS.ReferenceContigError) as raised:
         REFERENCE_CONTIGS.parse_fasta(path)
     assert str(raised.value) == message
-
-
-def test_fasta_empty_header_preserves_raw_index_error(tmp_path: Path) -> None:
-    path = tmp_path / "genome.fa"
-    path.write_text(">   \nA\n", encoding="utf-8")
-    with pytest.raises(IndexError):
-        REFERENCE_CONTIGS.parse_fasta(path)
 
 
 def test_fasta_duplicate_membership_work_grows_linearly() -> None:

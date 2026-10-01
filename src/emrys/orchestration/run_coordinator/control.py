@@ -2134,6 +2134,10 @@ def report_from_args(
         return 0
 
     try:
+        reused = reporting_operation.reuse_reporting(inspection.inspect_run(root))
+        if reused is not None:
+            _print_reporting_outcome(reused)
+            return 0
         overrides = ResourceOverrides()
         profile, scheduler_job_id = _resolve_execution_profile(
             arguments, project_path, overrides
@@ -2147,7 +2151,11 @@ def report_from_args(
                 overrides,
                 workspace,
             )
-    except _CONTROL_ERRORS as exc:
+    except (
+        *_CONTROL_ERRORS,
+        reporting_operation.ReportingOperationError,
+        OSError,
+    ) as exc:
         return _control_failure(exc)
 
     execution_attempt_id = f"application-{uuid.uuid4().hex}"
