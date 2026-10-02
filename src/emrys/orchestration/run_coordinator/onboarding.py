@@ -2287,7 +2287,7 @@ def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--from-project",
         metavar="SOURCE",
-        help="Reuse a source Project's managed tools; --execute seals the selected generation before selection.",
+        help="Reuse a source Project's managed tools; publication seals the selected generation before selection.",
     )
     parser.add_argument(
         "--execute",
@@ -2300,7 +2300,7 @@ def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--replace",
         action="store_true",
-        help="Replace an existing shared selection from the same source Project; preview remains no-write without --execute.",
+        help="Replace an existing shared selection from the same source Project after confirmation or with --execute.",
     )
     parser.set_defaults(_command_parser=parser)
 

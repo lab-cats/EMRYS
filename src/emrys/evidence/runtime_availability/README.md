@@ -75,8 +75,10 @@ checks performed, not successful workflow execution or scientific validity.
 ## Sealed managed runtime reuse
 
 `emrys runtime discover --project BORROWER --from-project SOURCE` probes a
-distinct managed source without writing. `--execute` publishes its initial
-`runtime/shared.json` seal before creating the dependent Project's inventory.
+distinct managed source and previews the selection. Terminal confirmation or
+`--execute` publishes its initial `runtime/shared.json` seal before creating
+the dependent Project's inventory. Declining or noninteractive omission of
+`--execute` leaves both Projects unchanged.
 Both Projects must admit. The destination inventory must be absent unless
 `--replace` selects a new generation from the same source Project. The
 source's selected native/R targets and resolved package roots must stay inside

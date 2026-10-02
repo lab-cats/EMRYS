@@ -204,8 +204,8 @@ def _add_onboarding_commands(command_parsers: Any) -> None:
                 "discover_runtime",
                 "Inspect the active environment and admit one Project runtime.",
                 "Discover one unambiguous fixed-workflow runtime, run its readiness "
-                "probes, and optionally publish the Project-owned inventory. Discovery "
-                "is read-only unless --execute is supplied.",
+                "probes, and preview the Project-owned inventory. Publish after terminal "
+                "confirmation or with --execute for automation.",
                 "runtime_discovery",
             ),
         ),
