@@ -44,11 +44,19 @@ fixture evidence, not ordinary unpaused Viking cancellation. Lost workers,
 preexisting services, remote delegation and ambiguous historical Tasks remain
 outside that positive claim.
 
-The [September 23 archive audit](../../../docs/tasks/docs-01-discoveries-seventh.md#retained-hosted-archive-inspection-at-496846d5)
-checked the first two artifacts' bytes and selected logs; it did not inspect
-artifact `10411245477`. Archive-reported checkout values do not independently
-prove the worker checkout. Later timeout-warning and prepared-finalization
+The [September 23 archive audit](https://github.com/lab-cats/EMRYS/blob/06f88dbca7161599d7445f8cb2bfedf58f377282/docs/tasks/docs-01-discoveries-seventh.md#retained-hosted-archive-inspection-at-496846d5)
+read four ZIPs from temporary storage: CV-10 `10407865575` (7461300 bytes,
+32 passed/93 deselected), `10410455801` (7696940 bytes, 47 passed/96 deselected),
+and CV-26 `10387257383`/`10407268954` (6825885/9209702 bytes). All ZIP integrity,
+size and SHA-256 checks matched the cited records. The two native cancellation
+rosters were empty; the later final artifact `10411245477` was not inspected.
+The Doctor archives matched donor/borrower zero exits and wall times, and the
+four-trial one/two/two/one-worker comparisons, ordered observations and donor
+hash lists; exact counters/limits stay with the [CI owner](../../../.github/workflows/README.md#doctor-namespace-experiment-disposition).
+No artifacts entered the repository, and future hosted/copy availability was not
+established. This was archive inspection, not new test, CI or site execution. Archive-reported checkout values do not independently prove the
+worker checkout. Later timeout-warning and prepared-finalization
 extensions have separate evidence. These results neither explain nor recover
 the original E09 Run, and do not establish institutional cancellation/recovery.
-[CV-10](../../../docs/tasks/cluster_verification_backlog.md#cv-10-external-cancellation-and-recovery)
+[CV-10](../../../docs/tasks/backlog_matrix.md#submission-failure-and-recovery)
 retains the outstanding campaign acceptance; unclosed historical Runs remain untouched.

@@ -63,15 +63,23 @@ The [September 14 Viking walkthrough](https://github.com/lab-cats/EMRYS/blob/434
 combined operator-supplied output and source review; its raw site logs were
 operator-held. Its selected revision was `7c427f0ca50de17bbcc9983571fa49acf167f187`, while the later campaign reviewed
 `f2c0149e73a685b6f3d5b162f3804edee7c78c10`; neither identifies every installed
-package, Run or Attempt. Manual setup job `614786` restored 71 R packages;
+package, Run or Attempt. Manual setup job `614786` restored 71 R packages in 600 seconds;
 the operator then reported successful head-node finalization for qualification
 `cfcf7f788fd9d949f1a23f17793ecf22ba1e05f1023bc3b49065eebc0280186f`, retained
 under `.emrys-storage-qualification/` in the `emrys-smoke` Project's parent.
 That manual result does not qualify the later automated Doctor journey.
+The operator had reported successful fresh installation and synthetic Project
+validation before the first scientific Run. The [original approved slice](https://github.com/lab-cats/EMRYS/blob/06f88dbca7161599d7445f8cb2bfedf58f377282/docs/tasks/backlog_matrix.md#viking-walkthrough-findings)
+allowed 750 net product lines, no new product files or receipt formats, and Rich;
+that dated allowance is not a current grant. Product/tests/docs/configuration and
+evidence accounting remain separate. Historical memory jobs and the E02/E10
+observations live with [resource provenance](resources/README.md#resource-policy-provenance).
 
 The first post-install qualification failure (E01) remains unexplained. After
 the batch username correction, operator inspection reported a successful
-synthetic resume, 151 artifacts and a 3:52 Attempt; HTML visual review was
+synthetic resume, 151 artifacts and a 3:52 Attempt; the preceding startup failure
+had retained a failed Attempt with recovery available and no completed scientific
+milestones. HTML visual review was
 explicitly deferred (E03/E04). Temporarily missing report receipts later
 appeared without repair (E06); publication overlap and filesystem visibility
 remain competing explanations. Current acceptance does not require reconstructing
@@ -86,7 +94,14 @@ manual inventory reuse was not proof of the later public sharing lifecycle
 verification time over ten minutes did not attribute stage demand or latency
 (E07/E10/E11). The September 16 report of a walkthrough approaching an hour also
 lacked phase-resolved site measurements. These are historical evidence limits,
-not a new site result or a Doctor speedup claim.
+not a new site result or a Doctor speedup claim. E07 concerned a six-library,
+three-pair study with 25 partitions, legacy-bundle inspection, a long creation
+command and manual profile edit; several quiet admission minutes did not measure
+hashing versus reference-check cost. The [frozen E01–E12 register](https://github.com/lab-cats/EMRYS/blob/06f88dbca7161599d7445f8cb2bfedf58f377282/docs/tasks/cluster_verification_campaign.md#evidence-register)
+retains every original observation. The historical automated head-node Doctor
+journey passed hosted disposable-Slurm [CI 34885186045](https://github.com/lab-cats/EMRYS/actions/runs/34885186045)
+at `e25b10c6`; it was not Viking qualification or a production-profile requirement.
+Remaining acceptance lives in the [cluster card groups](../../../../docs/tasks/backlog_matrix.md#cluster-card-dispositions).
 
 Doctor's structural correction at `593f6e728321f535817bcde732d263c2f86079a8`
 removed one intervening full head diagnosis: five total diagnoses became four,

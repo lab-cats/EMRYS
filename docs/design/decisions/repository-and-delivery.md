@@ -61,9 +61,10 @@ owns the commands.
 - Every non-test file over 600 physical lines requires an explicitly
   user-authorized exception recording its path, reason, and approval, plus a
   retirement condition if temporary. The [maintainability backlog](../../tasks/backlog_matrix.md#maintainability-and-release)
-  owns acceptance; the [polish campaign](../../tasks/polish-campaign.md#current-follow-up-scope)
-  retains the inventory and exception-review records, outside cluster campaign
-  closure. The [owner completion](../../tasks/backlog_matrix.md#october-1-2026-owner-completion)
+  owns acceptance. The [engineering findings](../../tasks/contracts-engineering-findings.md)
+  retain distinct size observations and the frozen inventory reference. Record
+  each approved exception beside its functional owner with its exact scope;
+  a historical inventory or audit completion is not an exception. The [owner completion](../../tasks/backlog_matrix.md#october-1-2026-owner-completion)
   of the audit workstreams does not waive this rule or grant blanket exceptions.
   This rule adds no automated size gate.
 - Coverage is a regression signal, not a replacement for scenario, transaction,

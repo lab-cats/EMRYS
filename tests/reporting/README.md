@@ -83,3 +83,15 @@ These observations are real-tool, synthetic, one-VM, single-node-Slurm evidence
 only. They establish neither CSU Viking execution, multi-node or distributed
 behavior, production-scale performance, production-data correctness, completed
 scientific review, nor biological validation.
+
+## Rendered report review
+
+[Shared report acceptance](../../docs/tasks/backlog_matrix.md#shared-report-acceptance)
+keeps scientific and evidence/operations reports distinct. Retain exact-revision
+observations for representative long content, collapsed sections, keyboard use,
+zoom/narrow reflow, meaningful screen-reader structure, links into disclosures and
+complete print output. Review a copied full Results tree with its relative files,
+fragments and checksums; copying rendered HTML alone is a different claim.
+HTML structure or style-string tests, receipts and successful rendering calls are
+not browser/print proof. Visual acceptance establishes no scientific or biological
+validity and does not select a third report or a new reporting framework.

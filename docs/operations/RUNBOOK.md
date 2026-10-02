@@ -731,4 +731,5 @@ separate maintenance work.
 production, and validation commands. It previews by default; `--execute` writes
 trials, logs, wall time, peak child memory, and validation status. Recommendations
 apply only to the tested data, host, runtime, memory, and storage. EMRYS never
-applies them automatically.
+applies them automatically. Follow the [measurement and adoption rules](../../scripts/README.md#measurement-and-adoption)
+when choosing a comparison and interpreting timing, memory, I/O and disk figures.

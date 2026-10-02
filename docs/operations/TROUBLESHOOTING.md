@@ -280,6 +280,6 @@ terminal Attempt receipt and no recovery, and instructed the operator not to
 resume. That Run remains untouched. This is distinct from E09, with no proved
 failure cause. Later local warning/forwarding checks and prepared-finalization
 support neither establish a real Slurm timeout/recovery result nor make either
-historical Run recoverable. [CV-10](../tasks/cluster_verification_backlog.md#cv-10-external-cancellation-and-recovery)
+historical Run recoverable. [CV-10](../tasks/backlog_matrix.md#submission-failure-and-recovery)
 retains institutional acceptance; follow the admitted evidence and recovery
 action above, never scheduler timeout alone.

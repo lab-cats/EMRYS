@@ -115,3 +115,48 @@ Archive hashes and outcomes above are retained observations, not a new download
 or present availability check. Archive-reported checkout values are not
 independent proof of the worker checkout. Full numerical tables remain discoverable in the
 [frozen measurement record](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-15-cv26-doctor-measurements.md).
+
+## Operator environment comparison
+
+At the September 22 `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d` checkpoint,
+Quickstart selected `--no-default-groups --group workflow`, while CI retained the
+default development group too. An offline Linux/Python 3.14 resolution comparison
+found 73 shared distributions (EMRYS plus 72 dependencies), at identical versions,
+and 17 CI-only development distributions including pytest, coverage, Ruff and
+pre-commit. [Golden run 35770811692](https://github.com/lab-cats/EMRYS/actions/runs/35770811692),
+job `106891764037`, passed the broader environment, not the minimal operator one.
+This graph comparison is not an installed manifest, measured saving or site proof.
+A selected minimal-operator journey must still give the existing pytest containment
+checks their explicit development environment; no workflow change is implied by
+retaining this observation.
+
+## Integrated software checkpoint
+
+At `4348976f26c6d19dcc7786469f5873bdd8101750`,
+[ordinary 36952350554](https://github.com/lab-cats/EMRYS/actions/runs/36952350554)
+passed all 14 selected jobs and
+[extended 36952344816](https://github.com/lab-cats/EMRYS/actions/runs/36952344816)
+passed full Python 3.11 (3,374 passed, eight skipped) and all four real journeys:
+
+| Scenario | Retained artifact ID |
+| --- | --- |
+| 130-pair success/parity | `11206002256` |
+| 130-pair failure/resume | `11205209913` |
+| 130-pair stop/resume | `11206105665` |
+| 100,000-pair production-like | `11206065425` |
+
+The retained local proof index `emrys-e2e-36952344816-proof-index.json` has SHA-256
+`e19139b59aefbc352f31823a2d273de6574305216d8b90a9299e2c0450474e71`.
+[Ordinary 36956303545](https://github.com/lab-cats/EMRYS/actions/runs/36956303545)
+also passed all 14 active jobs at documentation/checker revision
+`06f88dbca7161599d7445f8cb2bfedf58f377282`; the extended run remains evidence for
+434, not execution of 06. These hosted checks establish neither named-site,
+production-data, rendered-review, scientific-review nor biological acceptance.
+
+The older CV-26 invocation-counter artifact above also retained a post-Run donor
+namespace totaling 7,686,327,159 regular-path bytes. It counts hard links repeatedly,
+does not follow symlinks, and measures neither allocated nor reclaimable space.
+Donor comparisons excluded the new seal and directory timestamps and were unchanged
+before/after preview and borrower verification. This [card-only observation](https://github.com/lab-cats/EMRYS/blob/06f88dbca7161599d7445f8cb2bfedf58f377282/docs/tasks/cluster_verification_backlog.md#cv-26-repeated-doctor-input-reads)
+shares the counter record's uncontrolled cache/host and invocation limits; it is
+not evidence of physical I/O, institutional latency or an optimization benefit.

@@ -25,6 +25,6 @@ establish a speedup.
 
 The [Doctor contract](../../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries)
 owns serialization and normal/verbose output rules.
-[CV-UX-01](../../../docs/tasks/cluster_verification_backlog.md#cv-ux-01-doctor-live-progress-output-collision)
+[CV-UX-01](../../../docs/tasks/backlog_matrix.md#doctor-qualification-and-presentation)
 retains terminal acceptance; broader presentation and measured duration remain
 separate subjects under CV-U04 and CV-26.

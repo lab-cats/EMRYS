@@ -31,3 +31,20 @@ to inspect, resume, or regenerate Runs from older versions under the
 [version-support policy](../../../../docs/design/decisions/platform-direction.md#version-support).
 Execution and reuse recheck file-backed and installed-package identities and
 reject drift.
+
+## Timestamp admission observation
+
+A September 22 fixture at `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d`, using locked
+`jsonschema` 4.26.0 and public `validate_record`, admitted both a valid timestamp
+and `finished_at: "not-a-time"` in a minimal blocked Attempt receipt v3. The
+optional RFC3339 checker was absent from the lock/registered format checkers.
+Producers emit UTC and inspection can diagnose bad timestamps; those are different
+boundaries from schema admission. The existing non-string refusal does not cover
+a malformed string. Artifact summary/receipt format declarations share the source
+concern but were not directly probed by this fixture; artifact entries and report
+indexes do not acquire a timestamp requirement by analogy.
+
+This retained [observation](https://github.com/lab-cats/EMRYS/blob/06f88dbca7161599d7445f8cb2bfedf58f377282/docs/tasks/polish-campaign.md#6-make-timestamp-admission-deterministic)
+is not an implemented correction. Any selected fix must choose the existing
+library's maintained format support versus a justified alternative, preserve
+intended valid records/diagnostics and review compatibility across affected owners.

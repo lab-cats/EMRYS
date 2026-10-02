@@ -203,3 +203,15 @@ replacing its conditional default. Test inherited true environment/option values
 and unchanged lock/library bytes during inspection. Existing guarded subprocess
 selection remains shared; the vendored autoloader and explicit repair boundary
 remain intact. Measure product growth before seeking implementation authority.
+
+## Installed backend identity limit
+
+The Snakemake policy selects the Python interpreter: fixed-target binding hashes
+that executable, while version and empty-workflow probes exercise the installed
+module. It does not bind the entire Snakemake module tree or Python dependency
+closure. The lock specifies intended distributions, not a live content digest.
+The September source audit demonstrated no controlled same-version escape. A
+stronger guarantee remains an unselected decision, separate from R dependency
+closure above; if selected, reuse current identity owners and cover Doctor, new
+Run, resume and child entry with positive and drift cases. The [frozen finding](https://github.com/lab-cats/EMRYS/blob/06f88dbca7161599d7445f8cb2bfedf58f377282/docs/tasks/polish-campaign.md#35-settle-the-installed-snakemake-content-guarantee)
+records this limit without implying the existing probes are content-closure proof.

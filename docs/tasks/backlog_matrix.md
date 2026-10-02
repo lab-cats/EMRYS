@@ -4,7 +4,7 @@ Last reconciled: **2026-10-01**
 
 This is EMRYS's main work backlog. It owns accepted current outcomes, status,
 cursory Importance and Complexity, and acceptance. Unfinished accepted outcomes
-remain here or in their already named campaign owner. Lasting decisions and
+remain here; subject catalogs retain findings without creating new task authority. Lasting decisions and
 evidence stay with their subject owners; Git retains superseded planning and
 implementation chronology.
 
@@ -54,11 +54,11 @@ authority or impose ordering.
 
 These rows retain accepted follow-up outcomes and completed owner dispositions.
 Audit questions are not established defects or permission to delete code, tests,
-protections, or evidence. Existing CV cards retain their delegated status and
-site acceptance until explicitly transferred. The
-[polish campaign](polish-campaign.md#current-follow-up-scope) coordinates the
-remaining `SCHEMA-01`, `EXTENSION-01` and `RELEASE-01` outcomes; this matrix owns
-their status and acceptance. They are not cluster-campaign closure requirements.
+protections or evidence. The [execution/runtime](execution-runtime-findings.md),
+[scientific/reporting](scientific-reporting-findings.md) and
+[contracts/engineering](contracts-engineering-findings.md) catalogs group retained
+findings; this matrix alone owns status and acceptance. `SCHEMA-01`, `EXTENSION-01`
+and `RELEASE-01` remain separate outcomes, not cluster closure requirements.
 
 #### October 1, 2026 owner completion
 
@@ -79,8 +79,8 @@ backlog items retain their own scope and status.
 
 | ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
 |---|---|---|---:|---:|---|---|
-| `DOCS-01` | Documentation audit | Completed | `3` | `4` | Trim documentation to its audience and enduring responsibility. | Completed by [owner direction on 2026-10-01](#october-1-2026-owner-completion). Original acceptance: Audit the Runbook, Troubleshooting, root/owner READMEs, contracts, main matrix and other guides for duplication, unnecessary detail and developer history. Use plain reader-friendly language. Keep current commands and recovery in operator guides, exact behavior beside its owner, lasting rationale in decisions and necessary dated evidence in its evidence home; Git retains routine commit/PR chronology. Review the large coordinator `CONTRACT.md` explicitly. Transfer useful context and check links before removing superseded prose; evidence deletion remains separately authorized. [Documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression) governs placement. The temporary [repository-wide audit record](docs-01-audit.md) holds observations and questions, not task status or acceptance. |
-| `REDUCE-01` | Product audit and reduction | Completed | `4` | `5` | Audit dead code, duplication, and whether even valid checks, recovery paths, and supported workflows justify their complexity for EMRYS; record simpler policies and what each would lose. Reduce net product-code growth by 25% without losing essential behavior; any decision to narrow a currently ratified protection needs explicit approval. | Completed by [owner direction on 2026-10-01](#october-1-2026-owner-completion). Original acceptance: The owner selected net product-code growth as the primary 25% measure; exact integration comparison refs, counted extensions and move treatment remain to be fixed before implementation or scorekeeping. The target is not yet a measured saving. Audit the entire repository, including complete touched paths and adjacent owners, compatibility, scripts, configuration and mutable state. Explain and review [`_inspection_presentation.py`](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py), its terminal interaction/inspection projection/action handoff, and overlap with inspection and dashboard owners. Classify preserved, defective, undecided and environment-deferred behavior; prefer caller-complete deletion/consolidation. Preserve scientific meaning and retained evidence. For provenance, recovery and protections, record current benefit and exactly what a smaller policy would lose; implementation that narrows a ratified guarantee needs a separate explicit owner decision and any required guardrail change. Also identify and pursue redundant or excessive tests and documentation as separately measured reductions coordinated with `ASSURANCE-01` and `DOCS-01`; their removal cannot offset product growth or delete retained evidence. Report product, tests, docs, configuration and evidence separately. Coordinate `OPS-03` and existing polish proposals; do not reopen the closed compression campaign implicitly. [Repository-wide audit findings](reduce-01-audit.md) record the current source review. |
+| `DOCS-01` | Documentation audit | Completed | `3` | `4` | Trim documentation to its audience and enduring responsibility. | Completed by [owner direction on 2026-10-01](#october-1-2026-owner-completion). Original acceptance: Audit the Runbook, Troubleshooting, root/owner READMEs, contracts, main matrix and other guides for duplication, unnecessary detail and developer history. Use plain reader-friendly language. Keep current commands and recovery in operator guides, exact behavior beside its owner, lasting rationale in decisions and necessary dated evidence in its evidence home; Git retains routine commit/PR chronology. Review the large coordinator `CONTRACT.md` explicitly. Transfer useful context and check links before removing superseded prose; evidence deletion remains separately authorized. [Documentation authority](../design/decisions/repository-and-delivery.md#documentation-authority-and-compression) governs placement. The subject catalogs retain the audit findings without reopening this completed workstream. |
+| `REDUCE-01` | Product audit and reduction | Completed | `4` | `5` | Audit dead code, duplication, and whether even valid checks, recovery paths, and supported workflows justify their complexity for EMRYS; record simpler policies and what each would lose. Reduce net product-code growth by 25% without losing essential behavior; any decision to narrow a currently ratified protection needs explicit approval. | Completed by [owner direction on 2026-10-01](#october-1-2026-owner-completion). Original acceptance: The owner selected net product-code growth as the primary 25% measure; exact integration comparison refs, counted extensions and move treatment remain to be fixed before implementation or scorekeeping. The target is not yet a measured saving. Audit the entire repository, including complete touched paths and adjacent owners, compatibility, scripts, configuration and mutable state. Explain and review [`_inspection_presentation.py`](../../src/emrys/orchestration/run_coordinator/_inspection_presentation.py), its terminal interaction/inspection projection/action handoff, and overlap with inspection and dashboard owners. Classify preserved, defective, undecided and environment-deferred behavior; prefer caller-complete deletion/consolidation. Preserve scientific meaning and retained evidence. For provenance, recovery and protections, record current benefit and exactly what a smaller policy would lose; implementation that narrows a ratified guarantee needs a separate explicit owner decision and any required guardrail change. Also identify and pursue redundant or excessive tests and documentation as separately measured reductions coordinated with `ASSURANCE-01` and `DOCS-01`; their removal cannot offset product growth or delete retained evidence. Report product, tests, docs, configuration and evidence separately. Coordinate `OPS-03` and existing polish proposals; do not reopen the closed compression campaign implicitly. The subject catalogs preserve the revision-bound audit findings; they are not a new source review. |
 | `SIZE-01` | File responsibility audit | Completed | `3` | `4` | Account for every non-test file over 600 physical lines. | Completed by [owner direction on 2026-10-01](#october-1-2026-owner-completion). Original acceptance: Inventory all non-test files, including documentation, contracts, schemas, configuration and tooling. Reduce mixed responsibility or obtain an explicit user-authorized exception for each retained large file under the [maintainability rule](../design/decisions/repository-and-delivery.md#maintainability). Record path, reason and approval, with a retirement condition for temporary exceptions. Existing size grants no exception. Do not split files mechanically or create an automated size gate solely to satisfy this record. |
 | `ASSURANCE-01` | Test and protection audit | Completed | `4` | `4` | Identify excessive, redundant or obsolete tests, protections and automated gates for the supported local-development and institutional-Slurm use. | Completed by [owner direction on 2026-10-01](#october-1-2026-owner-completion). Original acceptance: Map each candidate to real supported behavior, a distinct failure and an evidence level; identify tests of nonexistent/retired behavior and fixtures that hide production defects. Review documentary filename/heading gates in [documentation tooling](../../scripts/documentation/README.md) for actual maintenance value. Use the [test baseline](../design/TEST_BASELINE.md) and its owner evidence limits; retain independent oracles and necessary boundary/fault coverage. Propose surviving defenses before removing protection; high-risk removal still needs explicit approval. This is not authority to weaken coverage baselines or delete retained evidence. Coordinate `QUAL-01` and `HARNESS-01` without duplicating them. |
 | `SCHEMA-01` | Contract audit and decision | Open | `4` | `4` | Decide whether prerelease JSON schemas should start at v1, and identify dead or derivable fields. | Assess the stated alpha/no-external-consumer premise against actual readers, writers, registries, packaged paths, fixtures and retained Runs. Inventory every candidate field and its semantic, identity, provenance and recovery use. Coordinate `PROFILE-CONTRACT-01`. Decide identifiers/version reset separately from product 1.0; current [schema rules](../../src/emrys/contracts/schemas/README.md) remain until a migration is approved. Any selected reset must migrate all current callers together, reject incompatible records without modifying evidence, and avoid unnecessary aliases or historical readers. |
@@ -88,17 +88,15 @@ backlog items retain their own scope and status.
 | `RELEASE-01` | Release planning | Open | `4` | `4` | Define a concrete path from prerelease EMRYS to a v1 release. | Turn the prior alpha-release proposal into a concise readiness checklist: promised workflows/platforms, distributed artifact, installation and dependency policy, public/schema support policy, documentation, known limitations and exact-revision software/site evidence. Exercise promised installed operations outside the checkout through documented resources; do not infer compatibility across dependency ranges from locked tests. Assign blockers to existing owners, distinguish prerelease from 1.0 criteria and keep scientific review/biological interpretation separate. Define versioning and release-note requirements without publishing a release or inventing unsupported platform promises. |
 
 The [RELEASE-01 readiness investigation](release-readiness.md) and
-[SCHEMA-01 working audit](schema_01_contract_audit.md) retain revision-bound
+[contracts/engineering findings](contracts-engineering-findings.md) retain revision-bound
 findings and open evidence questions. This matrix owns their status and acceptance.
 
 ### Novice setup and operational follow-up
 
-These outcomes use the existing onboarding, submission, runtime and
-documentation owners. The
-[approved source-closure tranche](cluster_verification_campaign.md#source-closure-and-remaining-verification)
-includes all nine outcomes below, including `INIT-01` through `INIT-03`.
-Its stopping point is source/documentation completion with required hosted
-and institutional verification still explicit.
+These outcomes use existing functional owners. The owner closed the selected
+source/guide sequence on 2026-09-22; remaining evidence is preserved in the
+[cluster checklist and card groups](#cluster-verification-closure-checklist).
+Related IDs below describe one criterion, not additional implementations.
 
 | ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
 |---|---|---|---:|---:|---|---|
@@ -119,71 +117,171 @@ They are outside the closed cluster source-development sequence.
 
 | ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
 |---|---|---|---:|---:|---|---|
-| `CLEANUP-01` | Ownership design | Deferred | `3` | `4` | Select a safe owner-backed cleanup scope before implementing deletion. | Retains CV-23. The [working ownership audit](cleanup-01-ownership-audit.md) records source findings and open proof questions. Current owners establish no retained candidate class with both exclusive ownership and absence of references. Select a specific class, then preview exact candidates, references and consequences. Protect active/ambiguous Runs, older Attempts and reused outputs, shared inputs/sidecars, runtime borrowers and linked caches, receipts, locks, partials and recovery evidence. Unknown is not unused; age, scheduler disappearance and missing success receipts prove no deletability. Keep transaction-owned temporary cleanup at its existing boundary; reuse existing inspection and ownership rather than adding a generic registry or cleanup engine. Any evidence deletion requires separate explicit authority. |
+| `CLEANUP-01` | Ownership design | Deferred | `3` | `4` | Select a safe owner-backed cleanup scope before implementing deletion. | Retains CV-23. The [ownership decision brief](cleanup-01-ownership-audit.md) retains the six-class no-go finding and open proof questions. Current owners establish no retained candidate class with both exclusive ownership and absence of references. Select a specific class, then preview exact candidates, references and consequences. Protect active/ambiguous Runs, older Attempts and reused outputs, shared inputs/sidecars, runtime borrowers and linked caches, receipts, locks, partials and recovery evidence. Unknown is not unused; age, scheduler disappearance and missing success receipts prove no deletability. Keep transaction-owned temporary cleanup at its existing boundary; reuse existing inspection and ownership rather than adding a generic registry or cleanup engine. Any evidence deletion requires separate explicit authority. |
 | `INTERACTIVE-01` | Guided operation | Deferred | `3` | `4` | Extend guidance through the complete setup and analysis-launch journey. | Retains CV-U19's eventual default guided interaction with an optional manual route. The owner selected bare `emrys` on a terminal as the guided entry and existing named commands as the manual route. Existing named Init, runtime admission, Doctor and Run confirmations are implemented partial behavior. The complete prompt sequence and migration remain open; no `--advanced` spelling is selected. Audit the existing CLI owners before selecting a bounded implementation; preserve scientific choices, approval, no-write previews, provenance and recovery. |
 
-The [INTERACTIVE-01 discovery record](interactive-01-discovery.md) traces the
+The [INTERACTIVE-01 decision brief](interactive-01-discovery.md) traces the
 current owner path and unresolved design choices. Its selected bare-terminal
 entry is a design decision; implementation remains deferred under the row above.
 
 ### Cluster verification closure checklist
 
-`CLUSTER-VERIFY-01` is **Verification pending**. The selected source and guide
-corrections are implemented; CV-U06's one-line accounting exception is approved.
-On **2026-09-22**, the owner closed the approved implementation and stacked-PR
-sequence. No further `CV`, `CV-U`, or `CV-UX` source tranche is selected. After the exact
-closure head retains the hosted evidence below, one coordinated Viking campaign
-is the final external acceptance layer, including its operator, report visual/link,
-scientific-review, and evidence-handoff records. A defect found during verification
-returns to its functional owner without reopening the sequence wholesale.
-CV-10's accepted trust boundary remains in the
+`CLUSTER-VERIFY-01` remains **Verification pending**. The September 22 owner
+decision closed the selected source/guide and stacked-PR sequence, including
+INIT-01–03 and CV-U06's one-line accounting exception. No new CV source tranche
+is selected. A newly verified defect returns to its functional owner. The five
+[owner-completed audits](#october-1-2026-owner-completion) stay Completed.
+
+- **Hosted scope:** retain applicable exact-revision ordinary checks and selected
+  130-pair clean direct/Slurm parity, failure/resume parity and active native
+  stop/resume. Their evidence includes pinned native child, exact request/Task/
+  Attempt, public stop and exit, positive closure, unchanged predecessors,
+  distinct resume and independent scientific/reporting oracles. Ordinary CI
+  alone does not select these lanes; direct golden paths cannot substitute.
+- **Institutional scope remains pending:** one fresh novice Quickstart journey,
+  required synthetic and representative actual-data terminal outcomes, two-Project
+  runtime reuse, resolved memory/scratch, pre-Run/active/reporting/reconnect
+  inspection, queued/native cancellation/recovery, cross-node combinations and
+  generated-report transfer. Retain each card's timing/operator criteria and
+  exact package/Run/Attempt/profile/input/runtime identities. Optional novice
+  smoke does not waive the required synthetic evidence.
+- **Separate review records remain pending:** generated-report visual/link review
+  and required scientific review with those owners. Receipts, scheduler success
+  and hosted parity establish neither; biological interpretation stays external.
+- **Evidence and document transfer:** all 61 original IDs, priorities, statuses and
+  remaining criteria now live below. Retiring their temporary documents does not
+  close institutional acceptance. Permanent owners retain decisions and bounded
+  evidence; exact prior implementations, observations and approvals remain linked
+  through the [frozen card record](https://github.com/lab-cats/EMRYS/blob/06f88dbca7161599d7445f8cb2bfedf58f377282/docs/tasks/cluster_verification_backlog.md)
+  and [E01–E12 register](https://github.com/lab-cats/EMRYS/blob/06f88dbca7161599d7445f8cb2bfedf58f377282/docs/tasks/cluster_verification_campaign.md#evidence-register).
+  Historical growth approvals are not standing allowances. Merge, site execution
+  and evidence deletion retain their separately stated authority.
+
+The current hosted resource fixture derives from packaged allocation-aware defaults,
+with a fixture-only 2048 MiB repeatable minimum, whole-node exclusive placement,
+all scheduler-available memory and resolved task sharing. Ordered recovery stays
+serial. Passing that fixture establishes no utilization, speedup, Viking memory
+safety, institutional qualification or cross-node policy. Current exact-run results
+belong with the [CI evidence owner](../../.github/workflows/README.md).
+CV-10's accepted trusted-workspace limit remains in the
 [recovery contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
 and [operator guidance](../operations/TROUBLESHOOTING.md#run-and-reporting-state).
-The [October 1 owner completion](#october-1-2026-owner-completion) ends the five
-maintenance workstreams; polish retains their historical audit records and
-coordinates the remaining schema, collaborator and release outcomes. Deferred
-work has the named owners above. The selected final-source resource follow-up
-uses one test-owned profile derived from packaged allocation-aware defaults for
-the managed golden and real synthetic journeys. It preserves allocation-derived
-workflow CPU/memory and automatic repeatable-stage sharing, with a fixture-only
-2048 MiB repeatable minimum; disposable Slurm requests node CPU, all scheduler-
-available memory and exclusivity. Safely parallelizable lanes use all process-
-visible CPUs, while ordered recovery and end-to-end boundaries remain serial.
-The final closure head must retain hosted verification; that evidence can
-establish mechanics on the
-free-tier runner, not utilization, performance, Viking memory safety or
-institutional qualification. Required verification is:
 
-- [ ] **Final-source software evidence:** applicable hosted regressions and the
-  explicitly selected, exact-revision **130-pair disposable-Slurm scenarios**:
-  clean direct/Slurm parity, controlled failure/resume parity, and fresh active
-  Slurm stop/resume. Ordinary PR CI does not select them. Retain the pinned real
-  samtools child, stop target/current Task/Attempt, public stop and native exit,
-  positive interrupted closure, unchanged predecessors, distinct resume, and
-  final scientific/reporting oracles. Local stop fixtures and direct golden
-  paths cannot substitute.
-- [ ] **One institutional campaign:** fresh novice setup using the
-  [Quickstart](../../quickstart.md), required synthetic and representative
-  actual-data terminal outcomes, runtime reuse, resolved resources/memory and
-  scratch, pre-Run/active/reporting/reconnect inspection, queued/native
-  cancellation and recovery, cross-node combinations, and generated-report
-  transfer. Cover each card's required combinations, timing and operator
-  acceptance. Retain exact package/Run/Attempt/profile/input/runtime identities.
-  The optional novice smoke guide waives no card's required synthetic evidence;
-  disposable-node results establish no institutional memory or cross-node policy.
-- [ ] **Separate review records:** report visual/link review and required
-  scientific review with their reporting/scientific owners. Scheduler success
-  and computational receipts do not establish either. Biological interpretation
-  remains external work, never a pipeline completion gate.
-- [ ] **Verified closure and retirement:** give every delegated card a terminal
-  disposition or named transfer, reconcile live references, and preserve lasting
-  decisions/evidence before retiring the backlog and charter together. Transfer
-  E01–E12 and exact hosted/artifact records, including CV-10/CV-26 evidence, to
-  their permanent subject-owner and test guides, routed from the
-  [campaign evidence register](cluster_verification_campaign.md#evidence-register);
-  retain optimization decisions with their current owner. Preserve all limits
-  and failed-suite distinctions. Retirement, evidence deletion and merge retain their separate
-  authority; merge follows verified closure.
+### Cluster card dispositions
+
+This is the complete transferred authority: **53 Verification pending, five
+Completed, two Deferred and one Discard**. VP below means Verification pending;
+C means Completed, D Deferred and X Discard. P0–P3 preserve operator priorities;
+“—” means none was assigned. Earlier Open checkpoints in frozen records are
+historical. VP retains applicable hosted proof and the stated institutional/operator
+acceptance; the shared checklist applies without duplicating it in every row.
+Current mechanics live in the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md).
+
+#### Project creation and input admission
+
+| ID | Status | Priority | Retained outcome and remaining acceptance |
+| --- | --- | --- | --- |
+| `CV-06` | VP | P0 | Named guided creation preserves explicit study assignments, comparison, target and thresholds; verify fresh novice creation and supported existing-manifest import. INIT-02 uses the explicit maintained 25-name manifest, with full FASTA validation; no automatic study/legacy-bundle inference. |
+| `CV-14` | VP | P1 | Same selected Projects-home outcome as INIT-01/CV-U07: canonical writable parent, absent child, no moving/adopting existing Projects; verify fresh-clone placement. |
+| `CV-17` | VP | P1 | Creation reports phase and elapsed progress without invented byte percentages or extra admission reads; retain large-input/operator visibility acceptance. |
+| `CV-U03` | VP | — | Normal Init/Validate shows destination/libraries, explicit strand/comparison/target, all five CMH thresholds, background state and three STAR values, with specific PASS/FAIL diagnosis; verify operator readability. |
+| `CV-U07` | VP | — | INIT-01 governs the Projects home: ignored generated children inside the tracked home, saved selection or current-directory fallback, no implicit existing-Project move. Verify repository and unrelated-directory use. |
+| `CV-U18` | VP | — | INIT-03 governs same-invocation review/approval; explicit sample/strand assignments, reference before selectors and two-condition direction without a default remain. Preview/no/blank/EOF do not create; preserve freshness and one-hash creation. |
+| `CV-U21` | VP | — | Derive the global maximum read length in the sole FASTQ hash pass and STAR settings from admitted FASTA; preview reads no FASTQ content. Preserve explicit overrides and old omitted chromosome-bin value 18 without rewriting records; verify variable-length and fragmented-reference cases. |
+| `CV-U24` | VP | — | Saved create-absent mode-0600 repository `.env` has closed CLI-default keys and CLI/process/saved/default precedence; no global Project or scientific defaults. Verify reconnect and effective-value disclosure. |
+| `CV-U25` | VP | — | Preview hashes no FASTQ content; creation hashes each once and checks device/inode/size/mtime/ctime around publication. Preserve comparable large-input timing and Viking operator acceptance; no protection against privileged metadata forgery is claimed. |
+| `CV-U26` | VP | — | New Projects contain normalized samples/partitions with correct relative bases and external FASTQ references; existing Projects are not migrated. Verify the novice/operator path. |
+
+#### Novice guide
+
+| ID | Status | Priority | Retained outcome and remaining acceptance |
+| --- | --- | --- | --- |
+| `CV-U08` | VP | — | QUICKSTART-01 owns one short actual-data path and an optional linked synthetic exercise before reuse/Doctor selection; preserve known scientific settings and explain outputs. Required campaign synthetic evidence remains separate. |
+| `CV-U09` | VP | — | Explain invented tiny reads/reference/settings, optional confidence and time tradeoff plainly; novice comprehension acceptance itself requires no new cluster Run. |
+| `CV-U10` | C | — | Removed the Git-revision command from the novice path; advanced provenance remains available. This static guide correction is complete. |
+| `CV-U11` | VP | — | Guide commands are separately paste-ready and match actual prompt order/literal outcomes; creation uses the current same-invocation confirmation, not the retired replay command. Verify the fresh novice journey. |
+| `CV-U20` | VP | — | QUICKSTART-01 retains inline selected Viking placement/time/scratch and explicit EV/PUM1 assignments, reverse strand, EV→PUM1, A>G, five CMH values and inactive background. External references are operator-provided; verify the complete guide against current prompts. |
+
+#### Doctor qualification and presentation
+
+| ID | Status | Priority | Retained outcome and remaining acceptance |
+| --- | --- | --- | --- |
+| `CV-02` | VP | P0 | Fault diagnostics retain check ID, phase, host, expected/observed result, exit and usable loader/tool logs; distinguish unavailable from failed assertions. Verify native/R/compute-only public failures. |
+| `CV-04` | VP | P0 | Use the bounded empty one-core Snakemake startup probe with ambient options disabled, temporary scratch and preserved login-name export; verify missing UID lookup and each supported login variable at the institutional boundary. |
+| `CV-05` | C | P0 | Repair planning distinguishes retained native/R work from actual manager actions while preserving fresh qualification. Hosted software outcome is complete; optional accounting is not compute/site performance proof. |
+| `CV-09` | VP | P0 | Explain selected managed runtime versus PATH and compatible node eligibility; version/ABI/startup qualification does not pin one successful hostname. Verify compatible/incompatible site placement. |
+| `CV-13` | VP | P1 | Use specific not-prepared/checks-failed/not-qualified/not-admitted states; BLOCKED denotes refusal of invalid work. Verify understandable operator diagnosis. |
+| `CV-19` | VP | P1 | Verification versus installation/repair follows actual package-manager actions and fresh readiness; verify operator wording without creating another readiness authority. |
+| `CV-26` | C | P2 | Accepted structural correction removed one intervening head diagnosis (five total became four) while preserving independent storage finalization, exact pre-storage readmission and final readiness. No measured speedup; serial R checks retained and digest caching deferred. |
+| `CV-U04` | VP | — | Doctor shows requirement domains and actual phases/elapsed progress; detailed plans/paths stay verbose. Resource disclosure follows SUBMISSION-PREVIEW-01; terminal readability/collision acceptance remains separate from latency. |
+| `CV-U05` | VP | — | Present the rough 5–25-minute setup allowance with download/queue uncertainty; verify terminal wording, not a promised or measured completion deadline. |
+| `CV-UX-01` | VP | — | Shared live-progress output preserves diagnostic order, separating lines and readable zero-duration text in color/plain/narrow terminals. Retain the reported job 621172 collision and verify a fresh Viking terminal. |
+
+#### Managed runtime reuse
+
+| ID | Status | Priority | Retained outcome and remaining acceptance |
+| --- | --- | --- | --- |
+| `CV-08` | VP | P0 | Explicit two-Project reuse binds canonical donor identity, UID, selector, fixed content seal and generation; fresh qualification and retained failure claims remain. Verify site accessibility and lifecycle; no unsealing/adoption or general donor discovery. |
+| `CV-U22` | VP | — | The selected guide offers a known smoke donor before Doctor, otherwise skips that reuse step. Verify exact donor/borrower review and installed/site use; an unselected general donor browser is not remaining acceptance. |
+| `CV-U23` | VP | — | Donor repair publishes a new generation; borrowers and old Attempts keep the old one until explicit same-source replacement. Verify successful repair/replacement and failure preservation. Fixed-roster sealing does not establish transitive dependency closure. |
+
+#### Resource selection and observation
+
+| ID | Status | Priority | Retained outcome and remaining acceptance |
+| --- | --- | --- | --- |
+| `CV-07` | VP | P0 | One effective default/named/absolute profile drives Doctor, Run, resume and report. Verify authoring preview/create-absent, explicit-invalid refusal and drift readmission across boundaries; no silent fallback or optimum-performance claim. |
+| `CV-11` | VP | P0 | SCHED-01 owns early rejection of undersized explicit requests; omitted/symbolic capacity stays unknown. Verify heterogeneous/missing-memory/shared/exclusive site combinations and placement-only resume without changing the immutable Run. |
+| `CV-22` | VP | P1 | SUBMISSION-PREVIEW-01 owns compact preapproval CPU/memory/exclusivity/runtime, explicit hosts and restrictive/unknown-capacity numeric ceilings for every Slurm owner. Verify consistent site display; stage/site diagnostics remain verbose, capacity is not utilization. |
+| `CV-U06` | VP | — | Allocation-aware CPU/RAM, automatic repeated-stage concurrency/shares and native arguments agree; ordered phases remain serial and shares do not rebalance dynamically. Verify institutional resolution; fixture-only minima are not production policy. The 251-line accounting exception is settled. |
+| `CV-U27` | VP | — | Selected Viking placement and effective workflow policy agree between guide, Doctor and submission. Diagnose implicit saved-site/direct-profile mismatch without rewriting; explicit profile wins. Verify smoke-to-real operator selection. |
+| `CV-U28` | VP | — | Current allocation-aware policy supersedes fixed 12-core/524288-MiB restoration; retain original provenance and task minima only where current declarations use them. Historical eight/four-hour reports prove no causality; restored fixed settings or benchmark comparisons are no longer acceptance. |
+| `CV-U33` | VP | — | SCHED-USAGE-01 owns selected-cluster terminal accounting and local-only live sampling, exact root/batch/UID/path identity brackets and honest unknowns. Retain the selected request after Run association; verify institutional observations, not a timing optimization. |
+
+#### Monitoring and presentation
+
+| ID | Status | Priority | Retained outcome and remaining acceptance |
+| --- | --- | --- | --- |
+| `CV-15` | VP | P1 | Inspection distinguishes live-local, dead-local, foreign-host and invalid ownership; verified Tasks, starts and diagnostics are not liveness. Verify active/completed/unreachable/stale and terminal-without-final-receipt site cases. |
+| `CV-16` | VP | P1 | Installed watch owns one fixed selection, shared overview/detail, bounded single-worker refresh and full-history generation-aware streams. Offline/no-scheduler stays unknown; verify reconnect, NFS and terminal behavior with explicit recovery handoff. |
+| `CV-20` | VP | P1 | Retained bounded canonical requests exist before a Run; explicit inspection binds scheduler/accounting cluster, UID and paths. Run association is diagnostic until independently admitted, custom roots are frozen and ambiguity stays unknown. Verify early/late and reconnect cases. |
+| `CV-24` | C | P2 | Watch resume/report/stop hands off to existing owners after teardown and fresh preview/admission, without shell execution or automatic Run/Analysis selection. The selected action surface is complete; a future Analysis chooser is not its gate. |
+| `CV-25` | C | P2 | Explicit request/Run/Attempt log access preserves Task/start/terminal stream provenance, bounded history and custom-root uncertainty without newest selection. Delivered log access is complete; association alone grants no recovery or liveness. |
+| `CV-U01` | VP | — | Semantic color covers Init (including synthetic/manifests), Validate, Run, Inspect and runtime output; readable plain/NO_COLOR/dumb-terminal output remains. Verify the operator-facing surfaces. |
+| `CV-U02` | VP | — | One verbose boolean keeps low-level detail optional while normal output retains critical scientific review, Run/Results/reporting/outcomes/recovery and compact submission resources. Verify consistent operator display. |
+| `CV-U13` | VP | — | One bounded inventory includes Runs and every retained submission with association, without collapsing multiple requests. Sole-target selection may be automatic; ambiguity requires a picker or nonterminal refusal, never newest/raw-scheduler fallback. |
+| `CV-U14` | VP | — | Style recognized real log prefixes without changing literal bytes, including timestamps/Finished jobid/WorkflowError; verify site and tmux rendering. |
+| `CV-U15` | VP | — | Refresh wording truthfully requests read-only rechecking; verify operator understanding and preserve admission ownership. |
+| `CV-U16` | VP | — | Preserve follow/pause, counted navigation, search, tail-relative bounded search and generation/truncation reset. Mouse input is ignored except multiplexer wheel-to-arrow translation; verify tmux/terminal behavior. |
+| `CV-U17` | VP | — | Admitted Run state overrides diagnostic counts; raw finished logs remain unverified and unobserved reporting stays NOT OBSERVED. Terminal jobs without proof remain incomplete/interrupted/not-reached. Original display inconsistency remains unexplained; verify current truthful presentation. |
+| `CV-U29` | VP | — | Expose retained requests early and date the latest observation. Institutional population-time measurement and operator acceptance remain required; no invented latency target or inference from scheduler state. |
+| `CV-U30` | VP | — | Overview grows from the top with a stable horizontal footer and semantic fields; narrow/plain terminals stay readable. Verify site visual behavior. |
+| `CV-U31` | VP | — | Uses the same CV-U13 roster/picker: exact Project requests remain distinct from Runs across refresh and action selection. Verify sole/multiple/nonterminal and retained historical targets; no separate inventory authority. |
+| `CV-U32` | VP | — | Extend that same bounded discovery to an explicit Project from any directory or immediate children of the declared Projects home (bound 256). No recursive/global/latest search; verify outside-Project and partial-discovery handling. Legacy inventory parity is bounded, not full behavior parity. |
+
+#### Submission failure and recovery
+
+| ID | Status | Priority | Retained outcome and remaining acceptance |
+| --- | --- | --- | --- |
+| `CV-03` | VP | P0 | Keep invocation, scheduler rejection, pending queue, compute failure, cancellation and head finalization distinct. Preserve uncertain submissions/logs and avoid automatic resubmission; accounting COMPLETED cannot erase transport failure. Verify queued/cancelled institutional phases. |
+| `CV-10` | VP | P0 | Require positive native descendant closure before recovery; preserve unknown/old blocked Runs. Bound timeout warning, Linux child ownership, closed-abort historical admission and exact prepared-finalization names/bytes/inodes; same-inode recycled-byte substitution remains an accepted trusted-workspace limit. Verify queued/native TERM/KILL, lost-worker and publication-fault boundaries separately. |
+| `CV-18` | VP | P1 | Stop the exact retained request with controller-side identity filtering, known profile/logging and bounded fresh settlement. Old request versions without authority remain read-only; diagnostic Run association is insufficient. Verify queued/native site stop and no retry after ambiguous outcome. |
+| `CV-U12` | VP | — | Warn/refuse equivalent active or unconfirmed Analysis/boundary/source/profile work before submission; compare exact profile content, reject unknown retained arguments and require explicit override without auto-cancel. Verify early requests and delayed association; no atomicity claim beyond the admitted boundary. |
+
+#### Reporting and integrated proof
+
+| ID | Status | Priority | Retained outcome and remaining acceptance |
+| --- | --- | --- | --- |
+| `CV-21` | VP | P1 | Inspect truthful reporting transaction states and only admitted locations/completion. Fixtures use real publication/readers with doubled science. E06 cause reconstruction/induced reproduction is waived; verify ordinary institutional behavior, leaving visual/scientific review with separate owners. |
+| `CV-27` | VP | P3 | Retrieve an actually generated Results/report bundle via the Runbook SSH/rsync path, preserving contents and relative links; review locally without adding a server/tunnel/command. Tiny-copy mechanics do not prove generated-bundle rendering or institutional transfer; coordinate REPORT-01–03. |
+| `CV-01` | VP | P0 | Retain integrated missing-memory plus unavailable-UID startup, shared-runtime plus node-placement, native-publication cancellation, failure/resume, inspection and reporting combinations. Selected hosted scenarios and cross-node/institutional proof remain distinct; success-only or local simulated cases cannot close the broader obligation. |
+
+#### Transferred and discarded scope
+
+| ID | Status | Priority | Retained outcome and remaining acceptance |
+| --- | --- | --- | --- |
+| `CV-23` | D | P2 | CLEANUP-01 owns the six retained artifact classes and exact-subtype ownership/reference/quiescence proof; no class is selected for deletion. Existing transaction cleanup is a different boundary. |
+| `CV-U19` | D | — | INTERACTIVE-01 owns eventual full guided operation: bare terminal entry and named-command manual route are accepted; complete transcript/migration and cancellation exits remain unselected, with no approved advanced flag. |
+| `CV-12` | X | P0 | Discard only causal reconstruction of the original E01 qualification failure. Preserve the unexplained observation; later successes do not identify its cause. |
 
 ### Reliability and qualification
 
@@ -192,7 +290,7 @@ institutional qualification. Required verification is:
 | `QUAL-01` | Test performance | Completed | `3` | `3` | Make qualification-test selection fast enough for routine development. | Completed by [owner direction on 2026-10-01](#october-1-2026-owner-completion). Original acceptance: Measure duration and subprocess/NFS cost, set a justified target, and meet it without dropping coverage or fault cases. |
 | `QUAL-02` | Defect verification | Verification pending | `4` | `2` | Replace the brittle resume-fixture startup deadline with bounded readiness and useful failure diagnostics. | Bounded readiness and cleanup are implemented and exercised by hosted CI. Remaining evidence is the literal early-exit/timeout diagnostic requirement; ordinary success does not exercise those fault branches. |
 | `QUAL-03` | Compatibility verification | Verification pending | `4` | `2` | Admit the accepted GNU Make 3.81 and 4.3 dry-run renderings without normalizing malformed output. | The two exact renderings and rejection of mixed/malformed renderings are implemented and covered by passing hosted tests. An explicitly version-identified GNU Make 4.3 execution remains to be recorded; this is an evidence gap, not an unimplemented normalization fix. |
-| `HARNESS-01` | Test architecture | Verification pending | `3` | `3` | Keep simulated science entirely in test-owned seams. | The existing explicit test simulations still emit `local-science-tools` while injecting admission callbacks; reconcile that remaining naming/admission mismatch. Production dispatch, schemas, Run/Attempt, workflow, receipts, and recovery must have no test-only role or relaxed branch; current record formats are explicit; fixtures either satisfy the real runtime and storage admission contract or are named as injected simulations rather than `local-science-tools`; CI retains controlled partial-failure/resume proof without claiming scientific execution. |
+| `HARNESS-01` | Test architecture | Verification pending | `3` | `3` | Keep simulated science entirely in test-owned seams. | The existing explicit test simulations still emit `local-science-tools` while injecting admission callbacks; reconcile that remaining naming/admission mismatch. Production dispatch, schemas, Run/Attempt, workflow, receipts, and recovery must have no test-only role or relaxed branch; current record formats are explicit; fixtures either satisfy the real runtime and storage admission contract or are named as injected simulations rather than `local-science-tools`; CI retains controlled partial-failure/resume proof without claiming scientific execution. The historical review found this is a source naming/admission gap, not only missing evidence: injected fixtures used plain-text storage evidence and bypassed production runtime admission. Its recommendation to use Open is not adopted here; Verification pending remains the accepted status until owner disposition. Historical `test-double` schema readers and immutable resume modes require a separate compatibility decision. |
 | `RUN-01` | Runtime defect | Verification pending | `4` | `3` | Admit normal `renv` cache-package symlinks consistently. | Cache-package symlink handling is implemented; the retarget-after-hashing refusal test and managed restore, Doctor, and validation pass in hosted CI. Remaining evidence must identify a real restored cache-package symlink on that path, rather than infer the link representation from a successful restore. |
 | `RUNTIME-CLOSURE-01` | Runtime integrity | Open | `4` | `3` | Bind the complete installed R dependency closure that can affect scientific execution. | Derive the recursive `Depends`, `Imports`, and `LinkingTo` closure from the admitted scientific namespaces; bind and re-admit that exact closure without hashing unrelated site-library packages or breaking normal `renv` cache symlinks. Every supported EMRYS R activation path forces automatic snapshots off so admission and execution cannot mutate dependency state. [Proposed owner design](../../src/emrys/evidence/runtime_availability/README.md#proposed-r-dependency-closure) records open migration decisions and planned checks; implementation remains open. |
 | `REFERENCE-INPUT-01` | Input diagnostic | Completed | `2` | `1` | Report an empty FASTA header as a normal reference-validation error. | [The shared contig parser](../../src/emrys/libraries/references/contigs.py) now rejects bare, whitespace-only and later empty headers with `ReferenceContigError`, using callers’ existing validation-error handling. Local boundary and caller checks passed; full [Python 3.14](https://github.com/lab-cats/EMRYS/actions/runs/36820951934) and [Python 3.11](https://github.com/lab-cats/EMRYS/actions/runs/36820988652) regressions passed on `f4eaaa41`. The separate managed-R restoration failure does not invalidate this input-diagnostic evidence. Valid names, sequence order/lengths and other rejection rules are preserved. This input-diagnostic repair is not a scientific-format change or measured compression saving. |
@@ -202,13 +300,13 @@ institutional qualification. Required verification is:
 | ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
 |---|---|---|---:|---:|---|---|
 | `SITE-PARITY-01` | Site qualification | Open | `4` | `5` | Qualify the current whole-Run path on CSU Viking or another named institutional site. | A novice operator without repository-development context follows only the maintained quickstart from a fresh Viking clone through one head-node path: Project creation with built-in Viking placement, Doctor-managed setup and automatic Slurm qualification, validation, submitted execution, inspection, and completed Results and reports. Normal output is concise and Doctor exposes its phases and elapsed time; every undocumented prerequisite or confusing step becomes a finding. Retain and resolve the [Viking walkthrough findings](#viking-walkthrough-findings) at their stated evidence level. Exact site modules/tools, Project storage semantics, locking/rename/durability, failure/recovery, resource and scheduler provenance, one-log ownership, and direct/Slurm scientific parity are evidenced at one exact revision. Hosted single-node proof is not promoted to institutional, multi-node, production, scientific-review, or biological proof. |
-| `CLUSTER-VERIFY-01` | Cluster verification campaign | Verification pending | `4` | `5` | Resolve the recorded cluster-walkthrough failures and operator gaps while preserving scientific and recovery authority. | The [campaign charter](cluster_verification_campaign.md) owns scope and evidence; this matrix explicitly delegates `CV-01` through `CV-27`, `CV-U01` through `CV-U33`, and `CV-UX-01` statuses and acceptance, plus assigned priorities, to the [cluster verification backlog](cluster_verification_backlog.md). Selected source and guide corrections are implemented, including INIT-01–03. Preserve operator priorities, accepted trust limits and unexplained historical observations. Remaining acceptance is exact final-source hosted/disposable-Slurm evidence, coordinated institutional execution, separate review records and verified dispositions; Deferred work remains with `CLEANUP-01` and `INTERACTIVE-01`. Follow the [closure checklist](#cluster-verification-closure-checklist), retaining transferred source follow-ups and distinct institutional/review evidence. Close only under the charter's disposition and evidence criteria. |
+| `CLUSTER-VERIFY-01` | Cluster verification campaign | Verification pending | `4` | `5` | Resolve the recorded cluster-walkthrough failures and operator gaps while preserving scientific and recovery authority. | This matrix owns all 61 [original CV IDs, statuses, priorities and criteria](#cluster-card-dispositions) after their transfer from the temporary campaign. Selected source and guide corrections are implemented, including INIT-01–03. Preserve operator priorities, accepted trust limits and unexplained historical observations. Remaining acceptance is exact final-source hosted/disposable-Slurm evidence, coordinated institutional execution, separate review records and verified dispositions; Deferred work remains with `CLEANUP-01` and `INTERACTIVE-01`. Follow the [closure checklist](#cluster-verification-closure-checklist), retaining transferred source follow-ups and distinct institutional/review evidence. Document retirement does not complete the transferred institutional or review criteria. |
 | `SCHED-01` | Scheduler preflight | Verification pending | `3` | `2` | Reject an explicitly undersized Slurm memory request before submission. | The effective-profile check is implemented before submission, Doctor repair planning and profile creation, using the shared resource predicates. Explicit insufficient CPU or memory is rejected; symbolic or omitted capacity stays unknown, and placement-only resume retains its policy before checking. Verify the public no-submit/no-write, Doctor, authoring and resume cases on the final source. CV-11 retains the broader institutional heterogeneous-node acceptance. |
 | `CONTAINER-01` | Managed platform | Open | `3` | `5` | Evaluate and, if justified, provide a supported broadly compatible Linux container without coupling it to project setup. | Compare against the existing Pixi-managed path; cover architecture/ABI support, Slurm and storage integration, security, reproducibility, licenses, tool and R identities, updates, provenance, site coexistence, and escape hatches. Any implementation has explicit local and site evidence and replaces rather than duplicates setup/runtime authority. |
 | `CI-IMAGE-01` | CI infrastructure decision | Open | `3` | `4` | Decide whether a shared immutable CI image should replace repeated real-E2E provisioning. | Measure cold and warm wall time, runner-minutes, transfer, and storage for checkout, Pixi, uv, renv, apt, and disposable Slurm provisioning. Compare the current hosted runner plus lock-keyed caches, a job container, and an ephemeral maintained runner image. Any adopted image is reproducibly built, digest-pinned, Node 24 compatible, supports disposable Slurm, contains no secrets, data, Project state, or retained evidence, and preserves independent controllers, databases, workspaces, evidence, exact provenance, patch ownership, and rollback. Adopt only for meaningful net savings. This CI-only decision does not replace product runtime authority or `CONTAINER-01`; implementation requires separate approval, otherwise close with the rejection evidence. |
 | `OPS-03` | Maintenance | Open | `3` | `4` | Settle the remaining responsibilities of retained diagnostics and execution helpers. | The [runner migration](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution) is delivered through PR #169: producers retain science; the runner owns execution and recovery. Remaining work concerns the [FASTQ byte and diagnostic contract](../../src/emrys/ingestion/sample_manifest_admission/README.md) and surviving scripts, inline programs, and R bootstraps. R argument parsing is already shared; wrappers differ in script location, package admission, diagnostics, and error precedence. Prove equivalent behavior and caller-complete savings before sharing more. These concerns require separate selection; no compression tranche remains active. Preserve independent scientific checks and retained evidence. `INLINE-OWNERS-01` remains absorbed here. |
 | [FUT-INDEX-01](fut_index_01_plan.md) | Data reuse | Open | `4` | `4` | Admit an externally supplied prebuilt STAR index as an explicit Project input. | Existing reuse of a successful processing Run and standalone index validation are delivered capabilities, not external-index admission. The current [reference contract](../../src/emrys/contracts/schemas/orchestration/v1/reference.schema.json) declares FASTA/GTF and construction parameters but no prebuilt-index input. Remaining work binds every required index member to exact hashes, FASTA/GTF identity, and STAR parameters/version, then plans reuse without generation, repair, merge, or mutation; directory existence alone never authorizes admission. |
-| `SETUP-02` | Tooling retirement | Deferred | `3` | `3` | Retire standalone resource benchmarking after the optimization campaign is complete. | Approved 2026-09-10: retain `scripts/benchmark_stage_resources.py` while the [optimization campaign](optimization_campaign.md) needs it, then retire the helper, dedicated tests, CLI checks, and obsolete documentation together. This replaces the proposal to expand benchmarking into the normal control plane. Preserve raw measurements, scientific-equivalence fixtures, and retained evidence. Until retirement, experiment acceptance still requires visible raw trials, rejection of candidates with any failed repetition, and nonzero exit for a failed benchmark; recommendations remain advisory and are never automatically applied. |
+| `SETUP-02` | Tooling retirement | Deferred | `3` | `3` | Retire standalone resource benchmarking when the remaining selected investigations no longer need it. | Approved 2026-09-10: retain `scripts/benchmark_stage_resources.py` while work under the [resource-measurement disposition](execution-runtime-findings.md#resource-measurement) needs it, then retire the helper, dedicated tests, CLI checks, and obsolete documentation together. This replaces the proposal to expand benchmarking into the normal control plane. Preserve raw measurements, scientific-equivalence fixtures, and retained evidence. Until retirement, experiment acceptance still requires visible raw trials, rejection of candidates with any failed repetition, and nonzero exit for a failed benchmark; recommendations remain advisory and are never automatically applied. |
 | `FUT-DATA-02` | Acquisition | Deferred | `2` | `5` | Provide retryable public-reference and SRA-read acquisition. | Reference and read acquisition remain separate and record accession/version, source, hashes, cache, retry, partial-transfer, and storage identity without scraping, silent updates, or implicit trust. |
 | `PERF-01` | Performance research | Deferred | `2` | `4` | Test whether cross-node execution materially improves independent-work wall time. | A bounded representative experiment uses explicit per-job resources and never treats scheduler success as production or scientific proof. |
 | `PROFILE-CONTRACT-01` | Contract reduction | Deferred | `3` | `4` | Remove derivable backend adapter fields during an independently justified workflow-profile contract transition. | Audit every current reader and generated profile, then determine whether the consumed `owner_tasks[].rule_name` projection and redundant scope selectors can be derived from one semantic authority; retain graph, uniqueness, scope, artifact admission and inventory/group ordering, Execution-Plan identity, and direct/Slurm parity; remove duplicate validators/tests rather than adding an adapter or compatibility writer. Do not create a version bump solely for cleanup, and dismiss the row if the fields prove independently semantic or the migration is not meaningfully net-negative. |
@@ -216,99 +314,12 @@ institutional qualification. Required verification is:
 
 ### Viking walkthrough findings
 
-The following retains the earlier setup decisions and evidence. Remaining
-walkthrough work is now coordinated by the
-[cluster verification campaign](cluster_verification_campaign.md) and its
-[delegated CV backlog](cluster_verification_backlog.md), created at the user's
-request on 2026-09-14. Earlier implementation allowances below do not extend
-automatically to new campaign cards.
-
-The September 14, 2026 walkthrough selected `7c427f0c`. The user reported
-successful fresh installation and synthetic Project validation. Batch job
-`614786` reported 71 R packages restored in 600 seconds and the managed runtime
-inventory admitted. The user then reported the job finished and supplied the
-successful head-node storage finalization for qualification
-`cfcf7f788fd9d949f1a23f17793ecf22ba1e05f1023bc3b49065eebc0280186f`.
-Its final receipt remains in `.emrys-storage-qualification/` beneath the parent
-of the `emrys-smoke` Project. This was the former manually submitted setup;
-it is not evidence for the new automated Doctor path.
-
-The walkthrough stopped before the first scientific Run to address these
-operator findings together. The approved implementation permits up to 750 net
-additional product lines, no new product files or receipt formats, and Rich as
-the shared terminal library. Product, tests, documentation, configuration and
-evidence accounting remain separate.
-
-- **One head-node journey.** Both Project-creation commands accept `--site viking`
-  and write the existing default profile with the known site settings. Run,
-  resume and standalone report execution use that placement. The quickstart
-  includes the complete synthetic and own-data walkthroughs, reconnecting,
-  and routine recovery. The runbook retains advanced configuration and input
-  options, with links to the standard guide.
-- **Automatic qualification.** Head-node Doctor repair installs the managed
-  runtime, submits checks of the admitted runtime and storage, and completes
-  head-node finalization. Existing receipts, exact bindings and failure
-  protections remain authoritative. `--compute` is an explicit advanced route.
-- **Readable progress and diagnostics.** Normal output omits debug commands.
-  Doctor names phases, reports elapsed time and gives a rough first-setup
-  allowance of 5–15 minutes, with longer download or queue waits possible.
-  Terminal color supplements text labels; redirected output remains plain.
-  Complete package output is retained beside the maintenance log. Repair uses
-  its own temporary directory, avoiding the observed unwritable `/local/tmp`.
-- **Viking memory accounting still needs site execution.** Completed job
-  `605171` used `viking-users`, `long`, `normal`, four CPUs and eight hours;
-  accounting reported `ReqMem=1M` but no allocated memory entry. Scheduler
-  output reported `select/cons_tres`, `CR_CORE`, unlimited default/maximum
-  per-node memory and `task/cgroup`. These observations do not establish a
-  process memory limit. At `c52178d2`, the capacity observer rejected missing Slurm
-  memory metadata for partial-node CPU allocations; no scheduler variables
-  are forged and the allocation is not enlarged to bypass admission. Retain
-  the first actual Run diagnostic before choosing a correction.
-  The subsequent automated repair job `618134` passed runtime inspection and
-  stopped at that capacity check. Diagnostic job `618190` on `node009` exposed
-  four CPUs, neither Slurm memory variable, and effectively unlimited cgroup-v1
-  memory limits through the visible hierarchy. The user explicitly approved
-  using the node's process-visible RAM without a separate workflow budget or
-  complete-node CPU requirement. The shared capacity observer now applies that
-  fallback while preserving observed cgroup limits, declared scheduler limits,
-  CPU constraints, and source attribution. After the published correction the
-  operator reported Doctor `READY`; complete scientific execution was still
-  pending at that point. The earlier generic runtime failures are not explained
-  by this memory-policy correction.
-- **Batch username missing before science.** A submitted Run failed while
-  Snakemake built its startup header: no login-name environment variable
-  survived the explicit submission export list, and the compute node could not
-  resolve the job's numeric UID. Inspection subsequently reported valid
-  integrity, a failed Attempt, and recovery available, with all scientific
-  milestones incomplete. The shared Doctor/run/resume/report submission owner
-  now preserves Python's four login-name variables by name while retaining its
-  numeric UID checks and restricted environment. The existing batch execution
-  fixture exercises each variable with passwd lookup unavailable. The export
-  list is rendered directly instead of through an intermediate tuple; no new
-  product owner, file, dependency, or identity authority is introduced.
-  The operator subsequently reported a successful synthetic resume with all
-  scientific milestones and reporting complete. CV-01 retains the broader
-  managed-golden and institutional evidence requirements.
-
-The later synthetic inspection reported a valid Run, a succeeded Attempt,
-complete Scientific Results and Reporting, 151 inventoried artifacts, and
-an Attempt elapsed time of 3:52. Viewing the HTML reports was explicitly
-deferred. An actual-data Run was subsequently cancelled through Slurm and
-remained blocked without a terminal receipt; a fresh Project reused the
-installed runtime and began a replacement Run. That actual-data Run was still
-active at the last supplied observation. The campaign's evidence register
-preserves these distinctions, the unresolved first qualification failure, and
-the transient reporting/remote-inspection findings without claiming new
-independent site or scientific validation.
-
-The existing real-Slurm CI journey now uses head-node Doctor preparation in
-place of its manual storage-phase commands, preserving the scientific parity
-and controlled recovery checks. That [hosted journey passed on `e25b10c6`](https://github.com/lab-cats/EMRYS/actions/runs/34885186045).
-Local checks and hosted disposable Slurm do not establish Viking qualification.
-Continue the actual-data walkthrough and the selected campaign regressions on
-an identified revision; the reported synthetic success does not close site parity.
-The retained six-library Viking profile has a different resource policy and is
-not a capacity requirement for this tiny fixture.
+The [coordinator qualification record](../../src/emrys/orchestration/run_coordinator/README.md#qualification-evidence-and-limits)
+and [resource provenance](../../src/emrys/orchestration/run_coordinator/resources/README.md#resource-policy-provenance)
+retain the exact jobs, qualification identity, memory observations, unexplained
+failures and actual-data outcome limits. The earlier 750-line/Rich allowance is
+dated authority, not a current grant. [Frozen original decisions](https://github.com/lab-cats/EMRYS/blob/06f88dbca7161599d7445f8cb2bfedf58f377282/docs/tasks/backlog_matrix.md#viking-walkthrough-findings)
+retain exact context; the cluster groups and SITE-PARITY-01 own remaining acceptance.
 
 ### Scientific review and independent validation
 

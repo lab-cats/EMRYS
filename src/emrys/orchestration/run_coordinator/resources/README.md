@@ -23,6 +23,19 @@ utilization or speedup.
 
 ## Resource-policy provenance
 
+These operator-supplied Viking observations are historical, not current site
+qualification or measurements of stage demand. Their [frozen source](https://github.com/lab-cats/EMRYS/blob/06f88dbca7161599d7445f8cb2bfedf58f377282/docs/tasks/backlog_matrix.md#viking-walkthrough-findings)
+and [E02/E10 register](https://github.com/lab-cats/EMRYS/blob/06f88dbca7161599d7445f8cb2bfedf58f377282/docs/tasks/cluster_verification_campaign.md#evidence-register)
+retain context and limits; raw cluster records remained operator-held.
+
+| Observation | Exact identity and evidence limit |
+| --- | --- |
+| Original accounting | Job `605171`: `viking-users`, `long`, `normal`, four CPUs/eight hours; `ReqMem=1M` without allocated-memory accounting. `select/cons_tres`, `CR_CORE`, unlimited default/maximum per-node memory and `task/cgroup` established no process memory limit. This is the Viking E02 observation, not a same-numbered NORAD result. |
+| Capacity refusal and diagnosis | Observer `c52178d2` refused absent Slurm memory metadata for a partial-node allocation. Automated Doctor job `618134` passed runtime inspection then stopped there; diagnostic job `618190` on `node009` exposed four CPUs, neither memory variable and effectively unlimited visible cgroup-v1 limits. No scheduler values were forged or allocation enlarged to bypass admission. |
+| Approved fallback | The operator accepted process-visible RAM without a separate workflow budget or full-node CPU requirement, retaining observed cgroup/declared scheduler limits, CPU constraints and source attribution. The correction followed Doctor diagnostics, not an evidenced actual Run. Reported Doctor READY left science pending and did not explain the earlier generic failure. |
+| Heterogeneous capacity | E10 observed 128544 MiB total/111749 MiB then available on one node and a 386627-MiB workflow ceiling on another, against a 262144-MiB index allowance. A 256-CPU exclusive request waited with 16 CPUs occupied/240 idle while the workflow used 12 cores. Capacity/configuration is not measured demand or optimal placement; scheduler memory `1` was not physical RAM. |
+
+
 The September 15, 2026 reconstruction, recorded in
 `354699748cedd245df653d15410e04c59811f87c`, followed an operator report of an
 eight-hour pipeline instead of the expected four hours and an instruction to
@@ -52,6 +65,6 @@ allocation-aware policy. Historical task minima remain current only where the
 active profile declares them. Fixed-policy restoration and historical timing
 comparison are no longer acceptance requirements. The old configuration is
 provenance, not a current prescription, safe-RSS bound or speedup claim.
-[CV-U28](../../../../../docs/tasks/cluster_verification_backlog.md#cv-u28-allocation-aware-resource-policy-and-historical-provenance)
+[CV-U28](../../../../../docs/tasks/backlog_matrix.md#resource-selection-and-observation)
 retains exact-revision institutional Doctor/Run allocation acceptance; configuration
 and historical timing alone do not establish that result or measured utilization.
