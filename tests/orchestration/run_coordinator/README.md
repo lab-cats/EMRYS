@@ -2,7 +2,7 @@
 
 These tests protect the public Project-to-Results journey and the coordinator's internal boundaries: onboarding, normalization, profiles and resources, Doctor, materialization, task execution, lifecycle and resume, Slurm submission, inspection, reporting, and the installed watch surface.
 
-Test-owned fixtures and injected failures exercise production contracts without creating alternate production inputs or execution modes.
+[Test-owned fixtures](fixtures/README.md) explicitly label injected science as the existing `test-double` mode; production plans and real managed E2E retain `local-science-tools`. The public v4 mode compatibility is unchanged.
 
 ## What the checks establish
 

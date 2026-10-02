@@ -529,6 +529,8 @@ def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
     resumed_attempt = orchestration_contracts.load_json_object(
         resumed.workflow_attempt_path
     )
+    assert json.loads(built.attempt_record_bytes)["execution_mode"] == "test-double"
+    assert resumed_attempt["execution_mode"] == "test-double"
     assert resumed_attempt["tasks"][machine_key][scope_id] == {
         "workflow_attempt_record": {
             "path": built.workflow_attempt_path.relative_to(built.run_root).as_posix(),

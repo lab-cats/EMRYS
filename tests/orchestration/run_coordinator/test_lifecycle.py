@@ -2654,7 +2654,8 @@ def test_resume_creates_attempt_with_content_bound_rerun_policy(
     )
     built.materialize_preentry_failure = True
     first_outcome = _run_attempt(built.request, ops=built.ops())
-    first_id = str(_attempt_record(built.request)["workflow_attempt_id"])
+    first_attempt = _attempt_record(built.request)
+    first_id = str(first_attempt["workflow_attempt_id"])
 
     built.request, second_attempt = _resume_request(
         built,
@@ -2667,6 +2668,11 @@ def test_resume_creates_attempt_with_content_bound_rerun_policy(
     built.materialize_complete = True
     second_outcome = _run_attempt(built.request, ops=built.ops())
 
+    assert (
+        first_attempt["execution_mode"]
+        == second_attempt["execution_mode"]
+        == "test-double"
+    )
     assert first_outcome.receipt["status"] == "failed"
     assert second_outcome.receipt["status"] == "succeeded"
     position = second_attempt["snakemake_argv"].index("--rerun-triggers")

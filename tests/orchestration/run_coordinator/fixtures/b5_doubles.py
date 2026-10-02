@@ -24,7 +24,7 @@ def with_owner_doubles(
     *,
     native_gate: tuple[str, str, Path] | None = None,
 ) -> AttemptPlan:
-    """Replace only owner command effects in an otherwise unchanged plan."""
+    """Declare injected science effects without changing the immutable Run."""
 
     source = {**plan.run.analysis.workflow_inputs, "run_id": plan.run.run_id}
     selected_path = (
@@ -74,6 +74,7 @@ def with_owner_doubles(
         payloads[path if path.is_absolute() else plan.run_root / path] = data
 
     attempt = json.loads(plan.attempt_record_bytes)
+    attempt["execution_mode"] = "test-double"
     records = (
         (machine_key, scope_id, record)
         for machine_key, by_scope in attempt["tasks"].items()

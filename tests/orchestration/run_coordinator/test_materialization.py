@@ -555,6 +555,9 @@ def test_owner_doubles_preserve_immutable_run_toolchain(tmp_path: Path) -> None:
     assert replace(doubled, attempt_record_bytes=plan.attempt_record_bytes) == plan
     attempt = doubled.attempt_record
     original_attempt = plan.attempt_record
+    assert original_attempt["execution_mode"] == "local-science-tools"
+    assert attempt["execution_mode"] == "test-double"
+    attempt["execution_mode"] = original_attempt["execution_mode"]
     for owner, scopes in attempt["tasks"].items():
         for scope, replacement in scopes.items():
             original = original_attempt["tasks"][owner][scope]
@@ -6582,7 +6585,7 @@ def _doubled_lifecycle_ops(
         attempt: Mapping[str, object],
         _execution: Mapping[str, object],
     ) -> None:
-        assert attempt["execution_mode"] == "local-science-tools"
+        assert attempt["execution_mode"] == "test-double"
         return None
 
     def admit_runtime(
@@ -6591,7 +6594,7 @@ def _doubled_lifecycle_ops(
         storage_binding: RuntimeBinding | None,
         _initial_inspection: RuntimeInspection | None,
     ) -> None:
-        assert attempt["execution_mode"] == "local-science-tools"
+        assert attempt["execution_mode"] == "test-double"
         assert storage_binding is None
 
     return replace(
@@ -7280,6 +7283,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     run_root = workspace / "runs" / run_id
     failed = inspection.inspect_run(run_root)
     assert failed.recovery_available
+    assert failed.latest_attempt["execution_mode"] == "test-double"
     assert failed.verified_report_locations == ()
     before = _verified_snapshot(run_root)
     assert 0 < len(before) < 35
@@ -7442,6 +7446,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert expected_results in resumed_output
     completed = inspection.inspect_run(run_root)
     assert completed.authority is not None
+    assert completed.latest_attempt["execution_mode"] == "test-double"
     assert (
         completed.integrity,
         completed.attempt_outcome,

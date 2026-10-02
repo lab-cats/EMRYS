@@ -1012,7 +1012,7 @@ def attempt_record(
         "scratch": None,
         "installed_package": admit_installed_package().record,
         "executor": "local",
-        "execution_mode": "local-science-tools",
+        "execution_mode": "test-double",
         "snakemake_argv": [],
         "host": "workflow-fixture",
         "process_id": os.getpid(),
