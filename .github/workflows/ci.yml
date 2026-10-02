@@ -267,15 +267,16 @@ jobs:
           set -euo pipefail
           rscript_bin="$(command -v Rscript)"
           make -s r-restore RSCRIPT_BIN="${rscript_bin}"
-          renv_library="$({
-            EMRYS_USE_RENV=1 \
-            EMRYS_LOCAL_PILOT_R=0 \
-            RENV_CONFIG_SANDBOX_ENABLED=FALSE \
-            RENV_CONFIG_AUTO_SNAPSHOT=FALSE \
-            R_PROFILE_USER="${GITHUB_WORKSPACE}/src/emrys/.Rprofile" \
-              "${rscript_bin}" -e \
-                'cat(normalizePath(.libPaths()[[1L]], winslash = "/", mustWork = TRUE))'
-          })"
+          renv_library_file="$(mktemp "${RUNNER_TEMP}/emrys-renv-library.XXXXXX")"
+          EMRYS_USE_RENV=1 \
+          EMRYS_LOCAL_PILOT_R=0 \
+          RENV_CONFIG_SANDBOX_ENABLED=FALSE \
+          RENV_CONFIG_AUTO_SNAPSHOT=FALSE \
+          R_PROFILE_USER="${GITHUB_WORKSPACE}/src/emrys/.Rprofile" \
+            "${rscript_bin}" -e \
+              'cat(normalizePath(.libPaths()[[1L]], winslash = "/", mustWork = TRUE), file = commandArgs(TRUE)[[1L]])' \
+              "${renv_library_file}"
+          renv_library="$(cat "${renv_library_file}")"
           test -n "${renv_library}"
           test -d "${renv_library}"
           printf 'RENV_LIBRARY=%s\n' "${renv_library}" >> "${GITHUB_ENV}"
@@ -1171,15 +1172,16 @@ jobs:
         run: |
           set -euo pipefail
           rscript_bin="$(command -v Rscript)"
-          renv_library="$({
-            EMRYS_USE_RENV=1 \
-            EMRYS_LOCAL_PILOT_R=0 \
-            RENV_CONFIG_SANDBOX_ENABLED=FALSE \
-            RENV_CONFIG_AUTO_SNAPSHOT=FALSE \
-            R_PROFILE_USER="${GITHUB_WORKSPACE}/src/emrys/.Rprofile" \
-              "${rscript_bin}" -e \
-                'cat(normalizePath(.libPaths()[[1L]], winslash = "/", mustWork = TRUE))'
-          })"
+          renv_library_file="$(mktemp "${RUNNER_TEMP}/emrys-renv-library.XXXXXX")"
+          EMRYS_USE_RENV=1 \
+          EMRYS_LOCAL_PILOT_R=0 \
+          RENV_CONFIG_SANDBOX_ENABLED=FALSE \
+          RENV_CONFIG_AUTO_SNAPSHOT=FALSE \
+          R_PROFILE_USER="${GITHUB_WORKSPACE}/src/emrys/.Rprofile" \
+            "${rscript_bin}" -e \
+              'cat(normalizePath(.libPaths()[[1L]], winslash = "/", mustWork = TRUE), file = commandArgs(TRUE)[[1L]])' \
+              "${renv_library_file}"
+          renv_library="$(cat "${renv_library_file}")"
           test -n "${renv_library}"
           test -d "${renv_library}"
           RENV_LIBRARY="${renv_library}" \
@@ -1314,15 +1316,16 @@ jobs:
         run: |
           set -euo pipefail
           rscript_bin="$(command -v Rscript)"
-          renv_library="$({
-            EMRYS_USE_RENV=1 \
-            EMRYS_LOCAL_PILOT_R=0 \
-            RENV_CONFIG_SANDBOX_ENABLED=FALSE \
-            RENV_CONFIG_AUTO_SNAPSHOT=FALSE \
-            R_PROFILE_USER="${GITHUB_WORKSPACE}/src/emrys/.Rprofile" \
-              "${rscript_bin}" -e \
-                'cat(normalizePath(.libPaths()[[1L]], winslash = "/", mustWork = TRUE))'
-          })"
+          renv_library_file="$(mktemp "${RUNNER_TEMP}/emrys-renv-library.XXXXXX")"
+          EMRYS_USE_RENV=1 \
+          EMRYS_LOCAL_PILOT_R=0 \
+          RENV_CONFIG_SANDBOX_ENABLED=FALSE \
+          RENV_CONFIG_AUTO_SNAPSHOT=FALSE \
+          R_PROFILE_USER="${GITHUB_WORKSPACE}/src/emrys/.Rprofile" \
+            "${rscript_bin}" -e \
+              'cat(normalizePath(.libPaths()[[1L]], winslash = "/", mustWork = TRUE), file = commandArgs(TRUE)[[1L]])' \
+              "${renv_library_file}"
+          renv_library="$(cat "${renv_library_file}")"
           test -n "${renv_library}"
           test -d "${renv_library}"
           printf 'RENV_LIBRARY=%s\n' "${renv_library}" >> "${GITHUB_ENV}"

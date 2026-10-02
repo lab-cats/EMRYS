@@ -349,3 +349,41 @@ the documented operator path; compute and inspection still never repair
 packages. This update changes no product line count and adds no product file.
 The approved named-correctness exception therefore remains 24 of 100 net product
 lines, with tests, metadata and documentation counted separately.
+
+
+### CI library-path output repair
+
+Hosted restoration on `897fb9fd2fcafc42f1331a20cd44d442163fd730` established the
+renv repair: both the guarded R job in [ordinary CI](https://github.com/lab-cats/EMRYS/actions/runs/36950027246)
+and the shared preparation job in [extended CI](https://github.com/lab-cats/EMRYS/actions/runs/36950057331)
+installed S4Arrays 1.12.0 and passed strict lock synchronization. Both subsequently
+failed while selecting the restored library. The complete Python 3.11 suite
+passed again, with 3,374 passed and eight skipped; the selected E2E scenarios
+were skipped after preparation failed and supply no execution evidence.
+
+A tiny isolated reproduction with real R 4.6.1, renv 1.2.4 and BiocManager
+1.30.27 confirmed that activation prints a preloaded-namespace bulletin on
+stdout before the requested path. R exits successfully, but the shell captures
+the bulletin and path as one value, so the directory check refuses it.
+`RENV_CONFIG_STARTUP_QUIET=TRUE` does not suppress that bulletin. No scientific
+package build was needed for this reproduction.
+
+The three source capture blocks now ask R to write the path to an exclusive
+`mktemp` file, then read that value. This covers guarded R, shared preparation,
+and the aliased selection used by all 130-pair and 100,000-pair jobs. Startup
+diagnostics remain visible; R failure, nonempty-path and directory checks remain
+strict. Restoration and post-restore synchronization are unchanged. This uses
+standard R file output and existing shell tools, not an output-text filter,
+namespace-warning suppression or new helper/registry.
+
+Independent review exercised 12 cases using the exact selection scripts from
+all four expanded jobs against the real tiny R fixture. Each accepted the
+correct path with diagnostics visible, refused a missing external Project, and
+preserved exit 7 without accepting a path even when a failing profile had already
+written a valid directory to the transport file. All cases passed; the harness,
+outputs and records remain outside the repository.
+
+All 25 existing workflow tests passed. Bash syntax and ShellCheck passed for all
+three distinct selection scripts, and whitespace checks passed. The fix adds
+three configuration lines and no product lines or files; the named product
+exception remains 24 of 100. Fresh CI remains required for the updated workflow.
