@@ -95,3 +95,29 @@ fragments and checksums; copying rendered HTML alone is a different claim.
 HTML structure or style-string tests, receipts and successful rendering calls are
 not browser/print proof. Visual acceptance establishes no scientific or biological
 validity and does not select a third report or a new reporting framework.
+
+### Nine-candidate presentation review
+
+REPORT-04 pins the literal nine-row selection/order, A–I labels, final context
+panel and three-by-three paired figure in the existing tests. Independent native
+contract tests refuse rank 10 and retained version-1 receipts without changing
+those bytes; the real-R fixture requires nine exact IDs while retaining all 40
+candidate-context rows and existing motif/logo/statistic counts.
+
+A disposable model fixture on 2026-10-02 used the actual selector, SVG builders,
+full template, CSS and HTML validator with nine long IDs, long annotations and
+condition names, three sample pairs and three motif states. Exact source hashes,
+inputs and the reproduction recipe are retained in
+`/private/tmp/emrys-report04-visual/render-w0e53rjh/render-xd7vy82t/`.
+An actual browser at 390×844 and 1280×900 showed all A–I details and no document
+horizontal overflow; candidate-I navigation clears the persistent banner. An
+actual 43-page Letter PDF of the preceding render in `render-z5sn8zqg` exposed
+and verified corrections to paired-panel label spacing and context annotation
+wrapping. Its figures match the final render, but the final global text wrapping
+and fragment offset were browser-reviewed only; final-print recheck remains due.
+
+These are constructed display models, not a native R transaction, published
+report receipt, complete copied Results tree, Run, or scientific/biological proof.
+Locked non-skipped native-R execution, final-print verification and the broader
+shared report acceptance remain pending. Do not substitute structure tests or
+this model fixture for those checks.

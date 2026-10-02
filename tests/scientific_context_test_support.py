@@ -336,7 +336,7 @@ def build_outputs(root: Path) -> dict[str, Path]:
                     sequence_with_hit(index < motif_counts[population]),
                     display_rank=(
                         str(index + 1)
-                        if population == "significant_up" and index < 8
+                        if population == "significant_up" and index < 9
                         else "NA"
                     ),
                 )
@@ -500,13 +500,13 @@ def build_transaction(
     receipt_row = {column: "NA" for column in CONTEXT.SCIENTIFIC_CONTEXT_RECEIPT_HEADER}
     receipt_row.update(
         schema_name="emrys.scientific_context_receipt",
-        schema_version="1.0.0",
+        schema_version="2.0.0",
         analysis_id=analysis_id,
-        scientific_context_schema_version="1.0.0",
+        scientific_context_schema_version="2.0.0",
         context_orientation_policy="legacy_rna_change_oriented_genomic_v1",
         context_radius="100",
         logo_radius="10",
-        display_limit="8",
+        display_limit="9",
         motif_match_policy="exact_iupac_presented_strand_v1",
         motif_distance_policy="nearest_midpoint_from_edit_v1",
         motif_distance_bin_width="10",
@@ -521,7 +521,7 @@ def build_transaction(
         multiple_testing_method="none_single_registered_motif",
         published_output_count="5",
         producer="build_scientific_context",
-        producer_version="1.0.0",
+        producer_version="2.0.0",
         r_version="fixture",
         biostrings_version="fixture",
         rsamtools_version="fixture",

@@ -133,6 +133,10 @@ class SelectedCandidate:
     pairs: tuple[CandidatePairEvidence, ...]
     motif: CandidateMotifEvidence
 
+    @property
+    def display_label(self) -> str:
+        return chr(ord("A") + self.display_rank - 1)
+
 
 @dataclass(frozen=True, slots=True)
 class SelectedCandidateProjection:

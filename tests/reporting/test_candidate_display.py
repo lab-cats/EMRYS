@@ -425,12 +425,18 @@ def test_missing_context_uses_bounded_fdr_effect_id_display_rule(
 
     assert projection.selection_source == "step09_display_rule"
     assert projection.significant_candidate_count == 10
-    assert len(projection.candidates) == scientific_context.DISPLAY_LIMIT
+    assert len(projection.candidates) == 9
+    assert tuple(item.display_label for item in projection.candidates) == tuple(
+        "ABCDEFGHI"
+    )
     assert projection.candidates[0].candidate_id == rows[9]["candidate_id"]
     assert projection.candidates[1].candidate_id == rows[8]["candidate_id"]
     assert tuple(
         candidate.display_rank for candidate in projection.candidates
-    ) == tuple(range(1, scientific_context.DISPLAY_LIMIT + 1))
+    ) == tuple(range(1, 10))
+    assert tuple(item.candidate_id for item in projection.candidates) == tuple(
+        rows[index]["candidate_id"] for index in (9, 8, 0, 1, 2, 3, 4, 5, 6)
+    )
 
 
 def test_missing_sample_values_remain_explicitly_unavailable(tmp_path: Path) -> None:

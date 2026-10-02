@@ -406,7 +406,7 @@ def test_selected_context_panels_use_shared_order_and_list_out_of_slice_hits() -
             f"significant_up_{index:02d}",
             hit_offset=45 if index == 1 else 5,
         )
-        for index in range(1, 9)
+        for index in range(1, 10)
     )
     projection = candidate_projection(candidates, significant_count=12)
 
@@ -415,10 +415,10 @@ def test_selected_context_panels_use_shared_order_and_list_out_of_slice_hits() -
 
     assert first.status == "available"
     assert first.data_uri is first.svg_sha256 is first.svg_size_bytes is None
-    assert len(first.panels) == 8
+    assert len(first.panels) == 9
     assert tuple(panel.panel_id for panel in first.panels) == tuple(
         f"selected-context-track-figure-candidate-{index:02d}-panel"
-        for index in range(1, 9)
+        for index in range(1, 10)
     )
     assert tuple(panel.svg_sha256 for panel in first.panels) == tuple(
         panel.svg_sha256 for panel in second.panels
@@ -428,6 +428,7 @@ def test_selected_context_panels_use_shared_order_and_list_out_of_slice_hits() -
     assert "12 significant candidates" in first.population
     assert "no figure-side selection or reranking" in first.population
     assert "Figure 2 performs no selection or reranking" in first.caption
+    assert "Candidate I, significant_up_09" in first.panels[-1].alt_text
     assert all(panel.svg_size_bytes < 4_000_000 for panel in first.panels)
 
 
@@ -652,17 +653,36 @@ def test_paired_profiles_preserve_the_shared_candidate_roster() -> None:
 
 
 def test_maximum_paired_profile_roster_fits_the_print_height_bound() -> None:
-    projection = candidate_projection(
-        tuple(selected_candidate(index, f"candidate-{index}") for index in range(1, 9))
+    candidates = tuple(
+        selected_candidate(index, f"candidate-{index}-" + "long-identifier-" * 5)
+        for index in range(1, 10)
+    )
+    projection = replace(
+        candidate_projection(candidates),
+        control_condition="long control condition label",
+        treatment_condition="long treatment condition label",
     )
 
     rendered = figures._paired_sample_profile_figure(projection)
 
     assert rendered.data_uri is not None
     svg = base64.b64decode(rendered.data_uri.partition(",")[2])
-    root = ET.fromstring(svg)
+    root = ET.fromstring(
+        svg, parser=ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+    )
     height_points = float(root.attrib["height"].removesuffix("pt"))
     assert height_points <= figures._PROFILE_MAX_HEIGHT_INCHES * 72
+    assert "9 of 9 significant candidates" in rendered.text_summary
+    assert all(candidate.candidate_id in rendered.caption for candidate in candidates)
+    labels = [
+        node.text.strip()
+        for node in root.iter()
+        if node.tag is ET.Comment and node.text
+    ]
+    for label, index in zip("ABCDEFGHI", range(1, 10), strict=True):
+        assert any(
+            text and text.startswith(f"{label}. candidate-{index}-") for text in labels
+        )
 
 
 def test_location_memberships_remain_independent_and_nonexclusive(

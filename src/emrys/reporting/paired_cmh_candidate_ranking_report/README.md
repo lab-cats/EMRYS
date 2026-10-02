@@ -25,3 +25,21 @@ number formatting and the fixed figure-roster checks; it does not create another
 candidate or layout representation. Both report layouts share the template's
 markup, while the provider extension still returns scientific HTML bytes.
 The former alpha `render_report_view` dictionary-layout interface is retired.
+
+The shared presentation roster displays at most nine candidates, labeled A–I,
+using admitted Step 10 order or the existing FDR/effect/ID fallback. Complete
+candidate tables remain linked and unchanged. The native context contract and
+receipt are version 2.0.0 with limit 9; old version-1 receipts are refused intact,
+not upgraded. A new immutable Run binds the new implementation. Figure policy
+5.0.0 uses three columns for nine paired profiles; full identities and condition
+names remain in captions, alternative text and vertical details. Numeric fragment
+and panel identifiers remain stable. Long text wraps on narrow screens and fragment
+navigation leaves room for the persistent computational-results banner.
+
+The REPORT-04 caller review reused the existing selector, native contract, figure
+builders, template and CSS. It removes the private duplicate profile limit and
+centralizes display labels without introducing a second selector or compatibility
+path. The bounded feature adds ten net product lines across eight existing files,
+with no dependency or product-file growth; this quantified exception is delivered
+under the user's explicitly delegated autonomous scope. Test additions and
+contract/guide updates are accounted separately, with retained evidence untouched.

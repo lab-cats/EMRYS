@@ -18,6 +18,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+from emrys.contracts.scientific_evidence.scientific_context import DISPLAY_LIMIT
 from emrys.reporting import (
     ReportProviderError as ReportRenderError,
     recheck_report_input as _assert_snapshot,
@@ -39,7 +40,6 @@ _MAX_SVG_BYTES = 4_000_000
 _LANDSCAPE_X_BINS = 48
 _LANDSCAPE_Y_BINS = 36
 _CONCORDANCE_BINS = 40
-_PROFILE_DISPLAY_LIMIT = 8
 _PAIR_LEGEND_LIMIT = 4
 _PROFILE_MAX_HEIGHT_INCHES = 7.2
 _PROFILE_ROW_HEIGHT_INCHES = 1.6
@@ -830,8 +830,9 @@ def _paired_sample_profile_figure(
     candidate_display: SelectedCandidateProjection,
 ) -> ScientificFigure:
     profiles = candidate_display.candidates
-    if len(profiles) > _PROFILE_DISPLAY_LIMIT:
+    if len(profiles) > DISPLAY_LIMIT:
         _fail("Shared candidate display exceeds the paired-profile display limit")
+    columns = 1 if len(profiles) == 1 else 3 if len(profiles) > 8 else 2
     pair_count = len(profiles[0].pairs) if profiles else 0
     if any(len(candidate.pairs) != pair_count for candidate in profiles):
         _fail("Shared candidate display changes its manifest pair roster")
@@ -849,7 +850,6 @@ def _paired_sample_profile_figure(
             )
             axis.set_axis_off()
             return
-        columns = 1 if len(profiles) == 1 else 2
         row_count = math.ceil(len(profiles) / columns)
         for profile_index, candidate in enumerate(profiles, start=1):
             axis = figure.add_subplot(row_count, columns, profile_index)
@@ -893,18 +893,18 @@ def _paired_sample_profile_figure(
                 (
                     _short_candidate_id(
                         candidate_display.control_condition,
-                        limit=18,
+                        limit=11 if columns == 3 else 18,
                     ),
                     _short_candidate_id(
                         candidate_display.treatment_condition,
-                        limit=18,
+                        limit=11 if columns == 3 else 18,
                     ),
                 ),
                 fontsize=7,
             )
             axis.set_title(
-                f"{candidate.display_rank}. "
-                f"{_short_candidate_id(candidate.candidate_id)}",
+                f"{candidate.display_label}. "
+                f"{_short_candidate_id(candidate.candidate_id, limit=23 if columns == 3 else 34)}",
                 fontsize=8.5,
                 loc="left",
             )
@@ -933,12 +933,12 @@ def _paired_sample_profile_figure(
             left=0.08,
             right=0.98,
             bottom=0.07,
-            top=0.93,
+            top=0.88 if columns == 3 else 0.93,
             hspace=0.62,
-            wspace=0.26,
+            wspace=0.38 if columns == 3 else 0.26,
         )
 
-    row_count = max(1, math.ceil(len(profiles) / 2))
+    row_count = max(1, math.ceil(len(profiles) / columns))
     svg, digest, size = _render_svg(
         "paired-sample-profile-figure",
         draw,
@@ -976,7 +976,7 @@ def _paired_sample_profile_figure(
         ),
         text_summary=summary_text,
         caption=(
-            f"The shared display-only roster uses at most {_PROFILE_DISPLAY_LIMIT} "
+            f"The shared display-only roster uses at most {DISPLAY_LIMIT} "
             f"candidates selected by {selection_description}; this figure performs "
             "no selection or reranking. Colored lines join the exact manifest-defined "
             f"sample pairs ({pair_mapping}); black diamonds join Step 09's "

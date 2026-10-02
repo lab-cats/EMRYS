@@ -12,7 +12,7 @@ from tests import scientific_context_test_support as FIXTURE
 from tests import scientific_evidence_test_support as STEP_FIXTURE
 
 
-def test_v1_headers_and_policy_literals_are_frozen() -> None:
+def test_v2_headers_and_policy_literals_are_frozen() -> None:
     assert CONTEXT.CANDIDATE_CONTEXT_HEADER == tuple(
         "analysis_id candidate_id population display_rank chromosome position "
         "contig_length genomic_ref genomic_alt rna_ref rna_alt "
@@ -58,11 +58,14 @@ def test_v1_headers_and_policy_literals_are_frozen() -> None:
         "legacy_rna_change_oriented_genomic_v1"
     )
     assert CONTEXT.MOTIF_DNA_CONSENSUS == "TGTANA"
+    assert CONTEXT.SCIENTIFIC_CONTEXT_SCHEMA_VERSION == "2.0.0"
+    assert CONTEXT.SCIENTIFIC_CONTEXT_RECEIPT_SCHEMA_VERSION == "2.0.0"
+    assert CONTEXT.DISPLAY_LIMIT == 9
     assert CONTEXT.CONTEXT_RADIUS == 100
     assert CONTEXT.LOGO_RADIUS == 10
 
 
-def test_v1_outputs_admit_exact_hits_logos_and_statistics(tmp_path: Path) -> None:
+def test_v2_outputs_admit_exact_hits_logos_and_statistics(tmp_path: Path) -> None:
     paths = FIXTURE.build_outputs(tmp_path)
 
     outputs = CONTEXT.validate_scientific_context_outputs(
@@ -79,7 +82,7 @@ def test_v1_outputs_admit_exact_hits_logos_and_statistics(tmp_path: Path) -> Non
     assert outputs.motif_statistics.row_count == 61
 
 
-def test_v1_outputs_reject_motif_and_statistic_mutations(tmp_path: Path) -> None:
+def test_v2_outputs_reject_motif_and_statistic_mutations(tmp_path: Path) -> None:
     paths = FIXTURE.build_outputs(tmp_path)
     FIXTURE.replace_cell(paths["motif_hits"], 0, "midpoint_offset", "9.5")
     with pytest.raises(CONTEXT.ContractError, match="every exact overlapping"):
@@ -113,7 +116,7 @@ def test_v1_outputs_reject_motif_and_statistic_mutations(tmp_path: Path) -> None
         ("odds_ratio_ci95_upper", "10", "upper bound"),
     ),
 )
-def test_v1_outputs_reject_forged_fisher_effects(
+def test_v2_outputs_reject_forged_fisher_effects(
     tmp_path: Path,
     field: str,
     value: str,
@@ -132,7 +135,7 @@ def test_v1_outputs_reject_forged_fisher_effects(
         )
 
 
-def test_v1_catalog_and_policy_are_literal(tmp_path: Path) -> None:
+def test_v2_catalog_and_policy_are_literal(tmp_path: Path) -> None:
     catalog = tmp_path / "motifs.tsv"
     FIXTURE.write_tsv(
         catalog,
@@ -152,7 +155,7 @@ def test_v1_catalog_and_policy_are_literal(tmp_path: Path) -> None:
         CONTEXT.validate_motif_catalog(catalog)
 
 
-def test_v1_receipt_rejects_a_stale_bound_output(tmp_path: Path) -> None:
+def test_v2_receipt_rejects_a_stale_bound_output(tmp_path: Path) -> None:
     built = STEP_FIXTURE.build_fixture(tmp_path / "step09")
     analysis_id = STEP_FIXTURE.PRIMARY_ANALYSIS_ID
     transaction = FIXTURE.build_transaction(
@@ -185,7 +188,7 @@ def test_v1_receipt_rejects_a_stale_bound_output(tmp_path: Path) -> None:
         ("reference_center", "genomic_ref differs"),
     ),
 )
-def test_v1_receipt_rederives_context_from_bound_reference(
+def test_v2_receipt_rederives_context_from_bound_reference(
     tmp_path: Path,
     mutation: str,
     expected: str,
@@ -259,11 +262,11 @@ def test_v1_receipt_rederives_context_from_bound_reference(
         (0, "genomic_alt", "A", "nucleotide substitution"),
         (0, "rna_alt", "T", "does not reconcile genomic and RNA bases"),
         (0, "context_status", "boundary_truncated", "does not match its window"),
-        (0, "display_rank", "9", "between 1 and 8"),
+        (0, "display_rank", "10", "between 1 and 9"),
         (10, "display_rank", "1", "background candidate"),
     ),
 )
-def test_v1_candidate_rows_reject_each_declared_invariant(
+def test_v2_candidate_rows_reject_each_declared_invariant(
     tmp_path: Path,
     row_index: int,
     field: str,
@@ -290,7 +293,7 @@ def test_v1_candidate_rows_reject_each_declared_invariant(
         (1, "display_rank", 0, "duplicate display_rank"),
     ),
 )
-def test_v1_candidate_roster_rejects_duplicate_identities(
+def test_v2_candidate_roster_rejects_duplicate_identities(
     tmp_path: Path,
     row_index: int,
     field: str,
@@ -314,7 +317,7 @@ def test_v1_candidate_roster_rejects_duplicate_identities(
         )
 
 
-def test_v1_outputs_reject_missing_extra_and_malformed_rows(tmp_path: Path) -> None:
+def test_v2_outputs_reject_missing_extra_and_malformed_rows(tmp_path: Path) -> None:
     paths = FIXTURE.build_outputs(tmp_path / "missing-hit")
     with paths["motif_hits"].open(encoding="utf-8", newline="") as stream:
         hit_rows = list(csv.DictReader(stream, delimiter="\t"))
@@ -364,7 +367,7 @@ def test_v1_outputs_reject_missing_extra_and_malformed_rows(tmp_path: Path) -> N
         ("motif_statistics", "extra", "beyond its fixed roster"),
     ),
 )
-def test_v1_fixed_output_matrices_reject_missing_and_extra_rows(
+def test_v2_fixed_output_matrices_reject_missing_and_extra_rows(
     tmp_path: Path,
     table: str,
     mode: str,
@@ -411,7 +414,7 @@ def test_v1_fixed_output_matrices_reject_missing_and_extra_rows(
         ),
     ),
 )
-def test_v1_derived_matrices_reject_value_mutations(
+def test_v2_derived_matrices_reject_value_mutations(
     tmp_path: Path,
     table: str,
     row_index: int,
@@ -449,14 +452,17 @@ def _build_transaction(tmp_path: Path) -> FIXTURE.ContextFixture:
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     (
-        ("schema_version", "2.0.0", "schema_version must be"),
+        ("schema_version", "3.0.0", "schema_version must be"),
+        ("scientific_context_schema_version", "1.0.0", "schema_version must be"),
+        ("producer_version", "1.0.0", "producer_version must be"),
+        ("display_limit", "8", "display_limit must be"),
         ("published_output_count", "4", "published_output_count must be"),
         ("transaction_state", "partial", "transaction_state must be"),
         ("git_commit", "short", "full hexadecimal commit"),
         ("r_version", "", "r_version"),
     ),
 )
-def test_v1_receipt_rejects_constant_and_identity_mutations(
+def test_v2_receipt_rejects_constant_and_identity_mutations(
     tmp_path: Path,
     field: str,
     value: str,
@@ -469,7 +475,34 @@ def test_v1_receipt_rejects_constant_and_identity_mutations(
         CONTEXT.validate_scientific_context_transaction(transaction.receipt)
 
 
-def test_v1_receipt_rejects_relative_paths_and_stale_row_counts(tmp_path: Path) -> None:
+def test_v2_refuses_retained_v1_transaction_without_rewriting_files(
+    tmp_path: Path,
+) -> None:
+    transaction = _build_transaction(tmp_path)
+    for field, value in (
+        ("schema_version", "1.0.0"),
+        ("scientific_context_schema_version", "1.0.0"),
+        ("producer_version", "1.0.0"),
+        ("display_limit", "8"),
+    ):
+        FIXTURE.replace_cell(transaction.receipt, 0, field, value)
+    before = {
+        path.relative_to(tmp_path): path.read_bytes()
+        for path in tmp_path.rglob("*")
+        if path.is_file()
+    }
+
+    with pytest.raises(CONTEXT.ContractError, match=r"schema_version must be 2\.0\.0"):
+        CONTEXT.validate_scientific_context_transaction(transaction.receipt)
+
+    assert {
+        path.relative_to(tmp_path): path.read_bytes()
+        for path in tmp_path.rglob("*")
+        if path.is_file()
+    } == before
+
+
+def test_v2_receipt_rejects_relative_paths_and_stale_row_counts(tmp_path: Path) -> None:
     transaction = _build_transaction(tmp_path / "relative")
     FIXTURE.replace_cell(
         transaction.receipt,
@@ -486,7 +519,7 @@ def test_v1_receipt_rejects_relative_paths_and_stale_row_counts(tmp_path: Path) 
         CONTEXT.validate_scientific_context_transaction(transaction.receipt)
 
 
-def test_v1_receipt_rejects_malformed_fai_and_fasta_identity(tmp_path: Path) -> None:
+def test_v2_receipt_rejects_malformed_fai_and_fasta_identity(tmp_path: Path) -> None:
     transaction = _build_transaction(tmp_path / "duplicate-fai")
     fai_text = transaction.reference_fai.read_text(encoding="utf-8")
     transaction.reference_fai.write_text(fai_text + fai_text, encoding="utf-8")
