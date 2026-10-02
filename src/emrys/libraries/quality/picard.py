@@ -2,31 +2,42 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from math import isfinite
 
 
-def parse_duplication_metrics(text: str) -> tuple[bool, str]:
+def duplication_metrics_row(lines: Iterable[str]) -> dict[str, str]:
+    """Read the single first Picard table while consuming the complete input."""
     table: list[str] = []
-    for line in text.splitlines():
+    ended = False
+    for line in lines:
         if not line or line.startswith("#"):
-            if table:
-                break
-            continue
-        table.append(line)
+            ended = bool(table)
+        elif not ended and len(table) < 3:
+            table.append(line)
 
     if len(table) < 2:
-        return False, "missing metrics header/data row"
+        raise ValueError("missing metrics header/data row")
     header = table[0].split("\t")
-    rows = [line.split("\t") for line in table[1:]]
+    values = table[1].split("\t")
+    if len(header) != len(set(header)):
+        raise ValueError("duplicate Picard metric columns")
     required = {
         "LIBRARY",
         "READ_PAIRS_EXAMINED",
         "READ_PAIR_DUPLICATES",
         "PERCENT_DUPLICATION",
     }
-    if not required <= set(header) or len(rows) != 1 or len(rows[0]) != len(header):
-        return False, "expected one row with required Picard columns"
-    values = dict(zip(header, rows[0], strict=True))
+    if not required <= set(header) or len(table) != 2 or len(values) != len(header):
+        raise ValueError("expected one row with required Picard columns")
+    return dict(zip(header, values, strict=True))
+
+
+def parse_duplication_metrics(text: str) -> tuple[bool, str]:
+    try:
+        values = duplication_metrics_row(text.splitlines())
+    except ValueError as exc:
+        return False, str(exc)
     try:
         examined = int(values["READ_PAIRS_EXAMINED"])
         duplicates = int(values["READ_PAIR_DUPLICATES"])

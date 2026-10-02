@@ -1194,6 +1194,98 @@ def test_star_final_log_preserves_infinite_mapping_speed_as_string(
     assert metrics["uniquely_mapped_reads"]["value"] == 95.0
 
 
+def test_picard_reordered_single_table_projects_literal_metrics(
+    artifact_fixture: Any,
+) -> None:
+    artifact_fixture.source_for("sample.SYNTH_A.markdup_metrics").write_text(
+        "## METRICS CLASS picard.sam.DuplicationMetrics\n"
+        "PERCENT_DUPLICATION\tLIBRARY\tREAD_PAIR_DUPLICATES\t"
+        "READ_PAIRS_EXAMINED\tEXTRA_COUNT\tESTIMATED_LIBRARY_SIZE\n"
+        "0.2\tS\t2\t10\t12\t\n\n"
+        "## HISTOGRAM\nset_size\tcount\n1\t8\n2\t2\n",
+        encoding="utf-8",
+    )
+    context = context_for(artifact_fixture)
+    record = next(
+        item
+        for item in context.index.records
+        if item["artifact_id"] == "sample.SYNTH_A.markdup_metrics"
+    )
+    assert record["completion_status"] == "complete"
+    assert {
+        metric["metric_id"]: (metric["value"], metric["status"])
+        for metric in record["metrics"]
+    } == {
+        "source_row_count": (1, "not_assessed"),
+        "read_pairs_examined": (10, "not_assessed"),
+        "read_pair_duplicates": (2, "not_assessed"),
+        "percent_duplication": (0.2, "not_assessed"),
+        "extra_count": (12, "not_assessed"),
+    }
+
+
+@pytest.mark.parametrize(
+    ("header", "data", "suffix", "message"),
+    [
+        (
+            b"LIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIRS_EXAMINED\t"
+            b"READ_PAIR_DUPLICATES\tPERCENT_DUPLICATION",
+            b"S\t1\t10\t2\t0.2",
+            b"",
+            "duplicate Picard metric columns",
+        ),
+        (
+            b"unexpected\nLIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIR_DUPLICATES\tPERCENT_DUPLICATION",
+            b"S\t10\t2\t0.2",
+            b"",
+            "expected one row",
+        ),
+        (
+            b"LIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIR_DUPLICATES",
+            b"S\t10\t2",
+            b"",
+            "expected one row",
+        ),
+        (None, b"S\t10\t2\t0.2", b"T\t30\t3\t0.1\n", "expected one row"),
+        (None, b"S\t10\t2\t1e999", b"", "non-finite"),
+        (None, b"S\t10\t2\t0.2", b"\n## HISTOGRAM\n1\t8\x00\n", "NUL byte"),
+        (None, b"S\t10\t2\t0.2", b"\n## HISTOGRAM\n1\t8\r\n", "carriage return"),
+        (
+            None,
+            b"S\t10\t2\t0.2",
+            b"\n## HISTOGRAM\n" + b"1\t8\n" * 3000 + b"\xff",
+            "UTF-8",
+        ),
+    ],
+)
+def test_picard_malformed_source_is_failed_artifact_evidence(
+    artifact_fixture: Any,
+    header: bytes | None,
+    data: bytes,
+    suffix: bytes,
+    message: str,
+) -> None:
+    if header is None:
+        header = (
+            b"LIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIR_DUPLICATES\tPERCENT_DUPLICATION"
+        )
+    artifact_fixture.source_for("sample.SYNTH_A.markdup_metrics").write_bytes(
+        header + b"\n" + data + b"\n" + suffix
+    )
+    context = context_for(artifact_fixture)
+    record = next(
+        item
+        for item in context.index.records
+        if item["artifact_id"] == "sample.SYNTH_A.markdup_metrics"
+    )
+    assert record["completion_status"] == "failed"
+    assert [error["code"] for error in record["errors"]] == [
+        "adapter_validation_failed"
+    ]
+    assert message in record["errors"][0]["message"]
+    assert record["metrics"] == []
+
+
 @pytest.mark.parametrize("token", ["-inf", "nan", "1e999"])
 def test_star_final_log_rejects_unapproved_nonfinite_metrics(
     artifact_fixture: Any,
