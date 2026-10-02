@@ -113,11 +113,16 @@ An actual browser at 390×844 and 1280×900 showed all A–I details and no docu
 horizontal overflow; candidate-I navigation clears the persistent banner. An
 actual 43-page Letter PDF of the preceding render in `render-z5sn8zqg` exposed
 and verified corrections to paired-panel label spacing and context annotation
-wrapping. Its figures match the final render, but the final global text wrapping
-and fragment offset were browser-reviewed only; final-print recheck remains due.
+wrapping. The final `report04-final-print.pdf` in `render-xd7vy82t` was then
+rendered with the final CSS; index and nine-panel pages were visually rechecked.
+All PDF bytes match the inspected predecessor after substituting only creation/
+modification dates and the exact disposable directory in link targets. The final
+PDF SHA-256 is
+`52217d361b050191bbfe41cbbc0d8064a173fe216a930493413b37dedf5c5a57`;
+`print-review.json` retains that bounded comparison.
 
 These are constructed display models, not a native R transaction, published
 report receipt, complete copied Results tree, Run, or scientific/biological proof.
-Locked non-skipped native-R execution, final-print verification and the broader
-shared report acceptance remain pending. Do not substitute structure tests or
+Locked non-skipped native-R execution and the broader shared report acceptance
+remain pending. Do not substitute structure tests or
 this model fixture for those checks.
