@@ -1,8 +1,8 @@
 # SCHEMA-01 contract decision brief
 
 The [backlog matrix](backlog_matrix.md#maintainability-and-release) alone owns
-acceptance and status. This brief preserves the bounded audit and decisions
-needed before changing a schema; it approves no reset, field removal or migration.
+acceptance and status. This brief records the completed field screen and decision
+to retain current formats; it approves no reset, field removal or migration.
 The [schema owner](../../src/emrys/contracts/schemas/README.md) remains authoritative.
 
 The September 22 source pass reviewed `f32260f0408fe1826af401fc1ddce0f2478ae6ce`;
@@ -13,18 +13,19 @@ metadata without executing tests, a Run, cluster work or migration. The
 retains detailed searches and measurements. Its historical observations are not
 a current consumer census or permission to rewrite retained records.
 
-## Decision and coverage
+## Historical decision coverage
 
-Decide product version, `$id`, serialized label and packaged path independently.
-Compare retaining current contracts, a justified field transition, and a selected
-reset against complete caller migration, retained-state impact and measured net
-maintenance reduction. Product 1.0 does not require schema v1.
+The September checkpoint below left S10's full field screen and S11's selection
+unfinished. The [October retention decision](#retention-decision-at-a3309dbf) and
+[complete declared-field screen](#complete-declared-field-screen) close those
+audit gaps without selecting a migration. Product version, `$id`, serialized
+label and packaged path remain independent; product 1.0 does not require schema v1.
 
 | Alias | Retained finding and decision limit |
 | --- | --- |
 | S01–S03 | Twenty Draft 2020-12 resources: four artifact and 16 orchestration; three artifact and 15 orchestration selectors plus common definitions. Nine IDs already use v1; eleven do not. External references close within this set. Artifact common references orchestration's installed-package definition. Registries have different selection/admission policies. |
 | S04 | Producer/reader routes are identified below; complete direct, Slurm, resume, report, CLI, installed-wheel and external-consumer parity remains unproved. |
-| S05 | Seven package-data directories and the wheel roster include all 20 resources. Twelve orchestration schemas are explicit Run roots; all 20 affect installed-package identity for new Attempts. Omission from the Run-root list is neither dead code nor proof that a registry edit is Run-neutral. |
+| S05 | Seven package-data directories include all 20 resources; the explicit wheel-roster overclaim is corrected in the October decision below. Twelve orchestration schemas are explicit Run roots; all 20 affect installed-package identity for new Attempts. Omission from the Run-root list is neither dead code nor proof that a registry edit is Run-neutral. |
 | S06 | Alpha `0.1.0.dev0`, September 22 PyPI lookup 404 and no GitHub releases/tags. Exact public code searches for `emrys-rna-workflow`, `urn:emrys:schema:` and `emrys.analysis_modules` excluded this repository and returned zero; default-branch/index/size limits exclude a consumer census. Known collaborators, private wheels and source installs remain to inventory. |
 | S07 | Tracked Projects are placeholders and data is ignored. Campaign evidence names actual retained cancelled/replacement Runs, but their present locations, versions and recovery needs were not inspected. Use an owner-authorized metadata inventory, without copying scientific data. |
 | S08 | Obsolete Runs are refused with evidence preserved. Current Project forms, provider-v1 metadata versus execution support, and retained submission-request v1–v4 diagnostics are distinct contracts, not equivalent legacy aliases. |
@@ -83,12 +84,364 @@ request reader is not a registered-schema alias. Source searches found no direct
 schema-path/ID references in scripts or workflows; a CI profile-version literal
 and external callers still require their own consideration.
 
+## Retention decision at a3309dbf
+
+The October 1 follow-up reviewed source at
+`a3309dbf3d8ad5b873501015cf099fd7785ae7a4`. Retain every current `$id`, serialized
+version, packaged path and declared field. Do not reset them to v1 for a product
+release. Do not introduce aliases, historical readers, record rewriting or a
+second registry. This completes the field-screen and keep/transition/reset
+**decision** missing from the September pass; it implements no schema migration.
+The matrix remains the status authority.
+
+| Option | Decision and reason |
+| --- | --- |
+| Keep current formats | Selected. Current producers, consumers, exact-byte references and admission checks use these formats. Keeping them preserves all existing defenses without new compatibility machinery. Product code, schema bytes and resource count change by zero. |
+| Remove or derive selected fields | Not selected. The candidate table identifies possible future transitions, not dead fields established safe to delete. Some repeated values enforce independent checks; some carry provenance even without a direct lookup. None has a demonstrated caller-complete product reduction with preserved meaning, identities and recovery. `PROFILE-CONTRACT-01` remains deferred. |
+| Reset IDs, labels or paths to v1 | Not selected. Renumbering offers no demonstrated runtime or maintenance benefit and can change exact registration, cross-record labels, packaged resource access, Run implementation identity and Attempt/package identity. Nine IDs already use v1. A product release is not a schema migration rationale. |
+
+All 20 resource files, both registries, contract tests, package declarations,
+Run schema roots and installed-package identity code are unchanged from the
+September source revision. The current writers/readers were checked against that
+snapshot: Task changes repair child reaping; Setup changes saved CLI settings;
+Control/Report changes admit verified reuse before placement; execution-profile
+admission now rejects normalized filesystem roots. None changes a declared schema
+field or serialized format. Separate Slurm submission-request admission changes
+remain outside this registered family and must not become schema aliases.
+
+The seven package-data globs cover all 20 resources. **Correction to the earlier
+roster claim:** the explicit `RESOURCE_PATHS` wheel-test list names 19 schemas,
+omitting `application_model`; registration and Run-root inclusion are separate
+facts, not an explicit twentieth wheel-roster assertion. The separate packaging
+repair in `89c01f26` replaces that stale test list with the existing consumer
+registries, enrolling all 20 while preserving the non-schema resource checks.
+Its installed-wheel execution remains a separate CI obligation. No new wheel test
+was run for this decision. The [retained software checkpoint](../../.github/workflows/README.md#integrated-software-checkpoint)
+binds ordinary and real synthetic journeys to exact `4348976f`, with later
+ordinary evidence at `06f88dbc`. It supports active use of these unchanged formats,
+not exhaustive field mutation coverage, external-consumer absence, present site
+recovery, scientific review or migration parity.
+
+The alpha/public-metadata premise is insufficient to prove no consumers. Private
+wheels, source installs, collaborators and actual retained site Runs remain
+unquantified. Retaining current contracts does not depend on their absence;
+inventory them before a future incompatible change, not as a precondition for
+leaving their contracts intact. Historical measurements below remain hypotheses,
+not implementation savings. No immediate dead-field or dead-definition deletion
+was established.
+
+## Complete declared-field screen
+
+This source ledger covers all 20 resources and every declared `properties` group,
+including array items, `$defs`, conditional branches and dynamic maps. Names below
+use the resource ledger's paths; repeated shared definitions are expanded once.
+Scalar constraints, required/optional distinctions, closed-object boundaries,
+ordering and state unions are retained. Open objects are explicitly identified;
+their owner-specific contents are not additional declared JSON Schema fields.
+This is a dated audit ledger, not another executable schema registry.
+
+### Artifact common
+
+- `path_hash`: `path`, `sha256`, `size_bytes`, `row_count`, `media_type`.
+  `issue`: `code`, `message`, `related_artifact_ids`.
+  `metric`: `metric_id`, `name`, `value`, `unit`, `status`, `source_artifact_id`.
+- `provenance`: `producer`, `producer_version`, `git_commit`, `installed_package`,
+  `created_at`. `run_contract`: `run_contract_sha256`, `sample_manifest_sha256`,
+  `reference_contract_sha256`, `partition_manifest_sha256`, `primary_analysis_id`,
+  `primary_analysis_policy_sha256`. `scope`: `step_id`, `scope_type`, `scope_id`.
+- Retain: artifact builders, summary/report readers and semantic validators use
+  these bindings, typed values, issue references and provenance. Shared scalar
+  IDs/hashes/paths and imported installed-package facts constrain those records;
+  they are not standalone record candidates. See [artifact admission](../../src/emrys/contracts/artifacts/_artifact_contracts/).
+
+### Artifact entry
+
+- `artifact_id`, `scope`, `adapter`, `expectation(required, source_path)`,
+  `availability_status`, `completion_status`, `state_reason`, `source`,
+  `parameters`, `metrics`, `warnings`, `errors`; shared scope/path/metric/issue
+  definitions apply. `parameters` is an adapter-owned open object.
+- Retain: [record construction](../../src/emrys/reporting/_artifact_index/records.py)
+  binds the expected inventory even when source content is absent. Semantic
+  admission preserves complete/present/null-reason and failure/issue distinctions;
+  summary rollups and report rendering consume them. No field is proved dead.
+
+### Run summary
+
+- `schema_name`, `schema_version`, `record_type`, `run_id`, `run_contract`,
+  `summary_state`, `generated_at`, `inventory`, `expected_scopes`, `artifacts`,
+  `computational_rollup`, `limitations`, `analysis_policy`, `warnings`, `errors`,
+  `provenance`, `tables`, `scientific_origin`, `run_contract_file`, `publication`.
+- Scope items: `scope`, `artifact_ids`, `aggregate_state`, `warnings`, `errors`.
+  Rollup: `expected_artifact_count`, `complete_artifact_count`,
+  `missing_artifact_count`, `incomplete_artifact_count`, `failed_artifact_count`,
+  `externally_unavailable_artifact_count`. Limitations: `limitation_id`, `status`,
+  `description`, `impact`, `evidence_ids`.
+- `analysis_policy` and each table bind `path`, `sha256`, `size_bytes`;
+  `scientific_origin` binds `run`, `attempt` record references;
+  `run_contract_file` binds `path`, `sha256`; `publication` binds `attempt_id`,
+  `started_at`, `finished_at`, `transaction_state`.
+- Retain: [document/projection owners](../../src/emrys/reporting/_run_summary/)
+  construct these records; contract/report/transaction readers check content,
+  identity, order, tables and independent rollups. Nested issue arrays are only
+  producer-derivable, not universally derivable under the admitted contract.
+
+### Report receipt
+
+- `schema_name`, `schema_version`, `record_type`, `run_id`, `generated_at`,
+  `publication_state`, `transaction_state`, `interpretation_boundary`,
+  `input_run_summary`, `inputs`, `analysis_policy`, `scientific_renderer`,
+  `evidence_renderer`, `template`, `stylesheet`, `outputs`, `state_banner`,
+  `schema_versions`, `analysis_execution_performed`, `external_network_assets_used`,
+  `validation_claimed`, `warnings`, `errors`, `provenance`.
+- Summary input: `path`, `sha256`, `schema_name`, `schema_version`; other inputs:
+  `path`, `sha256`, `size_bytes`, `rehash_content`; policy: those first three plus
+  `schema_version`; template/stylesheet resources: `path`, `sha256`.
+- Scientific renderer: `module_id`, `module_version`, `distribution_name`,
+  `distribution_version`, `package`, `entry_point`, `content_sha256`, `core_support`.
+  Core/evidence renderer: `producer`, `producer_version`, `package`,
+  `content_sha256`, `template_engine`, `template_engine_version`.
+  Outputs: `output_id`, `kind`, `path`, `sha256`, `size_bytes`, `media_type`,
+  `self_contained`; schema versions: `artifact_entry`, `run_summary`, `report_receipt`.
+- Retain: [receipt construction and TSV projection](../../src/emrys/reporting/_run_report/receipt.py),
+  semantic admission and transaction revalidation bind both rendered outputs and
+  explicit computational-only claims. The equal renderer copies and empty
+  `errors` are transition candidates below; constant values do not erase their
+  public assertion/provenance role or exact receipt identity.
+
+### Orchestration common
+
+- `file_snapshot(path, size_bytes, sha256)`, `record_reference(path, sha256)`,
+  `scope(scope_type, scope_id)`, `command(argv, exit_code)` and its successful/null
+  variants; `bound_file(role, path, size_bytes, sha256)`.
+- `tool_identity`: `name`, `version`, `path`, `resolved_path`, `sha256`, optional
+  `identity_kind`. `installed_package`: `path`, `distribution`, `version`,
+  `content_sha256`, `git_commit`, `git_dirty`, `python_lock_sha256`.
+- Retain: strict scalar IDs, timestamps, authored/absolute/relative paths and
+  hashes feed every referenced record. [Lifecycle](../../src/emrys/orchestration/run_coordinator/lifecycle.py)
+  and Task admission distinguish command success, logical versus resolved paths,
+  file versus package-tree identity, and package provenance. A distribution
+  version ignored by one content-based readmission is still recorded provenance.
+
+### Application model
+
+- Analysis sample: `sample_id`, `condition`, `replicate`, `strandedness`,
+  `r1_fastq_sha256`, `r2_fastq_sha256`; partitions: `partition_id`, `selector_type`,
+  region `selector_value` or `selector_file_sha256` with paired optional
+  `selector_format`, `selector_compression`.
+- Analysis module: `module_id`, `interface_version`, `module_version`,
+  `configuration`; identity: `identity_domain`, `samples`, `partitions`,
+  `reference(fasta_sha256, gtf_sha256)`, `analysis_module`;
+  revision: `schema_version`, `identity`, `analysis_revision_id`.
+- Functional specification: `owner_tasks(machine_key, step_id, scope_type)`,
+  `direct_edges(producer, consumer, artifact, semantics)`, `required_owner_keys`,
+  `evidence_owner_keys`, `artifact_templates(artifact_id_template, step_id,
+  scope_type, adapter, source_path_template, required)`.
+- Plan identity: `identity_domain`, `functional_specification`,
+  `scientific_stopping_owner_keys`, `implementation_content_sha256`,
+  `processing_compatibility_sha256`, `toolchain(kind, logical_name, content_sha256)`,
+  `backend(backend, engine, semantics_sha256)`, `star_index`,
+  `computational_resources(workflow_cores, workflow_memory_mb, stage_concurrency,
+  step_threads, stage_memory_mb)`, optional `processing_source(source_run_id,
+  workflow_attempt_id, attempt_receipt_sha256)`; plan: `schema_version`, `identity`,
+  `execution_plan_id`.
+- Run: `schema_version`, `binding(identity_domain, analysis_revision_sha256,
+  execution_plan_sha256)`, `run_id`. STAR policy uses the reference definition;
+  resource owner-key maps and module configuration are intentionally open here.
+- Retain: [constructors and successor validation](../../src/emrys/contracts/orchestration/application_model.py)
+  canonicalize scientific inputs, functional graph, stopping boundary, content,
+  resources and processing reuse into distinct immutable identities. IDs are
+  derivable **integrity checks**, not removable duplicates. Provider configuration
+  is separately normalized/validated; no scientific field is selected for removal.
+
+### Analysis policy
+
+- Module policy: `schema_version`, `analysis_id`, `module`, `implementation_sha256`,
+  `configuration`. Module: `module_id`, `interface_version`, `module_version`,
+  `distribution_name`, `distribution_version`, `entry_point`, `config_schema_sha256`,
+  `dependencies`.
+- Dependency variants: `dependency_id`, `kind`; executable/R-namespace probes
+  additionally use `expected` and respectively `probe_args` or `target`.
+- Retain: [module admission](../../src/emrys/analyses/__init__.py) and normalization
+  produce provider provenance and admitted configuration; readiness, materialized
+  Tasks and reporting read them. Open `configuration` belongs to the installed
+  provider's schema/normalizer. Scientific identity and distribution provenance
+  are deliberately different projections, not redundant schema owners.
+
+### Project
+
+- `schema_version`, `dataset(samples)`, `reference(fasta, gtf, star_index)`,
+  `analyses` keyed by Analysis ID. Paired-CMH analysis: optional `sample_ids`,
+  `partitions`, `control_condition`, `treatment_condition`, `target_change`,
+  `min_sample_dp`, `mean_dp_threshold`, `fdr_threshold`, `common_or_threshold`,
+  `absolute_difference_threshold`, optional `background_condition`,
+  `background_max_fraction`. Module analysis: `module`, optional `sample_ids`,
+  `partitions`, `config`.
+- Retain: user/onboarding input flows through [normalization](../../src/emrys/orchestration/run_coordinator/normalization.py)
+  into selected samples/partitions, reference bytes and admitted module policy.
+  The shorthand and module forms remain accepted interfaces; thresholds are
+  scientific configuration, not defaults safe to erase. Module `config` is
+  provider-admitted; the STAR policy is the reference schema's shared definition.
+
+### Reference
+
+- `schema_version`, `reference_id`, `fasta`, `gtf` file snapshots;
+  `star_index(sjdb_overhang, genome_sa_index_nbases, optional genome_chr_bin_nbits)`.
+- Retain: normalization binds bytes and index policy; application identity,
+  backend and reporting consume their projections. `reference_id` is a derivable
+  provenance candidate below; the whole record remains hashed and referenced.
+
+### Workflow profile
+
+- `schema_version`, `profile_id`, `profile_version`, `semantic_owner_keys`,
+  `owner_tasks(machine_key, rule_name, step_id, scope_type, scope_selector)`,
+  `direct_edges(producer, consumer, artifact, semantics)`, `required_owner_keys`,
+  `evidence_owner_keys`, `artifact_templates(artifact_id_template, step_id,
+  scope_type, scope_selector, adapter, source_path_template, required)`.
+- Retain: [profile semantic validation](../../src/emrys/contracts/orchestration/api.py),
+  application functional projection, [inventory expansion](../../src/emrys/contracts/orchestration/artifact_inventory.py)
+  and [Snakemake](../../src/emrys/workflow/Snakefile) use graph/classification,
+  independent rule mapping, scope grouping and authored order. The five profile
+  candidates below require one coherent future `PROFILE-CONTRACT-01` decision;
+  exact profile bytes remain bound even outside the functional projection.
+
+### Resource configuration
+
+- `schema_version`, `workflow_cores`, `workflow_memory_mb`, `stage_concurrency`,
+  `step_threads`, `stage_memory_mb`; memory alternatives include `minimum_mb`.
+- Closed concurrency keys: `01, 02, 02b, 03, 04, 05, 06, 07`; thread keys:
+  `00a, 00c, 02b, 04, 05, 01, 02, 06, 08, 09, 10`; memory keys:
+  `00a, 00b, 00c, 01, 02, 02b, 03, 04, 05, 06, 07, 08, 09, 10`.
+- Retain: [resource policy](../../src/emrys/orchestration/run_coordinator/resource_policy.py)
+  resolves positive/symbolic allocation/auto/workflow values, workload and memory
+  floors; backend and successor admission compare the effective policy. These
+  33 explicit keys preserve a closed set and diagnostics; a generic map would
+  weaken admission. Authored declarations and resolved values serve different
+  identity/allocation boundaries.
+
+### Execution profile
+
+- `schema_version`, optional `resources`, optional `placement`; resources use the
+  preceding schema. Direct placement: `kind`; Slurm: `kind`, `account`,
+  `partition`, `qos`, `cpus_per_task`, `memory_mb`, `time`, `exclusive`, `nodelist`,
+  `scratch_parent`, `modules(mode, init, load)`.
+- Retain: [execution-profile admission](../../src/emrys/orchestration/run_coordinator/execution_profile.py)
+  resolves authored/default values and placement; submission/delegate/Attempt
+  paths bind selected-source and effective bytes. `none` versus `exact` module
+  forms and normalized nonroot paths remain enforced. Deriving `mode` would be a
+  user-format/diagnostic/recovery change, not a dead-member deletion.
+
+### Workflow Attempt
+
+- `schema_version`, `run_id`, `execution_contract_sha256`, `profile_sha256`,
+  `workflow_attempt_id`, `supersedes_workflow_attempt_id`, `operation`, `created_at`,
+  `request`, `request_label`, `authored_paths`, `normalizer`, `workspace`, `scratch`,
+  `installed_package`, `executor`, `execution_mode`, `snakemake_argv`, `host`,
+  `process_id`, `owner_token`, `cores`, `required_tools`, optional `placement`,
+  `workflow`, `tasks`.
+- Authored paths: `request`, `sample_manifest`, `partition_manifest`,
+  `reference_fasta`, `reference_gtf`, `analysis_policy`. Placement: `kind`,
+  `source(path, sha256)`, `effective_sha256`, `request`, `scheduler_job_id`;
+  direct/Slurm variants cross-check request shape and job presence.
+- Workflow: `reference_contract_path`, `primary_analysis_policy_path`,
+  `reporting_run_contract_path`, `artifact_inventory_path`, `resource_policy`.
+  Each owner/scope task is either a `workflow_attempt_record` reference or
+  `scope_type`, `task_attempt_id`, `owner_run_token`, `producer_argv`,
+  `validator_argv`, `inputs`, `outputs`, `validation_report_path`, `publication`,
+  `retry_task_attempt_record`; `task_argv` is a nonempty string array.
+- Retain: [materialization](../../src/emrys/orchestration/run_coordinator/materialization.py)
+  writes these; lifecycle, backend, inspection, Task and reporting admit them.
+  Open resource/file/publication declarations have their own typed owner checks.
+  Execute/resume predecessor distinction, inherited-task references, exact
+  dispatch, runtime bindings and authored provenance survive. Only the always-null
+  `scratch` is a qualified future field-removal candidate; `execution_mode`'s
+  historical/test distinction is not changed by this audit.
+
+### Run lock
+
+- `schema_version`, `run_id`, `workflow_attempt_id`, `attempt_record_path`,
+  `attempt_record_sha256`, `owner_token`, `process_id`, `host`, `created_at`.
+- Retain: `run_lock_record` projects the whole Attempt ownership context;
+  [active/released lock admission](../../src/emrys/orchestration/run_coordinator/_inspection_admission.py)
+  compares every projected field and exact bytes. A derivable projection is an
+  independent ownership/recovery fence, not a second mutable authority to delete.
+
+### Task start
+
+- `schema_version`, `run_id`, `execution_contract_sha256`, `profile_sha256`,
+  `workflow_attempt_id`, `task_attempt_id`, `machine_key`, `scope`, `owner_run_token`,
+  `workflow_attempt_record`, `run_lock`, `created_at`, `inputs`.
+- Retain: [Task publication/admission](../../src/emrys/orchestration/run_coordinator/task.py)
+  binds irreversible producer entry to dispatch, active lock and input bytes.
+  Cumulative receipt inspection uses it to detect unclosed starts. Repeated
+  identity is compared across independently published boundaries.
+
+### Task attempt
+
+- `schema_version`, `run_id`, `execution_contract_sha256`, `profile_sha256`,
+  `workflow_attempt_id`, `task_attempt_id`, `machine_key`, `scope`, `owner_run_token`,
+  `task_start_record`, `status`, `started_at`, `finished_at`, `producer`, `validator`,
+  `semantic_all_pass`, `stable_inputs_rechecked`, `validation_report`, `stdout_log`,
+  `stderr_log`, `failure_message`, `inputs`, `outputs`, `abort_closure`.
+- Retain: Task terminal publication and readmission distinguish preentry failure,
+  success and proven abort before publication. Command exit/argv, semantic report,
+  input stability, output hashes, logs and start binding support different claims;
+  `abort_closure` admits only the bounded retry case. Status alone cannot replace
+  them. Not every schema-admitted status must be emitted by today's success/fail
+  writer to remain a retained contract.
+
+### Verified Task
+
+- `schema_version`, `task_attempt_record`.
+- Retain: Task writes this marker last; `validate_verified_task` re-admits the
+  referenced terminal/start/dispatch/log/semantic-report and current file bytes.
+  The marker is a publication boundary, not a cached success boolean.
+
+### Attempt receipt
+
+- `schema_version`, `run_id`, `execution_contract_sha256`, `profile_sha256`,
+  `workflow_attempt_id`, `attempt_record`, `released_run_lock`, `status`,
+  `finished_at`, `snakemake_exit_code`, `termination_signal`, `task_attempt_records`,
+  `task_start_records`, `verified_tasks`, `blockers`, `message`.
+- Terminal/start roster items: `workflow_attempt_id`, `machine_key`, `scope`,
+  `record`; verified items: `machine_key`, `scope`, `record`.
+- Retain: lifecycle writes terminal closure; [receipt evidence inspection](../../src/emrys/orchestration/run_coordinator/_inspection_evidence.py)
+  compares exact cumulative ordered rosters and unclosed starts, while lock
+  admission binds released ownership. Exit/signal, blockers and message distinguish
+  outcome/recovery from mere scheduler success. Factoring the two equal roster
+  shapes is only a schema-syntax candidate, not removal of either evidence list.
+
+### Reporting start
+
+- `schema_version`, `run_id`, `execution_contract_sha256`, `profile_sha256`,
+  `origin_workflow_attempt_id`, `kind`, `workflow_attempt`, `run_lock`, `created_at`.
+- Retain: [reporting boundary](../../src/emrys/orchestration/run_coordinator/reporting_boundary.py)
+  publishes entry before summary/HTML generation, verifies origin/lock binding,
+  kind and timestamp order, and refuses historical or ambiguous partial state.
+  It does not create a new scientific Attempt.
+
+### Verified reporting
+
+- `schema_version`, `run_id`, `execution_contract_sha256`, `profile_sha256`,
+  `origin_workflow_attempt_id`, `kind`, `reporting_start`, `semantic_receipt`,
+  `created_at`.
+- Retain: the same owner publishes proof last after semantic and identity
+  rechecks; inspection/reuse revalidates start, receipt and output bindings.
+  Repeated identity and separate start/completion timestamps preserve recovery
+  and transaction order. They are not interchangeable with a receipt's own fields.
+
+The current screen establishes source-level declared-field coverage and a
+reasoned retention decision. It does not establish every unknown consumer,
+current external artifact population or exhaustive runtime parity. Those are
+future transition gates. No runtime tests, installs, Runs or data mutations were performed for this
+field screen, and it makes no new parity claim. Documentation checks validate
+this record's structure only.
+
 ## Field candidates
 
-These are qualified hypotheses, not unused-field claims. Profile candidates also
-belong to deferred `PROFILE-CONTRACT-01`; a full family-by-family screen remains
-necessary before S11. Preserve the Run's functional required-owner field even if
-a profile copy is selected for derivation.
+The completed screen retains all of these fields now. They remain qualified
+future-transition hypotheses, not unused-field claims or newly accepted work.
+Profile candidates also belong to deferred `PROFILE-CONTRACT-01`. Preserve the
+Run's functional required-owner field if a future decision derives a profile copy.
 
 | Candidate | Current role and protection | Derivation question and remaining check |
 | --- | --- | --- |
@@ -144,7 +497,7 @@ Only eight shared `safe_id`/SHA lines would not retire a common owner; canonical
 JSON helpers also differ in byte and NaN behavior. Adjacent API/cache candidates
 must preserve error precedence and independent successor-Run admission.
 
-## Approval and proof gate
+## Gate for any future transition
 
 1. Select exact fields/IDs/labels/paths and freeze the revision. Obtain bounded
    retained-record and collaborator metadata; unknown is not unused.
