@@ -1194,14 +1194,16 @@ def test_star_final_log_preserves_infinite_mapping_speed_as_string(
     assert metrics["uniquely_mapped_reads"]["value"] == 95.0
 
 
+@pytest.mark.parametrize("alias_value", ["", "unprojected text"])
 def test_picard_reordered_single_table_projects_literal_metrics(
     artifact_fixture: Any,
+    alias_value: str,
 ) -> None:
     artifact_fixture.source_for("sample.SYNTH_A.markdup_metrics").write_text(
         "## METRICS CLASS picard.sam.DuplicationMetrics\n"
         "PERCENT_DUPLICATION\tLIBRARY\tREAD_PAIR_DUPLICATES\t"
-        "READ_PAIRS_EXAMINED\tEXTRA_COUNT\tESTIMATED_LIBRARY_SIZE\n"
-        "0.2\tS\t2\t10\t12\t\n\n"
+        "READ_PAIRS_EXAMINED\tread_pairs_examined\tEXTRA_COUNT\tESTIMATED_LIBRARY_SIZE\n"
+        f"0.2\tS\t2\t10\t{alias_value}\t12\t\n\n"
         "## HISTOGRAM\nset_size\tcount\n1\t8\n2\t2\n",
         encoding="utf-8",
     )
@@ -1246,6 +1248,21 @@ def test_picard_reordered_single_table_projects_literal_metrics(
             b"",
             "expected one row",
         ),
+        *[
+            (
+                header,
+                b"S\t" + values + b"\t0\t0",
+                b"",
+                "Ambiguous Picard metric: 'read_pairs_examined'",
+            )
+            for header in (
+                b"LIBRARY\tREAD_PAIRS_EXAMINED\tread_pairs_examined\t"
+                b"READ_PAIR_DUPLICATES\tPERCENT_DUPLICATION",
+                b"LIBRARY\tread_pairs_examined\tREAD_PAIRS_EXAMINED\t"
+                b"READ_PAIR_DUPLICATES\tPERCENT_DUPLICATION",
+            )
+            for values in (b"1\t10", b"10\t10")
+        ],
         (None, b"S\t10\t2\t0.2", b"T\t30\t3\t0.1\n", "expected one row"),
         (None, b"S\t10\t2\t1e999", b"", "non-finite"),
         (None, b"S\t10\t2\t0.2", b"\n## HISTOGRAM\n1\t8\x00\n", "NUL byte"),

@@ -16,7 +16,9 @@ input, so reporting still applies its UTF-8/NUL/CR checks to trailing text.
 The validator retains its nonempty-library, pair-count and finite-fraction bounds,
 and publishes malformed metrics as failed evidence. Reporting retains its own
 text admission and projects numeric fields as `not_assessed`; it does not rerun
-Picard or turn projected values into scientific validation. Literal-column
-uniqueness does not settle collisions after reporting normalizes metric names.
+Picard or turn projected values into scientific validation. After successful
+numeric conversion, reporting refuses distinct columns that share a lowercase
+key; blank or nonnumeric fields remain omitted. The existing reserved
+`source_row_count` omission and later punctuation normalization are unchanged.
 The generic strict TSV reader uses CSV quoting and one-table framing, so it is
 not a substitute for Picard's existing literal-tab, multi-table format.

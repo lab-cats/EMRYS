@@ -239,11 +239,15 @@ def inspect_picard_metrics(path: Path) -> tuple[int, dict[str, Any]]:
         if key == "LIBRARY" or value == "":
             continue
         try:
-            native[key.lower()] = (
+            parsed = (
                 float(value)
                 if any(token in value for token in (".", "e", "E"))
                 else int(value)
             )
         except ValueError:
             continue
+        normalized = key.lower()
+        if normalized in native:
+            raise ArtifactIndexError(f"Ambiguous Picard metric: {normalized!r}")
+        native[normalized] = parsed
     return 1, native
