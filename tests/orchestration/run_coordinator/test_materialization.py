@@ -6941,6 +6941,95 @@ def _public_native_cancellation_child(
         )
 
 
+def _wait_for_native_readiness(
+    process: subprocess.Popen[bytes],
+    reader: int,
+    log_path: Path,
+    *,
+    timeout: float = 300,
+) -> None:
+    with selectors.DefaultSelector() as selector:
+        selector.register(reader, selectors.EVENT_READ)
+        # Snakemake may schedule other samples before this fixed target.
+        deadline = time.monotonic() + timeout
+        while True:
+            returncode = process.poll()
+            assert returncode is None, (
+                f"Run child exited {returncode} before native readiness.\n"
+                f"{log_path.read_text()}"
+            )
+            remaining = deadline - time.monotonic()
+            assert remaining > 0, (
+                f"Native readiness deadline expired.\n{log_path.read_text()}"
+            )
+            if selector.select(timeout=min(0.1, remaining)):
+                break
+        assert os.read(reader, 6) == b"ready\n"
+
+
+@pytest.mark.parametrize("early_exit", (True, False), ids=("early-exit", "timeout"))
+def test_native_readiness_failure_retains_child_log(
+    tmp_path: Path, early_exit: bool
+) -> None:
+    reader, writer = os.pipe()
+    log_path = tmp_path / "cancellation-journey.log"
+    process = None
+    try:
+        with log_path.open("wb") as stream:
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    "-c",
+                    "import sys, time; "
+                    "print('child diagnostic', file=sys.stderr, flush=True); "
+                    "print('started', flush=True); "
+                    + ("sys.exit(23)" if early_exit else "time.sleep(10)"),
+                ],
+                stdout=subprocess.PIPE,
+                stderr=stream,
+            )
+            assert process.stdout is not None
+            # Wait for the child's log write, independently of native readiness.
+            with selectors.DefaultSelector() as selector:
+                selector.register(process.stdout, selectors.EVENT_READ)
+                assert selector.select(timeout=5), "Child did not finish startup"
+            assert process.stdout.readline() == b"started\n"
+            started = time.monotonic()
+            with pytest.raises(AssertionError) as failure:
+                _wait_for_native_readiness(
+                    process, reader, log_path, timeout=5 if early_exit else 0.1
+                )
+            elapsed = time.monotonic() - started
+            expected = (
+                "Run child exited 23 before native readiness."
+                if early_exit
+                else "Native readiness deadline expired."
+            )
+            assert [line.strip() for line in str(failure.value).splitlines()[:2]] == [
+                expected,
+                "child diagnostic",
+            ]
+            assert elapsed < 5
+            if not early_exit:
+                assert elapsed >= 0.1
+                assert process.poll() is None
+    finally:
+        os.close(writer)
+        os.close(reader)
+        if process is not None:
+            if process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=5)
+            if process.stdout is not None:
+                process.stdout.close()
+    assert process is not None and process.returncode is not None
+    assert log_path.read_bytes() == b"child diagnostic\n"
+
+
 @pytest.mark.skipif(
     sys.platform != "linux", reason="Task retry requires Linux descendant closure"
 )
@@ -6980,23 +7069,7 @@ def test_public_real_snakemake_native_cancellation_and_stop_outcome(
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
             )
-            with selectors.DefaultSelector() as selector:
-                selector.register(reader, selectors.EVENT_READ)
-                # Snakemake may schedule other samples before this fixed target.
-                deadline = time.monotonic() + 300
-                while True:
-                    returncode = process.poll()
-                    assert returncode is None, (
-                        f"Run child exited {returncode} before native readiness.\n"
-                        f"{log_path.read_text()}"
-                    )
-                    remaining = deadline - time.monotonic()
-                    assert remaining > 0, (
-                        f"Native readiness deadline expired.\n{log_path.read_text()}"
-                    )
-                    if selector.select(timeout=min(0.1, remaining)):
-                        break
-                assert os.read(reader, 6) == b"ready\n"
+            _wait_for_native_readiness(process, reader, log_path)
             native = json.loads(ready_path.with_suffix(".json").read_text())
             assert native["pgid"] == native["pid"] != native["parent_pgid"]
             assert native["parent_pgid"] != process.pid
