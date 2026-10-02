@@ -196,13 +196,24 @@ must refuse readmission and change new Run identity; unrelated changes must not.
 Exercise normal cache links and retargeting, managed containment, Analysis roots,
 borrowing, generation repair and retained Attempt refusal without mutation.
 
-Keep the automatic-snapshot guard a separate future slice: force both
+## Automatic-snapshot guard
+
+The reviewed [`.Rprofile`](../../.Rprofile) forces both
 `RENV_CONFIG_AUTO_SNAPSHOT=FALSE` and `options(renv.config.auto.snapshot=FALSE)`
-before either supported EMRYS activation branch in the reviewed `.Rprofile`,
-replacing its conditional default. Test inherited true environment/option values
-and unchanged lock/library bytes during inspection. Existing guarded subprocess
-selection remains shared; the vendored autoloader and explicit repair boundary
-remain intact. Measure product growth before seeking implementation authority.
+when `EMRYS_USE_RENV=1`, before guarded library selection or explicit restoration
+activation. Inherited true values cannot enable automatic snapshots through
+these supported paths. An unselected profile (`EMRYS_USE_RENV=0`) leaves those
+settings alone. Existing guarded subprocess selectors and the vendored autoloader
+remain unchanged; this does not forbid an operator's explicit restore/snapshot.
+
+The [shell-owner fixture](../../../../tests/shell/test_local_r_environment.sh)
+uses real R to check inherited environment/option overrides, unchanged sandbox
+policy, missing-package refusal and exact fixture lock/library bytes during
+inspection. Its restoration activation body is fake: it proves guard ordering
+and external settings-file routing, not a real package restore or complete renv
+behavior. Managed-runtime CI supplies its separately bounded real-runtime proof.
+This startup guard does not implement recursive package identity; the closure
+proposal above and RUNTIME-CLOSURE-01 remain open.
 
 ## Installed backend identity limit
 

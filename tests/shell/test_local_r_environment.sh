@@ -168,12 +168,23 @@ dir.create(project)
 for (path in c(".Rprofile", "renv.lock", "renv/settings.json")) {
     file.copy(file.path(args[[1L]], path), file.path(package, path))
 }
-writeLines("options(emrys.activation.selected = TRUE)",
-           file.path(package, "renv/activate.R"))
-before <- tools::md5sum(list.files(package, recursive = TRUE, all.files = TRUE,
-                                 full.names = TRUE))
+# A fake activation body observes the settings at the actual source boundary;
+# it does not bootstrap renv or exercise restoration/package installation.
+writeLines(c(
+    'stopifnot(Sys.getenv("RENV_CONFIG_AUTO_SNAPSHOT") == "FALSE",',
+    '          identical(getOption("renv.config.auto.snapshot"), FALSE))',
+    'options(emrys.activation.selected = TRUE)'
+), file.path(package, "renv/activate.R"))
+snapshot <- function(root) {
+    files <- sort(list.files(root, recursive = TRUE, all.files = TRUE,
+                             full.names = TRUE))
+    tools::md5sum(files)
+}
+before <- snapshot(package)
 Sys.setenv(EMRYS_USE_RENV = "1", EMRYS_LOCAL_PILOT_R = "0",
+           RENV_CONFIG_AUTO_SNAPSHOT = "TRUE", RENV_CONFIG_SANDBOX_ENABLED = "TRUE",
            RENV_PROJECT = project, R_PROFILE_USER = file.path(package, ".Rprofile"))
+options(renv.config.auto.snapshot = TRUE)
 source(Sys.getenv("R_PROFILE_USER"))
 stopifnot(isTRUE(getOption("emrys.activation.selected")),
           Sys.getenv("RENV_CONFIG_SYNCHRONIZED_CHECK") == "FALSE",
@@ -181,10 +192,48 @@ stopifnot(isTRUE(getOption("emrys.activation.selected")),
           Sys.getenv("RENV_PATHS_ROOT") == file.path(project, "renv/state"),
           Sys.getenv("RENV_PATHS_LIBRARY_STAGING") == file.path(project, "renv/staging"),
           file.exists(file.path(project, "renv/settings.json")),
-          identical(before, tools::md5sum(names(before))))
+          Sys.getenv("RENV_CONFIG_SANDBOX_ENABLED") == "TRUE",
+          identical(before, snapshot(package)))
 Sys.setenv(RENV_PROJECT = package)
 stopifnot(tryCatch({ source(Sys.getenv("R_PROFILE_USER")); FALSE },
                   error = function(e) grepl("outside the installed", conditionMessage(e))))
+
+# Guarded inspection selects an existing DESCRIPTION-only fixture library;
+# no renv namespace is loaded and neither library nor lock/settings may change.
+library <- file.path(normalizePath(args[[2L]]), "renv-library")
+library_before <- snapshot(library)
+project_before <- snapshot(project)
+Sys.setenv(EMRYS_LOCAL_PILOT_R = "1", EMRYS_RENV_LIBRARY = library,
+           EMRYS_RENV_VERSION = "1.2.4", RENV_CONFIG_AUTO_SNAPSHOT = "TRUE")
+options(renv.config.auto.snapshot = TRUE, emrys.activation.selected = FALSE)
+source(Sys.getenv("R_PROFILE_USER"))
+stopifnot(Sys.getenv("RENV_CONFIG_AUTO_SNAPSHOT") == "FALSE",
+          identical(getOption("renv.config.auto.snapshot"), FALSE),
+          identical(getOption("emrys.activation.selected"), FALSE),
+          identical(normalizePath(.libPaths()[[1L]]), library),
+          Sys.getenv("RENV_CONFIG_SANDBOX_ENABLED") == "TRUE",
+          identical(before, snapshot(package)),
+          identical(project_before, snapshot(project)),
+          identical(library_before, snapshot(library)))
+empty_library <- file.path(normalizePath(args[[2L]]), "empty-library")
+dir.create(empty_library)
+Sys.setenv(EMRYS_RENV_LIBRARY = empty_library)
+stopifnot(tryCatch({ source(Sys.getenv("R_PROFILE_USER")); FALSE },
+                  error = function(e) grepl("no installed renv package", conditionMessage(e))),
+          length(snapshot(empty_library)) == 0L,
+          identical(before, snapshot(package)),
+          identical(project_before, snapshot(project)),
+          identical(library_before, snapshot(library)))
+
+# An unselected EMRYS profile must not override unrelated R session policy.
+Sys.setenv(EMRYS_USE_RENV = "0", EMRYS_LOCAL_PILOT_R = "0",
+           RENV_CONFIG_AUTO_SNAPSHOT = "TRUE")
+options(renv.config.auto.snapshot = TRUE)
+source(Sys.getenv("R_PROFILE_USER"))
+stopifnot(Sys.getenv("RENV_CONFIG_AUTO_SNAPSHOT") == "TRUE",
+          identical(getOption("renv.config.auto.snapshot"), TRUE),
+          identical(getOption("emrys.activation.selected"), FALSE))
+cat("PASS: real-R snapshot guard; fake restoration activation; unchanged inspection bytes\n")
 R
     r_cli_cwd="$tmp/r-cli-cwd"
     mkdir -p "$r_cli_cwd"
