@@ -44,6 +44,73 @@ mkdir -p "$fake_renv_library/renv"
 printf 'Package: renv\nVersion: 1.2.4\n' \
     >"$fake_renv_library/renv/DESCRIPTION"
 
+# The shared selector uses Bash builtins, so a restricted PATH can distinguish
+# an absent optional default from an invalid explicit selection without real R.
+selector="$repo_root/tests/tools/select_test_rscript.sh"
+selector_bin="$tmp/selector-bin"
+empty_path="$tmp/empty-path"
+mkdir -p "$selector_bin" "$empty_path"
+for name in Rscript Rscript-global Rscript-owner; do
+    printf '#!/bin/sh\nexit 0\n' >"$selector_bin/$name"
+    chmod +x "$selector_bin/$name"
+done
+printf 'not executable\n' >"$selector_bin/nonexecutable"
+cp "$selector_bin/Rscript-owner" "$tmp/Rscript with spaces"
+check_selection() {
+    local owner_override="$1" global_override="$2" search_path="$3"
+    local expected_status="$4" expected_text="$5" status
+    # Expansion belongs to the isolated child shell, not this fixture process.
+    # shellcheck disable=SC2016
+    if PATH="$search_path" RSCRIPT_BIN_OVERRIDE="$global_override" BASH_ENV='' ENV='' \
+        "$BASH" -c 'set -euo pipefail; source "$1" fixture "$2"; printf "SELECTED:%s\n" "$rscript_bin"' \
+        _ "$selector" "$owner_override" >"$tmp/selector.out" 2>"$tmp/selector.err"; then
+        status=0
+    else
+        status=$?
+    fi
+    [[ "$status" -eq "$expected_status" ]] || fail "selector exit $status, expected $expected_status"
+    if [[ "$expected_status" -eq 1 ]]; then
+        [[ ! -s "$tmp/selector.out" && "$(<"$tmp/selector.err")" == "$expected_text" ]] ||
+            fail "selector refusal did not preserve stderr-only diagnostics"
+    else
+        [[ ! -s "$tmp/selector.err" && "$(<"$tmp/selector.out")" == "$expected_text" ]] ||
+            fail "selector returned unexpected success/skip output"
+    fi
+}
+check_selection Rscript-owner Rscript-global "$selector_bin" 0 "SELECTED:$selector_bin/Rscript-owner"
+check_selection '' Rscript-global "$selector_bin" 0 "SELECTED:$selector_bin/Rscript-global"
+check_selection '' '' "$selector_bin" 0 "SELECTED:$selector_bin/Rscript"
+check_selection "$tmp/Rscript with spaces" missing-global "$selector_bin" 0 "SELECTED:$tmp/Rscript with spaces"
+check_selection '' "$selector_bin/Rscript-global" "$empty_path" 0 "SELECTED:$selector_bin/Rscript-global"
+for bad_selection in missing-name "$tmp/missing-Rscript" "$selector_bin/nonexecutable" "$selector_bin"; do
+    check_selection "$bad_selection" Rscript-global "$selector_bin" 1 \
+        "ERROR: fixture real-R tests require an executable Rscript: $bad_selection"
+done
+check_selection '' missing-global "$selector_bin" 1 \
+    'ERROR: fixture real-R tests require an executable Rscript: missing-global'
+check_selection '' '' "$empty_path" 0 \
+    'SKIP: fixture real-R tests require Rscript; no default executable is available.'
+
+# Each wrapper must pass its own override ahead of a deliberately invalid
+# global choice and retain its help/fixture handoff. These are fake-R calls.
+owner_log="$tmp/owner-selection.log"
+for owner_selector in STEP08_TEST_RSCRIPT_BIN STEP09_TEST_RSCRIPT_BIN SCIENTIFIC_CONTEXT_TEST_RSCRIPT_BIN; do
+    case "$owner_selector" in
+        STEP08_TEST_RSCRIPT_BIN)
+            wrapper=tests/stages/cohort_candidate_preprocessing/run_step_08_vcf_preprocessing_tests.sh ;;
+        STEP09_TEST_RSCRIPT_BIN)
+            wrapper=tests/analyses/paired_cmh_candidate_ranking/run_step_09_cmh_tests.sh ;;
+        SCIENTIFIC_CONTEXT_TEST_RSCRIPT_BIN)
+            wrapper=tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh ;;
+    esac
+    env STEP08_TEST_RSCRIPT_BIN= STEP09_TEST_RSCRIPT_BIN= SCIENTIFIC_CONTEXT_TEST_RSCRIPT_BIN= \
+        "$owner_selector=$fake_rscript" RSCRIPT_BIN_OVERRIDE="$tmp/missing-global" \
+        FAKE_R_LOG="$owner_log" EMRYS_TEST_FAKE_SCIENTIFIC_CONTEXT_R=1 \
+        "$BASH" "$wrapper" >/dev/null
+done
+[[ "$(wc -l <"$owner_log" | tr -d ' ')" -eq 5 ]] ||
+    fail "owner-selected wrappers did not retain all five fake-R help/fixture calls"
+
 grep -Fq 'identical(use_renv, "1")' src/emrys/.Rprofile ||
     fail ".Rprofile does not guard renv activation"
 grep -Fq 'EMRYS_USE_RENV must be exactly 0 or 1' src/emrys/.Rprofile ||

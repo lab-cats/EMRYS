@@ -4,33 +4,9 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$repo_root"
 
-rscript_request="${RSCRIPT_BIN_OVERRIDE:-Rscript}"
-if [[ -n "${STEP08_TEST_RSCRIPT_BIN:-}" ]]; then
-    rscript_request="$STEP08_TEST_RSCRIPT_BIN"
-fi
-
-if [[ "$rscript_request" == */* ]]; then
-    if [[ ! -e "$rscript_request" ]]; then
-        printf 'ERROR: explicitly requested Rscript does not exist: %s\n' \
-            "$rscript_request" >&2
-        exit 1
-    fi
-    if [[ ! -x "$rscript_request" ]]; then
-        printf 'ERROR: explicitly requested Rscript is not executable: %s\n' \
-            "$rscript_request" >&2
-        exit 1
-    fi
-    rscript_bin="$rscript_request"
-elif rscript_bin="$(command -v "$rscript_request" 2>/dev/null)"; then
-    :
-elif [[ -n "${RSCRIPT_BIN_OVERRIDE:-}${STEP08_TEST_RSCRIPT_BIN:-}" ]]; then
-    printf 'ERROR: explicitly requested Rscript was not found on PATH: %s\n' \
-        "$rscript_request" >&2
-    exit 1
-else
-    printf 'SKIP: Step 08 real-R fixtures require Rscript; Rscript is not available.\n'
-    exit 0
-fi
+# shellcheck source=tests/tools/select_test_rscript.sh
+source "$repo_root/tests/tools/select_test_rscript.sh" \
+    "Step 08" "${STEP08_TEST_RSCRIPT_BIN:-}"
 
 step08_engine="$repo_root/src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
 foreign_help_cwd="$(mktemp -d "${TMPDIR:-/tmp}/emrys-step08-help.XXXXXX")"

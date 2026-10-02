@@ -37,4 +37,9 @@ public workflow commands.
   is not a production memory recommendation. Disposable Slurm requests all node
   CPUs, all node memory, and exclusive placement. These checks establish policy
   selection and resolution, not sustained utilization or performance.
+- `select_test_rscript.sh` is sourced by the three guarded-R test wrappers.
+  It selects an owner override, then `RSCRIPT_BIN_OVERRIDE`, then `Rscript`;
+  an invalid explicit selection fails, while an absent optional default skips.
+  Owner-labelled diagnostics are private test output. The wrappers retain their
+  own help, package and execution checks; selection never installs anything.
 - The coverage tools compare results with reviewed baselines.
