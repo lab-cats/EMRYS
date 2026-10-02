@@ -128,6 +128,12 @@ PDF SHA-256 is
 
 These are constructed display models, not a native R transaction, published
 report receipt, complete copied Results tree, Run, or scientific/biological proof.
-Locked non-skipped native-R execution and the broader shared report acceptance
-remain pending. Do not substitute structure tests or
-this model fixture for those checks.
+The [guarded-R job on `4a9c1523`](https://github.com/lab-cats/EMRYS/actions/runs/36964358894/job/110704824774)
+subsequently passed both actual native Step 10 cases in 38.47 seconds. The
+projection case runs R twice, canonically admits both transactions, retains all
+40 context rows and fixed motif/logo/statistic counts, and checks exact ranks
+1–9 plus version-2 receipt/producer/limit and deterministic bytes. The other case
+checks canonical FAI refusal. The overall workflow was superseded/cancelled;
+this successful native job does not make newer whole-PR CI green. Broader shared
+report acceptance remains pending; the model render is still not a complete
+copied Results tree or a public reporting transaction.
