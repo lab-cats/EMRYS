@@ -1963,7 +1963,7 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
                 / "renv/library/R-4.6/x86_64-pc-linux-gnu/renv/DESCRIPTION"
             )
             renv.parent.mkdir(parents=True)
-            renv.write_bytes(b"Package: renv\nVersion: 1.2.3\n")
+            renv.write_bytes(b"Package: renv\nVersion: 1.2.4\n")
         return SimpleNamespace(returncode=0)
 
     candidate = _inspection(

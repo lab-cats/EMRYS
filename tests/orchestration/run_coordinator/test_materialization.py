@@ -278,7 +278,7 @@ def _readiness(
     installed_renv = renv_library / "renv"
     installed_renv.mkdir(exist_ok=True)
     (installed_renv / "DESCRIPTION").write_text(
-        "Package: renv\nVersion: 1.2.3\n", encoding="utf-8"
+        "Package: renv\nVersion: 1.2.4\n", encoding="utf-8"
     )
     for _check_id, package in R_PACKAGES:
         package_root = renv_library / package

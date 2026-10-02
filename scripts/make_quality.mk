@@ -6,7 +6,7 @@ VULTURE_BIN ?= vulture
 DEAD_CODE_PATHS ?= scripts src/emrys
 PYTHON_LINT_PATHS ?= scripts src/emrys tests setup.py
 VULTURE_MIN_CONFIDENCE ?= 95
-EMRYS_RENV_VERSION := 1.2.3
+EMRYS_RENV_VERSION := 1.2.4
 PYTHON_COVERAGE_NEW_SHARED_MODULES ?= \
 	src/emrys/libraries/application_logging/controls.py \
 	src/emrys/libraries/application_logging/handler.py \

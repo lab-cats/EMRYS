@@ -13,6 +13,12 @@ Bioconductor 3.23 packages resolve through
 `Source: Bioconductor`, `RemoteType: bioconductor`, and
 `Repository: Bioconductor 3.23` metadata.
 
+The pinned renv 1.2.4 reads metadata from reachable archived package versions.
+If archive metadata cannot be read, renv can still fall back to newer metadata;
+the strict post-restore lock check continues to reject installed version drift.
+Existing libraries with renv 1.2.3 need explicit restoration through the
+operator route below before guarded execution can use them.
+
 `make r-restore` and managed `emrys doctor --repair` use the same restoration
 script; Doctor selects its Project-owned runtime. Bootstrap restoration uses an
 explicit external `RENV_PROJECT` for settings, locks, staging, and caches while

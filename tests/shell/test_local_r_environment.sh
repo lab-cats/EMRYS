@@ -41,7 +41,7 @@ chmod +x "$fake_rscript"
 
 fake_renv_library="$tmp/renv-library"
 mkdir -p "$fake_renv_library/renv"
-printf 'Package: renv\nVersion: 1.2.3\n' \
+printf 'Package: renv\nVersion: 1.2.4\n' \
     >"$fake_renv_library/renv/DESCRIPTION"
 
 grep -Fq 'identical(use_renv, "1")' src/emrys/.Rprofile ||
@@ -264,7 +264,7 @@ tail -n +2 "$fake_log" | while IFS= read -r line; do
         fail "R check/test did not select non-bootstrapping mode: $line"
     [[ "$line" == *$'\tEMRYS_RENV_LIBRARY='"$fake_renv_library"$'\t'* ]] ||
         fail "R check/test did not bind the exact existing library: $line"
-    [[ "$line" == *$'\tEMRYS_RENV_VERSION=1.2.3\t'* ]] ||
+    [[ "$line" == *$'\tEMRYS_RENV_VERSION=1.2.4\t'* ]] ||
         fail "R check/test did not bind the exact renv version: $line"
 done
 

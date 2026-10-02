@@ -312,3 +312,40 @@ These documentation and verification outcomes do not close RUNTIME-CLOSURE-01,
 EXTENSION-01 or RELEASE-01. Independent documentation review found no blocking
 overclaim; structure and local links passed for 199 Markdown documents and three
 Mermaid sources.
+
+
+### Approved renv archive-metadata repair
+
+The owner separately approved the reviewed renv 1.2.3 to 1.2.4 update on
+2026-10-01. The previous ordinary [run](https://github.com/lab-cats/EMRYS/actions/runs/36820951934)
+on `f4eaaa41764cf8f89b8d6e79e57214cadd30151c` passed every selected job except
+managed golden restoration, including all Python 3.14 shards and coverage.
+The complete [Python 3.11 run](https://github.com/lab-cats/EMRYS/actions/runs/36820988652)
+also passed: 3,374 tests passed and eight skipped. The managed-R artifact
+retains the exact S4Arrays 1.12.0/1.12.1 mismatch. The named FASTA diagnostic
+now has local caller and hosted regression evidence; REFERENCE-INPUT-01 is
+complete at that bounded evidence level.
+
+The repair uses the upstream renv archive-metadata behavior instead of changing
+scientific packages or adding an installer workaround. Only renv's version in
+`renv.lock` changed; independent deep comparison confirmed that all 72 other
+package records, repositories and settings are unchanged. The activation body
+matches the reviewed upstream template with its version and cache-MD5 header;
+existing Python, Make and fixture consumers now agree on 1.2.4. Existing CI
+cache keys already include the lock, so no cache policy or workflow change is
+needed. The strict post-restore version check remains in force if archive
+metadata is unavailable and renv falls back to newer metadata.
+
+Independent review found no blocker. Fifty existing targeted environment,
+Doctor-manager, materialization and Make-contract tests passed in the locked
+Python 3.13.15 environment. The non-installing shell R-environment contract,
+ShellCheck, shell/R/Python syntax, Ruff correctness/format and whitespace
+checks passed. No native dependency rebuild or scientific computation was run
+locally; fresh managed restore, Doctor/golden path and the selected real-tool
+E2E scenarios remain hosted-CI requirements for the updated candidate.
+
+Existing operator libraries with renv 1.2.3 require explicit restoration through
+the documented operator path; compute and inspection still never repair
+packages. This update changes no product line count and adds no product file.
+The approved named-correctness exception therefore remains 24 of 100 net product
+lines, with tests, metadata and documentation counted separately.
