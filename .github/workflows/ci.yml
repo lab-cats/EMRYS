@@ -928,11 +928,13 @@ jobs:
           OMP_NUM_THREADS: "1"
           OPENBLAS_NUM_THREADS: "1"
           VECLIB_MAXIMUM_THREADS: "1"
-        run: >-
-          make -s python-coverage-shard
-          PYTHON_TEST_SHARD_INDEX=${{ matrix.shard }}
-          PYTHON_TEST_SHARD_COUNT=${{ env.PYTHON_TEST_SHARD_COUNT }}
-          PYTHON_COVERAGE_WORKERS="$(nproc)"
+        run: |
+          command -v make
+          make --version
+          make -s python-coverage-shard \
+            PYTHON_TEST_SHARD_INDEX=${{ matrix.shard }} \
+            PYTHON_TEST_SHARD_COUNT=${{ env.PYTHON_TEST_SHARD_COUNT }} \
+            PYTHON_COVERAGE_WORKERS="$(nproc)"
 
       - name: Upload coverage fragment, selection receipt, and timings
         if: always()

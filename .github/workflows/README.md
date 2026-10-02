@@ -5,6 +5,11 @@ selected lanes add longer synthetic and scheduler checks. The
 [test baseline](../../docs/design/TEST_BASELINE.md#validation-lanes) defines each
 lane; a green workflow supports only the claims covered by those checks.
 
+Python 3.14 shard logs record the Make executable path and version immediately
+before the unchanged shard command in the same shell environment. Compatibility
+evidence combines that observation with the exact revision's selected public
+Make expansion test results; version output alone does not establish a pass.
+
 The managed golden path also exercises Task descendant cleanup with the
 samtools already selected by its synthetic Project. It requires that executable
 before running the Linux process fixtures and canonical BAM checks. The job
