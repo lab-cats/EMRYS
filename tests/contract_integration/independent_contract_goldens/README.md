@@ -55,3 +55,10 @@ displayed manifest version from 7.0.0 to 8.0.0. Receipt oracles remove the separ
 report attempt ID and scope-status TSV row, retaining both HTML output hashes.
 The receipt TSV golden was derived from its literal input and header using the
 standard library, independently of the production serializer.
+
+REPORT-04 changes only the scientific guide's “At most eight candidates” to
+“At most 9 candidates” in this literal HTML oracle. Reversing that exact phrase
+reproduces the previous scientific digest; evidence HTML remains byte-identical.
+The fixture's historical figure-policy metadata is not consumed by either render
+path and remains unchanged. Native version-2 admission and the actual nine-record
+layout have separate literal contract and figure tests.

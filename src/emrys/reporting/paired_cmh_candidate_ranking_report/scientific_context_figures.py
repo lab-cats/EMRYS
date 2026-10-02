@@ -762,7 +762,7 @@ def _candidate_panel(
             linespacing=1.30,
         )
         figure.suptitle(
-            f"{candidate.display_rank}. "
+            f"{candidate.display_label}. "
             f"{_short_candidate_id(candidate.candidate_id, limit=30)} — "
             "candidate-centered evidence (not a transcript locus)",
             x=0.055,
@@ -783,11 +783,14 @@ def _candidate_panel(
         figure.text(
             0.07,
             0.865,
-            "Location (1-based; exact annotations below): "
-            f"{_short_candidate_id(location.chromosome, limit=24)}:"
-            f"{location.position_1based}; RNA {location.rna_ref}>{location.rna_alt}; "
-            "genes "
-            f"{_short_candidate_id(', '.join(location.gene_ids) or 'none recorded', limit=46)}",
+            textwrap.fill(
+                "Location (1-based; exact annotations below): "
+                f"{_short_candidate_id(location.chromosome, limit=24)}:"
+                f"{location.position_1based}; RNA {location.rna_ref}>{location.rna_alt}; "
+                "genes "
+                f"{_short_candidate_id(', '.join(location.gene_ids) or 'none recorded', limit=46)}",
+                width=100,
+            ),
             ha="left",
             va="top",
             fontsize=7.5,
@@ -812,7 +815,7 @@ def _candidate_panel(
         or "no manifest-defined pairs"
     )
     alt_text = (
-        f"Candidate {candidate.display_rank}, {candidate.candidate_id}. "
+        f"Candidate {candidate.display_label}, {candidate.candidate_id}. "
         f"{projection.control_condition} mean {_percentage_text(candidate.mean_control_af)}; "
         f"{projection.treatment_condition} mean {_percentage_text(candidate.mean_treatment_af)}; "
         f"difference {_signed_percentage_point_text(candidate.treatment_control_difference)}. "
@@ -953,7 +956,7 @@ def _selected_context_track_figure(
         population=(
             f"Shared ordered roster of {len(candidate_display.candidates)} of "
             f"{candidate_display.significant_candidate_count} significant candidates "
-            f"from {selection_description}; maximum eight; no figure-side "
+            f"from {selection_description}; maximum {owner_context.DISPLAY_LIMIT}; no figure-side "
             "selection or reranking"
         ),
         svg_sha256=None,

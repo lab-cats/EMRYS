@@ -35,6 +35,12 @@ The record decoder instead returns fresh mutable dictionaries and lists; it
 cannot replace freezing without changing the provider boundary. Artifact declarations
 specify native publication order; put the terminal native receipt last. The
 runner creates working space and supervises execution. All workers use v2.
+Workers must keep computation and writes relevant to their Task within their
+process descendants and the supplied working/scratch paths. They must not
+delegate that work to a preexisting service or a remote process. The runner's
+Linux descendant closure and pre-publication retry rely on this trusted worker
+contract; structural provider admission does not prove compliance or provide a
+filesystem or network sandbox.
 Current record schemas also accept v1 provider metadata; that does not authorize
 v1 execution or reading obsolete Runs. The [version policy](../../../docs/design/decisions/platform-direction.md#version-support)
 defines current-format support.

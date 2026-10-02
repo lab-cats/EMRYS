@@ -29,6 +29,10 @@ local({
         stop("EMRYS_LOCAL_PILOT_R must be exactly 0 or 1.")
     }
 
+    if (identical(use_renv, "1")) {
+        Sys.setenv(RENV_CONFIG_AUTO_SNAPSHOT = "FALSE")
+        options(renv.config.auto.snapshot = FALSE)
+    }
     if (identical(local_pilot, "1")) {
         if (!identical(use_renv, "1")) {
             stop("Guarded EMRYS R requires EMRYS_USE_RENV=1.")
@@ -76,9 +80,6 @@ local({
     } else if (identical(use_renv, "1")) {
         if (!nzchar(Sys.getenv("RENV_CONFIG_SANDBOX_ENABLED", unset = ""))) {
             Sys.setenv(RENV_CONFIG_SANDBOX_ENABLED = "FALSE")
-        }
-        if (!nzchar(Sys.getenv("RENV_CONFIG_AUTO_SNAPSHOT", unset = ""))) {
-            Sys.setenv(RENV_CONFIG_AUTO_SNAPSHOT = "FALSE")
         }
         project_request <- Sys.getenv("RENV_PROJECT", unset = "")
         if (!nzchar(project_request)) {

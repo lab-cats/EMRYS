@@ -18,5 +18,5 @@ flowchart LR
     validate -->|failure| recovery["Owner rollback or retained recovery evidence"]
     quiesce --> recovery
     recovery --> failed["Retain failed or interrupted Attempt"]
-    failed --> resume["emrys resume creates a new Attempt<br/>from the admitted between-task boundary"]
+    failed --> resume["emrys resume creates a new Attempt<br/>after all entered Tasks close or verify"]
     resume --> task

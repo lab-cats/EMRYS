@@ -411,9 +411,10 @@ empty_sites <- function(sample_ids) {
     )
 }
 
-make_fixture <- function(root, rows, include_background = FALSE) {
+make_fixture <- function(root, rows, include_background = FALSE, sample_order = NULL) {
     dir.create(root, recursive = TRUE)
     samples <- sample_table(include_background)
+    if (!is.null(sample_order)) samples <- samples[sample_order, , drop = FALSE]
     sample_path <- file.path(root, "samples.tsv")
     partition_path <- file.path(root, "partitions.tsv")
     sites_path <- file.path(root, "cohort.step08_sites.tsv")
@@ -802,6 +803,35 @@ main <- function() {
             paste("Deterministic TSV mismatch:", name)
         )
     }
+
+    # A valid shuffled manifest must pair by replicate, not row position.
+    # Reversed candidates also distinguish preserved order from p-value ranking.
+    reordered_fixture <- make_fixture(
+        file.path(temporary_root, "reordered-input"), rev(core_rows),
+        sample_order = c(6L, 1L, 5L, 2L, 4L, 3L)
+    )
+    reordered_output <- run_engine(
+        reordered_fixture, file.path(temporary_root, "reordered-output")
+    )
+    reordered <- read_tsv(reordered_output$all)
+    assert_identical(reordered$candidate_id, rev(core$candidate_id),
+                     "All-sites must preserve input order after valid sample reordering.")
+    assert_identical(
+        names(reordered),
+        c(RESULT_COLUMNS, paste0("DP__", reordered_fixture$samples$sample_id),
+          paste0("AD__", reordered_fixture$samples$sample_id),
+          paste0("AF__", reordered_fixture$samples$sample_id)),
+        "Shuffled sample columns must retain manifest order."
+    )
+    aligned <- reordered[match(core$candidate_id, reordered$candidate_id), names(core)]
+    rownames(aligned) <- NULL
+    assert_identical(aligned, core,
+                     "Valid sample reordering changed paired statistics, statuses or carried values.")
+    assert_identical(
+        read_tsv(reordered_output$significant)$candidate_id,
+        c("moderate", "strong_up"),
+        "Significant subset must preserve input order, not rank by p-value."
+    )
 
     # OR direction plus explicit background statuses. Exact 0.01 must fail.
     background_samples <- sample_table(TRUE)$sample_id

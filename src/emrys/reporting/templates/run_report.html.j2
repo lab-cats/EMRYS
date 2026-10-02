@@ -63,7 +63,7 @@
 {% macro candidate_record(candidate) -%}
 {% set location = candidate.location %}{% set motif = candidate.motif %}
 <article id="candidate-evidence-{{ candidate.display_rank }}" class="candidate-evidence-record" data-candidate-rank="{{ candidate.display_rank }}" data-candidate-id="{{ candidate.candidate_id }}">
-  <h3>{{ candidate.display_rank }}. {{ candidate.candidate_id }}</h3>
+  <h3>{{ candidate.display_label }}. {{ candidate.candidate_id }}</h3>
   <p class="candidate-status">{{ candidate.call_status }}</p>
   <div class="candidate-evidence-groups">
   {% call evidence_group('Editing rate') %}
@@ -227,7 +227,7 @@
         {% for candidate in candidate_display.candidates %}{% set location = candidate.location %}
           <li class="candidate-index-record" data-candidate-id="{{ candidate.candidate_id }}">
             <div class="candidate-index-heading">
-              <span class="candidate-rank">{{ candidate.display_rank }}.</span>
+              <span class="candidate-rank">{{ candidate.display_label }}.</span>
               <strong class="candidate-index-id">{{ candidate.candidate_id }}</strong>
               <span class="candidate-gene">{{ location.gene_ids | join(', ') or 'No recorded gene' }}</span>
               <span class="candidate-status">{{ candidate.call_status }}</span>

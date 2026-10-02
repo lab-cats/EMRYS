@@ -26,7 +26,7 @@ its `CONTRACT.md` defines exact behavior. The guides link to those details.
 | Test and evidence vocabulary | [Test baseline](design/TEST_BASELINE.md) |
 | Accepted work and completion criteria | [Findings matrix](tasks/backlog_matrix.md) |
 | Current checkout and validation status | Live Git plus checks and retained artifacts bound to the exact commit |
-| Retained historical validation observations | [Dated validation evidence](history/validation-evidence.md), never current authority |
+| Validation methods and retained observations | [Test baseline](design/TEST_BASELINE.md), [workflow evidence](../.github/workflows/README.md), and the relevant subject-owner or test guide; exact revisions and evidence limits remain explicit |
 
 If a guide disagrees with a schema, contract, test, or the current source,
 report the disagreement; code does not silently change the contract. Git keeps

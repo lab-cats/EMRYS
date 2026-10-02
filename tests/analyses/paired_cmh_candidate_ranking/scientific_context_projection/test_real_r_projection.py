@@ -315,6 +315,30 @@ def test_real_r_projection_is_canonically_admitted_and_deterministic(
         second.outputs.sequence_logo.row_count,
         second.outputs.motif_statistics.row_count,
     ) == (40, 8, 252, 61)
+    _, candidate_rows = _read_tsv(first.outputs.candidate_context.path)
+    assert [
+        (row["display_rank"], row["candidate_id"])
+        for row in candidate_rows
+        if row["display_rank"] != "NA"
+    ] == [
+        ("1", "context_up_00"),
+        ("2", "context_up_01"),
+        ("3", "context_up_02"),
+        ("4", "context_up_03"),
+        ("5", "context_up_04"),
+        ("6", "context_up_05"),
+        ("7", "context_up_06"),
+        ("8", "context_up_07"),
+        ("9", "context_up_08"),
+    ]
+    _, receipt_rows = _read_tsv(first_dir / f"{analysis_id}.context_receipt.tsv")
+    receipt = receipt_rows[0]
+    assert (
+        receipt["schema_version"],
+        receipt["scientific_context_schema_version"],
+        receipt["producer_version"],
+        receipt["display_limit"],
+    ) == ("2.0.0", "2.0.0", "2.0.0", "9")
     _, motif_hits = _read_tsv(first.outputs.motif_hits.path)
     reverse_hit = next(
         row for row in motif_hits if row["candidate_id"] == "context_up_00"

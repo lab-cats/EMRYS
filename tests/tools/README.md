@@ -4,10 +4,46 @@ These scripts run repository checks and produce test results; they are not
 public workflow commands.
 
 - `run_validation.py` runs static checks and non-overlapping test groups.
-- `python_test_shards.py` balances CI groups using recorded durations and checks
-  that their receipts cover the exact test inventory.
+- `python_test_shards.py` uses recorded durations and configured xdist capacity
+  to choose deterministic CI shard membership. Pytest-xdist owns actual worker
+  assignment and work stealing; receipts therefore bind worker count and exact
+  inventory without claiming a predicted runtime. Each shard retains pytest's
+  total-runtime JUnit timing XML as a candidate for a later reviewed baseline
+  update; the observation does not change the active baseline itself.
 - `source_dependencies.py` checks the import rules and exact exceptions in
   `src/emrys/contracts/SOURCE_TOPOLOGY.md`.
-- `real_synthetic_e2e.py` runs the managed synthetic workflow and direct/Slurm
-  checks without installing or cleaning dependencies.
+- `real_synthetic_e2e.py` runs one explicit managed-synthetic scenario without
+  installing or cleaning dependencies. `success-parity` compares clean direct
+  and Slurm completion; `failure-resume` compares direct and Slurm recovery from
+  a controlled pre-Task failure; `stop-resume` gates a fresh Slurm Task's real
+  `samtools view` invocation, binds and stops that exact active submission, and
+  resumes only after positive interruption closure; `production-like` runs the
+  100,000-pair Slurm profile straight through. Run and resume submissions must
+  report matching request-token stream paths in the selected log directory.
+  Invalid submission paths trigger the existing emergency cleanup guard for the
+  single reported job; that guard is not the public stop proof, and missing or
+  ambiguous job IDs never authorize cancellation. Hosted single-node scenarios
+  do not establish Viking memory policy or cross-node behavior. The disposable
+  CI controller's 300-second `KillWait` matches the Task cleanup signal horizon;
+  it does not change production scheduler policy or permit resume without an
+  admitted interruption boundary. The stop/resume scenario deliberately limits
+  the workflow to one core so its gated native Task cannot overlap unrelated
+  Tasks with unknown cancellation closure. It still requests the whole runner
+  exclusively; the success and failure/resume scenarios retain allocation-wide
+  workflow CPU and automatic four-library concurrency.
+  Real hosted scientific Runs derive their resource policy from the packaged
+  allocation-aware defaults and resolve against the runner allocation. The tiny
+  fixture lowers only repeatable-stage memory admission floors to 2048 MiB; it
+  is not a production memory recommendation. Disposable Slurm requests all node
+  CPUs, all node memory, and exclusive placement. These checks establish policy
+  selection and resolution, not sustained utilization or performance.
+  Its preservation oracle uses a distinct application log outside the Attempt
+  tree. Separate literal mutations of the Attempt, application log, stdout and
+  stderr must each refuse resume-evidence reuse; unchanged inputs pass first.
+  This is test-oracle coverage, not an additional real scheduler execution.
+- `select_test_rscript.sh` is sourced by the three guarded-R test wrappers.
+  It selects an owner override, then `RSCRIPT_BIN_OVERRIDE`, then `Rscript`;
+  an invalid explicit selection fails, while an absent optional default skips.
+  Owner-labelled diagnostics are private test output. The wrappers retain their
+  own help, package and execution checks; selection never installs anything.
 - The coverage tools compare results with reviewed baselines.

@@ -53,16 +53,27 @@ level motif presence using a two-sided Fisher exact test. When available, its
 effect is Fisher's conditional maximum-likelihood odds-ratio estimate with an
 exact two-sided 95% confidence interval. The row becomes
 `population_below_minimum`, `background_below_minimum`, or
-`uninformative_table` instead of inventing a fallback. Because v1 registers
+`uninformative_table` instead of inventing a fallback. Because the fixed motif catalog registers
 one motif, `fisher_p_value_bh` is `NA` and the receipt records
 `none_single_registered_motif`. Adding a multi-model family requires a new
 versioned contract and approval. Significant-down context remains separate and
 descriptive.
 
-At most eight significant candidates receive a display rank. Selection is
+At most nine significant candidates receive a display rank. Selection is
 FDR ascending, absolute treatment-control AF difference descending, then
 candidate ID. This is a bounded presentation roster, not a new scientific
-rank or modification of Step `09`.
+rank or modification of Step `09`. All eligible candidate rows and the complete
+Step `09` result tables remain available regardless of display selection.
+
+The context, receipt, and producer versions are `2.0.0`; the receipt records
+`display_limit=9`. This replaces the version `1.0.0` eight-candidate contract.
+Headers, filenames, adapter roles, owner identity, and fixed scientific policy
+names remain unchanged. Current admission refuses version `1.0.0` receipts
+without rewriting their files. There is no compatibility reader or in-place
+Run upgrade: changed implementation identity requires a distinct Run. Retained
+outputs and provenance remain available to their original software and ordinary
+file-reading tools under the
+[current-version policy](../../../../../docs/design/decisions/platform-direction.md#version-support).
 
 ## Inputs and scientific outputs
 
@@ -100,8 +111,8 @@ against the staged payloads before returning.
 The [shell worker](scientific_context_projection.sh) is internal to the
 [Run task runner](../../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 It receives five explicit `--*-output` staging paths and four `--*-final`
-payload identities for the native receipt. The R scientific computation is
-unchanged. The runner publishes the four payloads before the native receipt;
+payload identities for the native receipt. R owns the scientific computation.
+The runner publishes the four payloads before the native receipt;
 its verified task record establishes successful independent validation.
 
 The retired shell writer had an interruption gap between linking a final and

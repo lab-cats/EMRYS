@@ -58,6 +58,11 @@ _PROCESSING_SOURCE_FIELDS = (
     "workflow_attempt_id",
     "attempt_receipt_sha256",
 )
+_STAR_INDEX_FIELDS = (
+    "sjdb_overhang",
+    "genome_sa_index_nbases",
+    "genome_chr_bin_nbits",
+)
 _NON_RUN_TOOL_NAMES = {
     "runtime_profile",
     "storage_qualification",
@@ -105,6 +110,16 @@ def _require_unique(values: Iterable[str], label: str) -> None:
     materialized = tuple(values)
     if len(materialized) != len(set(materialized)):
         raise ContractValidationError(f"{label} values must be unique")
+
+
+def normalize_star_index_policy(value: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the current closed STAR-index policy from authored or legacy input."""
+
+    return _closed_copy(
+        {"genome_chr_bin_nbits": 18, **value},
+        _STAR_INDEX_FIELDS,
+        "STAR-index policy",
+    )
 
 
 def _canonical_rows(
@@ -617,11 +632,7 @@ def processing_compatibility_sha256(
                 "engine": engine,
                 "semantics_sha256": backend_semantics_sha256,
             },
-            "star_index": _closed_copy(
-                star_index,
-                ("sjdb_overhang", "genome_sa_index_nbases"),
-                "STAR-index policy",
-            ),
+            "star_index": normalize_star_index_policy(star_index),
             "computational_resources": resources,
         }
     )
@@ -678,11 +689,7 @@ def build_execution_plan(
             "engine": engine,
             "semantics_sha256": backend_semantics_sha256,
         },
-        "star_index": _closed_copy(
-            star_index,
-            ("sjdb_overhang", "genome_sa_index_nbases"),
-            "STAR-index policy",
-        ),
+        "star_index": normalize_star_index_policy(star_index),
         "computational_resources": resources,
     }
     if processing_source is not None:
@@ -787,48 +794,146 @@ def _positive_integer(value: Any, label: str) -> int:
     return value
 
 
+def resource_workload(analysis: AnalysisRevision) -> dict[str, int]:
+    """Derive resource-sharing counts from the immutable Analysis inputs."""
+    identity = analysis.record["identity"]
+    return {name: len(identity[name]) for name in ("samples", "partitions")}
+
+
+def _workflow_limit(value: Any, budget: int | str) -> Any:
+    return budget if value == "workflow" and isinstance(budget, int) else value
+
+
 def resolve_computational_resources(
-    declaration: Mapping[str, Any], allocation_cores: int, allocation_memory: int
+    declaration: Mapping[str, Any],
+    allocation_cores: int | None = None,
+    allocation_memory: int | None = None,
+    *,
+    limit_source: str = "observed allocation",
+    workload: Mapping[str, int] | None = None,
 ) -> dict[str, Any]:
-    """Resolve admitted symbolic resources and enforce their allocation limits."""
+    """Resolve allocation-relative limits without changing the Run declaration."""
     cores = declaration["workflow_cores"]
     memory = declaration["workflow_memory_mb"]
-    if memory == "allocation":
+    if cores == "allocation" and allocation_cores is not None:
+        cores = allocation_cores
+    if memory == "allocation" and allocation_memory is not None:
         memory = allocation_memory
-    if cores > allocation_cores:
+    if allocation_cores is not None and cores > allocation_cores:
         raise ContractValidationError(
-            f"Workflow cores exceed observed allocation: {cores} > {allocation_cores}"
+            f"Workflow cores exceed {limit_source}: {cores} > {allocation_cores}"
         )
-    if memory > allocation_memory:
+    if allocation_memory is not None and memory > allocation_memory:
         raise ContractValidationError(
-            "Workflow memory exceeds observed allocation: "
+            f"Workflow memory exceeds {limit_source}: "
             f"{memory} > {allocation_memory} MiB"
         )
-    stage_memory = {
-        step: memory if value == "workflow" else value
-        for step, value in declaration["stage_memory_mb"].items()
-    }
-    for step, stage_mb in stage_memory.items():
-        concurrency = declaration["stage_concurrency"].get(step, 1)
-        threads = declaration["step_threads"].get(step, 1)
-        if concurrency * threads > cores:
+    if workload is not None:
+        if not isinstance(workload, Mapping) or set(workload) != {
+            "samples",
+            "partitions",
+        }:
+            raise ContractValidationError("Resource workload fields must be closed")
+        for name, count in workload.items():
+            _positive_integer(count, f"Resource workload {name}")
+    concurrency_map = dict(declaration["stage_concurrency"])
+    stage_memory = dict(declaration["stage_memory_mb"])
+    step_threads = dict(declaration["step_threads"])
+    for step, raw_memory in stage_memory.items():
+        concurrency = concurrency_map.get(step, 1)
+        raw_threads = step_threads.get(step, 1)
+        threads = _workflow_limit(raw_threads, cores)
+        stage_mb = _workflow_limit(raw_memory, memory)
+        shared_memory = isinstance(raw_memory, Mapping) or raw_memory == "auto"
+        minimum = raw_memory["minimum_mb"] if isinstance(raw_memory, Mapping) else 1
+        if isinstance(memory, int) and minimum > memory:
+            raise ContractValidationError(
+                f"Stage {step} minimum memory exceeds workflow memory"
+            )
+        if (
+            concurrency == "auto"
+            and isinstance(threads, int)
+            and isinstance(cores, int)
+        ):
+            if threads > cores:
+                raise ContractValidationError(
+                    f"Stage {step} cannot fit one task in workflow cores"
+                )
+        if concurrency == "auto" and isinstance(cores, int) and isinstance(memory, int):
+            if workload is None:
+                if allocation_cores is not None and allocation_memory is not None:
+                    raise ContractValidationError(
+                        "Automatic concurrency requires the admitted workload"
+                    )
+            else:
+                thread_floor = 1 if threads == "auto" else threads
+                memory_floor = minimum if shared_memory else stage_mb
+                concurrency = min(
+                    workload["partitions" if step == "07" else "samples"],
+                    cores // thread_floor,
+                    memory // memory_floor,
+                )
+                if concurrency < 1:
+                    raise ContractValidationError(
+                        f"Stage {step} cannot fit one task in the workflow allocation"
+                    )
+                concurrency_map[step] = concurrency
+        if not isinstance(concurrency, int):
+            continue
+        if raw_threads == "auto" and isinstance(cores, int):
+            threads = cores // concurrency
+            if threads < 1:
+                raise ContractValidationError(
+                    f"Stage {step} concurrency exceeds workflow cores"
+                )
+        if shared_memory and isinstance(memory, int):
+            stage_mb = memory // concurrency
+            if stage_mb < minimum:
+                raise ContractValidationError(
+                    f"Stage {step} shared memory is below its minimum"
+                )
+        stage_memory[step] = stage_mb
+        if step in step_threads:
+            step_threads[step] = threads
+        if (threads == "workflow" and concurrency > 1) or (
+            isinstance(threads, int)
+            and isinstance(cores, int)
+            and concurrency * threads > cores
+        ):
             raise ContractValidationError(
                 f"Stage {step} concurrency x threads exceeds workflow cores: "
                 f"{concurrency} x {threads} > {cores}"
             )
-        if concurrency * stage_mb > memory:
+        if (stage_mb == "workflow" and concurrency > 1) or (
+            isinstance(stage_mb, int)
+            and isinstance(memory, int)
+            and concurrency * stage_mb > memory
+        ):
             raise ContractValidationError(
-                f"Stage {step} concurrency x memory exceeds workflow memory: "
-                f"{concurrency} x {stage_mb} > {memory} MiB"
+                f"Stage {step} concurrency x memory exceeds workflow memory"
+                + (
+                    f" within {limit_source}"
+                    if limit_source != "observed allocation"
+                    else ""
+                )
+                + ": "
+                f"{concurrency} x {stage_mb} > "
+                + (f"{memory} MiB" if isinstance(memory, int) else "workflow")
             )
+    if allocation_memory is None and allocation_cores is None:
+        return dict(declaration)
     return {
         **declaration,
+        "workflow_cores": cores,
         "workflow_memory_mb": memory,
+        "stage_concurrency": concurrency_map,
+        "step_threads": step_threads,
         "stage_memory_mb": stage_memory,
     }
 
 
 def _validate_resource_resolution(
+    analysis: AnalysisRevision,
     plan: ExecutionPlan,
     resource_policy: Mapping[str, Any],
 ) -> None:
@@ -840,7 +945,7 @@ def _validate_resource_resolution(
         "allocation",
         "sources",
     }
-    if set(resource_policy) != expected_policy_fields:
+    if set(resource_policy) - {"workload"} != expected_policy_fields:
         raise ContractValidationError("Workflow resource policy fields must be closed")
     symbolic = resource_policy.get("symbolic")
     effective = resource_policy.get("effective")
@@ -937,8 +1042,11 @@ def _validate_resource_resolution(
         )
     _positive_integer(effective["workflow_cores"], "Resolved workflow cores")
     _positive_integer(effective["workflow_memory_mb"], "Resolved workflow memory")
+    workload = resource_policy.get("workload")
+    if "workload" in resource_policy and workload != resource_workload(analysis):
+        raise ContractValidationError("Resource workload differs from the Analysis")
     expected = resolve_computational_resources(
-        declaration, allocation_cores, allocation_memory
+        declaration, allocation_cores, allocation_memory, workload=workload
     )
     for field, value in expected.items():
         if effective[field] != value:
@@ -1003,7 +1111,7 @@ def validate_successor_run(
             )
 
     if resource_policy is not None:
-        _validate_resource_resolution(plan, resource_policy)
+        _validate_resource_resolution(analysis, plan, resource_policy)
         if (
             attempt is not None
             and attempt["cores"] != resource_policy["effective"]["workflow_cores"]
@@ -1171,6 +1279,7 @@ __all__ = (
     "build_execution_plan",
     "functional_specification_from_profile",
     "implementation_content_sha256",
+    "normalize_star_index_policy",
     "processing_compatibility_sha256",
     "execution_plan_boundary",
     "execution_owner_keys",

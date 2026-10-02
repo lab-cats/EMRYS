@@ -1120,13 +1120,54 @@ def test_native_metrics_and_artifact_state_are_conservative(
         "ref.star_index.genome_parameters",
     )
     assert genome_parameters["source"]["media_type"] == "text/plain"
-    assert any(
-        metric["metric_id"] == "sjdbOverhang" and metric["value"] == 99
-        for metric in genome_parameters["metrics"]
-    )
+    native_metrics = {
+        metric["metric_id"]: metric["value"] for metric in genome_parameters["metrics"]
+    }
+    assert {
+        "sjdbOverhang": 99,
+        "genomeSAindexNbases": 14,
+        "genomeChrBinNbits": 18,
+    }.items() <= native_metrics.items()
     genome = record_for(artifact_fixture, "ref.star_index.genome")
     assert genome["source"]["media_type"] == "application/octet-stream"
     assert "scientific_state" not in genome
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement", "message"),
+    (
+        ("genomeSAindexNbases 14\n", "", "missing genomeSAindexNbases"),
+        (
+            "genomeChrBinNbits 18\n",
+            "genomeChrBinNbits invalid\n",
+            "genomeChrBinNbits is invalid",
+        ),
+    ),
+)
+def test_star_index_parameter_metrics_require_declared_integers(
+    artifact_fixture: Any,
+    original: str,
+    replacement: str,
+    message: str,
+) -> None:
+    parameters = artifact_fixture.source_for("ref.star_index.genome_parameters")
+    parameters.write_text(
+        parameters.read_text(encoding="utf-8").replace(original, replacement),
+        encoding="utf-8",
+    )
+
+    context = context_for(artifact_fixture)
+    record = next(
+        item
+        for item in context.index.records
+        if item["artifact_id"] == "ref.star_index.genome_parameters"
+    )
+    assert record["completion_status"] == "failed"
+    assert record["state_reason"] == "Present source failed its registered adapter."
+    assert [error["code"] for error in record["errors"]] == [
+        "adapter_validation_failed"
+    ]
+    assert message in record["errors"][0]["message"]
 
 
 def test_star_final_log_preserves_infinite_mapping_speed_as_string(
@@ -1151,6 +1192,115 @@ def test_star_final_log_preserves_infinite_mapping_speed_as_string(
     assert mapping_speed["status"] == "not_assessed"
     assert metrics["number_of_input_reads"]["value"] == 100.0
     assert metrics["uniquely_mapped_reads"]["value"] == 95.0
+
+
+@pytest.mark.parametrize("alias_value", ["", "unprojected text"])
+def test_picard_reordered_single_table_projects_literal_metrics(
+    artifact_fixture: Any,
+    alias_value: str,
+) -> None:
+    artifact_fixture.source_for("sample.SYNTH_A.markdup_metrics").write_text(
+        "## METRICS CLASS picard.sam.DuplicationMetrics\n"
+        "PERCENT_DUPLICATION\tLIBRARY\tREAD_PAIR_DUPLICATES\t"
+        "READ_PAIRS_EXAMINED\tread_pairs_examined\tEXTRA_COUNT\tESTIMATED_LIBRARY_SIZE\n"
+        f"0.2\tS\t2\t10\t{alias_value}\t12\t\n\n"
+        "## HISTOGRAM\nset_size\tcount\n1\t8\n2\t2\n",
+        encoding="utf-8",
+    )
+    context = context_for(artifact_fixture)
+    record = next(
+        item
+        for item in context.index.records
+        if item["artifact_id"] == "sample.SYNTH_A.markdup_metrics"
+    )
+    assert record["completion_status"] == "complete"
+    assert {
+        metric["metric_id"]: (metric["value"], metric["status"])
+        for metric in record["metrics"]
+    } == {
+        "source_row_count": (1, "not_assessed"),
+        "read_pairs_examined": (10, "not_assessed"),
+        "read_pair_duplicates": (2, "not_assessed"),
+        "percent_duplication": (0.2, "not_assessed"),
+        "extra_count": (12, "not_assessed"),
+    }
+
+
+@pytest.mark.parametrize(
+    ("header", "data", "suffix", "message"),
+    [
+        (
+            b"LIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIRS_EXAMINED\t"
+            b"READ_PAIR_DUPLICATES\tPERCENT_DUPLICATION",
+            b"S\t1\t10\t2\t0.2",
+            b"",
+            "duplicate Picard metric columns",
+        ),
+        (
+            b"unexpected\nLIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIR_DUPLICATES\tPERCENT_DUPLICATION",
+            b"S\t10\t2\t0.2",
+            b"",
+            "expected one row",
+        ),
+        (
+            b"LIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIR_DUPLICATES",
+            b"S\t10\t2",
+            b"",
+            "expected one row",
+        ),
+        *[
+            (
+                header,
+                b"S\t" + values + b"\t0\t0",
+                b"",
+                "Ambiguous Picard metric: 'read_pairs_examined'",
+            )
+            for header in (
+                b"LIBRARY\tREAD_PAIRS_EXAMINED\tread_pairs_examined\t"
+                b"READ_PAIR_DUPLICATES\tPERCENT_DUPLICATION",
+                b"LIBRARY\tread_pairs_examined\tREAD_PAIRS_EXAMINED\t"
+                b"READ_PAIR_DUPLICATES\tPERCENT_DUPLICATION",
+            )
+            for values in (b"1\t10", b"10\t10")
+        ],
+        (None, b"S\t10\t2\t0.2", b"T\t30\t3\t0.1\n", "expected one row"),
+        (None, b"S\t10\t2\t1e999", b"", "non-finite"),
+        (None, b"S\t10\t2\t0.2", b"\n## HISTOGRAM\n1\t8\x00\n", "NUL byte"),
+        (None, b"S\t10\t2\t0.2", b"\n## HISTOGRAM\n1\t8\r\n", "carriage return"),
+        (
+            None,
+            b"S\t10\t2\t0.2",
+            b"\n## HISTOGRAM\n" + b"1\t8\n" * 3000 + b"\xff",
+            "UTF-8",
+        ),
+    ],
+)
+def test_picard_malformed_source_is_failed_artifact_evidence(
+    artifact_fixture: Any,
+    header: bytes | None,
+    data: bytes,
+    suffix: bytes,
+    message: str,
+) -> None:
+    if header is None:
+        header = (
+            b"LIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIR_DUPLICATES\tPERCENT_DUPLICATION"
+        )
+    artifact_fixture.source_for("sample.SYNTH_A.markdup_metrics").write_bytes(
+        header + b"\n" + data + b"\n" + suffix
+    )
+    context = context_for(artifact_fixture)
+    record = next(
+        item
+        for item in context.index.records
+        if item["artifact_id"] == "sample.SYNTH_A.markdup_metrics"
+    )
+    assert record["completion_status"] == "failed"
+    assert [error["code"] for error in record["errors"]] == [
+        "adapter_validation_failed"
+    ]
+    assert message in record["errors"][0]["message"]
+    assert record["metrics"] == []
 
 
 @pytest.mark.parametrize("token", ["-inf", "nan", "1e999"])
@@ -1354,6 +1504,12 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
             1:
         ]
         FIXTURE.write_tsv(path, tuple(rows[0]), rows)
+        receipt = artifact_fixture.source_for("analysis.synthetic.context_receipt")
+        receipt_rows = read_tsv(receipt)
+        receipt_rows[0]["candidate_context_sha256"] = hashlib.sha256(
+            path.read_bytes()
+        ).hexdigest()
+        FIXTURE.write_tsv(receipt, tuple(receipt_rows[0]), receipt_rows)
     else:
         raise AssertionError(f"Unhandled native transaction step: {step_id}")
 
@@ -1367,6 +1523,11 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
         "native_transaction_inconsistent"
     ]
     assert sibling["completion_status"] == "incomplete"
+    if step_id == "10":
+        assert marker["errors"][0]["message"].endswith(
+            "Candidate context row 2 oriented_sequence differs "
+            "from the bound reference window."
+        )
 
 
 @pytest.mark.parametrize(

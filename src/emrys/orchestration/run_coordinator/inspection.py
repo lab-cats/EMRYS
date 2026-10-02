@@ -28,6 +28,7 @@ from emrys.orchestration.run_coordinator.reporting_boundary import REPORTING_KIN
 from emrys.orchestration.run_coordinator._inspection_admission import (
     ExpectedTask,
     InspectionError,
+    PreparedFinalizationCandidate,
     SuccessorRunAuthority,
     _canonical_root,
     _state_tree_blockers_by_domain,
@@ -35,11 +36,11 @@ from emrys.orchestration.run_coordinator._inspection_admission import (
     admit_attempt_run_lock,
     admit_canonical_record,
     admit_execution_path,
+    admit_prepared_finalization,
     admit_successor_run,
     expected_tasks,
     lock_tree_blockers,
     state_tree_blockers,
-    task_start_tree_blockers,
     verified_tree_blockers,
 )
 from emrys.orchestration.run_coordinator._inspection_attempts import (
@@ -53,6 +54,7 @@ from emrys.orchestration.run_coordinator._inspection_evidence import (
     TaskInspection,
     ValidatedReportingReceipt,
     inspect_evidence,
+    inspect_task_evidence,
 )
 
 AttemptOutcome = Literal[
@@ -66,6 +68,13 @@ AttemptOutcome = Literal[
 RunIntegrity = Literal["valid", "blocked"]
 ResultsStatus = Literal["incomplete", "complete", "blocked"]
 ReportingStatus = Literal["not applicable", "incomplete", "complete", "blocked"]
+LockObservation = Literal[
+    "no lock",
+    "local live owner",
+    "remote ownership unverified",
+    "local process not live",
+    "invalid or ambiguous lock",
+]
 _RUN_ID_PATTERN = re.compile(r"run-[0-9a-f]{64}\Z")
 _RUN_ID_PREFIX_PATTERN = re.compile(r"run-[0-9a-f]{1,64}\Z")
 
@@ -143,6 +152,8 @@ class RunInspection:
     results_blockers: tuple[str, ...]
     reporting_blockers: tuple[str, ...]
     authority: SuccessorRunAuthority
+    prepared_finalization: PreparedFinalizationCandidate | None = None
+    lock_observation: LockObservation = "invalid or ambiguous lock"
     verified_report_locations: tuple[tuple[str, Path], ...] = ()
     processing_source: ProcessingSourceAdmission | None = None
 
@@ -235,6 +246,14 @@ class ProcessingSourceAdmission:
     artifact_snapshots: tuple[dict[str, Any], ...]
 
 
+@dataclass(frozen=True, slots=True)
+class PreparedFinalizationInspection:
+    """Read-only ordinary and prospective views of one exact finalization."""
+
+    candidate: PreparedFinalizationCandidate
+    prospective_state: RunInspection
+
+
 def _attempt_outcome(
     *,
     latest: Mapping[str, Any] | None,
@@ -283,18 +302,19 @@ def _inspect_lock(
     latest_terminal: bool,
     ops: InspectionOps,
     allowed_next_attempt: Mapping[str, Any] | None = None,
-) -> tuple[bool, list[str]]:
+) -> tuple[LockObservation, list[str]]:
     locks_root = root / "locks"
     blockers = list(lock_tree_blockers(root))
-    if any("aggregate locks root" in item.lower() for item in blockers):
-        return False, blockers
+    if blockers:
+        return "invalid or ambiguous lock", blockers
     path = locks_root / "run.lock"
     if not path.exists() and not path.is_symlink():
-        return False, blockers
+        return "no lock", blockers
     try:
         record, _ = admit_canonical_record(path, root, "run-lock")
     except InspectionError as exc:
-        return False, [str(exc)]
+        return "invalid or ambiguous lock", [str(exc)]
+    observation: LockObservation = "invalid or ambiguous lock"
     if latest is None:
         blockers.append("Run lock exists without a workflow attempt")
     else:
@@ -316,20 +336,21 @@ def _inspect_lock(
                 blockers.append(f"Run lock does not bind its Attempt {field}")
         if latest_terminal and expected_lock_attempt is latest:
             blockers.append("Terminal workflow attempt retained its run lock")
+        if blockers:
+            return "invalid or ambiguous lock", blockers
         if record["host"] != ops.host_name():
+            observation = "remote ownership unverified"
             blockers.append(
                 "Run lock host is not this host; live ownership is unproved"
             )
         elif not ops.process_is_alive(int(record["process_id"])):
+            observation = "local process not live"
             blockers.append(
                 "Run lock process is not live; automatic recovery is forbidden"
             )
-    return (
-        not blockers
-        and latest is not None
-        and (not latest_terminal or expected_lock_attempt is not latest),
-        blockers,
-    )
+        else:
+            observation = "local live owner"
+    return observation, blockers
 
 
 def inspect_run(
@@ -337,6 +358,7 @@ def inspect_run(
     *,
     ops: InspectionOps | None = None,
     allowed_next_attempt: Mapping[str, Any] | None = None,
+    prospective_receipt: PreparedFinalizationCandidate | None = None,
 ) -> RunInspection:
     """Derive one run state without reading or repairing ``.snakemake``."""
 
@@ -377,11 +399,33 @@ def inspect_run(
         root,
         authority=authority,
         profile=profile,
+        prospective_receipt=prospective_receipt,
     )
     integrity_blockers.extend(attempt_blockers)
     latest = attempts[-1] if attempts else None
     latest_id = None if latest is None else str(latest["workflow_attempt_id"])
     latest_receipt = None if latest_id is None else receipts.get(latest_id)
+    prepared_finalization = None
+    if latest is not None:
+        prepared_path = (
+            root
+            / "attempts"
+            / str(latest["workflow_attempt_id"])
+            / "prepared-attempt-receipt.json"
+        )
+        if prospective_receipt is None and (
+            prepared_path.exists() or prepared_path.is_symlink()
+        ):
+            try:
+                current_prepared = admit_prepared_finalization(root, latest)
+            except InspectionError as exc:
+                integrity_blockers.append(str(exc))
+            else:
+                prepared_finalization = current_prepared
+                integrity_blockers.append(
+                    "Latest workflow Attempt has an exact prepared receipt "
+                    "awaiting finalization"
+                )
     if latest is not None and profile_data is not None:
         expected_bindings = {
             "run_id": execution["run_id"],
@@ -393,13 +437,17 @@ def inspect_run(
                 integrity_blockers.append(
                     f"Latest attempt does not bind admitted {field}"
                 )
-    running, lock_blockers = _inspect_lock(
-        root,
-        latest=latest,
-        latest_terminal=latest_receipt is not None,
-        ops=active_ops,
-        allowed_next_attempt=allowed_next_attempt,
-    )
+    if prospective_receipt is None:
+        lock_observation, lock_blockers = _inspect_lock(
+            root,
+            latest=latest,
+            latest_terminal=latest_receipt is not None,
+            ops=active_ops,
+            allowed_next_attempt=allowed_next_attempt,
+        )
+    else:
+        lock_observation, lock_blockers = "no lock", []
+    running = lock_observation == "local live owner" and not prepared_finalization
     integrity_blockers.extend(lock_blockers)
     if not profile_present:
         if latest is not None:
@@ -432,6 +480,8 @@ def inspect_run(
             results_blockers=tuple(dict.fromkeys(results_blockers)),
             reporting_blockers=tuple(dict.fromkeys(reporting_blockers)),
             authority=authority,
+            prepared_finalization=prepared_finalization,
+            lock_observation=lock_observation,
         )
     live_origin = (
         latest_id
@@ -488,8 +538,43 @@ def inspect_run(
         reporting_blockers=tuple(dict.fromkeys(reporting_blockers)),
         verified_report_locations=evidence.verified_report_locations,
         authority=authority,
+        prepared_finalization=prepared_finalization,
+        lock_observation=lock_observation,
         processing_source=processing_source,
     )
+
+
+def inspect_prepared_finalization(
+    run_root: Path,
+    *,
+    ops: InspectionOps | None = None,
+    expected: PreparedFinalizationCandidate | None = None,
+) -> PreparedFinalizationInspection:
+    """Preview the exact state after one supported finalization completes."""
+
+    candidate = expected
+    if candidate is None:
+        candidate = inspect_run(run_root, ops=ops).prepared_finalization
+        if candidate is None:
+            raise InspectionError("Run has no admissible prepared Attempt finalization")
+    prospective = inspect_run(
+        run_root,
+        ops=ops,
+        prospective_receipt=candidate,
+    )
+    latest = prospective.latest_attempt
+    evidence_blockers = {
+        *prospective.integrity_blockers,
+        *prospective.results_blockers,
+    }
+    if (
+        latest is None
+        or prospective.latest_receipt != candidate.record
+        or not evidence_blockers.issubset(candidate.record["blockers"])
+        or admit_prepared_finalization(prospective.run_root, latest) != candidate
+    ):
+        raise InspectionError("Prepared finalization changed during preview")
+    return PreparedFinalizationInspection(candidate, prospective)
 
 
 def admit_processing_source(run_root: Path) -> ProcessingSourceAdmission:
@@ -510,7 +595,7 @@ def admit_processing_source(run_root: Path) -> ProcessingSourceAdmission:
         or state.reporting_status != "not applicable"
         or receipt is None
         or attempt is None
-        or receipt.get("schema_version") != "emrys.attempt-receipt.v2"
+        or receipt.get("schema_version") != "emrys.attempt-receipt.v3"
         or receipt.get("status") != "succeeded"
     ):
         raise InspectionError(
@@ -606,6 +691,8 @@ __all__ = (
     "ExpectedTask",
     "InspectionError",
     "InspectionOps",
+    "PreparedFinalizationCandidate",
+    "PreparedFinalizationInspection",
     "ProcessingSourceAdmission",
     "RunInspection",
     "ReportingReceiptValidator",
@@ -624,10 +711,11 @@ __all__ = (
     "inspect_attempt_tree",
     "inspect_attempt_chain",
     "inspect_attempt_task_trees",
+    "inspect_prepared_finalization",
     "inspect_run",
     "lock_tree_blockers",
     "state_tree_blockers",
-    "task_start_tree_blockers",
+    "inspect_task_evidence",
     "verified_tree_blockers",
     "validate_processing_source",
 )

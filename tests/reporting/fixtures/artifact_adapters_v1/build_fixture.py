@@ -473,6 +473,7 @@ def tsv_rows_for(
                 "contig_names_lengths",
                 "sjdb_overhang",
                 "genome_sa_index_nbases",
+                "genome_chr_bin_nbits",
             )
             if adapter == "step00a_validation_report_v1"
             else (
@@ -789,7 +790,10 @@ def write_adapter_source(
         if path.name in {"Genome", "SA", "SAindex"}:
             path.write_bytes(b"\x00synthetic STAR index\n")
         elif path.name == "genomeParameters.txt":
-            path.write_text("sjdbOverhang 99\n", encoding="utf-8")
+            path.write_text(
+                "sjdbOverhang 99\ngenomeSAindexNbases 14\ngenomeChrBinNbits 18\n",
+                encoding="utf-8",
+            )
         else:
             path.write_text("synthetic STAR index\n", encoding="utf-8")
     elif spec.kind == "bed12":

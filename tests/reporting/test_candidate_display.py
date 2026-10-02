@@ -321,6 +321,35 @@ def test_step10_rank_drives_one_joined_immutable_roster(tmp_path: Path) -> None:
         candidate.display_rank = 99  # type: ignore[misc]
 
 
+def test_candidate_display_preserves_infinite_odds_ratio(tmp_path: Path) -> None:
+    row, *_ = _three_rows()
+    row["common_odds_ratio"] = "Inf"
+
+    projection = build_candidate_display(_computational_results(tmp_path, [row]))
+
+    assert projection.candidates[0].common_odds_ratio == Decimal("Infinity")
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("common_odds_ratio", "-Inf"),
+        ("common_odds_ratio", "NaN"),
+        ("common_odds_ratio", "sNaN"),
+        ("cmh_fdr_bh", "Inf"),
+        ("mean_control_af", "Inf"),
+    ],
+)
+def test_candidate_display_rejects_other_nonfinite_values(
+    tmp_path: Path, field: str, value: str
+) -> None:
+    row, *_ = _three_rows()
+    row[field] = value
+
+    with pytest.raises(ReportRenderError, match="must be finite"):
+        build_candidate_display(_computational_results(tmp_path, [row]))
+
+
 def test_all_four_motif_states_are_explicit_and_nonoverlapping(tmp_path: Path) -> None:
     present, no_hit, boundary = _three_rows()
     computational = _computational_results(tmp_path, [present, no_hit, boundary])
@@ -396,12 +425,18 @@ def test_missing_context_uses_bounded_fdr_effect_id_display_rule(
 
     assert projection.selection_source == "step09_display_rule"
     assert projection.significant_candidate_count == 10
-    assert len(projection.candidates) == scientific_context.DISPLAY_LIMIT
+    assert len(projection.candidates) == 9
+    assert tuple(item.display_label for item in projection.candidates) == tuple(
+        "ABCDEFGHI"
+    )
     assert projection.candidates[0].candidate_id == rows[9]["candidate_id"]
     assert projection.candidates[1].candidate_id == rows[8]["candidate_id"]
     assert tuple(
         candidate.display_rank for candidate in projection.candidates
-    ) == tuple(range(1, scientific_context.DISPLAY_LIMIT + 1))
+    ) == tuple(range(1, 10))
+    assert tuple(item.candidate_id for item in projection.candidates) == tuple(
+        rows[index]["candidate_id"] for index in (9, 8, 0, 1, 2, 3, 4, 5, 6)
+    )
 
 
 def test_missing_sample_values_remain_explicitly_unavailable(tmp_path: Path) -> None:

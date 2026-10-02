@@ -10,7 +10,10 @@ The [logging contract](../../../../docs/design/LOGGING_CONTRACT.md) defines whic
 operations may open a log, event fields, path ownership, redaction, and failure
 behavior. A log records execution; it cannot decide receipts, recovery, or exits.
 
-`console_print` styles literal human text; `phase_progress` shows a named phase
-and elapsed time. Redirected streams, `NO_COLOR`, and dumb terminals retain plain
-text. Doctor keeps complete package-manager output in `package-output.log`
+`console_print` styles literal human text. `console_field` and `console_status`
+keep labels visually distinct from values and give readiness states a shared
+semantic emphasis without changing their plain-text representation.
+`phase_progress` shows a named phase and elapsed time. Redirected streams,
+`NO_COLOR`, and dumb terminals retain plain text. Doctor keeps complete
+package-manager output in `package-output.log`
 beside its maintenance JSONL; the progress display does not replace diagnostics.

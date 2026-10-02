@@ -12,6 +12,7 @@ Usage: src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh \
   --sample-id SAMPLE_ID \
   --bam BAM \
   --output-dir OUTPUT_DIR \
+  --threads THREADS \
   --samtools-bin SAMTOOLS_BIN
 
 Internal worker: requires an existing EMRYS_TASK_WORK_DIR supplied by the runner.
@@ -28,8 +29,10 @@ source "$script_dir/../../libraries/file_checks.sh"
 
 declare_required_arguments sample_id bam output_dir samtools_bin
 
+threads=1
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
         --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
         --bam) assign_option_value "$1" "${2:-}" bam; shift 2 ;;
         --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
@@ -39,6 +42,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 require_arguments
+validate_positive_integer "--threads" "$threads"
 require_task_work_dir
 
 validate_safe_id "--sample-id" "$sample_id"
@@ -54,6 +58,6 @@ fi
 if [[ ! -s "$quickcheck" ]]; then
     printf 'PASS: samtools quickcheck completed with no errors.\n' >"$quickcheck"
 fi
-"$samtools_bin" flagstat "$bam" >"$flagstat"
+"$samtools_bin" flagstat -@ "$((threads - 1))" "$bam" >"$flagstat"
 validate_nonempty_file "quickcheck report" "$quickcheck"
 validate_nonempty_file "flagstat report" "$flagstat"

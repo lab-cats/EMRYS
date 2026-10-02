@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from pathlib import Path
 
 from emrys.libraries import validation as report
@@ -29,6 +30,9 @@ REQUIRED_INDEX_MEMBERS = (
     "sjdbList.fromGTF.out.tab",
     "sjdbList.out.tab",
     "transcriptInfo.tab",
+)
+STAR_INDEX_INTEGER_PARAMETERS = tuple(
+    "sjdbOverhang genomeSAindexNbases genomeChrBinNbits".split()
 )
 
 
@@ -88,8 +92,14 @@ def valid_splice_junction_table(text: str) -> tuple[bool, str]:
 
 def parse_parameters(path: Path) -> tuple[dict[str, list[str]], report.Snapshot]:
     text, snapshot = report.stable_text(path, "STAR genomeParameters")
+    return parse_parameter_lines(text.splitlines()), snapshot
+
+
+def parse_parameter_lines(lines: Iterable[str]) -> dict[str, list[str]]:
+    """Parse already-admitted STAR parameter lines."""
+
     parsed: dict[str, list[str]] = {}
-    for number, raw in enumerate(text.splitlines(), 1):
+    for number, raw in enumerate(lines, 1):
         fields = raw.split()
         if not fields or fields[0] == "###":
             continue
@@ -98,7 +108,15 @@ def parse_parameters(path: Path) -> tuple[dict[str, list[str]], report.Snapshot]
         if fields[0] in parsed:
             raise ValueError(f"STAR genomeParameters repeats {fields[0]!r}")
         parsed[fields[0]] = fields[1:]
-    return parsed, snapshot
+    return parsed
+
+
+def integer_parameter(parameters: dict[str, list[str]], name: str) -> int | None:
+    try:
+        (value,) = parameters.get(name, [])
+        return int(value)
+    except ValueError:
+        return None
 
 
 def parse_fasta(path: Path) -> tuple[list[tuple[str, int]], report.Snapshot]:

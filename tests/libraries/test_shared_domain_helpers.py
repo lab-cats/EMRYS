@@ -261,6 +261,52 @@ def test_picard_parser_preserves_header_order_and_prefix_validation() -> None:
     )
 
 
+@pytest.mark.parametrize("examined", ["1\t10", "10\t10"])
+def test_picard_parser_refuses_duplicate_columns(examined: str) -> None:
+    metrics = (
+        "LIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIRS_EXAMINED\t"
+        "READ_PAIR_DUPLICATES\tPERCENT_DUPLICATION\n"
+        f"S\t{examined}\t2\t0.2\n"
+    )
+    assert picard.parse_duplication_metrics(metrics) == (
+        False,
+        "duplicate Picard metric columns",
+    )
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        "\t10\t2\t0.2",
+        "S\t-1\t0\t0",
+        "S\t1\t2\t0.2",
+        "S\t10\t-1\t0",
+        "S\t10\t2\t-0.1",
+        "S\t10\t2\t1.1",
+        "S\t10\t2\tnan",
+        "S\t10\t2\tinf",
+    ],
+)
+def test_picard_parser_retains_numerical_bounds(data: str) -> None:
+    metrics = (
+        "LIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIR_DUPLICATES\tPERCENT_DUPLICATION\n"
+        + data
+        + "\n"
+    )
+    assert picard.parse_duplication_metrics(metrics)[0] is False
+
+
+def test_picard_parser_refuses_extra_contiguous_metrics_rows() -> None:
+    metrics = (
+        "LIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIR_DUPLICATES\tPERCENT_DUPLICATION\n"
+        "S\t10\t2\t0.2\nT\t30\t3\t0.1\nU\t20\t1\t0.05\n"
+    )
+    assert picard.parse_duplication_metrics(metrics) == (
+        False,
+        "expected one row with required Picard columns",
+    )
+
+
 def test_mpileup_manifest_and_selector_failure_branches(tmp_path: Path) -> None:
     sample_manifest = tmp_path / "samples.tsv"
     write_tsv(sample_manifest, ("other",), [("S",)])

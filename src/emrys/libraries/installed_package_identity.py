@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from emrys.libraries.exclusive_publication import stable_file_identity
+
 # The renamed package namespace starts a new digest domain. A v2 EMRYS digest
 # cannot be mistaken for a pre-cutover installed-package identity.
 _DIGEST_DOMAIN = b"emrys-installed-package-tree-v2\0"
@@ -82,17 +84,6 @@ class InstalledProviderV1:
 _ADMITTED_PROVIDERS: dict[tuple[object, ...], InstalledProviderV1] = {}
 
 
-def _metadata_identity(value: os.stat_result) -> tuple[int, ...]:
-    return (
-        value.st_dev,
-        value.st_ino,
-        value.st_mode,
-        value.st_size,
-        value.st_mtime_ns,
-        value.st_ctime_ns,
-    )
-
-
 def _framed(digest: _Digest, value: bytes) -> None:
     digest.update(len(value).to_bytes(8, "big"))
     digest.update(value)
@@ -148,9 +139,9 @@ def _read_regular_file(path: Path, admitted: os.stat_result) -> bytes:
             f"Could not re-admit installed package file: {path}: {exc}"
         ) from exc
     if (
-        _metadata_identity(admitted) != _metadata_identity(before)
-        or _metadata_identity(before) != _metadata_identity(after)
-        or _metadata_identity(after) != _metadata_identity(named)
+        stable_file_identity(admitted) != stable_file_identity(before)
+        or stable_file_identity(before) != stable_file_identity(after)
+        or stable_file_identity(after) != stable_file_identity(named)
     ):
         raise InstalledPackageIdentityError(
             f"Installed package file changed while it was read: {path}"
@@ -242,7 +233,7 @@ def _digest_directory(
         raise InstalledPackageIdentityError(
             f"Could not re-admit installed package directory: {directory}: {exc}"
         ) from exc
-    if _metadata_identity(before) != _metadata_identity(after):
+    if stable_file_identity(before) != stable_file_identity(after):
         raise InstalledPackageIdentityError(
             f"Installed package directory changed while it was read: {directory}"
         )

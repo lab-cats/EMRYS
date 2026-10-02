@@ -13,6 +13,12 @@ Bioconductor 3.23 packages resolve through
 `Source: Bioconductor`, `RemoteType: bioconductor`, and
 `Repository: Bioconductor 3.23` metadata.
 
+The pinned renv 1.2.4 reads metadata from reachable archived package versions.
+If archive metadata cannot be read, renv can still fall back to newer metadata;
+the strict post-restore lock check continues to reject installed version drift.
+Existing libraries with renv 1.2.3 need explicit restoration through the
+operator route below before guarded execution can use them.
+
 `make r-restore` and managed `emrys doctor --repair` use the same restoration
 script; Doctor selects its Project-owned runtime. Bootstrap restoration uses an
 explicit external `RENV_PROJECT` for settings, locks, staging, and caches while
@@ -23,6 +29,14 @@ installs packages. For an operator-owned library, follow the
 R 4.6.1, `RENV_PROJECT` and `RENV_PATHS_LIBRARY` for restoration, and the exact platform-specific
 `RENV_LIBRARY` for checking. The check bypasses the renv autoloader, changes no
 dependencies, and rejects lock, version, or library-identity drift.
+
+Activation may print namespace diagnostics on standard output. CI library
+selection writes its path to a separate temporary file, preserves the R exit
+status, and checks that the returned directory exists. Do not treat startup
+diagnostics as part of a path or suppress them to make selection succeed. An
+absent selected library blocks guarded checking; verify the selected root before
+explicit restoration. Never fabricate it or repair dependencies incidentally
+during a guarded check.
 
 Do not edit locks or activation settings to hide drift, or blanket-clean ignored
 libraries: local validation may depend on them and restoration can be expensive.

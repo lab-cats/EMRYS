@@ -12,6 +12,29 @@ Interactive `run` and `resume` show that plan and ask once; automation uses
 `--execute`. Refusal, EOF, and interruption before authority write, submit, and
 log nothing. Dry-run and execution use the same admitted values.
 
+### Immutable Attempt manifest tradeoff
+
+Recorded on September 10, 2026 in the
+[compression backlog at `5511a75256c87fccbbd346cf50aab2522cde82b1`](https://github.com/lab-cats/EMRYS/blob/5511a75256c87fccbbd346cf50aab2522cde82b1/docs/tasks/compression_backlog_matrix.md#cs-28-one-immutable-attempt-manifest).
+This local synthetic probe on macOS/Python 3.13.15 compared the split planning
+layout with one manifest, using the same representative task definitions.
+Counts exclude unchanged Run, request, and reporting-input files. Times are
+medians of three cache-warm reads, SHA-256 checks, strict JSON decodes, and
+canonical-byte checks; the split probe reconstructs those operations rather
+than running the complete old worker.
+
+| Tasks | Planning files, before → after | Persisted payload bytes, before → after | One selection, before → after | Process peak RSS, before → after |
+|---:|---:|---:|---:|---:|
+| 35 | 37 → 1 | 130,307 → 59,001 | 0.135 → 0.318 ms | 35.09 → 35.08 MiB |
+| 350 | 352 → 1 | 1,276,176 → 567,342 | 0.446 → 2.990 ms | 35.41 → 37.92 MiB |
+| 3,500 | 3,502 → 1 | 12,782,080 → 5,672,793 | 3.044 → 28.241 ms | 39.95 → 76.36 MiB |
+
+This reduces persisted planning surface but increases per-task read/decode cost
+as the task roster grows. At 3,500 tasks the logical payload read for one
+selection grows from 465,600 to 5,672,793 bytes. Physical I/O, allocated disk
+blocks, isolated process startup, scientific-stage wall time, and cluster
+behavior were not measured. No overall performance improvement is claimed.
+
 ### Publish validated transactions
 
 Scientific producers own computation, output checks and provenance. The existing
@@ -51,6 +74,12 @@ and finalizes storage on the head node. Explicit advanced compute execution is
 separate from this default. Existing storage evidence is retained on retry;
 storage receipts do not prove runtime compatibility. Compute, validation, and
 reporting never install dependencies.
+
+A shared managed generation remains immutable. Doctor repair creates and fully
+qualifies a new Project-owned generation, then replaces only the owner's current
+selection. Dependent Projects retain their exact old selector until an explicit
+same-source replacement is freshly admitted. Retained Run and Attempt profiles
+continue to name their original generation.
 
 Repository R activation remains opt-in through `EMRYS_USE_RENV=1`. Report
 rendering uses only the locked packaged Jinja2, Matplotlib, and Logomaker
@@ -203,9 +232,11 @@ owns current ordering, file ownership, cleanup, and recovery behavior.
 
 The predecessor implementation and its replacement-failure characterization
 remain inspectable at `0ece377ca2b285d6ec2a46f7d2441c78f16409e1`, the head of
-[PR #146](https://github.com/lab-cats/EMRYS/pull/146). The retirement intentionally
-removed private overwrite, predecessor backup/restoration, and repeated private
-publication. It did not authorize deletion or repair of existing residue.
+[PR #146](https://github.com/lab-cats/EMRYS/pull/146).
+[PR #147](https://github.com/lab-cats/EMRYS/pull/147) replaced that reporting
+publisher with create-only publication, retiring private overwrite, predecessor
+backup/restoration, and repeated private publication. It did not authorize
+deletion or repair of existing residue.
 
 The same change retired three publication operation records, two identity
 operation records, `ReceiptValidationOps` and its public testing arguments,
@@ -252,7 +283,8 @@ new installed package.
 
 HTML publication and validation-roster policy retain their separate scope. Reporting-memory policy belongs to the
 [Run contract](../../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning).
-Dashboard replacement and retirement remain separate decisions.
+At this reporting transition, dashboard replacement and retirement remained
+separate decisions; the later completed retirement is recorded below.
 
 ## Console, logs, and status
 
@@ -270,6 +302,6 @@ The binding sink, redaction, degradation, and ownership behavior is in
 Status is derived from immutable Run, Attempt, task, reporting, receipt, and
 lock records. No mutable status cache competes with them. Elapsed time belongs
 to one current or latest Attempt; resumes are not silently summed and no ETA is
-invented. The stale dashboard is not a status or Results authority and remains
-frozen under `DASHBOARD-RETIRE-01` until a replacement dashboard is implemented
-and validated; retirement then requires its own approved scope.
+invented. Watch diagnostics are not a status or Results authority. The replaced
+standalone dashboard was retired after the institutional owner accepted the
+installed watch; shared parsing and rendering remain internal watch mechanics.

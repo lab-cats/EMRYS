@@ -26,6 +26,28 @@ assert_identical <- function(observed, expected, message) {
     }
 }
 
+test_worker_count <- function() {
+    requested <- Sys.getenv("EMRYS_TEST_WORKERS", unset = "1")
+    if (!grepl("^[1-9][0-9]*$", requested)) {
+        abort_test(
+            "EMRYS_TEST_WORKERS must be a positive integer; observed ",
+            requested
+        )
+    }
+    workers <- suppressWarnings(as.integer(requested))
+    available <- parallel::detectCores(logical = TRUE)
+    if (is.na(workers) || is.na(available) || workers > available) {
+        abort_test(
+            "EMRYS_TEST_WORKERS must not exceed the available CPU count; ",
+            "requested ", requested, ", available ", available
+        )
+    }
+    if (.Platform$OS.type == "windows" && workers != 1L) {
+        abort_test("EMRYS_TEST_WORKERS must be 1 on Windows.")
+    }
+    workers
+}
+
 write_lines <- function(lines, path) {
     dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
     writeLines(lines, path, useBytes = TRUE)
@@ -244,6 +266,8 @@ count_vcf_records <- function(path) {
 }
 
 build_case <- function(root, mode = "positive") {
+    dir.create(root, recursive = TRUE, showWarnings = FALSE)
+    root <- normalizePath(root, winslash = "/", mustWork = TRUE)
     cohort <- "fixture_cohort"
     sample_manifest <- file.path(root, "samples.tsv")
     partition_manifest <- file.path(root, "partitions.tsv")
@@ -261,6 +285,9 @@ build_case <- function(root, mode = "positive") {
     )
     if (mode == "missing_replicate") {
         samples$replicate <- NULL
+    }
+    if (mode == "oracle_order_overlap") {
+        samples <- samples[2:1, , drop = FALSE]
     }
     write_tsv(samples, sample_manifest)
     selector_relative <- file.path("selectors", "p2.regions.tsv")
@@ -288,8 +315,26 @@ build_case <- function(root, mode = "positive") {
         },
         stringsAsFactors = FALSE
     )
+    if (mode == "oracle_order_overlap") {
+        partitions <- partitions[2:1, , drop = FALSE]
+    }
     write_tsv(partitions, partition_manifest)
-    write_lines(annotation_lines(), annotation_gtf)
+    annotation <- annotation_lines()
+    if (mode == "oracle_order_overlap") {
+        # Exercise derived UTRs, an explicit override, and simultaneous
+        # exon/intron overlap across different transcripts.
+        annotation <- annotation[!grepl("UTR", annotation)]
+        annotation <- c(
+            annotation,
+            paste("1", "fixture", "five_prime_UTR", "10", "14", ".", "+", ".",
+                  'gene_id "gene_plus"; transcript_id "tx_plus";', sep = "\t"),
+            paste("1", "fixture", "UTR", "61", "80", ".", "+", ".",
+                  'gene_id "gene_plus"; transcript_id "tx_plus";', sep = "\t"),
+            paste("1", "fixture", "exon", "25", "45", ".", "+", ".",
+                  'gene_id "gene_overlap"; transcript_id "tx_overlap";', sep = "\t")
+        )
+    }
+    write_lines(annotation, annotation_gtf)
     sample_hash <- sha256_file(sample_manifest)
     partition_hash <- sha256_file(partition_manifest)
     annotation_hash <- sha256_file(annotation_gtf)
@@ -299,7 +344,17 @@ build_case <- function(root, mode = "positive") {
     if (mode == "disjoint_annotation") {
         p2_rev <- sub("^1", "3", p2_rev)
     }
-    p1_samples <- c("sample_A", "sample_B")
+    if (mode == "oracle_order_overlap") {
+        p1_fwd[[6L]] <- sub(".:.,.", "0:0,0", p1_fwd[[6L]], fixed = TRUE)
+        reorder_samples <- function(rows) {
+            vapply(strsplit(rows, "\t", fixed = TRUE), function(fields) {
+                paste(fields[c(1:9, 11, 10)], collapse = "\t")
+            }, character(1))
+        }
+        p1_fwd <- reorder_samples(p1_fwd)
+        p2_rev <- reorder_samples(p2_rev)
+    }
+    p1_samples <- samples$sample_id
     omit_ad_definition <- FALSE
     if (mode == "sample_order") {
         p1_samples <- rev(p1_samples)
@@ -361,11 +416,11 @@ build_case <- function(root, mode = "positive") {
                 ),
                 fwd_path
             )
-            write_lines(vcf_header(c("sample_A", "sample_B")), rev_path)
+            write_lines(vcf_header(samples$sample_id), rev_path)
         } else {
             write_lines(
                 vcf_header(
-                    c("sample_A", "sample_B"),
+                    samples$sample_id,
                     contig = selector_chromosome
                 ),
                 fwd_path
@@ -373,7 +428,7 @@ build_case <- function(root, mode = "positive") {
             write_lines(
                 c(
                     vcf_header(
-                        c("sample_A", "sample_B"),
+                        samples$sample_id,
                         contig = selector_chromosome
                     ),
                     p2_rev
@@ -505,6 +560,22 @@ run_engine <- function(
         }
     }
     invocation$paths
+}
+
+assert_independent_reference <- function(case, paths) {
+    output <- system2(
+        test_python_bin,
+        args = shQuote(c(
+            file.path(repo_root, "tests/stages/cohort_candidate_preprocessing/step_08_reference.py"),
+            dirname(case$sample_manifest), dirname(paths$sites)
+        )),
+        stdout = TRUE, stderr = TRUE
+    )
+    status <- attr(output, "status")
+    if (!is.null(status) && status != 0L) {
+        abort_test("Independent Step 08 reference failed:\n", paste(output, collapse = "\n"))
+    }
+    cat(paste(output, collapse = "\n"), "\n")
 }
 
 hash_mutation_environment <- function(root, target) {
@@ -793,6 +864,16 @@ assert_true(
     "Configured Rscript executable must exist and be executable"
 )
 assert_true(file.exists(engine), "Step 08 R engine must exist")
+test_python_bin <- if (length(arguments) >= 3L) {
+    arguments[[3L]]
+} else {
+    Sys.getenv("REPORT_PYTHON_BIN", unset = file.path(repo_root, ".venv/bin/python"))
+}
+if (!grepl("/", test_python_bin, fixed = TRUE)) {
+    test_python_bin <- Sys.which(test_python_bin)
+}
+assert_true(nzchar(test_python_bin) && file.access(test_python_bin, mode = 1L) == 0L,
+            "Step 08 reference requires the existing installed EMRYS Python")
 
 test_root <- tempfile("emrys-step08-real-r-")
 dir.create(test_root, recursive = TRUE)
@@ -820,6 +901,7 @@ assert_true(
     "an internally inconsistent transcript must be warned about and skipped"
 )
 assert_positive_outputs(first_paths)
+assert_independent_reference(positive_case, first_paths)
 
 # Exercise the fallback interval calculation without another full VCF run.
 annotation_owner <- new.env(parent = globalenv())
@@ -891,6 +973,14 @@ disjoint_paths <- run_engine(
     disjoint_output,
     expect_success = TRUE
 )
+assert_independent_reference(disjoint_case, disjoint_paths)
+oracle_case <- build_case(file.path(test_root, "oracle-order-overlap"), "oracle_order_overlap")
+oracle_paths <- run_engine(
+    engine, oracle_case, file.path(test_root, "oracle-order-overlap-output"),
+    expect_success = TRUE
+)
+assert_independent_reference(oracle_case, oracle_paths)
+
 disjoint_log <- readLines(
     file.path(disjoint_output, "engine.log"), warn = FALSE
 )
@@ -961,7 +1051,7 @@ negative_results <- parallel::mclapply(
             error = function(error) conditionMessage(error)
         )
     },
-    mc.cores = if (.Platform$OS.type == "windows") 1L else 2L,
+    mc.cores = test_worker_count(),
     mc.preschedule = FALSE,
     mc.set.seed = FALSE
 )

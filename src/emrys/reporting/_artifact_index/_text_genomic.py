@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from emrys.libraries.quality.picard import duplication_metrics_row
 from emrys.libraries.validation.mpileup import VCF_FIXED_COLUMNS
 
 from ._text_common import iter_text_lines
@@ -229,30 +230,24 @@ def inspect_star_sj(path: Path) -> tuple[int, dict[str, Any]]:
 
 
 def inspect_picard_metrics(path: Path) -> tuple[int, dict[str, Any]]:
-    header: list[str] | None = None
-    metric_row: dict[str, str] | None = None
-    for _line_number, line in iter_text_lines(path):
-        if line.startswith("LIBRARY\t"):
-            header = line.split("\t")
-            continue
-        if header is not None and line and not line.startswith("#"):
-            values = line.split("\t")
-            if len(header) != len(values):
-                raise ArtifactIndexError("Picard metrics row width is invalid")
-            metric_row = dict(zip(header, values, strict=True))
-            break
-    if header is None or metric_row is None:
-        raise ArtifactIndexError("Picard metrics table is missing")
+    try:
+        metric_row = duplication_metrics_row(line for _, line in iter_text_lines(path))
+    except ValueError as exc:
+        raise ArtifactIndexError(str(exc)) from exc
     native: dict[str, Any] = {}
     for key, value in metric_row.items():
         if key == "LIBRARY" or value == "":
             continue
         try:
-            native[key.lower()] = (
+            parsed = (
                 float(value)
                 if any(token in value for token in (".", "e", "E"))
                 else int(value)
             )
         except ValueError:
             continue
+        normalized = key.lower()
+        if normalized in native:
+            raise ArtifactIndexError(f"Ambiguous Picard metric: {normalized!r}")
+        native[normalized] = parsed
     return 1, native

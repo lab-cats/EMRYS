@@ -42,7 +42,6 @@ from emrys.orchestration.run_coordinator import (
 from emrys.orchestration.run_coordinator.normalization import AnalysisAdmission
 from emrys.orchestration.run_coordinator.resource_policy import (
     ComputationalResourceDeclaration,
-    THREAD_CAPABLE_STAGE_IDS,
     ResourcePlan,
 )
 from emrys.orchestration.run_coordinator.run_implementation import (
@@ -65,6 +64,11 @@ from emrys.libraries.process_environment import (
 
 Operation = Literal["execute", "resume"]
 _SAFE_ROLE_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+_STAR_INDEX_COMMAND_FIELDS = (
+    ("sjdb-overhang", "sjdb_overhang"),
+    ("genome-sa-index-nbases", "genome_sa_index_nbases"),
+    ("genome-chr-bin-nbits", "genome_chr_bin_nbits"),
+)
 
 
 class MaterializationError(RuntimeError):
@@ -335,7 +339,7 @@ def _task_commands(
     source_root: Path,
     runtime: Mapping[str, Any],
     all_paths: Mapping[tuple[str, str], Mapping[str, list[Path]]],
-    threads: int | None,
+    resources: ResourcePlan,
 ) -> tuple[tuple[str, ...], tuple[str, ...], tuple[Path, ...]]:
     sample_rows = {str(row["sample_id"]): row for row in source["samples"]["rows"]}
     partition_rows = {
@@ -364,12 +368,15 @@ def _task_commands(
     rscript = _runtime_path(runtime, "rscript")
     renv_library = Path(_runtime_path(runtime, "renv_library"))
 
-    def declared_threads() -> int:
-        if threads is None:
-            raise MaterializationError(
-                f"Step {step_id} has no declared thread allocation"
-            )
-        return threads
+    threads = resources.threads_for(step_id)
+    # Native heaps/buffers leave one fifth of the stage allowance for overhead.
+    native_memory_mb = dict(resources.stage_memory_mb)[step_id] * 4 // 5
+    if step_id in {"00a", "00c", "01", "02", "04", "05"} and native_memory_mb < (
+        threads if step_id == "02" else 1
+    ):
+        raise MaterializationError(
+            f"Stage {step_id} memory cannot provide a positive native budget"
+        )
 
     if step_id == "00a":
         index_members = paths.get("step00a_star_index_v1", [])
@@ -381,6 +388,10 @@ def _task_commands(
                 "Step 00a requires exactly 15 index members under one directory"
             )
         index_dir = index_members[0].parent
+        star_index_flags = tuple(
+            (option, reference["star_index"][field])
+            for option, field in _STAR_INDEX_COMMAND_FIELDS
+        )
         producer = (
             bash,
             str(source_root / producer_path),
@@ -388,13 +399,10 @@ def _task_commands(
                 ("reference-fasta", fasta),
                 ("reference-gtf", gtf),
                 ("index-dir", working_paths[index_members[0]].parent),
-                ("threads", declared_threads()),
-                ("sjdb-overhang", reference["star_index"]["sjdb_overhang"]),
-                (
-                    "genome-sa-index-nbases",
-                    reference["star_index"]["genome_sa_index_nbases"],
-                ),
+                ("threads", threads),
+                *star_index_flags,
                 ("star-bin", star),
+                ("native-memory-mb", native_memory_mb),
             ),
         )
         validator = _validator(
@@ -405,14 +413,7 @@ def _task_commands(
                 ("reference-fasta", fasta),
                 ("reference-gtf", gtf),
                 ("parameter-path-base", run_root),
-                (
-                    "expected-sjdb-overhang",
-                    reference["star_index"]["sjdb_overhang"],
-                ),
-                (
-                    "expected-genome-sa-index-nbases",
-                    reference["star_index"]["genome_sa_index_nbases"],
-                ),
+                *((f"expected-{option}", value) for option, value in star_index_flags),
                 ("output", validation),
             ),
         )
@@ -452,7 +453,9 @@ def _task_commands(
                 ("reference-dict-output", working_paths[dictionary]),
                 ("samtools-bin", samtools),
                 ("gatk-bin", gatk),
+                ("native-memory-mb", native_memory_mb),
                 ("java-bin", java),
+                ("threads", threads),
             ),
         )
         validator = _validator(
@@ -489,7 +492,7 @@ def _task_commands(
                     ("input-bam", split_bam),
                     ("output-dir", working_paths[fwd].parent),
                     ("qc-dir", working_paths[counts].parent),
-                    ("threads", declared_threads()),
+                    ("threads", threads),
                     ("samtools-bin", samtools),
                 ),
             )
@@ -521,8 +524,9 @@ def _task_commands(
                     ("r2-fastq", sample["r2_fastq"]["path"]),
                     ("star-index", index_dir),
                     ("output-dir", working_paths[bam].parent),
-                    ("threads", declared_threads()),
+                    ("threads", threads),
                     ("star-bin", star),
+                    ("native-memory-mb", native_memory_mb),
                     ("gunzip-bin", gunzip),
                 ),
             )
@@ -547,8 +551,9 @@ def _task_commands(
             producer_arguments = (
                 *command_flags(
                     ("input-alignment", star_bam),
+                    ("native-memory-mb", native_memory_mb),
                     ("output-dir", working_paths[bam].parent),
-                    ("threads", declared_threads()),
+                    ("threads", threads),
                     ("samtools-bin", samtools),
                 ),
             )
@@ -567,6 +572,7 @@ def _task_commands(
             producer_arguments = (
                 *command_flags(
                     ("bam", canonical_bam),
+                    ("threads", threads),
                     ("output-dir", working_paths[quickcheck].parent),
                     ("samtools-bin", samtools),
                 ),
@@ -603,7 +609,9 @@ def _task_commands(
                     ("output-dir", working_paths[bam].parent),
                     ("metrics-dir", working_paths[metrics].parent),
                     ("picard-jar", picard_jar),
+                    ("native-memory-mb", native_memory_mb),
                     ("java-bin", java),
+                    ("threads", threads),
                     ("samtools-bin", samtools),
                 ),
             )
@@ -632,8 +640,10 @@ def _task_commands(
                     ("reference-fasta", fasta),
                     ("output-dir", working_paths[bam].parent),
                     ("gatk-bin", gatk),
+                    ("native-memory-mb", native_memory_mb),
                     ("samtools-bin", samtools),
                     ("java-bin", java),
+                    ("threads", threads),
                 ),
             )
             validator_name = "split-n-cigar"
@@ -765,7 +775,7 @@ def _task_commands(
                 ("sites-output", working_paths[sites]),
                 ("inputs-output", working_paths[inputs]),
                 ("summary-output", working_paths[summary]),
-                ("threads", declared_threads()),
+                ("threads", threads),
             ),
         )
         producer = _r_owner_command(
@@ -886,6 +896,7 @@ def _tasks(
     attempt_id: str,
     compact_time: str,
     retained: Mapping[tuple[str, str], dict[str, Any]],
+    retries: Mapping[tuple[str, str], Mapping[str, str]],
     resources: ResourcePlan,
     processing_source_root: Path | None,
     processing_artifact_paths: Mapping[tuple[str, str, str], Path],
@@ -913,6 +924,10 @@ def _tasks(
         run.analysis.revision, run.execution_plan, run.run_binding
     )
     expected = inspection.expected_tasks(authority, profile)
+    if set(retries) - {(item.machine_key, item.scope_id) for item in expected} or (
+        set(retries) & set(retained)
+    ):
+        raise MaterializationError("Retry references must select fresh expected tasks")
     owners = {str(item["machine_key"]): item for item in profile["owner_tasks"]}
     if readiness.installed_package is None:
         raise MaterializationError(
@@ -1037,11 +1052,7 @@ def _tasks(
                 source_root=readiness.installed_package.root,
                 runtime=runtime,
                 all_paths=paths_by_scope,
-                threads=(
-                    resources.threads_for(step_id)
-                    if step_id in THREAD_CAPABLE_STAGE_IDS
-                    else None
-                ),
+                resources=resources,
             )
             planned_inputs = tuple(
                 (f"input_{input_index:03d}", path)
@@ -1228,6 +1239,9 @@ def _tasks(
             input_declarations.append(declaration)
         record = {
             "task_attempt_id": task_id,
+            "retry_task_attempt_record": (
+                dict(retries[identity]) if identity in retries else None
+            ),
             "owner_run_token": owner_run_token,
             "scope_type": task.scope["scope_type"],
             "producer_argv": list(producer),
@@ -1260,7 +1274,6 @@ def _tasks(
             {
                 validation.parent,
                 *output_directories,
-                run_root / "state" / "task-starts" / task.machine_key,
                 run_root / "state" / "verified" / task.machine_key,
             }
         )
@@ -1301,6 +1314,9 @@ def build_attempt_plan(
     placement: Mapping[str, Any] | None = None,
     supersedes_workflow_attempt_id: str | None = None,
     retained_tasks: Mapping[tuple[str, str], dict[str, Any]] | None = None,
+    retry_task_attempt_records: Mapping[tuple[str, str], Mapping[str, str]]
+    | None = None,
+    retained_sample_manifest: PlannedFile | None = None,
     processing_source: inspection.ProcessingSourceAdmission | None = None,
 ) -> AttemptPlan:
     """Build one complete attempt without touching the filesystem."""
@@ -1327,7 +1343,18 @@ def build_attempt_plan(
     ):
         selected_sample_path = (
             run_root / "contract" / "workflow-inputs" / attempt_id / "samples.tsv"
+            if retained_sample_manifest is None
+            else retained_sample_manifest.path
         )
+        if retained_sample_manifest is not None and (
+            retained_sample_manifest.data != selected_sample_manifest
+            or selected_sample_path.parent.parent
+            != run_root / "contract" / "workflow-inputs"
+            or selected_sample_path.name != "samples.tsv"
+        ):
+            raise MaterializationError(
+                "Retained sample projection differs from its history"
+            )
         source = {
             **source,
             "samples": {
@@ -1339,9 +1366,14 @@ def build_attempt_plan(
                 },
             },
         }
-        selected_sample_file = PlannedFile(
-            selected_sample_path,
-            selected_sample_manifest,
+        if retained_sample_manifest is None:
+            selected_sample_file = PlannedFile(
+                selected_sample_path,
+                selected_sample_manifest,
+            )
+    elif retained_sample_manifest is not None:
+        raise MaterializationError(
+            "Retained sample projection has no selected analysis"
         )
     plan_source = run.execution_plan.record["identity"].get("processing_source")
     if (plan_source is None) != (processing_source is None) or (
@@ -1401,6 +1433,7 @@ def build_attempt_plan(
         attempt_id,
         compact,
         retained,
+        {} if retry_task_attempt_records is None else retry_task_attempt_records,
         resources,
         processing_source_root,
         processing_artifact_paths,
@@ -1438,7 +1471,7 @@ def build_attempt_plan(
     )
     authored_paths = analysis.authored_paths
     attempt = {
-        "schema_version": "emrys.workflow-attempt.v3",
+        "schema_version": "emrys.workflow-attempt.v4",
         "run_id": run.run_id,
         "execution_contract_sha256": _sha256(execution_bytes),
         "profile_sha256": _sha256(

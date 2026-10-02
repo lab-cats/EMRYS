@@ -16,8 +16,8 @@ source(file.path(script_dir, "../../../libraries/input_contract.R"))
 
 options(stringsAsFactors = FALSE, scipen = 999, digits = 15)
 
-PRODUCER_VERSION <- "1.0.0"
-SCHEMA_VERSION <- "1.0.0"
+PRODUCER_VERSION <- "2.0.0"
+SCHEMA_VERSION <- "2.0.0"
 SEQUENCE_POLICY <- "legacy_rna_change_oriented_genomic_v1"
 SCAN_POLICY <- "exact_iupac_presented_strand_v1"
 MOTIF_DISTANCE_POLICY <- "nearest_midpoint_from_edit_v1"
@@ -27,7 +27,7 @@ LOGO_RADIUS <- 10L
 DISTANCE_BIN_WIDTH <- 10L
 MIN_SIGNIFICANT_POPULATION <- 10L
 MIN_BACKGROUND_POPULATION <- 20L
-DISPLAY_LIMIT <- 8L
+DISPLAY_LIMIT <- 9L
 
 STEP09_RESULT_COLUMNS <- c(
     "analysis_id", "partition_id", "candidate_id", "orientation",

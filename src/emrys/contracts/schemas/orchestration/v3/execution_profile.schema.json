@@ -94,11 +94,13 @@
             {"$ref": "#/$defs/slurm_name"}
           ]
         },
-        "cpus_per_task": {"$ref": "#/$defs/positive_integer"},
+        "cpus_per_task": {
+          "oneOf": [{"$ref": "#/$defs/positive_integer"}, {"const": "node"}]
+        },
         "memory_mb": {
           "oneOf": [
             {"type": "null"},
-            {"$ref": "#/$defs/positive_integer"}
+            {"type": "integer", "minimum": 0}
           ]
         },
         "time": {

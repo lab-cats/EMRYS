@@ -58,6 +58,15 @@ owns the commands.
   adapters, generated configuration, and compatibility paths. Large files are
   reviewed for mixed responsibility; line count alone does not justify an
   arbitrary split.
+- Every non-test file over 600 physical lines requires an explicitly
+  user-authorized exception recording its path, reason, and approval, plus a
+  retirement condition if temporary. The [maintainability backlog](../../tasks/backlog_matrix.md#maintainability-and-release)
+  owns acceptance. The [engineering findings](../../tasks/contracts-engineering-findings.md)
+  retain distinct size observations and the frozen inventory reference. Record
+  each approved exception beside its functional owner with its exact scope;
+  a historical inventory or audit completion is not an exception. The [owner completion](../../tasks/backlog_matrix.md#october-1-2026-owner-completion)
+  of the audit workstreams does not waive this rule or grant blanket exceptions.
+  This rule adds no automated size gate.
 - Coverage is a regression signal, not a replacement for scenario, transaction,
   real-R, runtime, scheduler, numerical-oracle, or scientific review.
 - Automate a repository workflow only after repeated use stabilizes its inputs,
@@ -80,7 +89,7 @@ Documentation exists only when it has a clear audience and durable owner:
 | Durable rationale and safety rules | [`DECISIONS.md`](../DECISIONS.md) and its focused decision records |
 | Scientific identities and import direction | [`STAGE_MAP.md`](../../../src/emrys/contracts/STAGE_MAP.md) and [`SOURCE_TOPOLOGY.md`](../../../src/emrys/contracts/SOURCE_TOPOLOGY.md) |
 | Accepted work and acceptance | [`backlog_matrix.md`](../../tasks/backlog_matrix.md) |
-| Dated validation observations | Compact records under [`docs/history`](../../history/) or retained artifacts |
+| Revision-bound validation observations | Compact evidence beside the relevant subject owner or test guide, with exact source/artifact identities and limits; retained artifacts remain separate |
 
 Do not preserve routine progress, branch names, audit totals, completed-work
 chronology, or source-to-destination ledgers in permanent documentation; Git

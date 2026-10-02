@@ -21,7 +21,6 @@ from emrys.libraries.source_authority import (
 from emrys.orchestration.run_coordinator.task import (
     TaskBoundaryError,
     task_from_attempt,
-    validate_verified_task,
 )
 from emrys.orchestration.run_coordinator.resource_policy import (
     ResourceConfigError,
@@ -32,9 +31,9 @@ from emrys.orchestration.run_coordinator.inspection import (
     admit_attempt_run_lock,
     admit_execution_path,
     expected_tasks,
+    inspect_attempt_chain,
+    inspect_task_evidence,
     state_tree_blockers,
-    task_start_tree_blockers,
-    verified_tree_blockers,
 )
 
 try:
@@ -315,25 +314,16 @@ def _analysis_inputs(wildcards):
     return tuple(paths)
 
 
-def _admit_reusable_markers():
-    blockers = verified_tree_blockers(RUN_ROOT, EXPECTED_TASKS)
-    if blockers:
-        raise WorkflowError(
-            "Could not close verified-task state: " + "; ".join(blockers)
-        )
-    for item in EXPECTED_TASKS:
+def _admit_reusable_markers(evidence):
+    for inspected in evidence.tasks:
+        item = inspected.expected
         machine_key, scope_id = item.machine_key, item.scope_id
         path = Path(_verified(machine_key, scope_id))
         if path.exists() or path.is_symlink():
             try:
-                record = validate_verified_task(
-                    path,
-                    run_root=RUN_ROOT,
-                    execution=EXECUTION,
-                    profile=PROFILE,
-                    machine_key=machine_key,
-                    scope=item.scope,
-                )
+                record = inspected.record
+                if record is None:
+                    raise TaskBoundaryError("Verified task has no admitted history")
                 expected_plan = TASK_PLANS[machine_key, scope_id]
                 bound_manifests = [
                     value
@@ -365,31 +355,26 @@ def _admit_reusable_markers():
 
 
 def _admit_state_namespace():
-    blockers = [
-        *state_tree_blockers(RUN_ROOT),
-        *task_start_tree_blockers(RUN_ROOT, EXPECTED_TASKS),
-    ]
+    attempts, receipts, blockers = inspect_attempt_chain(
+        RUN_ROOT, authority=SUCCESSOR_AUTHORITY, profile=PROFILE,
+    )
+    blockers.extend(state_tree_blockers(RUN_ROOT))
+    if not attempts or attempts[-1] != WORKFLOW_ATTEMPT:
+        blockers.append("Backend Attempt is not the exact latest admitted Attempt")
     if blockers:
         raise WorkflowError("Could not close EMRYS state namespace: " + "; ".join(blockers))
-    for item in EXPECTED_TASKS:
-        start_path = (
-            RUN_ROOT
-            / "state"
-            / "task-starts"
-            / item.machine_key
-            / f"{item.scope_id}.json"
-        )
-        if not start_path.exists() and not start_path.is_symlink():
-            continue
-        verified_path = Path(_verified(item.machine_key, item.scope_id))
-        if not verified_path.exists() and not verified_path.is_symlink():
-            raise WorkflowError(
-                f"Task-start state is entered but incomplete: {start_path}"
-            )
+    evidence = inspect_task_evidence(
+        RUN_ROOT, EXECUTION, PROFILE, attempts,
+        receipts=receipts,
+        authority=SUCCESSOR_AUTHORITY, allow_incomplete_origin=WORKFLOW_ATTEMPT_ID,
+    )
+    blockers = (*evidence.integrity_blockers, *evidence.results_blockers)
+    if blockers:
+        raise WorkflowError("Could not close EMRYS task history: " + "; ".join(blockers))
+    return evidence
 
 
-_admit_state_namespace()
-_admit_reusable_markers()
+_admit_reusable_markers(_admit_state_namespace())
 
 
 wildcard_constraints:

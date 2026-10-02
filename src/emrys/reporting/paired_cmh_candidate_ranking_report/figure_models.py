@@ -8,11 +8,12 @@ import hashlib
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from emrys.contracts.scientific_evidence.scientific_context import DISPLAY_LIMIT
 from emrys.reporting import ReportProviderError as ReportRenderError
 
 MATPLOTLIB_VERSION = "3.11.1"
 LOGOMAKER_VERSION = "0.8.7"
-FIGURE_POLICY_VERSION = "4.0.0"
+FIGURE_POLICY_VERSION = "5.0.0"
 SCIENTIFIC_FIGURE_IDS = (
     "candidate-landscape-figure",
     "mutation-spectrum-figure",
@@ -101,7 +102,7 @@ SCIENTIFIC_FIGURE_GUIDANCE: Mapping[str, Mapping[str, str]] = {
             "condition means."
         ),
         "limitations": (
-            "At most eight candidates are shown under a deterministic display rule; "
+            f"At most {DISPLAY_LIMIT} candidates are shown under a deterministic display rule; "
             "the figure is not a new scientific ranking."
         ),
     },

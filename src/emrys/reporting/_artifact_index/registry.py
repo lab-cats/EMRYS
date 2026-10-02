@@ -180,7 +180,7 @@ def build_adapter_registry(
                 "validation_report",
                 (".validation.tsv",),
                 expected_header=VALIDATION_REPORT_HEADER,
-                exact_data_rows=6 if templates[adapter]["step_id"] == "00a" else 5,
+                exact_data_rows=7 if templates[adapter]["step_id"] == "00a" else 5,
                 allow_header_only=False,
             )
     _add_analysis_adapters(registry, descriptor)

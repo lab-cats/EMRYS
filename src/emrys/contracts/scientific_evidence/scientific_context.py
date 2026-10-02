@@ -73,12 +73,12 @@ __all__ = (
 )
 
 
-SCIENTIFIC_CONTEXT_SCHEMA_VERSION = "1.0.0"
-SCIENTIFIC_CONTEXT_RECEIPT_SCHEMA_VERSION = "1.0.0"
+SCIENTIFIC_CONTEXT_SCHEMA_VERSION = "2.0.0"
+SCIENTIFIC_CONTEXT_RECEIPT_SCHEMA_VERSION = "2.0.0"
 
 CONTEXT_RADIUS = 100
 LOGO_RADIUS = 10
-DISPLAY_LIMIT = 8
+DISPLAY_LIMIT = 9
 MOTIF_DISTANCE_BIN_WIDTH = 10
 CONTEXT_ORIENTATION_POLICY = "legacy_rna_change_oriented_genomic_v1"
 MOTIF_MATCH_POLICY = "exact_iupac_presented_strand_v1"
@@ -951,7 +951,7 @@ def validate_scientific_context_outputs(
     selected_count = min(DISPLAY_LIMIT, significant_count)
     if display_ranks != set(range(1, selected_count + 1)):
         fail(
-            "Candidate context display ranks must select exactly the top-eight roster."
+            f"Candidate context display ranks must select the top-{DISPLAY_LIMIT} roster."
         )
 
     candidate_table = _context_table(
@@ -1227,7 +1227,7 @@ def _validate_receipt_constants(row: Mapping[str, str], analysis_id: str) -> Non
         "multiple_testing_method": "none_single_registered_motif",
         "published_output_count": "5",
         "producer": "build_scientific_context",
-        "producer_version": "1.0.0",
+        "producer_version": "2.0.0",
         "transaction_state": "complete",
     }
     for field, expected in fixed.items():

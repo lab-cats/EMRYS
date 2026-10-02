@@ -151,6 +151,28 @@ def test_bad_header_and_metrics_are_failed_evidence(tmp_path: Path) -> None:
     assert status["duplication_metrics"] == "fail"
 
 
+def test_duplicate_metrics_columns_publish_failed_evidence(tmp_path: Path) -> None:
+    evidence = build_validation_fixture(tmp_path)
+    evidence.metrics.write_text(
+        "LIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIRS_EXAMINED\t"
+        "READ_PAIR_DUPLICATES\tPERCENT_DUPLICATION\n"
+        "S\t1\t10\t2\t0.2\n",
+        encoding="utf-8",
+    )
+    result = run_validator(evidence, "--execute")
+    assert result.returncode == 0, result.stderr
+    rows = report_rows(evidence.output)
+    assert_exact_check_roster(rows, "04")
+    assert {row["check_id"]: row["status"] for row in rows} == {
+        "bam_bai_structure": "pass",
+        "samtools_quickcheck": "pass",
+        "coordinate_sorting": "pass",
+        "read_group_preservation": "pass",
+        "duplication_metrics": "fail",
+    }
+    assert "duplicate Picard metric columns" in evidence.output.read_text()
+
+
 def test_missing_input_and_wrong_output_fail_closed(tmp_path: Path) -> None:
     evidence = build_validation_fixture(tmp_path)
     evidence.metrics.unlink()
