@@ -1487,6 +1487,12 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
             1:
         ]
         FIXTURE.write_tsv(path, tuple(rows[0]), rows)
+        receipt = artifact_fixture.source_for("analysis.synthetic.context_receipt")
+        receipt_rows = read_tsv(receipt)
+        receipt_rows[0]["candidate_context_sha256"] = hashlib.sha256(
+            path.read_bytes()
+        ).hexdigest()
+        FIXTURE.write_tsv(receipt, tuple(receipt_rows[0]), receipt_rows)
     else:
         raise AssertionError(f"Unhandled native transaction step: {step_id}")
 
@@ -1500,6 +1506,11 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
         "native_transaction_inconsistent"
     ]
     assert sibling["completion_status"] == "incomplete"
+    if step_id == "10":
+        assert marker["errors"][0]["message"].endswith(
+            "Candidate context row 2 oriented_sequence differs "
+            "from the bound reference window."
+        )
 
 
 @pytest.mark.parametrize(

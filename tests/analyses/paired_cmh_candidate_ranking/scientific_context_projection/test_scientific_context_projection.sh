@@ -25,20 +25,16 @@ fi
 if [[ -n "${FAKE_R_ARGS:-}" ]]; then
     printf '%s\n' "$@" >"$FAKE_R_ARGS"
 fi
-r_program="$1"
-: "$r_program"
 shift
 while [[ "$#" -gt 0 ]]; do
     key="${1#--}"
     value="$2"
     case "$key" in
-        step09-summary) step09_summary="$value" ;;
         candidate-context-output) context="$value" ;;
         motif-hits-output) hits="$value" ;;
         sequence-logo-output) logo="$value" ;;
         motif-statistics-output) statistics="$value" ;;
         context-receipt-output) receipt="$value" ;;
-        sequence-logo-final) final_logo="$value" ;;
     esac
     shift 2
 done
@@ -75,7 +71,38 @@ for stem in candidate-context motif-hits sequence-logo motif-statistics receipt;
     [[ -s "$tmp/staged/$stem.tsv" ]] || fail "missing staged $stem"
 done
 [[ ! -e "$tmp/final" ]] || fail 'worker published final paths'
-grep -Fq "$tmp/final/sequence-logo.tsv" "$FAKE_R_ARGS" || fail 'final identity was not passed to R'
+"$EMRYS_SHA256_PYTHON" - "$FAKE_R_ARGS" "$repo_root" "$tmp" <<'PYTHON'
+import hashlib
+import sys
+from pathlib import Path
+
+args = Path(sys.argv[1]).read_text().splitlines()
+owner = Path(sys.argv[2]) / "src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection"
+fixture = Path(sys.argv[3])
+assert args[0] == str(owner / "scientific_context_projection.R"), "Wrong R script"
+assert len(args[1:]) % 2 == 0, "R arguments must be flag/value pairs"
+assert len(args[1::2]) == len(set(args[1::2])), "R argument flags must be unique"
+inputs = {
+    "--step09-all-sites": fixture / "inputs/all.tsv",
+    "--step09-significant-sites": fixture / "inputs/significant.tsv",
+    "--step09-summary": fixture / "inputs/summary.tsv",
+    "--reference-fasta": fixture / "inputs/reference.fa",
+    "--reference-fai": fixture / "inputs/reference.fa.fai",
+    "--motif-catalog": owner / "resources/pum_motifs_v1.tsv",
+}
+expected = {
+    "--candidate-context-final": str(fixture / "final/candidate-context.tsv"),
+    "--motif-hits-final": str(fixture / "final/motif-hits.tsv"),
+    "--sequence-logo-final": str(fixture / "final/sequence-logo.tsv"),
+    "--motif-statistics-final": str(fixture / "final/motif-statistics.tsv"),
+}
+for flag, path in inputs.items():
+    expected[flag] = str(path)
+    expected[flag + "-sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+for flag, value in expected.items():
+    assert args.count(flag) == 1, f"R argument {flag} must appear exactly once"
+    assert args[args.index(flag) + 1] == value, f"Wrong value for R argument {flag}"
+PYTHON
 if FAKE_R_BAD_RECEIPT=1 "${command[@]}" >"$tmp/bad.log" 2>&1; then fail 'invalid native receipt was accepted'; fi
 grep -q 'does not bind its four payloads' "$tmp/bad.log" || fail 'receipt check did not run'
 printf 'Native scientific-context worker checks passed.\n'

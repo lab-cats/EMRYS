@@ -17,6 +17,11 @@ the shared reporting `_files` operations; signal faults target `_signals`.
 The artifact context captures its real installed-package observer for later rechecks,
 and validated transactions retain real input-recheck callbacks.
 
+The Step 10 adapter semantic-mismatch fixture rebinds only its changed
+candidate-context output digest, then requires the bound-reference-window
+diagnostic in published failed evidence. Separate contract tests retain the
+stale-output-hash refusal; these establish distinct computational boundaries.
+
 Combined publication tests cover the index and summary output set, including
 terminal-receipt failure and owned rollback. Summary tests retain independent
 schema, deterministic projection, QC, provenance, and current-source checks.
