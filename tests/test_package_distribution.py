@@ -16,6 +16,12 @@ from pathlib import Path
 
 import pytest
 
+from emrys.contracts.artifacts._artifact_contracts.definitions import (
+    COMMON_SCHEMA_PATH,
+    SCHEMA_FILES,
+)
+from emrys.contracts.orchestration import SCHEMA_PATHS
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_DEPENDENCIES = {
     "coolname",
@@ -43,6 +49,7 @@ RUNTIME_REQUIREMENT_SPECIFIERS = {
     "simple-term-menu": "==1.6.6",
     "snakemake": "==9.25.1",
 }
+# Consumer registries define required schemas independently of package-data globs.
 RESOURCE_PATHS = (
     "emrys/.Rprofile",
     "emrys/renv.lock",
@@ -54,29 +61,10 @@ RESOURCE_PATHS = (
     "emrys/resources/runtime/restore_r_environment.R",
     "emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R",
     "emrys/stages/star_alignment/step_01_star_align.sh",
-    "emrys/contracts/schemas/artifacts/v2/artifact_record.schema.json",
-    "emrys/contracts/schemas/artifacts/v1/common.schema.json",
-    "emrys/contracts/schemas/artifacts/v3/run_summary.schema.json",
-    "emrys/contracts/schemas/artifacts/v5/report_receipt.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/project.schema.json",
-    "emrys/contracts/schemas/orchestration/v2/profile.schema.json",
-    "emrys/contracts/schemas/orchestration/v3/resource_config.schema.json",
-    "emrys/contracts/schemas/orchestration/v3/execution_profile.schema.json",
     "emrys/orchestration/run_coordinator/resources/default_execution.yaml",
     "emrys/resources/runtime/runtime_policy.tsv",
     "emrys/resources/runtime/pixi.toml",
     "emrys/resources/runtime/pixi.lock",
-    "emrys/contracts/schemas/orchestration/v1/reference.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/policy.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/workflow_attempt.schema.json",
-    "emrys/contracts/schemas/orchestration/v2/attempt_receipt.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/run_lock.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/task_start.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/task_attempt.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/verified_task.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/reporting_start.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/verified_reporting.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/common.schema.json",
     "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_common.R",
     "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R",
     "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_evaluation.R",
@@ -87,6 +75,11 @@ RESOURCE_PATHS = (
     "emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/resources/pum_motifs_v1.tsv",
     "emrys/reporting/styles/run_report.css",
     "emrys/reporting/templates/run_report.html.j2",
+) + tuple(
+    path.relative_to(REPO_ROOT / "src").as_posix()
+    for path in sorted(
+        {COMMON_SCHEMA_PATH, *SCHEMA_FILES.values(), *SCHEMA_PATHS.values()}
+    )
 )
 PUBLIC_ONBOARDING_MODULES = {
     "emrys/orchestration/run_coordinator/onboarding.py",
