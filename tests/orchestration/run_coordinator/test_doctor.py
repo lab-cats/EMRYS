@@ -14,6 +14,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+import yaml
 
 from emrys import analyses
 from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
@@ -707,8 +708,35 @@ def test_doctor_rejects_an_unusable_default_execution_profile_without_repair(
     assert _snapshot(tmp_path) == before
 
 
+@pytest.mark.parametrize(
+    ("placement", "resources", "message"),
+    (
+        (
+            {"cpus_per_task": 3},
+            {"stage_concurrency": {"01": 6}, "step_threads": {"01": 2}},
+            "Stage 01 concurrency x threads exceeds workflow cores: 6 x 2 > 3",
+        ),
+        (
+            {"memory_mb": 32768},
+            {"workflow_memory_mb": 65536},
+            "Workflow memory exceeds Slurm reservation: 65536 > 32768 MiB",
+        ),
+        (
+            {"memory_mb": 65536},
+            {"stage_memory_mb": {"00a": 98304}},
+            "Stage 00a concurrency x memory exceeds workflow memory within "
+            "Slurm reservation: 1 x 98304 > 65536 MiB",
+        ),
+    ),
+    ids=("cpu", "workflow-memory", "stage-memory"),
+)
 def test_doctor_refuses_incompatible_reservation_before_planning_runtime_repair(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    placement: dict[str, int],
+    resources: dict[str, Any],
+    message: str,
 ) -> None:
     from emrys.orchestration.run_coordinator.execution_profile import (
         project_default_profile_bytes,
@@ -717,14 +745,13 @@ def test_doctor_refuses_incompatible_reservation_before_planning_runtime_repair(
     project = _project(tmp_path)
     _patch_foundations(monkeypatch, project)
     profile = project.source_path.parent / "runtime/profiles/default.yaml"
-    profile.write_bytes(
-        project_default_profile_bytes("viking")
-        .replace(b"cpus_per_task: node", b"cpus_per_task: 3")
-        .replace(
-            b"placement:",
-            b'resources:\n  schema_version: emrys.local-pilot-resources.v1\n  stage_concurrency: {"01": 6}\n  step_threads: {"01": 2}\nplacement:',
-        )
-    )
+    document = yaml.safe_load(project_default_profile_bytes("viking"))
+    document["placement"].update(placement)
+    document["resources"] = {
+        "schema_version": "emrys.local-pilot-resources.v1",
+        **resources,
+    }
+    profile.write_text(yaml.safe_dump(document), encoding="utf-8")
     monkeypatch.setattr(
         doctor,
         "_manager",
@@ -741,10 +768,7 @@ def test_doctor_refuses_incompatible_reservation_before_planning_runtime_repair(
         == 1
     )
 
-    assert (
-        "DOCTOR BLOCKED: Stage 01 concurrency x threads exceeds workflow cores: 6 x 2 > 3"
-        in capsys.readouterr().err
-    )
+    assert f"DOCTOR BLOCKED: {message}" in capsys.readouterr().err
     assert _snapshot(tmp_path) == before
 
 

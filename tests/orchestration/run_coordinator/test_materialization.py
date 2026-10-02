@@ -4467,22 +4467,35 @@ def test_public_slurm_rejects_known_reservation_shortfall_before_submission(
 
 
 @pytest.mark.parametrize(
-    ("workflow_cores", "cpus_per_task", "expected_exit"),
-    ((8, 4, 2), (2, 2, 0), (2, 4, 0)),
-    ids=("inherited-shortfall", "inherited-exact-fit", "inherited-restrictive"),
+    ("workflow_cores", "cpus_per_task", "memory_mb", "conflict"),
+    (
+        (8, 4, None, "Workflow cores exceed Slurm reservation: 8 > 4"),
+        (2, 2, None, None),
+        (2, 4, None, None),
+        (8, 8, 4096, "Workflow memory exceeds Slurm reservation: 8192 > 4096 MiB"),
+        (8, 8, 8192, None),
+    ),
+    ids=(
+        "inherited-cpu-shortfall",
+        "inherited-cpu-exact-fit",
+        "inherited-cpu-restrictive",
+        "inherited-memory-shortfall",
+        "inherited-memory-exact-fit",
+    ),
 )
 @pytest.mark.parametrize(
     "with_prepared_finalization",
     (False, True),
     ids=("finalized", "prepared"),
 )
-def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
+def test_public_slurm_resume_admits_inherited_resources_before_submission(
     tmp_path: Path,
     capsys,
     monkeypatch: pytest.MonkeyPatch,
     workflow_cores: int,
     cpus_per_task: int,
-    expected_exit: int,
+    memory_mb: int | None,
+    conflict: str | None,
     with_prepared_finalization: bool,
 ) -> None:
     first = _plan(tmp_path, workflow_cores=workflow_cores)
@@ -4500,7 +4513,9 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
     arguments = _command_arguments(
         first.run.analysis.source_path,
         run=first.run.run_id,
-        profile=str(_slurm_profile(tmp_path, cpus_per_task=cpus_per_task)),
+        profile=str(
+            _slurm_profile(tmp_path, cpus_per_task=cpus_per_task, memory_mb=memory_mb)
+        ),
         execute=True,
     )
     submissions = []
@@ -4517,11 +4532,13 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
         ),
     )
 
-    assert control.resume_from_args(arguments) == expected_exit
+    before = _file_snapshot(tmp_path)
+    assert control.resume_from_args(arguments) == (2 if conflict else 0)
     captured = capsys.readouterr()
-    if expected_exit == 2:
+    if conflict:
         assert submissions == []
-        assert "Workflow cores exceed Slurm reservation: 8 > 4" in captured.err
+        assert conflict in captured.err
+        assert _file_snapshot(tmp_path) == before
         assert not (first.workspace / "logs").exists()
         if with_prepared_finalization:
             assert prepared_path.is_file() and not receipt_path.exists()
