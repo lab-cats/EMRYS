@@ -806,8 +806,8 @@ def test_application_log_snapshot_binds_run_attempt_and_scheduler(
     assert observed["scheduler_job_id"] == "42"
 
 
-@pytest.mark.parametrize("mutated", ("attempt", "scheduler"))
-def test_predecessor_snapshot_covers_attempt_tree_and_scheduler_streams(
+@pytest.mark.parametrize("mutated", ("attempt", "application", "stdout", "stderr"))
+def test_predecessor_snapshot_independently_covers_attempt_log_and_streams(
     tmp_path: Path,
     mutated: str,
 ) -> None:
@@ -819,15 +819,23 @@ def test_predecessor_snapshot_covers_attempt_tree_and_scheduler_streams(
     stdout, stderr = tmp_path / "job.out", tmp_path / "job.err"
     stdout.write_text("stdout\n")
     stderr.write_text("stderr\n")
+    application = tmp_path / "application.jsonl"
+    application.write_text("application log\n")
     snapshot = driver._predecessor_evidence(
         run_root,
         attempt_id,
         driver.Job("42", stdout, stderr),
-        driver._artifact(attempt),
+        driver._artifact(application),
     )
     driver._assert_predecessor_preserved(snapshot)
 
-    (attempt if mutated == "attempt" else stdout).write_text("changed\n")
+    targets = {
+        "attempt": attempt,
+        "application": application,
+        "stdout": stdout,
+        "stderr": stderr,
+    }
+    targets[mutated].write_text("changed\n")
     with pytest.raises(driver.DriverError, match="changed predecessor evidence"):
         driver._assert_predecessor_preserved(snapshot)
 

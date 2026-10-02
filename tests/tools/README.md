@@ -37,6 +37,10 @@ public workflow commands.
   is not a production memory recommendation. Disposable Slurm requests all node
   CPUs, all node memory, and exclusive placement. These checks establish policy
   selection and resolution, not sustained utilization or performance.
+  Its preservation oracle uses a distinct application log outside the Attempt
+  tree. Separate literal mutations of the Attempt, application log, stdout and
+  stderr must each refuse resume-evidence reuse; unchanged inputs pass first.
+  This is test-oracle coverage, not an additional real scheduler execution.
 - `select_test_rscript.sh` is sourced by the three guarded-R test wrappers.
   It selects an owner override, then `RSCRIPT_BIN_OVERRIDE`, then `Rscript`;
   an invalid explicit selection fails, while an absent optional default skips.

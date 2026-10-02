@@ -1640,6 +1640,54 @@ def test_repair_refuses_redirected_pixi_state(tmp_path: Path) -> None:
     assert not (runtime.managed_root / "pixi.toml").exists()
 
 
+def test_repair_preserves_foreign_managed_child_before_manager_actions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = _project(tmp_path)
+    plan = _plan(project)
+    runtime = _runtime(plan)
+    runtime.managed_root.mkdir()
+    foreign = runtime.managed_root / "operator-notes.txt"
+    foreign.write_bytes(b"unowned operator material\n")
+    before = _snapshot(runtime.managed_root)
+    inode = foreign.stat().st_ino
+    monkeypatch.setattr(
+        doctor.onboarding,
+        "validate_project",
+        lambda *_args, **_kwargs: SimpleNamespace(project=project),
+    )
+    monkeypatch.setattr(doctor, "_file_sha256", lambda _path: runtime.pixi_sha256)
+    monkeypatch.setattr(
+        doctor,
+        "_repair_actions",
+        lambda _plan: pytest.fail("foreign child reached package-manager planning"),
+    )
+    monkeypatch.setattr(
+        doctor.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail(
+            "foreign child reached manager execution"
+        ),
+    )
+
+    with pytest.raises(
+        doctor.DoctorRepairError,
+        match=r"^foreign managed-runtime entries: operator-notes\.txt; diagnostics: ",
+    ) as failure:
+        doctor._execute_repair(plan, controls=_controls(project))
+
+    assert _snapshot(runtime.managed_root) == before
+    assert list(runtime.managed_root.iterdir()) == [foreign]
+    assert foreign.stat().st_ino == inode
+    assert not runtime.profile.exists()
+    assert (runtime.managed_root.parent / "maintenance.lock").is_file()
+    log_path, events = _repair_log(project)
+    assert str(failure.value) == (
+        f"foreign managed-runtime entries: operator-notes.txt; diagnostics: {log_path}"
+    )
+    assert not any(item["event"] == "package_manager_started" for item in events)
+
+
 def test_repair_isolates_and_refuses_pixi_configuration(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
