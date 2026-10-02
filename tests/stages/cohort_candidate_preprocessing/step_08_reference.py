@@ -265,7 +265,7 @@ def verify(case: Path, output: Path) -> None:
 
 def validate_native(case: Path, output: Path) -> None:
     """Exercise the existing consumer separately; it supplies no oracle values."""
-    report = output / "independent-reference.validation.tsv"
+    report = output / "fixture_cohort.validation.tsv"
     subprocess.run(
         [
             sys.executable,
