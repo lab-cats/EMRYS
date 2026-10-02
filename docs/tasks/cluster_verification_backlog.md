@@ -84,18 +84,19 @@ real-Slurm lane nor an institutional walkthrough.
 
 The [enduring verification checklist](backlog_matrix.md#cluster-verification-closure-checklist)
 owns the final verification and handoff record. Before this backlog retires,
-transfer its exact evidence-bearing records to validation history and lasting optimization
-decisions to their owner; retain revision, artifact, hash and evidence limits.
+transfer its unique evidence-bearing records and lasting optimization decisions
+to their permanent subject-owner or test guides; retain revision, artifact, hash
+and evidence limits. Do not recreate a separate historical status registry.
 
 All card acceptance below remains authoritative. No institutional execution,
 active-installation update, destructive cleanup, report visual review or
 actual-data completion was performed by this development stack. E12 still has
 no supplied terminal scientific/reporting evidence.
 
-Dated source observations are also retained in the
-[validation-evidence index](../history/validation-evidence.md) and the
-[CV card retention review](cv_card_retention_review.md). The review's older
-status checkpoint does not override the source-closure decision or the current
+Dated observations remain discoverable through the
+[campaign evidence register](cluster_verification_campaign.md#evidence-register)
+and the [CV card retention review](cv_card_retention_review.md). The review's
+older status checkpoint does not override the source-closure decision or current
 card dispositions here. Original evidence-bearing card text remains retained.
 
 ## Priority index

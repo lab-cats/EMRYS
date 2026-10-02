@@ -326,9 +326,9 @@ each stand alone. No useful reduction or removal of exact evidence is shown.
 
 ### F18 — History filing rule and existing compendium
 
-[History index](../history/README.md) lines 18–22 requires
+[History index](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/README.md) lines 18–22 requires
 `YYYY-MM-DD-topic.md` and an originating immutable commit. Its only indexed
-record, [validation evidence](../history/validation-evidence.md), has no date
+record, [validation evidence](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/validation-evidence.md), has no date
 in its filename and combines seven topics: PORT-NC replay (10–25), synthetic
 VM/reporting (27–79), manual Viking Steps 07–09 (81–103), cohort/orientation
 (104–130), local R recovery (132–139), architecture hosted CI (141–151), and
@@ -526,7 +526,7 @@ create-only, recovery and old-Run compatibility decisions; the
 [reporting owner](../../src/emrys/reporting/README.md) owns mechanics. Lines
 210–214 cite PR #146's `0ece377ca2b285d6ec2a46f7d2441c78f16409e1`
 predecessor tree, which still contains `report.py`; later `053f4130` removes
-the facade. The failure and nondeletion limit matter to [history's](../history/README.md)
+the facade. The failure and nondeletion limit matter to [history's](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/README.md)
 rules. Retired symbols at 216–218 and 223–225, including
 `ReceiptValidationOps` and `RunSummaryBuildDeps`, occur only here in current
 Markdown. The logical `emrys.reporting.report` producer still has compatibility

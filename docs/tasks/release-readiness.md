@@ -17,7 +17,7 @@ investigation history.
 Reviewed source: `9d34825211412332d42d9348ceca00a20fa370d5`, the integration
 branch for PR #322. The September investigation below remains historical
 source evidence. Its separate-stack description is superseded by the
-[integration review](../history/2026-09-30-pr-integration-review.md). The five
+[integration PR review](https://github.com/lab-cats/EMRYS/pull/322). The five
 maintenance audits are complete by owner direction; their closure adds no
 release qualification.
 
@@ -521,7 +521,7 @@ selected E2E steps use `continue-on-error` to retain diagnostics, but the final
 upload, or clean-checkout check fails. Its golden and selected synthetic
 artifacts have 14-day configured retention; record the exact run, outcome,
 artifact identity, and evidence ceiling in the existing
-[validation history](../history/validation-evidence.md) before relying on a
+[workflow evidence guide](../../.github/workflows/README.md) before relying on a
 temporary download link for release review. The
 cluster campaign records a distinct institutional novice journey and unresolved
 actual-data completion. A readiness review should screen open runtime,

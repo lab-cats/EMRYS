@@ -12,6 +12,9 @@
 > The [October 1 owner completion](backlog_matrix.md#october-1-2026-owner-completion)
 > also supersedes references below that assign work to the five completed
 > maintenance workstreams; their findings and evidence remain historical.
+> Links into `docs/history` below are frozen to the pre-retirement revision
+> `4348976f`; current owner homes are routed by the
+> [campaign evidence register](cluster_verification_campaign.md#evidence-register).
 
 Baseline: `codex/pr302-original-intent-corrections` at
 `3a672fdf8e55b30efc63dea9aecc4a29d28a5f4d` (2026-09-22).
@@ -86,8 +89,8 @@ discovery below and names the next evidence needed before changing authority.
 | 4. `CV-26` Doctor cost | One redundant full diagnosis was removed; original complete-operation attribution and comparable measurements remain Open. | September 15 measurements and later September 16/21 decisions have dated homes; card-only counters/log limits still need transfer before shortening. |
 | 5. Dashboard retirement | The matrix says the standalone entry point and callers are retired; several CV summaries still say that retirement remains. | Current-sounding text is corrected in this branch; keep shared watch code, historical readers, and pending visual verification. |
 | 6. Repeated cluster closure instructions | The main checklist, cluster backlog summary, and charter repeat remaining work. | The charter now links to the operative sequence while retaining its unique disposition, site-combination, and evidence custody rules. |
-| 7. Viking walkthrough chronology | The main matrix holds dated jobs, a qualification identity, capacity observations, approvals, and a last-supplied Run state. | The [dated record](../history/2026-09-14-viking-walkthrough.md) now preserves source-only journey and safety details; settle the allocation-account evidence need and owner homes before any shortening. |
-| 8. Compression closeout chronology | The completed section combines the user closure, quantified shortfall, exact CI, and PR chronology. | The [dated record](../history/2026-09-14-compression-closeout.md) matches material source decisions and evidence limits; retain the closure decision and request separate authority before shortening source evidence. |
+| 7. Viking walkthrough chronology | The main matrix holds dated jobs, a qualification identity, capacity observations, approvals, and a last-supplied Run state. | The [dated record](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-14-viking-walkthrough.md) now preserves source-only journey and safety details; settle the allocation-account evidence need and owner homes before any shortening. |
+| 8. Compression closeout chronology | The completed section combines the user closure, quantified shortfall, exact CI, and PR chronology. | The [dated record](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-14-compression-closeout.md) matches material source decisions and evidence limits; retain the closure decision and request separate authority before shortening source evidence. |
 | 9. CV card checkpoint narratives | Detailed cards repeatedly recount Open-to-implemented-to-pending transitions alongside live acceptance. | The 61-card first pass and CI wording correction are recorded below; transfer exact observations and decisions before any shortening. |
 | 10. Polish chronology and overlap | The campaign contains an old audit/PR narrative and merged-PR tables plus proposals already implemented elsewhere. | The [retention map](polish_finding_disposition_review.md#polish-audit-and-pr-chronology-retention-map) separates Git-only chronology candidates from unique decisions and evidence; transfer checks remain before compression. |
 | 11. Optimization source drift | The September 7 audit is correctly pinned, but most cited source blobs changed by the baseline. Candidates 8 and 12 had materially changed source premises. | All 13 now have a source-only comparison; numeric counts and initial priority are dated, while benefit and selection need workload evidence. |
@@ -189,10 +192,10 @@ remains Open for complete Doctor phase/read/hash/probe/queue attribution and
 comparable before/after measurements. The five-to-four full-diagnosis change
 is structural; it has no measured Viking speedup.
 
-**Partial transfer:** The [September 15 record](../history/2026-09-15-cv26-doctor-measurements.md)
+**Partial transfer:** The [September 15 record](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-15-cv26-doctor-measurements.md)
 retains the 175.681-second hosted setup, probe/trial tables, artifact hashes,
 failed-suite distinction, fresh-check decision, and serial-R decision. The
-[later record](../history/2026-09-21-cv26-doctor-followup.md) preserves the
+[later record](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-21-cv26-doctor-followup.md) preserves the
 September 16 negative Viking duration report and September 21 five-to-four
 change, safety rationale, and source-recorded checks. The CV card alone still
 retains some September 15 byte/probe counters and logging/failure limits;
@@ -259,7 +262,7 @@ allowance, and reported synthetic/actual-data states. The
 E01–E12 but does not replace every exact identifier or approval in the matrix.
 
 **Source comparison:** A read-only comparison of the
-[additive dated record](../history/2026-09-14-viking-walkthrough.md) with the
+[additive dated record](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-14-viking-walkthrough.md) with the
 matrix and charter found source-only setup, interface, output, and memory-safety
 details, now added to the record above. The record names the source commits
 and exact identities below; it is a preservation draft, not a completed removal
@@ -281,8 +284,8 @@ must retain these distinct facts and their original source commits:
 | Matrix hosted journey | `e25b10c6` and CI `34885186045` cover a disposable-Slurm Doctor preparation path, not Viking qualification; the six-library profile is no requirement for that tiny fixture. |
 | Charter E register | E05 pre-Run/foreign-host observations, E06 unknown report-publication cause, E07 unmeasured hashing cost, E10 heterogeneous capacity figures, E11 unattributed Doctor time, plus E01/E09/E12 unknown or absent outcomes. The additive history record now preserves these with their source limits for review. |
 
-The [history rules](../history/README.md) require source provenance and one
-topic-index link; [validation history](../history/validation-evidence.md)
+The [history rules](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/README.md) require source provenance and one
+topic-index link; [validation history](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/validation-evidence.md)
 now links the dated record. The source matrix's allocation account identifier
 is deliberately not repeated; any later source reduction must settle whether
 it is required evidence. The new record does not transfer authority or delete
@@ -296,7 +299,7 @@ against the agreed 20% target, two different comparison baselines, a seven-surfa
 table, exact CI links, and PR integration chronology. The closure decision and
 measurement definitions remain material; Git already keeps routine PR order.
 
-**Source comparison:** The [additive dated record](../history/2026-09-14-compression-closeout.md)
+**Source comparison:** The [additive dated record](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-14-compression-closeout.md)
 preserves the material closure decision, counts, comparison definitions, exact
 CI heads, and evidence limits from the matrix snapshot. A read-only comparison
 found no material omission. Keep the user decision in the row. The old dashboard
@@ -388,12 +391,12 @@ across CV-06 and twelve CV-U cards, while CV-01/CV-U06 keep selected
 real-Slurm acceptance. No current card status changed.
 
 **Additive evidence transfer:** Dated records now preserve
-[CV-10 containment/retry](../history/2026-09-15-cv10-containment-retry.md),
-the separate [job 621154 timeout](../history/2026-09-16-cv10-timeout.md),
-[CV-26 hosted measurements](../history/2026-09-15-cv26-doctor-measurements.md),
-the [later Doctor decision](../history/2026-09-21-cv26-doctor-followup.md),
-and [CV-U28 fixed-policy provenance](../history/2026-09-15-cv-u28-resource-provenance.md).
-The separate [CV-UX-01 job 621172 collision](../history/2026-09-16-cvux01-doctor-collision.md)
+[CV-10 containment/retry](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-15-cv10-containment-retry.md),
+the separate [job 621154 timeout](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-16-cv10-timeout.md),
+[CV-26 hosted measurements](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-15-cv26-doctor-measurements.md),
+the [later Doctor decision](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-21-cv26-doctor-followup.md),
+and [CV-U28 fixed-policy provenance](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-15-cv-u28-resource-provenance.md).
+The separate [CV-UX-01 job 621172 collision](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-16-cvux01-doctor-collision.md)
 now has an indexed dated record with its ordinary-CI limit. The card's original
 Open checkpoint is date-bound against its final Verification pending status.
 Their original cards remain intact. These records do not transfer the later
@@ -583,8 +586,8 @@ observation, and its limits before removing the old location. This working
 record should be retired or reduced to durable findings once the authoritative
 documents and evidence homes are reconciled.
 
-The [validation history](../history/validation-evidence.md) now indexes an
-[additive E01–E12 record](../history/2026-09-14-viking-walkthrough.md). The
+The [validation history](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/validation-evidence.md) now indexes an
+[additive E01–E12 record](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-14-viking-walkthrough.md). The
 charter remains the original bounded E register; the matrix's Viking
 walkthrough also holds exact jobs, a qualification identity, approvals, and
 limits not reproduced by that register. The dated record copies those facts
@@ -607,6 +610,6 @@ Inbound links constrain later placement changes: the matrix's
 the charter; `#cluster-verification-closure-checklist` is referenced by the
 campaign row, delegated backlog, and charter; the polish campaign's
 `#current-follow-up-scope` is referenced by the design decision, main matrix,
-and charter. [Validation history](../history/validation-evidence.md) also has
+and charter. [Validation history](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/validation-evidence.md) also has
 inbound guides and a required-document check. If a heading or evidence home
 moves, update its inbound links and checker ownership in the same change.

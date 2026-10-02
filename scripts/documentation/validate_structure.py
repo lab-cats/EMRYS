@@ -23,7 +23,6 @@ CANONICAL_DOCUMENTS = (
     "docs/design/DECISIONS.md",
     "docs/design/LOGGING_CONTRACT.md",
     "docs/design/TEST_BASELINE.md",
-    "docs/history/validation-evidence.md",
     "docs/operations/RUNBOOK.md",
     "docs/operations/TROUBLESHOOTING.md",
     "docs/operations/WORKFLOW.md",

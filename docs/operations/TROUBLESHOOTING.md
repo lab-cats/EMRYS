@@ -269,3 +269,17 @@ limit can still arrive before finalization closes. A dashboard `INTERRUPTED`,
 Run `emrys inspect RUN` from the Project and follow its printed supported action.
 If inspection says `Do not resume` or `Recovery available: no`, retain the Run
 for integrity review; do not remove its lock or retry into that Run.
+
+### Timeout evidence
+
+The September 16, 2026 operator report in commit
+`225f2c6dc9e8ce99796819686b35be71f51c0d4c` records Viking job `621154` as
+`TIMEOUT` after `08:00:09` against an `08:00:00` limit. Step 06 had a Task start
+without a terminal result; inspection retained remote lock ownership, no
+terminal Attempt receipt and no recovery, and instructed the operator not to
+resume. That Run remains untouched. This is distinct from E09, with no proved
+failure cause. Later local warning/forwarding checks and prepared-finalization
+support neither establish a real Slurm timeout/recovery result nor make either
+historical Run recoverable. [CV-10](../tasks/cluster_verification_backlog.md#cv-10-external-cancellation-and-recovery)
+retains institutional acceptance; follow the admitted evidence and recovery
+action above, never scheduler timeout alone.

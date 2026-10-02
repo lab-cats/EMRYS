@@ -179,9 +179,10 @@ institutional qualification. Required verification is:
   disposition or named transfer, reconcile live references, and preserve lasting
   decisions/evidence before retiring the backlog and charter together. Transfer
   E01–E12 and exact hosted/artifact records, including CV-10/CV-26 evidence, to
-  [validation history](../history/validation-evidence.md); retain optimization
-  decisions with their current owner. Preserve all limits and failed-suite
-  distinctions. Retirement, evidence deletion and merge retain their separate
+  their permanent subject-owner and test guides, routed from the
+  [campaign evidence register](cluster_verification_campaign.md#evidence-register);
+  retain optimization decisions with their current owner. Preserve all limits
+  and failed-suite distinctions. Retirement, evidence deletion and merge retain their separate
   authority; merge follows verified closure.
 
 ### Reliability and qualification
@@ -337,7 +338,8 @@ Every reporting row inherits the [shared report acceptance](#shared-report-accep
 | `COMPRESS-01` | Compression and comprehension | Closed | — | — | Substantially reduce duplicated code and documentation; make retained implementations and explanations easy to follow. | Closed by the user on 2026-09-14 after [PR #169](https://github.com/lab-cats/EMRYS/pull/169) merged at `2ecf7d44`: 42 CS cards completed; CS-05 transferred to `REPORT-ROSTER-01`. The closure record below states the result and its limits. The temporary campaign and backlog were retired after moving unique decisions and evidence to existing owners. Existing reporting, diagnostic, dashboard, optimization and scientific/site work remains with its named owners. No further compression tranche is active or implied. |
 
 The compression campaign ran from 2026-09-02 to 2026-09-14. Against the agreed
-`cab77a26` baseline, product fell from **69,223 to 55,862 physical lines**:
+`cab77a2610cecbefaaf0fb463fa7ebe1c500767c` baseline, product fell from
+**69,223 to 55,862 physical lines**:
 **13,361 fewer lines (19.30%)**. The 20% target was **55,378 lines**;
 the campaign closed **484 lines short**, by explicit user decision.
 The count includes tracked product `.py`, `.R`, `.sh`, `.css`, `.j2` files
@@ -345,7 +347,8 @@ and the workflow `Snakefile`, including relocated files. Generated
 `renv/activate.R` and the tooling script `restore_r_environment.R` are excluded.
 
 Integration PR #169 preserved all 93 commits from PR #140 and PRs #148–168.
-Its separate comparison against pre-integration master `446802c0` is:
+Its separate comparison against pre-integration master
+`446802c06ebceee8328a5cb4b542eea9fb2ed398` is:
 
 | Surface | Net lines |
 |---|---:|
@@ -368,22 +371,29 @@ caller-complete transition to installed watch with legacy read compatibility.
 
 [Ordinary hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34857271894)
 and [130-pair synthetic E2E](https://github.com/lab-cats/EMRYS/actions/runs/34857300341)
-passed at `fdc7cc79`; merge `2ecf7d44` has the identical source tree.
-Codex completed the source and integration reviews. These are hosted software
-and disposable-Slurm results, not institutional-site, scientific-review or
-biological validation.
+passed at `fdc7cc79a3cf8637bb1c591c95a82020816fe863`; merge
+`2ecf7d449188ebd2e6d8b2e64a714ba269e5124b` has the identical source tree,
+`6e1c67e3bf74b317e727bcd9c051cdccaa095236`. The closeout recorded completed
+source and integration reviews. The September 22 review checked arithmetic,
+tree equality and run-level success/head metadata; it did not rerun the count
+inventory, reconstruct those reviews or inspect every job/artifact. These are
+hosted software and disposable-Slurm results, not institutional-site,
+production-data, scientific-review or biological validation.
 
 CI-01, DEV-01, and CLI-VERSION-01 passed the complete ordinary hosted suite in
 [run 34306975901](https://github.com/lab-cats/EMRYS/actions/runs/34306975901)
-at `b491aac5`, including Python coverage, guarded R, managed golden path,
+at `b491aac5f198584475ba72de2cfe0894f8be81df`, including Python coverage,
+guarded R, managed golden path,
 static/wheel, shell, and userspace checks. PR #148 merged through PR #169.
 
 The other implemented outcomes below passed their applicable Python,
 guarded-R, managed-golden, and independent-contract checks in
 [ordinary hosted CI 34301289787](https://github.com/lab-cats/EMRYS/actions/runs/34301289787)
-on PR #140's integrated tree. This closes their hosted software-verification
-scope; PR #140 merged through PR #169. It does not establish
-institutional-site execution, scientific review, or biological validation.
+at `2fb8f5ef5a297f3778fd2dd7a5046eec0ab21fa5`, PR #140's integrated tree.
+These source-recorded suite scopes are not independently established by the
+later run-metadata check. This closes their hosted software-verification scope;
+PR #140 merged through PR #169. It does not establish institutional-site
+execution, scientific review, or biological validation.
 
 | ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
 |---|---|---|---:|---:|---|---|

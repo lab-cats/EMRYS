@@ -367,7 +367,7 @@ facts. The fallback remains in `capacity.py:141–180`, not evidence that the
 older partial-node request is today's Viking default.
 The 750-line allowance at 201–205 is bounded by 184–189 to that earlier
 slice, not a standing exception for future product growth.
-The [history compendium](../history/validation-evidence.md) lines 81–102
+The [history compendium](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/validation-evidence.md) lines 81–102
 already retains job `605171` as manual NORAD Step 08 evidence at exact
 `64b14a11`; the backlog adds that job's scheduler request and accounting
 context. These are distinct aspects; neither is
@@ -392,7 +392,7 @@ lines 90–105 says raw logs and artifacts remain with the operator; its
 Checked-in summaries do not bind every reported Viking observation to an
 installed package, Run, Attempt, profile, input, and runtime identity. That
 gap prevents a lossless, date-qualified history transfer under the current
-[history rules](../history/README.md#record-rules) without reconstructing
+[history rules](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/README.md#record-rules) without reconstructing
 source evidence. Three destinations remain distinct: current commands and
 policy with owners, historical observations and former approval in dated
 evidence when qualified, and status/acceptance in SITE-PARITY-01,

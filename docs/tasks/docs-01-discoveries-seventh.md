@@ -402,7 +402,7 @@ probe, recovery, and reporting overlaps are covered by existing findings or
 state distinct coordinator authority. No additional lossless saving was found.
 
 The complete 392-line [main matrix](backlog_matrix.md), 174-line
-[validation-evidence record](../history/validation-evidence.md), CV charter's
+[validation-evidence record](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/validation-evidence.md), CV charter's
 scope/closure, optimization campaign's measurement account, and the CV
 backlog's index and reconciliation map were reread. Current acceptance,
 negative measurements, and dated evidence have distinct roles; F17/F18/F51/

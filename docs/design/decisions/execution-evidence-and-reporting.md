@@ -12,6 +12,29 @@ Interactive `run` and `resume` show that plan and ask once; automation uses
 `--execute`. Refusal, EOF, and interruption before authority write, submit, and
 log nothing. Dry-run and execution use the same admitted values.
 
+### Immutable Attempt manifest tradeoff
+
+Recorded on September 10, 2026 in the
+[compression backlog at `5511a75256c87fccbbd346cf50aab2522cde82b1`](https://github.com/lab-cats/EMRYS/blob/5511a75256c87fccbbd346cf50aab2522cde82b1/docs/tasks/compression_backlog_matrix.md#cs-28-one-immutable-attempt-manifest).
+This local synthetic probe on macOS/Python 3.13.15 compared the split planning
+layout with one manifest, using the same representative task definitions.
+Counts exclude unchanged Run, request, and reporting-input files. Times are
+medians of three cache-warm reads, SHA-256 checks, strict JSON decodes, and
+canonical-byte checks; the split probe reconstructs those operations rather
+than running the complete old worker.
+
+| Tasks | Planning files, before → after | Persisted payload bytes, before → after | One selection, before → after | Process peak RSS, before → after |
+|---:|---:|---:|---:|---:|
+| 35 | 37 → 1 | 130,307 → 59,001 | 0.135 → 0.318 ms | 35.09 → 35.08 MiB |
+| 350 | 352 → 1 | 1,276,176 → 567,342 | 0.446 → 2.990 ms | 35.41 → 37.92 MiB |
+| 3,500 | 3,502 → 1 | 12,782,080 → 5,672,793 | 3.044 → 28.241 ms | 39.95 → 76.36 MiB |
+
+This reduces persisted planning surface but increases per-task read/decode cost
+as the task roster grows. At 3,500 tasks the logical payload read for one
+selection grows from 465,600 to 5,672,793 bytes. Physical I/O, allocated disk
+blocks, isolated process startup, scientific-stage wall time, and cluster
+behavior were not measured. No overall performance improvement is claimed.
+
 ### Publish validated transactions
 
 Scientific producers own computation, output checks and provenance. The existing

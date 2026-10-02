@@ -57,6 +57,48 @@ Run, resume and standalone report execution follow the selected Project profile.
 [Workflow composition](../../workflow/README.md) explains the graph;
 [the profile contract](CONTRACT.md#profiles-and-immutable-planning) defines resource selection.
 
+## Qualification evidence and limits
+
+The [September 14 Viking walkthrough](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/2026-09-14-viking-walkthrough.md)
+combined operator-supplied output and source review; its raw site logs were
+operator-held. Its selected revision was `7c427f0ca50de17bbcc9983571fa49acf167f187`, while the later campaign reviewed
+`f2c0149e73a685b6f3d5b162f3804edee7c78c10`; neither identifies every installed
+package, Run or Attempt. Manual setup job `614786` restored 71 R packages;
+the operator then reported successful head-node finalization for qualification
+`cfcf7f788fd9d949f1a23f17793ecf22ba1e05f1023bc3b49065eebc0280186f`, retained
+under `.emrys-storage-qualification/` in the `emrys-smoke` Project's parent.
+That manual result does not qualify the later automated Doctor journey.
+
+The first post-install qualification failure (E01) remains unexplained. After
+the batch username correction, operator inspection reported a successful
+synthetic resume, 151 artifacts and a 3:52 Attempt; HTML visual review was
+explicitly deferred (E03/E04). Temporarily missing report receipts later
+appeared without repair (E06); publication overlap and filesystem visibility
+remain competing explanations. Current acceptance does not require reconstructing
+E01/E06, and later success does not explain them.
+
+The cancelled actual-data Run lacked terminal Attempt closure and remained
+blocked; its replacement was still active at the last supplied observation
+(E09/E12). Preserve that distinction rather than infer completion from scheduler
+state. Active preparation blockers did not themselves prove failure (E05), and
+manual inventory reuse was not proof of the later public sharing lifecycle
+(E08). Onboarding costs, node-capacity observations and Doctor's reported
+verification time over ten minutes did not attribute stage demand or latency
+(E07/E10/E11). The September 16 report of a walkthrough approaching an hour also
+lacked phase-resolved site measurements. These are historical evidence limits,
+not a new site result or a Doctor speedup claim.
+
+Doctor's structural correction at `593f6e728321f535817bcde732d263c2f86079a8`
+removed one intervening full head diagnosis: five total diagnoses became four,
+while exact pre-storage readmission and final readiness remained. Source-recorded
+[CI 35577392877](https://github.com/lab-cats/EMRYS/actions/runs/35577392877)
+passed 14 standard jobs with four configured skips. Its fault fixtures used
+simulated submission and the real storage owner; this is software protection,
+not institutional timing. The [contract](CONTRACT.md#no-write-and-publication-boundaries)
+retains binding-drift refusal and storage evidence after later Doctor failure.
+No elapsed-time benefit was measured. Hosted measurement provenance and limits
+live with the [CI owner](../../../../.github/workflows/README.md#doctor-namespace-experiment-disposition).
+
 ## Installed watch
 
 `_inspection_presentation.py` owns the installed terminal interaction,

@@ -30,6 +30,14 @@ R 4.6.1, `RENV_PROJECT` and `RENV_PATHS_LIBRARY` for restoration, and the exact 
 `RENV_LIBRARY` for checking. The check bypasses the renv autoloader, changes no
 dependencies, and rejects lock, version, or library-identity drift.
 
+Activation may print namespace diagnostics on standard output. CI library
+selection writes its path to a separate temporary file, preserves the R exit
+status, and checks that the returned directory exists. Do not treat startup
+diagnostics as part of a path or suppress them to make selection succeed. An
+absent selected library blocks guarded checking; verify the selected root before
+explicit restoration. Never fabricate it or repair dependencies incidentally
+during a guarded check.
+
 Do not edit locks or activation settings to hide drift, or blanket-clean ignored
 libraries: local validation may depend on them and restoration can be expensive.
 A local environment check does not qualify a cluster or production runtime.

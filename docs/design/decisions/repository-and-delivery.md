@@ -88,7 +88,7 @@ Documentation exists only when it has a clear audience and durable owner:
 | Durable rationale and safety rules | [`DECISIONS.md`](../DECISIONS.md) and its focused decision records |
 | Scientific identities and import direction | [`STAGE_MAP.md`](../../../src/emrys/contracts/STAGE_MAP.md) and [`SOURCE_TOPOLOGY.md`](../../../src/emrys/contracts/SOURCE_TOPOLOGY.md) |
 | Accepted work and acceptance | [`backlog_matrix.md`](../../tasks/backlog_matrix.md) |
-| Dated validation observations | Compact records under [`docs/history`](../../history/) or retained artifacts |
+| Revision-bound validation observations | Compact evidence beside the relevant subject owner or test guide, with exact source/artifact identities and limits; retained artifacts remain separate |
 
 Do not preserve routine progress, branch names, audit totals, completed-work
 chronology, or source-to-destination ledgers in permanent documentation; Git

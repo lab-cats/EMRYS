@@ -19,6 +19,22 @@ Every check is required and runs in the process that requested it. Direct and
 Slurm execution use the same probes; scheduler placement is checked by the
 coordinator. The inventory cannot select optional checks or alternate contexts.
 
+Fresh content admission at repair, qualification and final readiness protects
+different mutation boundaries; an earlier digest is not current evidence. A
+fixed-roster fixture found 14 executable/jar hashes for 11 distinct files, but
+avoiding three reads did not establish an equivalent identity-preserving cache
+or attribute institutional latency. An invocation-local digest cache remains
+deferred pending material complete-operation cost and an equally strong
+replacement.
+
+R namespace checks remain serial. Diagnosis precedes resource resolution and
+this owner receives no admitted concurrency budget; valid profiles include one
+CPU and bounded memory. Unconditional parallel loading would exceed that
+selection and needs proven concurrent-child cancellation ownership. The
+[hosted comparison](../../../../.github/workflows/README.md#doctor-namespace-experiment-disposition)
+reduced measured diagnosis wall time while increasing sampled memory, without
+establishing setup or site benefit. It does not justify weaker fresh checks.
+
 Observed locations remain `Path` or `None`. Tool and hash processes have a
 30-second limit; R namespace loads have a 120-second limit. Timeouts fail without
 retry. The coordinator always supplies the guarded R environment, and loaded

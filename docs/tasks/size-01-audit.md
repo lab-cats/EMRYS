@@ -223,7 +223,7 @@ The [campaign history](polish-campaign.md#existing-capabilities-and-overlapping-
 
 ### cluster_verification_backlog.md
 
-The [delegated CV backlog](cluster_verification_backlog.md#verified-scope-and-remaining-evidence) contains 61 cards and remains their acceptance/evidence owner. Its retirement needs exact E01–E12 and hosted/artifact records transferred to [validation history](../history/validation-evidence.md), plus durable optimization decisions in their owner documents. This is a temporary exception candidate with a concrete transfer condition, not permission to delete live acceptance or exact evidence. Exact evidence deletion requires separate explicit approval and its own commit.
+The [delegated CV backlog](cluster_verification_backlog.md#verified-scope-and-remaining-evidence) contains 61 cards and remains their acceptance/evidence owner. Its retirement needs exact E01–E12 and hosted/artifact records transferred to [validation history](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/validation-evidence.md), plus durable optimization decisions in their owner documents. This is a temporary exception candidate with a concrete transfer condition, not permission to delete live acceptance or exact evidence. Exact evidence deletion requires separate explicit approval and its own commit.
 
 ## Coordinator planning, admission, and submission owners
 

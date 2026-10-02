@@ -981,7 +981,7 @@ predecessor.
 Graph construction shares decoded original manifests across task definitions.
 Each worker decodes its selected manifest at startup and retains exact-byte
 rechecks. Inspection and reuse reload evidence independently; there is no shared
-mutable cache. The [recorded scale probe](../../../../docs/history/validation-evidence.md#immutable-attempt-manifest-scale-probe)
+mutable cache. The [recorded scale probe](../../../../docs/design/decisions/execution-evidence-and-reporting.md#immutable-attempt-manifest-tradeoff)
 shows that fewer planning files can increase per-task decoding cost; it does
 not establish a workflow speedup.
 

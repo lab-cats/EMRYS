@@ -100,10 +100,12 @@ installation. Verification and any later retirement retain their own authority.
 
 ## Evidence register
 
-The [dated validation records](../history/validation-evidence.md) preserve
-source-bound walkthrough, cancellation, resource and Doctor observations.
-They retain their original evidence limits and do not replace current card
-acceptance or authorize deletion of the original campaign records.
+Permanent owner guides retain [walkthrough observations](../../src/emrys/orchestration/run_coordinator/README.md),
+[cancellation evidence](../../tests/orchestration/run_coordinator/README.md),
+[resource provenance](../../src/emrys/orchestration/run_coordinator/resources/README.md),
+and [Doctor measurements](../../.github/workflows/README.md#doctor-namespace-experiment-disposition).
+Their exact revisions and evidence limits do not replace current card acceptance
+or authorize deletion of the original campaign records.
 
 The initial record combines operator-supplied terminal output from the
 September 14 walkthrough with source review. Raw cluster logs and artifacts

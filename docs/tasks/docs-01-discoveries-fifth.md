@@ -268,7 +268,7 @@ and the absence of a shared mutable Attempt-manifest evidence cache. The link
 and summary of the dated
 local Attempt-manifest scale probe span 953–955; line 953 also finishes the
 current no-cache rule. The
-[evidence record](../history/validation-evidence.md#immutable-attempt-manifest-scale-probe)
+[evidence record](https://github.com/lab-cats/EMRYS/blob/4348976f26c6d19dcc7786469f5873bdd8101750/docs/history/validation-evidence.md#immutable-attempt-manifest-scale-probe)
 at 153–174 already holds the measurement method, before/after values, and
 limits. [Graph construction](../../src/emrys/workflow/Snakefile) at 217–250
 and [task admission](../../src/emrys/orchestration/run_coordinator/task.py)
