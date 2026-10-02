@@ -51,4 +51,6 @@ step08_help="$(
     exit 1
 }
 
-"$rscript_bin" tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.R "$rscript_bin"
+python_bin="${REPORT_PYTHON_BIN:-$repo_root/.venv/bin/python}"
+"$rscript_bin" tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.R \
+    "$rscript_bin" "$step08_engine" "$python_bin"
